@@ -55,7 +55,7 @@ These are existing capabilities and experiments, **not hackathon contributions**
 
 ## Work developed during BCH Blaze 2026
 
-Reserved for subsequent work performed exclusively in the verified new fork. No new staking features were implemented during this preparation. Record each new feature, its commits, tests and deployment here. Do not claim the capabilities listed above as hackathon work.
+Website cleanup: removed legacy header navigation, linked the logo to v3, and removed the v3 introduction, expandable warning and visible network controls. The page starts with creation/offer tabs. Automatic provider verification and protocol/wallet checks remain in place. This is a presentation change developed in the fork; existing staking capabilities remain baseline work.
 
 Preparation after the cutoff comprises audit, original publication, baseline evidence/tags, freeze configuration, native fork creation, this documentation, local isolation, and independent deployment setup. The build script accepts a separate Pages project base while preserving the original chipnet build settings; no staking contracts, application behavior or covenant artifacts are changed.
 
