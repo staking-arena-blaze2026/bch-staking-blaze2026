@@ -18,7 +18,7 @@ export async function verifyCoins(p:ElectrumCore,coins:SpendableUtxo[],peer:stri
   const actual=(await p.getUtxosForLockingBytecode(coin.lockingBytecode)).find(u=>u.txid===coin.txid&&u.vout===coin.vout);
   if(!actual||coinIdentity(actual)!==coinIdentity(coin))throw Error('Input spent, pending, or changed; rebuild and request fresh approval');
   let status=transactions.get(coin.txid);if(!status){status=allowUnconfirmed?await ancestry(coin.txid):await p.transactionStatus(coin.txid);transactions.set(coin.txid,status);}if(!allowUnconfirmed&&status.confirmations<=0)throw Error('Only confirmed wallet/covenant inputs may be spent');
-  if(status.vin?.some((i:any)=>/^0+$/.test(i.txid))&&status.confirmations<100)throw Error('Immature coinbase input');
+  if(allowUnconfirmed&&status.vin?.length===1&&status.vin[0].vout===0xffffffff&&/^0+$/.test(status.vin[0].txid)&&status.confirmations<100)throw Error('Immature coinbase input');
   if(coinIdentity(utxo(status,coin.vout))!==coinIdentity(coin))throw Error('Source-output proof mismatch');
  }
  if((await p.tip()).hash!==tip.hash)throw Error('Tip changed during input verification');

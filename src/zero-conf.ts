@@ -30,7 +30,7 @@ export function ancestryVerifier(p:ElectrumCore,clock:KeeperClock){
    if(spends.has(outpoint)&&spends.get(outpoint)!==id)throw Error('Conflicting unconfirmed ancestry');
    spends.set(outpoint,id);
    const parent=await load(input.txid),source=utxo(parent,input.vout);
-   if(parent.vin.some((i:any)=>/^0+$/.test(i.txid))&&parent.confirmations<100)throw Error('Immature coinbase ancestor');
+   if(parent.vin.length===1&&parent.vin[0].vout===0xffffffff&&/^0+$/.test(parent.vin[0].txid)&&parent.confirmations<100)throw Error('Immature coinbase ancestor');
    // Relative locks against unconfirmed outputs cannot have matured. Absolute time/height
    // locks and confirmed relative locks remain subject to node policy at broadcast.
    const sequence=decoded.inputs[n]!.sequenceNumber;
