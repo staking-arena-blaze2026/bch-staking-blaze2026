@@ -1,5 +1,9 @@
 # Staking Arena — BCH chipnet integration
 
+**BCH Blaze 2026: [pre-existing baseline, hackathon changes, and judging comparisons](docs/BLAZE_2026_BASELINE.md).**
+
+Hackathon development uses branch `blaze2026` in this fork. Run `npm run blaze:dev` for the browser frontend on port 5174; see the linked document before using the historical backend startup instructions below.
+
 Generalized assets v2 is developed separately on `dev/generalized-assets-v2-implementation`.
 It supports BCH or fungible CashTokens for both staking and rewards, including
 same-category token vaults, with separate state, staking escrow and reward reserve
