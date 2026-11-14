@@ -1,0 +1,17 @@
+{
+  "verifiedAt": "2026-11-14T14:43:43.434Z",
+  "url": "https://staking-arena-blaze2026.github.io/staking-arena-blaze-site/",
+  "network": "Verified chipnet identity on two providers · height 332322",
+  "workerWebSocketGuard": true,
+  "electrumMethods": [
+    "server.version",
+    "blockchain.block.header",
+    "blockchain.headers.subscribe",
+    "blockchain.transaction.get",
+    "blockchain.scripthash.get_history",
+    "blockchain.transaction.get_merkle",
+    "blockchain.block.headers"
+  ],
+  "broadcasts": 0,
+  "walletConnected": false
+}

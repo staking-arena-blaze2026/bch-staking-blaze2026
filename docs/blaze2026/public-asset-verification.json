@@ -1,0 +1,158 @@
+{
+  "verifiedAt": "2026-11-14T14:42:08.946554+00:00",
+  "newWebsite": "https://staking-arena-blaze2026.github.io/staking-arena-blaze-site/",
+  "sourceCommit": "6b5132b97666eddd35eab7fb26e569e1c398ea64",
+  "newWebsiteAssets": [
+    {
+      "path": "arena.svg",
+      "status": 200,
+      "sha256": "c453d03bd8dbbd9cfe0bbde2451d7cfd830d90cfcfffb346252557fd268208bf",
+      "matchesManifest": true
+    },
+    {
+      "path": "assets/GeneralizedAssets-CQP7KgSz.js",
+      "status": 200,
+      "sha256": "135ff5dc15937c8214dd1966eae926118ac626adc267689111c0b31433ed4466",
+      "matchesManifest": true
+    },
+    {
+      "path": "assets/GeneralizedVaults-BducKKZW.js",
+      "status": 200,
+      "sha256": "549f8f5cc576abdc3695fcea840c2ffe490aa50bc364b00a394f35842c057923",
+      "matchesManifest": true
+    },
+    {
+      "path": "assets/GeneralizedVaults-CBEyqBvj.js",
+      "status": 200,
+      "sha256": "505000a2a34d7c0d5b072e8a048b206a7402185d11c5e3a37fb1353eb0b92b77",
+      "matchesManifest": true
+    },
+    {
+      "path": "assets/V3Arena-yXpcufrn.js",
+      "status": 200,
+      "sha256": "8e217adf2bcfd58b7257e6855c058011acbd33011c514b3539ad74b7cf9f2039",
+      "matchesManifest": true
+    },
+    {
+      "path": "assets/app-entry-DXMEOSI4.css",
+      "status": 200,
+      "sha256": "dc405f5c8faf9cf81391435da229432e489016c1202d2fe443bb1d9388de4b20",
+      "matchesManifest": true
+    },
+    {
+      "path": "assets/app-entry-gbCOPVAe.js",
+      "status": 200,
+      "sha256": "05c75667afdd847e0a032a32fb65f90ce4bcf6c0f8bcd8d844c710790519918b",
+      "matchesManifest": true
+    },
+    {
+      "path": "assets/arena.worker-BsHklFFg.js",
+      "status": 200,
+      "sha256": "48ad4205548886d76bc9e872a3b2eecd212f5a9b241458fb8fab1e8d5215af77",
+      "matchesManifest": true
+    },
+    {
+      "path": "assets/createAssets-CIDAXRvV.js",
+      "status": 200,
+      "sha256": "310982ae896edb1df8bfef99ba27a3156a58781625c9d60fbe554f7609653164",
+      "matchesManifest": true
+    },
+    {
+      "path": "assets/electrum-wallet-BAJIoOhl.js",
+      "status": 200,
+      "sha256": "2033244fb6c47ad13fb5338398c6732058eac35087d6f3d942252102ed7905b2",
+      "matchesManifest": true
+    },
+    {
+      "path": "assets/index-DlxctRyR.js",
+      "status": 200,
+      "sha256": "bb47e04e46677f57d1663466f0776411623b8656b73a7c9b060a825bf5afb247",
+      "matchesManifest": true
+    },
+    {
+      "path": "assets/indexer-7KKv9YpT.js",
+      "status": 200,
+      "sha256": "fcbbb9d1dfc76531b38618dba32fb8ab91f937c6f455af211730e45031113be4",
+      "matchesManifest": true
+    },
+    {
+      "path": "assets/indexer-BXSTnHES.js",
+      "status": 200,
+      "sha256": "a765f059f3a07f4f387065d70467a937e3891309912bf96a32c7e863a399913f",
+      "matchesManifest": true
+    },
+    {
+      "path": "assets/indexer.bootstrap.worker-C2rXK4tM.js",
+      "status": 200,
+      "sha256": "434bc4698b87ecf9c5bf2c33d8a47baa739f5cafba66f8621eef4f9b08161f64",
+      "matchesManifest": true
+    },
+    {
+      "path": "assets/keeper-BRelbEv1.js",
+      "status": 200,
+      "sha256": "6fd3ba94f13a054c5b10fc681f950104b15e433b7ea04353dbf0d8a41b7c843a",
+      "matchesManifest": true
+    },
+    {
+      "path": "assets/model-_T7ZtZtD.js",
+      "status": 200,
+      "sha256": "51b992ea1243a7129b789a60830a31b2b6892f19fc1535b32cff2d48e9c7989b",
+      "matchesManifest": true
+    },
+    {
+      "path": "assets/preload-helper-CgO_7G-2.js",
+      "status": 200,
+      "sha256": "285a0d770d5700791f7c77b0a03a31e548aee31707a0393de7614f702bbfb3ca",
+      "matchesManifest": true
+    },
+    {
+      "path": "assets/registry-R-0oSpMz.js",
+      "status": 200,
+      "sha256": "94cb2d92932ea5be58721295f5b4ccc768e1a1f2a6f6610874d3f70dffd32dfc",
+      "matchesManifest": true
+    },
+    {
+      "path": "assets/rolldown-runtime-WkwZ5CU-.js",
+      "status": 200,
+      "sha256": "2629f2ad3cb75a57d98de697127f5af7d777ef572bbcdfa6e3ce8f438cd4527e",
+      "matchesManifest": true
+    },
+    {
+      "path": "assets/v3.worker-xzVCvsN1.js",
+      "status": 200,
+      "sha256": "cc2393118a928afc3c199a1ecd5acddc053b728048ff18535166b9dea6875b6e",
+      "matchesManifest": true
+    },
+    {
+      "path": "assets/v3Client-BYlNmrtn.js",
+      "status": 200,
+      "sha256": "de65ed755b35f339528df9467011d2cfa7a30a1db36aee89498b56bb5b411a62",
+      "matchesManifest": true
+    },
+    {
+      "path": "assets/wallet-CPjthZGA.js",
+      "status": 200,
+      "sha256": "f5f5a1035d0ad9eaaa4512f5b0683b33c15c05b8d8fd7e5663f94cbf98b4fa5d",
+      "matchesManifest": true
+    },
+    {
+      "path": "assets/wallet.worker-CIHbSpAb.js",
+      "status": 200,
+      "sha256": "e8c8589d8c5afb091622d3d1169f7e7096ace1e04aa176cb4dd6dbcde40acf0f",
+      "matchesManifest": true
+    },
+    {
+      "path": "index.html",
+      "status": 200,
+      "sha256": "ba9d81209b086ce7c53c5b3faae06a05533033ae41307e5cc4a570a27220a501",
+      "matchesManifest": true
+    },
+    {
+      "path": "v3-vaults.json",
+      "status": 200,
+      "sha256": "ea3e9b9d177df8f6f57a63b890142767bd831910558131da1606bd8c51d2b738",
+      "matchesManifest": true
+    }
+  ],
+  "originalWebsiteIndexUnchanged": true
+}

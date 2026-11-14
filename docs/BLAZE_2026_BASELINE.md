@@ -33,7 +33,7 @@ Original branch creation, updates, deletion and force pushes are blocked by acti
 | --- | --- |
 | New source fork URL | https://github.com/staking-arena-blaze2026/bch-staking-blaze2026 |
 | New website repository URL | https://github.com/staking-arena-blaze2026/staking-arena-blaze-site |
-| New website URL | https://staking-arena-blaze2026.github.io/staking-arena-blaze-site/ (deployment being configured) |
+| New website URL | https://staking-arena-blaze2026.github.io/staking-arena-blaze-site/ — deployed and verified HTTP 200 |
 | Source fork creation timestamp | **2026-11-14 14:34:11 UTC** |
 | Website fork creation timestamp | **2026-11-14 14:34:13 UTC** |
 | GitHub parent relationships | Source parent: `scinklja/bch-staking`; website parent: `scinklja/staking-arena-site` (`fork: true` verified through GitHub API) |
@@ -107,3 +107,21 @@ gh workflow run deploy.yml --repo staking-arena-blaze2026/staking-arena-blaze-si
 ```
 
 The original website remains at its original URL. Browser local state and wallet sessions may differ at the organization's distinct Pages origin, so imported configurations and wallet connections may need to be re-established.
+
+## Completed fork verification (2026-11-14)
+
+The initial setup source commit is [`6b5132b97666eddd35eab7fb26e569e1c398ea64`](https://github.com/staking-arena-blaze2026/bch-staking-blaze2026/commit/6b5132b97666eddd35eab7fb26e569e1c398ea64). Its [source CI run](https://github.com/staking-arena-blaze2026/bch-staking-blaze2026/actions/runs/43606034543) passed frontend unit tests, static builds/browser checks and Electrum fixture checks. In the new local checkout, the public production build, root TypeScript check, all 99 frontend tests in 22 files, and three v2/v3 protocol unit tests passed. No full BCHN integration or live wallet transaction tests were rerun. The browser-only development command was verified at HTTP 200 on port 5174 while the original service remained on port 5173.
+
+The [first Pages workflow](https://github.com/staking-arena-blaze2026/staking-arena-blaze-site/actions/runs/43606071323) succeeded. It built the initial setup source SHA above and recorded compiled website commit [`cdb1bd5f54d2a49e77c088e97ad7f68723948a79`](https://github.com/staking-arena-blaze2026/staking-arena-blaze-site/commit/cdb1bd5f54d2a49e77c088e97ad7f68723948a79). Later documentation-only commits and deployments may follow; the live [release manifest](https://staking-arena-blaze2026.github.io/staking-arena-blaze-site/release.json) always identifies the exact currently deployed source commit and asset hashes. Website workflow runs identify both their input website configuration revision and the subsequently generated compiled-output revision.
+
+The new website returned HTTP 200, all 25 production files matched the release manifest, and browser checks observed no page or HTTP errors. All four v3 staking/reward asset choices, direct-creation text, creation/offer navigation, reload, mobile layout and v1/v2 routes were verified. Two providers verified chipnet identity at height 332322 during the initial browser capture. No wallet was connected, and no signing or broadcast was tested. Worker-level WebSocket instrumentation separately verified read-only network requests and rejected any broadcast attempt.
+
+Fresh evidence is committed alongside this document:
+
+- [Browser report](blaze2026/public-browser-verification.json), [worker network report](blaze2026/worker-network-verification.json), and [asset comparison](blaze2026/public-asset-verification.json).
+- [v3 creation screenshot](blaze2026/hackathon-v3-create.png), [offer screenshot](blaze2026/hackathon-v3-offers.png), and [mobile screenshot](blaze2026/hackathon-v3-mobile.png).
+- The original demonstration video, original screenshots and baseline test results remain attached to the original [baseline evidence release](https://github.com/scinklja/bch-staking/releases/tag/pre-blaze-2026). That release's preparation report reflects its publication time, when organization access was still pending; this document records the subsequently completed fork setup.
+
+Both new forks preserve their inherited `pre-blaze-2026` tags, protected against changes/deletion. Their default development branches are protected against deletion and force pushes while allowing ordinary development. Anonymous public access, actual GitHub creation timestamps, native parent relationships, local remotes and baseline ancestry are verified. The source fork's inherited manual Pages workflow is disabled; only the website fork has Pages configured.
+
+A source diff against the baseline confirms no changes to `contracts/`, `src/`, `artifacts/`, `frontend/src/`, `frontend/tests/` or `tests/`. The original source's uncommitted patch still matches its private backup; no ignored wallet/node/environment data was copied. The original site remains accessible with its baseline index unchanged. Sensitive-data scans of the setup commits found no secrets. Future features must be developed and documented exclusively in the hackathon fork, under the reserved work section above.

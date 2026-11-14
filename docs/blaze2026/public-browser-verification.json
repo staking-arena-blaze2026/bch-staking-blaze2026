@@ -1,0 +1,42 @@
+{
+  "verifiedAt": "2026-11-14T14:42:16.564Z",
+  "url": "https://staking-arena-blaze2026.github.io/staking-arena-blaze-site/",
+  "httpStatus": 200,
+  "verifiedSourceCommit": "6b5132b97666eddd35eab7fb26e569e1c398ea64",
+  "workflow": "https://github.com/staking-arena-blaze2026/staking-arena-blaze-site/actions/runs/43606071323",
+  "network": "Verified chipnet identity on two providers · height 332322",
+  "pairs": [
+    "bch-bch",
+    "bch-token",
+    "token-bch",
+    "token-token"
+  ],
+  "v3Reload": true,
+  "mobileLayout": true,
+  "v1Accessible": true,
+  "v2Accessible": true,
+  "walletConnected": false,
+  "walletSigningVerified": false,
+  "broadcasts": 0,
+  "pageErrors": [],
+  "httpErrors": [],
+  "workers": [
+    "https://staking-arena-blaze2026.github.io/staking-arena-blaze-site/assets/indexer.bootstrap.worker-C2rXK4tM.js",
+    "https://staking-arena-blaze2026.github.io/staking-arena-blaze-site/assets/wallet.worker-CIHbSpAb.js",
+    "https://staking-arena-blaze2026.github.io/staking-arena-blaze-site/assets/v3.worker-xzVCvsN1.js",
+    "https://staking-arena-blaze2026.github.io/staking-arena-blaze-site/assets/wallet.worker-CIHbSpAb.js",
+    "https://staking-arena-blaze2026.github.io/staking-arena-blaze-site/assets/indexer.bootstrap.worker-C2rXK4tM.js",
+    "https://staking-arena-blaze2026.github.io/staking-arena-blaze-site/assets/v3.worker-xzVCvsN1.js"
+  ],
+  "electrumMethods": [
+    "server.version",
+    "blockchain.block.header",
+    "blockchain.headers.subscribe",
+    "blockchain.transaction.get",
+    "blockchain.scripthash.get_history",
+    "blockchain.transaction.get_merkle",
+    "blockchain.block.headers"
+  ],
+  "workerNetworkVerifiedAt": "2026-11-14T14:43:43.434Z",
+  "workerNetworkEvidence": "worker-network-verification.json"
+}
