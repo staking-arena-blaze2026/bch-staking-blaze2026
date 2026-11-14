@@ -35,3 +35,16 @@ it('a changed canonical state rejects authorization before Cashonize signing',as
  vi.mocked(v3Call).mockImplementation(async(...args)=>{if(args[0].operation==='authorize')throw Error('Vault state changed; review a fresh transaction');return original(...args);});
  try{await expect(wallet.v3!({operation:'claim',config:{}})).rejects.toThrow(/state changed/);expect(manager.signTransaction).not.toHaveBeenCalled();expect(vi.mocked(v3Call).mock.calls.some(([i])=>i.operation==='submit')).toBe(false);}finally{wallet.close?.();}
 });
+
+it('two-approval fallback never authorizes its child automatically',async()=>{
+ const {wallet,manager}=setup();const original=vi.mocked(v3Call).getMockImplementation()!;
+ vi.mocked(v3Call).mockImplementation(async(...args)=>args[0].operation==='createLegacy'?original({operation:'claim'}):original(...args));
+ try{
+  await wallet.v3!({operation:'createLegacy',parameters:{}});expect(manager.signTransaction).toHaveBeenCalledTimes(1);
+  expect(vi.mocked(v3Call).mock.calls.some(([intent])=>intent.operation==='resume')).toBe(false);
+  await wallet.v3!({operation:'resume',id:'claim'});expect(manager.signTransaction).toHaveBeenCalledTimes(2);
+ }finally{wallet.close?.();}
+});
+it('expanding discovery does not authorize or broadcast a transaction',async()=>{
+ const {wallet,manager}=setup();try{expect(await wallet.v3!({operation:'expandScan'})).toMatch(/200 addresses/);expect(manager.signTransaction).not.toHaveBeenCalled();expect(vi.mocked(v3Call).mock.calls.some(([i])=>i.operation==='create'||i.operation==='submit')).toBe(false);}finally{wallet.close?.();}
+});

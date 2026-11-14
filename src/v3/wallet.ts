@@ -1,14 +1,16 @@
+import {discoverFunding} from './funding-discovery.js';
 import {validateNewOffer} from './offer-policy.js';
 import {v3Network,v3Storage,type V3Network} from './network.js';
 import {TransactionBuilder,placeholderP2PKHUnlocker,placeholderSignature,type SpendableUtxo,type NetworkProvider} from 'cashscript';
 import {hexToBin,binToHex,createVirtualMachineBch2026,hashTransaction,decodeTransaction,type Transaction} from '@bitauth/libauth';
 import {Buffer} from '../bytes.js';
 import {walletScript,validateWalletSigned,walletPlanIdentity,type BrowserPlan,type WalletKey,type WalletCoin} from '../transactions-core.js';
-import {chooseBch,chooseTokens,scanWallet,verifyCoinsAcrossPeers,confirmedWalletTransaction,walletPeers} from '../electrum-wallet.js';
+import {chooseBch,chooseTokens,verifyCoinsAcrossPeers as verifyConfirmedCoinsAcrossPeers,confirmedWalletTransaction,walletPeers} from '../electrum-wallet.js';
 import type {ElectrumCore} from '../electrum-core.js';
 import {utxo,records} from '../arena-core.js';
 import {AssetIndexer,type Config,type Snapshot} from './indexer.js';
 import {directGenesisBuilder,validateGenesis,ownerAddress,FEE,CARRIER,decision,assetOutput,covenant,parameterArgs,validateParameters,validateTerms,genesisBuilder,transitionBuilder,sponsorAmount,withdrawalBuilder,rewardRemaining,type Parameters,type Terms,type Asset} from './protocol.js';
+const verifyCoinsAcrossPeers=(p:ElectrumCore,coins:SpendableUtxo[])=>verifyConfirmedCoinsAcrossPeers(p,coins,true);
 export interface Operation {id:string;version:3;creationMode?:'direct';offerPolicy?:'single-win';kind:'create'|'offer'|'action'|'withdraw'|'claim';step:'funding'|'action'|'complete';stage:'review'|'prepared'|'pending'|'confirmed'|'conflicted';parameters:Parameters;config?:Config;terms?:Terms;action?:number;slot?:number;allocation?:string;owner:WalletKey;payer?:WalletKey;source?:string;plan?:BrowserPlan;raw?:string;txid?:string;funding?:string;fundingRaw?:string;fundingPlan?:BrowserPlan;error?:string;confirmations?:number}
 export interface Store {list():Promise<Operation[]>;save(value:Operation):Promise<void>}
 function plan(builder:TransactionBuilder,label:string,coins:{coin:WalletCoin;index:number}[],authorization?:WalletKey):BrowserPlan {
@@ -72,13 +74,13 @@ function intentSource(op:Partial<Operation>,snapshot:Snapshot){
  * before broadcast; retries reconcile the exact txid and never silently spend fresh coins.
  */
 export class AssetWallet {
- constructor(readonly provider:ElectrumCore,readonly store:Store){v3Network(provider);}
+ constructor(readonly provider:ElectrumCore,readonly store:Store,readonly progress:(message:string)=>void=()=>{}){v3Network(provider);}
  async create(parameters:Parameters,keys:WalletKey[]){
  validateParameters(parameters);const owner=keys.find(k=>k.path==='receive'&&k.index===0);if(!owner)throw Error('Receive child zero required');
  const journal=await this.store.list(),reserved=new Set(journal.filter(o=>o.step!=='complete').flatMap(o=>o.plan?planCoins(o.plan).map(u=>u.txid+':'+u.vout):[]));
- const inventory=await scanWallet(this.provider,keys),coins=inventory.coins.filter(c=>!reserved.has(c.utxo.txid+':'+c.utxo.vout));
+ const select=(inventory:WalletCoin[])=>{const coins=inventory.filter(c=>!reserved.has(c.utxo.txid+':'+c.utxo.vout));
  const genesis=coins.filter(c=>c.utxo.vout===0&&!c.utxo.token&&![parameters.stakingAsset,parameters.rewardAsset].some(a=>a.kind==='token'&&a.category===c.utxo.txid)).sort((a,b)=>a.utxo.satoshis>b.utxo.satoshis?-1:1)[0];
- if(!genesis)throw Error('Direct creation requires a confirmed token-free wallet UTXO at vout=0. No transaction was created. Use the explicitly labeled two-stage fallback or prepare a suitable coin in your wallet.');
+ if(!genesis)throw Error('No suitable token-free output 0 was found. No transaction was created. Expand the wallet scan or choose the explicit two-approval fallback below; no block confirmation is needed.');
  const asset=parameters.rewardAsset,reserve=parameters.cap*BigInt(parameters.periods);
  let selected=asset.kind==='token'?chooseTokens(coins,asset.category,reserve):[];
  selected=[genesis,...selected.filter(c=>c.utxo.txid!==genesis.utxo.txid||c.utxo.vout!==0)];
@@ -87,8 +89,14 @@ export class AssetWallet {
  const change=selected.reduce((n,c)=>n+c.utxo.satoshis,0n)-required;
  if(change>0n&&change<CARRIER)selected=chooseBch(coins,required+CARRIER,selected);
 
+ return selected;
+ };
+ this.progress('Finding wallet funds…');
+ const inventory=await discoverFunding(this.provider,keys,coins=>{try{select(coins);return true;}catch{return false;}},this.progress),selected=select(inventory.coins);
+ this.progress('Constructing transaction…');
+
  const op:Operation={id:crypto.randomUUID(),version:3,kind:'create',creationMode:'direct',parameters,owner,step:'action',stage:'review',plan:directPlan(parameters,selected,this.provider)};
- await verifyCoinsAcrossPeers(this.provider,selected.map(c=>c.utxo));await this.store.save(op);return op;
+ this.progress('Verifying BCH inputs… Checking unconfirmed ancestry…');await verifyCoinsAcrossPeers(this.provider,selected.map(c=>c.utxo));await this.store.save(op);return op;
  }
  async createLegacy(parameters:Parameters,keys:WalletKey[]){validateParameters(parameters);return this.prepare({kind:'create',parameters},keys);}
  private checkDirect(op:Operation){
@@ -109,11 +117,13 @@ export class AssetWallet {
   if(snapshot.pending.length)throw Error('A competing vault transaction is pending; refresh before claiming');
   if(next.phase!=='ready')throw Error(next.reason);
   const journal=await this.store.list();
-  if(journal.some(o=>o.kind==='claim'&&o.config?.genesis===config.genesis&&o.step!=='complete'))throw Error('An existing claim needs reconciliation or explicit discard before another spend');
+  if(journal.some(o=>o.kind==='claim'&&o.config?.genesis===config.genesis&&o.step!=='complete'&&!snapshot.history.includes(o.txid??'')&&!(snapshot.pendingHistory??[]).includes(o.txid??'')))throw Error('An existing claim needs reconciliation or explicit discard before another spend');
   const reserved=new Set(journal.filter(o=>o.step!=='complete').flatMap(o=>o.plan?planCoins(o.plan).map(i=>i.txid+':'+i.vout):[]));
-  const inventory=await scanWallet(this.provider,keys),required=sponsorAmount(snapshot.instance,3);
+  const required=sponsorAmount(snapshot.instance,3);
+ const eligible=(coins:WalletCoin[])=>coins.filter(c=>!c.utxo.token&&!reserved.has(c.utxo.txid+':'+c.utxo.vout)&&(c.utxo.satoshis===required||c.utxo.satoshis>=required+CARRIER));
+ const inventory=await discoverFunding(this.provider,keys,coins=>eligible(coins).length>0,this.progress);
   const coin=inventory.coins.filter(c=>!c.utxo.token&&!reserved.has(c.utxo.txid+':'+c.utxo.vout)&&(c.utxo.satoshis===required||c.utxo.satoshis>=required+CARRIER)).sort((a,b)=>a.utxo.satoshis<b.utxo.satoshis?-1:a.utxo.satoshis>b.utxo.satoshis?1:0)[0];
-  if(!coin)throw Error(`Insufficient BCH: one confirmed token-free wallet coin must cover ${required} satoshis (miner fee ${FEE}, token carriers ${required-FEE}), with exact funding or at least 1000 satoshis change`);
+  if(!coin)throw Error(`Insufficient BCH: one verified token-free wallet coin must cover ${required} satoshis (miner fee ${FEE}, token carriers ${required-FEE}), with exact funding or at least 1000 satoshis change`);
   const clock=await verifyCoinsAcrossPeers(this.provider,[...snapshot.instance.inputs,coin.utxo]);
   if(clock.hash!==snapshot.tip.hash)throw Error('Chain changed during fee selection; refresh before authorizing');
   const built=transitionBuilder(snapshot.instance,3,next.slot,this.provider,clock,sponsor(coin,coin.utxo,this.provider),undefined,undefined,{address:ownerAddress(hexToBin(coin.publicKey),this.provider)});
@@ -138,7 +148,7 @@ export class AssetWallet {
  private async resumeClaim(op:Operation){
   if(op.raw&&op.txid){
    try{const s=await new AssetIndexer(this.provider,op.config!).sync();
-    const confirmed=s.history.includes(op.txid),pending=s.pending.includes(op.txid),conflict=!confirmed&&!pending&&s.instance.inputs[0].txid!==op.source;
+    const confirmed=s.history.includes(op.txid),pending=s.pending.includes(op.txid)||(s.pendingHistory??[]).includes(op.txid),conflict=!confirmed&&!pending&&s.instance.inputs[0].txid!==op.source;
     const next:Operation={...op,step:confirmed||conflict?'complete':'action',stage:confirmed?'confirmed':pending?'pending':conflict?'conflicted':'prepared',error:conflict?'A competing confirmed claim/state spend superseded this transaction':confirmed?undefined:'Signed transaction retained; only an explicit identical-byte retry is permitted'};
     await this.store.save(next);return next;
    }catch(e){const next:Operation={...op,step:'action',stage:'prepared',error:'Confirmation unavailable; signed claim retained: '+String(e)};await this.store.save(next);return next;}
@@ -151,7 +161,6 @@ export class AssetWallet {
  const snapshot=request.config?await new AssetIndexer(this.provider,request.config).sync():undefined;
  if(snapshot)validateIntent(request,owner,snapshot);
  const journal=await this.store.list(),reserved=new Set(journal.filter(o=>o.step!=='complete').flatMap(o=>o.plan?.request.transaction.inputs.map(i=>Buffer.from(i.outpointTransactionHash).toString('hex')+':'+i.outpointIndex)??[]));
- const inventory=await scanWallet(this.provider,keys),coins=inventory.coins.filter(c=>!reserved.has(c.utxo.txid+':'+c.utxo.vout));
  let asset:Asset={kind:'bch'},amount=0n,base=0n,extra=FEE;
  if(request.kind==='create'){asset=request.parameters.rewardAsset;amount=request.parameters.cap*BigInt(request.parameters.periods);base=CARRIER;extra=12000n;}
  else if(request.kind==='offer'){asset=request.parameters.stakingAsset;amount=validateTerms(request.parameters,request.terms!);base=asset.kind==='token'?CARRIER:0n;extra=sponsorAmount(snapshot!.instance,0);}
@@ -159,7 +168,8 @@ export class AssetWallet {
   extra=request.kind==='withdraw'?FEE:sponsorAmount(snapshot!.instance,request.action!);
  }
  const required=base+(asset.kind==='bch'?amount:0n)+extra+FEE+CARRIER+(asset.kind==='token'?CARRIER:0n);
- let selected=asset.kind==='token'?chooseTokens(coins,asset.category,amount):[];selected=chooseBch(coins,required,selected);
+ const select=(found:WalletCoin[])=>{const coins=found.filter(c=>!reserved.has(c.utxo.txid+':'+c.utxo.vout));return chooseBch(coins,required,asset.kind==='token'?chooseTokens(coins,asset.category,amount):[]);};
+ const inventory=await discoverFunding(this.provider,keys,coins=>{try{select(coins);return true;}catch{return false;}},this.progress),selected=select(inventory.coins);
  const total=selected.reduce((n,c)=>n+c.utxo.satoshis,0n),tokens=selected.reduce((n,c)=>n+(c.utxo.token?.amount??0n),0n),builder=new TransactionBuilder({provider:this.provider});
  for(const c of selected)builder.addInput(c.utxo,placeholderP2PKHUnlocker(ownerAddress(hexToBin(c.publicKey),this.provider)));
  let sent=extra;
@@ -170,22 +180,22 @@ export class AssetWallet {
  if(tokenChange&&asset.kind==='token')builder.addOutput({to:ownerAddress(hexToBin(owner.publicKey),this.provider),amount:CARRIER,token:{category:asset.category,amount:tokens-amount}});
  builder.addOutput({to:ownerAddress(hexToBin(owner.publicKey),this.provider),amount:total-sent-FEE-(tokenChange?CARRIER:0n)});
  const op:Operation={...request,...(snapshot?{source:intentSource(request,snapshot)}:{}),id:crypto.randomUUID(),version:3,kind:request.kind,parameters:request.parameters,owner,step:'funding',stage:'review',plan:plan(builder,`Prepare ${request.kind}: ${amount} ${asset.kind} raw units; external BCH funding ${extra}; fee ${FEE}`,selected.map((coin,index)=>({coin,index})))};
- await verifyCoinsAcrossPeers(this.provider,selected.map(c=>c.utxo));await this.store.save(op);return op;
+ this.progress('Verifying BCH inputs… Checking unconfirmed ancestry…');await verifyCoinsAcrossPeers(this.provider,selected.map(c=>c.utxo));await this.store.save(op);return op;
  }
  async resume(id:string){let op=(await this.store.list()).find(o=>o.id===id);if(!op)throw Error('Unknown v3 operation');
  if(op.kind==='claim')return this.resumeClaim(op);
  if(op.creationMode==='direct')return this.resumeDirect(op);
  if(op.raw&&op.txid){let status:any;
  try{status=await confirmedWalletTransaction(this.provider,op.txid);}catch(e){const uncertain={...op,step:op.step==='complete'?'action' as const:op.step,stage:'prepared' as const,error:'Confirmation unavailable; signed transaction retained: '+String(e)};await this.store.save(uncertain);return uncertain;}
- if(status.confirmations<=0){const pending={...op,step:op.step==='complete'?'action' as const:op.step,stage:'pending' as const,error:'Awaiting canonical confirmation; a previous confirmation may have been reorganized'};await this.store.save(pending);return pending;}
+ if(status.confirmations<=0&&op.step!=='funding'){const pending={...op,step:op.step==='complete'?'action' as const:op.step,stage:'pending' as const,error:'Pending (0-conf); provisional until canonical confirmation',...(op.kind==='create'?{config:{...op.parameters,genesis:op.txid}}:{})};await this.store.save(pending);return pending;}
  if(op.step==='action'||op.step==='complete'){op={...op,step:'complete',stage:'confirmed',config:op.kind==='create'?{...op.parameters,genesis:op.txid}:op.config};await this.store.save(op);return op;}
  op={...op,funding:op.txid,fundingRaw:op.raw,fundingPlan:op.plan,stage:'confirmed',raw:undefined,txid:undefined,plan:undefined};await this.store.save(op);
  }
  if(op.step==='complete'||(op.plan&&op.step==='funding'))return op;
- // Unsigned action plans are rebuilt from fresh confirmed sources before each approval.
+ // Unsigned action plans are rebuilt from freshly verified sources before each approval.
  if(op.plan){op={...op,plan:undefined,stage:'confirmed'};await this.store.save(op);}
- if(!op.funding)throw Error('Missing confirmed funding');
- const funding=await confirmedWalletTransaction(this.provider,op.funding);if(funding.confirmations<=0)throw Error('Funding must confirm first');
+ if(!op.funding)throw Error('Missing verified funding');
+ const funding=await confirmedWalletTransaction(this.provider,op.funding);await verifyCoinsAcrossPeers(this.provider,[utxo(funding,0),...(op.kind==='create'||op.kind==='offer'?[utxo(funding,1)]:[])]);
  let builder:TransactionBuilder,mapping:{coin:WalletCoin;index:number}[]=[],auth:WalletKey|undefined;
  const coin=(n:number)=>keyCoin(op!.owner,utxo(funding,n));
  if(op.kind==='create'){builder=genesisBuilder(op.parameters,utxo(funding,0),sponsor(op.owner,utxo(funding,1),this.provider),this.provider).builder;mapping=[{coin:coin(1),index:1}];}
@@ -203,7 +213,7 @@ export class AssetWallet {
  const confirmed=status.confirmations>0,next:Operation={...op,step:confirmed?'complete':'action',stage:confirmed?'confirmed':'pending',confirmations:status.confirmations,error:undefined,config:{...op.parameters,genesis:op.txid}};await this.store.save(next);return next;
  }catch(e){
  const conflict=await this.directConflict(op).catch(()=>undefined);
- const next:Operation={...op,step:'action',stage:conflict?'conflicted':'prepared',error:(conflict?'Confirmed conflicting transaction '+conflict+'. ':'')+'Status unavailable, dropped, conflicting or reorganized; saved bytes retained. Reconcile or explicitly retry identical transaction: '+String(e)};await this.store.save(next);return next;
+ const next:Operation={...op,step:'action',stage:conflict?'conflicted':'prepared',error:(conflict?'Known conflicting transaction '+conflict+'. ':'')+'Status unavailable, dropped, conflicting or reorganized; saved bytes retained. Reconcile or explicitly retry identical transaction: '+String(e)};await this.store.save(next);return next;
  }
  }
  private async directConflict(op:Operation){
@@ -211,9 +221,9 @@ export class AssetWallet {
  for(const peer of walletPeers(this.provider)){
  const id=await this.provider.session(async()=>{
  for(const script of new Set(inputs.map(i=>i.lockingBytecode!)))for(const h of await this.provider.history(script)){
- if(h.height<=0||h.tx_hash===op.txid)continue;
+ if(h.tx_hash===op.txid)continue;
  const tx=await this.provider.transactionStatus(h.tx_hash);
- if(tx.confirmations>0&&tx.vin.some((i:any)=>inputs.some(input=>i.txid===input.txid&&i.vout===input.vout)))return h.tx_hash;
+ if(tx.vin.some((i:any)=>inputs.some(input=>i.txid===input.txid&&i.vout===input.vout)))return h.tx_hash;
  }
  return undefined;
  },peer);if(!id)return undefined;conflicts.push(id);
@@ -239,7 +249,7 @@ export class AssetWallet {
  async rebroadcastFunding(id:string){const op=(await this.store.list()).find(o=>o.id===id);if(!op?.fundingRaw||!op.fundingPlan)throw Error('No saved signed funding transaction');
  validateFundingPlan({...op,step:'funding',plan:op.fundingPlan},this.provider);const inputs=planCoins(op.fundingPlan),clock=await verifyCoinsAcrossPeers(this.provider,inputs);validateWalletSigned(op.fundingPlan,op.fundingRaw,clock);
  await this.provider.session(async()=>{await verifyCoinsAcrossPinned(this.provider,inputs);await this.provider.sendRawTransaction(op.fundingRaw!);},clock.peer);
- const pending={...op,stage:'pending' as const,error:'Identical funding transaction retried; awaiting confirmation'};await this.store.save(pending);return pending;
+ const pending={...op,stage:'pending' as const,error:'Identical funding transaction retried; reconcile provider acceptance before continuing (no block required)'};await this.store.save(pending);return pending;
  }
  async rebroadcast(id:string){const op=(await this.store.list()).find(o=>o.id===id);if(!op?.raw||!op.plan||!op.txid||op.step==='complete')throw Error('No uncertain signed transaction');
  if(op.creationMode==='direct'){const checked=await this.resumeDirect(op);if(checked.stage==='confirmed'||checked.stage==='pending')return checked;}
@@ -251,8 +261,9 @@ export class AssetWallet {
  if(op.raw&&op.raw!==raw)throw Error('Only identical saved signed bytes may be retried');
  await this.checkIntent(op);
  validateFundingPlan(op,this.provider);if(op.kind==='claim')await this.checkClaim(op);if(op.creationMode==='direct')op.plan=this.checkDirect(op);const inputs=planCoins(op.plan);
- const clock=await verifyCoinsAcrossPeers(this.provider,inputs),validated=validateWalletSigned(op.plan,raw,clock,v3WalletValidation),prepared={...op,raw,txid:validated.txid,stage:'prepared' as const,...(op.creationMode==='direct'?{config:{...op.parameters,genesis:validated.txid}}:{})};if(op.creationMode==='direct')validateGenesis(op.parameters,raw,inputs,this.provider);await this.store.save(prepared);
- try {await this.provider.session(async()=>{await verifyCoinsAcrossPinned(this.provider,inputs);const accepted=await this.provider.sendRawTransaction(raw);if(accepted!==validated.txid)throw Error('Broadcast returned an unexpected transaction ID');},clock.peer);const sent={...prepared,stage:'pending' as const,...(op.creationMode==='direct'?{confirmations:0}:{})};await this.store.save(sent);return sent;}catch(e){const uncertain={...prepared,error:String(e)};await this.store.save(uncertain);return uncertain;}
+ const clock=await verifyCoinsAcrossPeers(this.provider,inputs),validated=validateWalletSigned(op.plan,raw,clock,v3WalletValidation),prepared={...op,raw,txid:validated.txid,stage:'prepared' as const,...(op.kind==='create'&&op.step==='action'?{config:{...op.parameters,genesis:validated.txid}}:{})};if(op.creationMode==='direct')validateGenesis(op.parameters,raw,inputs,this.provider);await this.store.save(prepared);
+ this.progress('Broadcasting vault…');
+ try {await this.provider.session(async()=>{await verifyCoinsAcrossPinned(this.provider,inputs);const accepted=await this.provider.sendRawTransaction(raw);if(accepted!==validated.txid)throw Error('Broadcast returned an unexpected transaction ID');},clock.peer);const sent={...prepared,stage:'pending' as const,...(op.creationMode==='direct'?{confirmations:0}:{})};await this.store.save(sent);this.progress(op.kind==='create'?'Vault pending (0-conf)':'Transaction pending (0-conf)');return sent;}catch(e){const uncertain={...prepared,error:String(e)};await this.store.save(uncertain);return uncertain;}
  }
 }
 async function verifyCoinsAcrossPinned(p:ElectrumCore,inputs:SpendableUtxo[]){for(const i of inputs)if(!(await p.getUtxosForLockingBytecode(i.lockingBytecode!)).some(u=>u.txid===i.txid&&u.vout===i.vout))throw Error('Input spent before broadcast');}

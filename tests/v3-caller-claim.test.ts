@@ -66,12 +66,12 @@ test('direct genesis and caller-funded claims: four asset pairs, independent cal
   const reloaded=new AssetWallet(provider,store),pending=await reloaded.resume(creation.id);assert.equal(pending.stage,'pending');assert.equal(pending.config!.genesis,genesisId);assert.equal(pending.raw,creation.raw);
   provider.hidden.add(genesisId);const missing=await reloaded.resume(creation.id);assert.equal(missing.stage,'prepared');assert.equal(missing.raw,creation.raw);assert.equal(provider.broadcasts,createBefore+1);provider.hidden.delete(genesisId);assert.equal((await reloaded.resume(creation.id)).stage,'pending');
   assert.ok(await rpc('gettxout',[mintId,2,true]),'Unrelated wallet NFT must remain unspent');
-  await assert.rejects(()=>new AssetIndexer(provider,pending.config!).sync(),/confirmed canonical/);
+  assert.equal((await new AssetIndexer(provider,pending.config!).sync()).provisional,true);
   await mine();const created=await reloaded.resume(creation.id),config=created.config!;assert.equal(created.stage,'confirmed');
   const confirmedGenesis=await rpc('getrawtransaction',[genesisId,true]);await rpc('invalidateblock',[confirmedGenesis.blockhash]);provider.headerCache.clear();await provider.refresh();assert.equal((await reloaded.resume(creation.id)).stage,'pending');
   await rpc('reconsiderblock',[confirmedGenesis.blockhash]);provider.headerCache.clear();await provider.refresh();assert.equal((await reloaded.resume(creation.id)).stage,'confirmed');
   const nftAfter=await rpc('gettxout',[mintId,1,true]);assert.deepEqual(nftAfter.tokenData,nftBefore.tokenData);assert.equal(nftAfter.value,nftBefore.value);assert.deepEqual(nftAfter.scriptPubKey,nftBefore.scriptPubKey);
-  await assert.rejects(()=>wallet.create(p,keys(poor)),/vout=0/);
+  await assert.rejects(()=>wallet.create(p,keys(poor)),/output 0/);
   assert.equal((await new AssetIndexer(provider,config).sync()).instance.category,genesisTx.vin[0].txid);
   const offer=await wallet.offer(config,{stake:3000n,duration:513,reward:2000n,maxWins:1},keys(staker));
   assert.equal(offer.terms!.maxWins,1);assert.equal(offer.plan!.request.transaction.outputs[0]!.token?.amount??offer.plan!.request.transaction.outputs[0]!.valueSatoshis,3000n);
@@ -107,5 +107,5 @@ test('direct genesis and caller-funded claims: four asset pairs, independent cal
   evidence.push({staking:stakingAsset.kind,reward:rewardAsset.kind,txid:op.txid,inputs:4,outputs:6,minerFee:'10000',carriers:String(required-10000n),change:String(tx.outputs[5]!.valueSatoshis)});
  }
  assert.ok(await rpc('gettxout',[mintId,1]),'Caller NFT must remain unspent');
- await writeFile('docs/staking-arena-v3-caller-fee-results.json',JSON.stringify({network:'isolated BCHN regtest',verifiedAt:new Date().toISOString(),node:(await rpc('getnetworkinfo')).subversion,evidence,physicalCashonizeVerified:false},null,2)+'\n');
+ await writeFile('docs/blaze2026/caller-fee-regression.json',JSON.stringify({network:'isolated BCHN regtest',verifiedAt:new Date().toISOString(),node:(await rpc('getnetworkinfo')).subversion,evidence,physicalCashonizeVerified:false},null,2)+'\n');
 }));

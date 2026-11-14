@@ -25,7 +25,7 @@ export class RewardClaimer {
  async claim(){const {snapshot,next,sponsor}=await this.inspect();if(snapshot.pending.length)throw Error('A competing vault transaction is pending');if(next.phase!=='ready')throw Error(next.reason);if(!sponsor)throw Error('Exact public BCH fee sponsorship required');
   const existing=(await this.store.list()).find(r=>r.config.genesis===snapshot.config.genesis&&r.source===snapshot.instance.inputs[0].txid&&(r.status==='prepared'||r.status==='pending'));
   if(existing)return this.reconcile(existing.id,true);
-  const p=this.index.electrum,clock=await verifyCoinsAcrossPeers(p,[...snapshot.instance.inputs,sponsor]);
+  const p=this.index.electrum,clock=await verifyCoinsAcrossPeers(p,[...snapshot.instance.inputs,sponsor],true);
   if(clock.hash!==snapshot.tip.hash)throw Error('Chain changed; refresh before claiming');
   const built=transitionBuilder(snapshot.instance,3,next.slot,p,clock,{input:sponsor,unlocker:this.sponsorContract(snapshot).unlock.spend()}),raw=built.builder.build(),checked=validateBuilt(raw,built.sources,clock);
   const record:ClaimRecord={id:checked.txid,config:snapshot.config,source:snapshot.instance.inputs[0].txid,raw,status:'prepared'};
@@ -35,7 +35,7 @@ export class RewardClaimer {
  }
  /** Reconcile the same bytes. An uncertain broadcast never allocates fresh sponsor coins. */
  async reconcile(id:string,retry=false){const record=(await this.store.list()).find(r=>r.id===id);if(!record)throw Error('Unknown claim');const snapshot=await this.index.sync();
-  record.status=snapshot.history.includes(id)?'confirmed':snapshot.pending.includes(id)?'pending':snapshot.instance.inputs[0].txid!==record.source?'conflicted':'prepared';
+  record.status=snapshot.history.includes(id)?'confirmed':(snapshot.pending.includes(id)||(snapshot.pendingHistory??[]).includes(id))?'pending':snapshot.instance.inputs[0].txid!==record.source?'conflicted':'prepared';
   if(retry&&record.status==='prepared'){try{await this.index.electrum.session(()=>this.index.electrum.sendRawTransaction(record.raw),walletPeers(this.index.electrum)[0]);record.status='pending';record.error=undefined;}catch(e){record.error=String(e);}}
   await this.store.save(record);return record;
  }

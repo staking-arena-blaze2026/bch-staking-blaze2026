@@ -6,7 +6,7 @@ import {AssetWallet,BrowserAssetStore} from '../../src/v3/wallet';
 import {v3Config} from './v3Config';
 import {walletPeers} from '../../src/electrum-wallet';
 const options=v3Config();
-const provider=new BrowserElectrumProvider(options),wallet=new AssetWallet(provider,new BrowserAssetStore(options.network));
+const provider=new BrowserElectrumProvider(options),wallet=new AssetWallet(provider,new BrowserAssetStore(options.network),message=>self.postMessage({type:'progress',message}));
 const scope=self as unknown as DedicatedWorkerGlobalScope;
 let queue=Promise.resolve();
 scope.onmessage=event=>{queue=queue.catch(()=>{}).then(async()=>{const {id,intent,keys=[]}=event.data;try{

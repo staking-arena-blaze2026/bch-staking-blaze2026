@@ -25,7 +25,7 @@ it('requires a connected compatible wallet even when rewards are available',asyn
 
 it('surfaces wallet rejection and keeps recovery operations visible',async()=>{stub();wallet.v3.mockRejectedValue(Error('Wallet rejected signing; unsigned claim retained'));await open();await act(async()=>fireEvent.click(screen.getByRole('button',{name:'Review and pay fee in wallet'})));expect(screen.getByRole('status')).toHaveTextContent('Wallet rejected');expect(v3Call).toHaveBeenCalledWith({operation:'list'});});
 
-it('shows a journaled pending vault after reload without allowing provisional state actions',async()=>{
+it('shows a journaled pending vault card after reload before opening its detail',async()=>{
  stub();window.location.hash='/v3/offers';const previous=vi.mocked(v3Call).getMockImplementation()!;vi.mocked(v3Call).mockImplementation(async (...args)=>args[0].operation==='list'?[{id:'direct',kind:'create',creationMode:'direct',step:'action',stage:'pending',raw:'signed',txid:config.genesis,config,parameters:p}]:previous(...args));
  render(<WalletTransactionsContext.Provider value={wallet}><V3Arena/></WalletTransactionsContext.Provider>);
  await waitFor(()=>expect(screen.getByText(/Genesis transaction:/)).toHaveTextContent('Pending (0-conf)'));
@@ -154,4 +154,15 @@ it('ranks exact priority ties by registration and estimates a new tie after exis
  }return result;});
  await open();const rows=screen.getAllByRole('row').slice(1);expect(rows.map(row=>row.lastElementChild?.textContent)).toEqual(['Active · #2','Active · #0','Active · #1']);
  expect(screen.getByText(/Estimated queue position:/)).toHaveTextContent('Estimated queue position: 4');expect(screen.getByRole('button',{name:'Make an Offer'})).toBeEnabled();
+});
+
+it('shows creation progress immediately and reports rejection beneath Create Vault',async()=>{
+ stub();window.location.hash='/v3';let reject!:(error:Error)=>void;wallet.v3.mockImplementation(()=>new Promise((_resolve,fail)=>{reject=fail;}));
+ render(<WalletTransactionsContext.Provider value={wallet}><V3Arena/></WalletTransactionsContext.Provider>);
+ await act(async()=>fireEvent.click(screen.getByRole('button',{name:/^Create Vault$/})));
+ expect(screen.getByRole('status')).toHaveTextContent('Preparing vault');
+ act(()=>window.dispatchEvent(new CustomEvent('arena-wallet-progress',{detail:'Checking unconfirmed ancestry…'})));
+ expect(screen.getByRole('status')).toHaveTextContent('Checking unconfirmed ancestry');
+ await act(async()=>reject(Error('No suitable output 0. Choose the two-approval fallback.')));
+ expect(screen.getByRole('status')).toHaveTextContent('two-approval fallback');expect(screen.getByRole('button',{name:/^Create Vault$/})).toBeEnabled();
 });

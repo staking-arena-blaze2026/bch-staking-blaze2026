@@ -7,6 +7,7 @@ import {walletScript,type WalletKey} from '../../src/transactions-core';
 import {scanWallet,verifyCoinsAcrossPeers} from '../../src/electrum-wallet';
 import type {ElectrumCore} from '../../src/electrum-core';
 vi.mock('../../src/electrum-wallet',async original=>({...await original<typeof import('../../src/electrum-wallet')>(),scanWallet:vi.fn(),verifyCoinsAcrossPeers:vi.fn()}));
+vi.mock('../../src/v3/funding-discovery',()=>({discoverFunding:async(...args:unknown[])=>vi.mocked(scanWallet)(...(args.slice(0,2) as [ElectrumCore,WalletKey[]]))}));
 const config={version:3 as const,stakingAsset:{kind:'bch' as const},rewardAsset:{kind:'bch' as const},epoch:1800000000,periodSeconds:3600,periods:4,cap:2000n,genesis:'ab'.repeat(32)};
 function setup(){
  const owner:WalletKey={publicKey:'0279be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798',path:'receive',index:0},provider=new MockNetworkProvider() as unknown as ElectrumCore;

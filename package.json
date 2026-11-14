@@ -46,6 +46,7 @@
     "test:v2": "npm run compile:v2 && ARENA_NETWORK=regtest tsx --test --test-concurrency=1 tests/generalized-assets*.test.ts",
     "test:mempool": "ARENA_NETWORK=regtest tsx --test --test-concurrency=1 tests/mempool-regtest.test.ts",
     "compile:v3": "node scripts/compile-v3.mjs",
+    "test:blaze": "ARENA_NETWORK=regtest tsx --test --test-concurrency=1 tests/blaze-*.test.ts",
     "test:v3": "npm run compile:v3 && ARENA_NETWORK=regtest tsx --test --test-concurrency=1 tests/v3*.test.ts",
     "test:review": "node scripts/test-review.mjs"
   },

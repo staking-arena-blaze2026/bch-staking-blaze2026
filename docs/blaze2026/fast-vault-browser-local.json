@@ -1,0 +1,20 @@
+{
+  "url": "http://127.0.0.1:4184/staking-arena-blaze-site/",
+  "verifiedAt": "2026-11-14T17:24:07.424Z",
+  "errors": [],
+  "methods": [
+    "server.version",
+    "blockchain.block.header",
+    "blockchain.headers.subscribe",
+    "blockchain.transaction.get",
+    "blockchain.scripthash.get_history",
+    "blockchain.transaction.get_merkle",
+    "blockchain.block.headers"
+  ],
+  "fourAssetChoices": true,
+  "explicitTwoApprovalFallback": true,
+  "mobile": true,
+  "reload": true,
+  "walletConnected": false,
+  "broadcasts": 0
+}

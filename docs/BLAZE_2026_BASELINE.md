@@ -57,6 +57,8 @@ These are existing capabilities and experiments, **not hackathon contributions**
 
 Website cleanup: removed legacy header navigation, linked the logo to v3, and removed the v3 introduction, expandable warning and visible network controls. The page starts with creation/offer tabs. Automatic provider verification and protocol/wallet checks remain in place. This is a presentation change developed in the fork; existing staking capabilities remain baseline work.
 
+Fast v3 vault creation: adaptive bounded funding discovery, verified unconfirmed genesis inputs, provisional pending lineage replay for offers/claims, visible preparation stages, and an explicit two-approval fallback without a confirmation wait. See [implementation and wallet capability evidence](blaze2026/fast-vault-creation.md) and [isolated BCHN results](blaze2026/zero-conf-results.json). No covenant bytecode changes. This is post-baseline work; the original direct creation and funded-action designs remain pre-hackathon capabilities.
+
 Preparation after the cutoff comprises audit, original publication, baseline evidence/tags, freeze configuration, native fork creation, this documentation, local isolation, and independent deployment setup. The build script accepts a separate Pages project base while preserving the original chipnet build settings; no staking contracts, application behavior or covenant artifacts are changed.
 
 ## How judges can compare versions

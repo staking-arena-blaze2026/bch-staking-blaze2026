@@ -40,7 +40,7 @@ export function browserWalletClient(manager:DappConnectionManager|null,check:()=
     check();if(authorization.owner?.publicKey!==binToHex(getManager().getPubkey(0,0n)??new Uint8Array()))throw Error('Resume with the original v2 wallet owner');
     if(Date.now()-authorization.verifiedAt>10000)throw Error('V2 approval verification became stale; reconcile and retry');
     if(JSON.stringify(getManager().getSessionPaths())!==session)throw Error('Wallet changed before v2 approval');
-    window.dispatchEvent(new CustomEvent('arena-wallet-progress',{detail:'Awaiting explicit wallet approval for '+authorization.plan.label}));
+    window.dispatchEvent(new CustomEvent('arena-wallet-progress',{detail:'Requesting Cashonize approval… '+authorization.plan.label}));
     const signed=await getManager().signTransaction({transaction:wizardWireTransaction(authorization.plan.request),inputPaths:authorization.plan.inputPaths},{signal:signing.signal});
     check();if(JSON.stringify(getManager().getSessionPaths())!==session)throw Error('Wallet changed during v2 approval');
     if(signed.error||!signed.signedTransaction)throw Error('V2 signing refused; operation remains recoverable');
@@ -48,6 +48,7 @@ export function browserWalletClient(manager:DappConnectionManager|null,check:()=
     return v2Updated(await rpc('v2',{operation:'submit',id:result.id,raw:signed.signedTransaction},[]));
    }finally{v2Approval=false;}
   },async v3(intent){
+   if(intent.operation==='expandScan'){check();scanLimit=200;return 'Wallet discovery expanded to 200 addresses per path. Retry Create Vault.';}
    if(['list','sync'].includes(String(intent.operation)))return v3Call(intent,[]);
    if(v3Approval)throw Error('A v3 wallet operation is awaiting approval; finish it before continuing');
    if(intent.operation==='inspect')return (await v3Call(intent,[]));
@@ -56,6 +57,7 @@ export function browserWalletClient(manager:DappConnectionManager|null,check:()=
     // Every spending call is checked against the live session. Inspect/list never ask to sign.
     check();const session=JSON.stringify(getManager().getSessionPaths());
     if(typeof getManager().signTransaction!=='function')throw Error('Wallet does not support transaction signing');
+    window.dispatchEvent(new CustomEvent('arena-wallet-progress',{detail:'Preparing vault…'}));
     const result=(await v3Call(intent,intent.operation==='resume'?[]:keys()));
     if(!result?.plan||result.stage!=='review')return result;
     const authorization=await v3Call({operation:'authorize',id:result.id},[]);
@@ -63,12 +65,12 @@ export function browserWalletClient(manager:DappConnectionManager|null,check:()=
     check();if(authorization.owner?.publicKey!==binToHex(getManager().getPubkey(0,0n)??new Uint8Array()))throw Error('Resume with the original v3 wallet owner');
     if(Date.now()-authorization.verifiedAt>10000)throw Error('V3 approval verification became stale; reconcile and retry');
     if(JSON.stringify(getManager().getSessionPaths())!==session)throw Error('Wallet changed before v3 approval');
-    window.dispatchEvent(new CustomEvent('arena-wallet-progress',{detail:'Awaiting explicit wallet approval for '+authorization.plan.label}));
+    window.dispatchEvent(new CustomEvent('arena-wallet-progress',{detail:'Requesting Cashonize approval… '+authorization.plan.label}));
     try{
     const signed=await getManager().signTransaction({transaction:wizardWireTransaction(authorization.plan.request),inputPaths:authorization.plan.inputPaths},{signal:signing.signal});
     check();if(JSON.stringify(getManager().getSessionPaths())!==session)throw Error('Wallet changed during v3 approval');
     if(signed.error||!signed.signedTransaction)throw Error('V3 signing refused; operation remains recoverable');
-    window.dispatchEvent(new CustomEvent('arena-wallet-progress',{detail:'Validating the signed v3 transaction and confirmed chipnet inputs before broadcast'}));
+    window.dispatchEvent(new CustomEvent('arena-wallet-progress',{detail:'Verifying BCH inputs… Checking unconfirmed ancestry…'}));
     return (await v3Call({operation:'submit',id:result.id,raw:signed.signedTransaction},[]));
     }catch(error){await v3Call({operation:'signingFailed',id:result.id,error:String(error)},[]).catch(()=>{});throw error;}
    }finally{v3Approval=false;}
