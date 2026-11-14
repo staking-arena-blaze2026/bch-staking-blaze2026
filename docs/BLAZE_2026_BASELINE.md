@@ -59,6 +59,8 @@ Website cleanup: removed legacy header navigation, linked the logo to v3, and re
 
 Fast v3 vault creation: adaptive bounded funding discovery, verified unconfirmed genesis inputs, provisional pending lineage replay for offers/claims, visible preparation stages, and an explicit two-approval fallback without a confirmation wait. See [implementation and wallet capability evidence](blaze2026/fast-vault-creation.md) and [isolated BCHN results](blaze2026/zero-conf-results.json). No covenant bytecode changes. This is post-baseline work; the original direct creation and funded-action designs remain pre-hackathon capabilities.
 
+Persistent Cashonize connection: unified manager/relay ownership, restoration of the existing SDK pairing, bounded retries and passive late recovery, stable transaction workers and stale-authorization rejection. See [implementation, test coverage and platform limits](blaze2026/cashonize-persistence.md). This is post-baseline work; synthetic-wallet browser persistence checks do not establish real Cashonize or operating-system restart behavior.
+
 Preparation after the cutoff comprises audit, original publication, baseline evidence/tags, freeze configuration, native fork creation, this documentation, local isolation, and independent deployment setup. The build script accepts a separate Pages project base while preserving the original chipnet build settings; no staking contracts, application behavior or covenant artifacts are changed.
 
 ## How judges can compare versions

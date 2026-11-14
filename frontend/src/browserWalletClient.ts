@@ -1,3 +1,4 @@
+import {walletDiagnostic} from './usePersistentWallet';
 import {v3Call} from './v3Client';
 import type {DappConnectionManager} from '@wizardconnect/dapp';
 import {binToHex} from '@bitauth/libauth';
@@ -8,13 +9,21 @@ import {wizardWireTransaction,type WalletTransactions} from './walletTransaction
 import {saveLocalVault} from './vaultCatalog';
 import type {Operation as V2Operation} from '../../src/v2/wallet';
 /** The worker builds/verifies public transactions. Only the live wallet manager ever signs. */
-export function browserWalletClient(manager:DappConnectionManager|null,check:()=>void):WalletTransactions {
+export function browserWalletClient(manager:DappConnectionManager|null,check:()=>void,getRevision:()=>number=()=>0):WalletTransactions {
+ walletDiagnostic('Wallet worker started');
  const getManager=()=>{if(!manager)throw Error('Connect a chipnet wallet first');return manager;};
- const worker=new Worker(new URL('./wallet.worker.ts',import.meta.url),{type:'module'}),pending=new Map<number,{resolve:(v:any)=>void;reject:(e:Error)=>void}>();let counter=0,scanLimit=40,closed=false,v2Approval=false,v3Approval=false;const signing=new AbortController();let startupTimer:ReturnType<typeof setTimeout>|undefined,startupReject:(e:Error)=>void=()=>{};let derived:WalletKey[]|undefined,derivationIdentity="";
+ const worker=new Worker(new URL('./wallet.worker.ts',import.meta.url),{type:'module'}),pending=new Map<number,{resolve:(v:any)=>void;reject:(e:Error)=>void}>();let counter=0,scanLimit=40,closed=false,v2Approval=false,v3Approval=false;let signing=new AbortController();let startupTimer:ReturnType<typeof setTimeout>|undefined,startupReject:(e:Error)=>void=()=>{};let derived:WalletKey[]|undefined,derivationIdentity="";
  const rpc=(method:string,...args:unknown[])=>new Promise<any>((resolve,reject)=>{if(closed){reject(Error('Wallet session closed; reconnect and resume from the journal'));return;}const id=++counter;pending.set(id,{resolve,reject});worker.postMessage({id,method,args});});
  const startup=new Promise<void>((resolve,reject)=>{startupReject=reject;const timer=startupTimer=setTimeout(()=>reject(Error('Wallet worker startup timeout')),30000);worker.onmessage=event=>{if(event.data?.type==='operation'){window.dispatchEvent(new CustomEvent('arena-wallet-operation',{detail:event.data.operation}));return;}if(event.data?.type==='progress'){window.dispatchEvent(new CustomEvent('arena-wallet-progress',{detail:event.data.message}));return;}if(event.data?.type==='ready'){clearTimeout(timer);try{void rpc('start',browserConfig()).then(()=>rpc('list')).then((list:WalletOperation[])=>{list.forEach(rememberGenesis);resolve();},reject);}catch(error){reject(error);}return;}const task=pending.get(event.data.id);if(!task)return;pending.delete(event.data.id);event.data.error?task.reject(Error(event.data.error)):task.resolve(event.data.result);};});
  void startup.catch(()=>{});
  worker.onerror=()=>{clearTimeout(startupTimer);startupReject(Error('Wallet worker failed; reconnect and resume'));for(const task of pending.values())task.reject(Error('Wallet worker failed; reload and resume from the journal'));pending.clear();};
+ // A transport interruption invalidates all in-flight preparation/approval contexts,
+ // including work that completes after the same wallet reconnects. Journals remain intact.
+ let authorizationRevision=0;
+ const invalidate=()=>{authorizationRevision++; signing.abort();};
+ manager?.on?.('reconnecting',invalidate);
+ manager?.on?.('disconnect',invalidate);
+ const authorizationCheck=()=>{if(signing.signal.aborted)signing=new AbortController();const revision=authorizationRevision,networkRevision=getRevision();return ()=>{if(closed)throw Error('Wallet session closed');check();if(revision!==authorizationRevision || networkRevision!==getRevision())throw Error('Wallet authorization changed; review and retry from the journal');};};
  const keys=()=>{check();const identity=JSON.stringify(getManager().getSessionPaths())+scanLimit;if(derived&&identity===derivationIdentity)return derived;const result:WalletKey[]=[];for(const [path,child] of [['receive',0],['change',1],['defi',7]] as const){if(!getManager().hasPath(child))continue;for(let index=0;index<scanLimit;index++){const key=getManager().getPubkey(child,BigInt(index));if(!key)throw Error('Wallet public derivation failed');result.push({path,index,publicKey:binToHex(key)});}}derived=result;derivationIdentity=identity;return result;};
  function rememberGenesis(op:WalletOperation){if(op.kind==='create'&&op.genesis&&op.pregenesis)saveLocalVault({...op.parameters,genesis:op.genesis},op.pregenesis);}
  async function finish(op:WalletOperation) {
@@ -25,6 +34,7 @@ export function browserWalletClient(manager:DappConnectionManager|null,check:()=
  }
  function v2Updated(result:V2Operation){if(result?.id)window.dispatchEvent(new CustomEvent('arena-v2-operation',{detail:result}));return result;}
  return {browser:true,v3Availability(){try{check();const current=getManager();if(typeof current.signTransaction!=='function'||!current.hasPath(0))throw Error('Compatible transaction signing and receive derivation required');return {available:true};}catch(error){return {available:false,reason:manager?String(error):'Connect a compatible WizardConnect/Cashonize wallet using chipnet test funds'};}},async v2(intent){
+   const check=authorizationCheck();
    await startup;
    if(['list','sync'].includes(String(intent.operation)))return rpc('v2',intent,[]);
    if(v2Approval)throw Error('A v2 wallet operation is awaiting approval; finish it before continuing');
@@ -48,6 +58,7 @@ export function browserWalletClient(manager:DappConnectionManager|null,check:()=
     return v2Updated(await rpc('v2',{operation:'submit',id:result.id,raw:signed.signedTransaction},[]));
    }finally{v2Approval=false;}
   },async v3(intent){
+   const check=authorizationCheck();
    if(intent.operation==='expandScan'){check();scanLimit=200;return 'Wallet discovery expanded to 200 addresses per path. Retry Create Vault.';}
    if(['list','sync'].includes(String(intent.operation)))return v3Call(intent,[]);
    if(v3Approval)throw Error('A v3 wallet operation is awaiting approval; finish it before continuing');
@@ -75,6 +86,7 @@ export function browserWalletClient(manager:DappConnectionManager|null,check:()=
     }catch(error){await v3Call({operation:'signingFailed',id:result.id,error:String(error)},[]).catch(()=>{});throw error;}
    }finally{v3Approval=false;}
   },publicKey(){check();const key=getManager().getPubkey(0,0n);if(!key)throw Error('Wallet receive key unavailable');return binToHex(key);},async inventory(limit=40){if(![40,200].includes(limit))throw Error("Unsupported scan bound");scanLimit=limit;await startup;return rpc('scan',keys());},async operations(){await startup;const list=await rpc('list') as WalletOperation[];list.forEach(rememberGenesis);return list;},async inspect(id){await startup;const op=await rpc('get',id) as WalletOperation;if(op.step==='complete')await finish(op);return op;},async importVault(config){await startup;const result=await rpc('importVault',config,true);saveLocalVault(result.config,result.category);return result;},async execute(intent){
+  const check=authorizationCheck();
   await startup;let op:WalletOperation;
   if(intent.kind==='cancel')return finish(await rpc('cancel',intent.id));
   if(intent.kind==='recover')return finish(await rpc('recover',intent.parameters,intent.pregenesis));
@@ -98,5 +110,5 @@ export function browserWalletClient(manager:DappConnectionManager|null,check:()=
    op=await rpc('submit',op.id,signed.signedTransaction,publicKeys);
   }
   return finish(op);
- },close(){closed=true;clearTimeout(startupTimer);startupReject(Error('Wallet worker closed'));signing.abort();worker.terminate();for(const t of pending.values())t.reject(Error('Wallet disconnected; operation journal preserved'));pending.clear();}};
+ },close(){if(closed)return;closed=true;manager?.off?.('reconnecting',invalidate);manager?.off?.('disconnect',invalidate);walletDiagnostic('Wallet worker stopped; journals preserved');clearTimeout(startupTimer);startupReject(Error('Wallet worker closed'));signing.abort();worker.terminate();for(const t of pending.values())t.reject(Error('Wallet disconnected; operation journal preserved'));pending.clear();}};
 }

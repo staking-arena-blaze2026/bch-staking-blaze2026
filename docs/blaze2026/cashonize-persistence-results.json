@@ -1,0 +1,40 @@
+{
+  "verifiedAt": "2026-11-14T19:01:31.682063+00:00",
+  "sourceRepository": "staking-arena-blaze2026/bch-staking-blaze2026",
+  "sourceBranch": "blaze2026",
+  "unitTests": {
+    "passed": 119,
+    "files": 24
+  },
+  "browserTests": {
+    "persistentSession": 4,
+    "frontendRegression": 6,
+    "v3WorkerAndRecovery": 4,
+    "failed": 0
+  },
+  "frontendTypeScript": true,
+  "rootTypeScript": true,
+  "productionBuild": true,
+  "syntheticTransportAbsentFromProductionBundle": true,
+  "refreshWithoutNewQr": true,
+  "tabReopenWithoutNewQr": true,
+  "chromiumProcessRestartWithSameDiskProfileWithoutNewQr": true,
+  "simulatedComputerRestartWithPersistedProfile": true,
+  "walletIdentityPreservedInSyntheticTests": true,
+  "offlineRetryWindowBounded": true,
+  "lateWalletAvailabilityTestedWithSyntheticTransport": true,
+  "transactionJournalPersistenceTested": true,
+  "realCashonizeReconnectionVerified": false,
+  "realCashonizeProbe": "Fresh isolated headless probe reached onboarding but did not establish pairing or a live handshake. Temporary profile removed.",
+  "brandedChromeRestartVerified": false,
+  "actualOperatingSystemRestartVerified": false,
+  "realSpendingRequested": false,
+  "realTransactionsSignedOrBroadcast": 0,
+  "sourceFilesSha256": {
+    "frontend/src/WalletConnect.tsx": "dead545fee44f09a981936a78aec74b454ef86ecbe2794cb0faf600b86cc372c",
+    "frontend/src/usePersistentWallet.ts": "175feb622838430db0eaa82a33985f30d386fe4ef3467381db17842a70d1e443",
+    "frontend/src/walletRelay.ts": "d9634ed49132007ec59ae1bd838198101bf0fc7b99efacff83b1490ddd6cb393",
+    "frontend/src/browserWalletClient.ts": "30352b7b02f360c984ef8c1c57aabcc37d69ae5785916b63b8502acd3a1cd749",
+    "frontend/src/walletNetwork.ts": "452d12de31614076158ce6c4275cd8f89aa36472bde45a5dd9771b806360dd72"
+  }
+}

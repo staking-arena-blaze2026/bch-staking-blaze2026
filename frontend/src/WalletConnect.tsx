@@ -2,7 +2,8 @@ import {browserWalletClient} from './browserWalletClient';
 import { binToHex, hexToBin } from '@bitauth/libauth';
 import { transactionApi, wizardWireTransaction, type WalletTransactions } from './walletTransactions';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { AlphanumericQRCode, useWizardConnect } from '@wizardconnect/react';
+import { AlphanumericQRCode } from '@wizardconnect/react';
+import { usePersistentWallet } from './usePersistentWallet';
 import type { WalletReadyMessage } from '@wizardconnect/core';
 import { assertChipnetTransactionSession, createStakingTransactionBoundary, NETWORK_NAMES, CHIPNET_NETWORK, WalletNetworkSession, type NetworkRequirement } from './walletNetwork';
 
@@ -40,23 +41,21 @@ const defaultRequirement = () => CHIPNET_NETWORK;
 export default function WalletConnect({ browser=false, getRequiredNetwork = defaultRequirement, targetLabel = 'Application', onTransactions }: { browser?:boolean; getRequiredNetwork?: () => NetworkRequirement | null; targetLabel?: string; onTransactions?: (client: WalletTransactions | null) => void }) {
   const control = useRef<HTMLDivElement>(null);
   const wasActive = useRef(false);
-  const wallet = useWizardConnect({
-    dappName: 'Staking Arena',
-    dappIcon: new URL('./arena.svg', window.location.href).href,
-    sessionKey: 'staking-arena-wizardconnect-v1',
-  });
+  const wallet = usePersistentWallet();
   const requirement = useRef(getRequiredNetwork);
   requirement.current = getRequiredNetwork;
   const networkSession = useMemo(() => new WalletNetworkSession(() => wallet.manager?.getSessionPaths() ?? []), [wallet.manager]);
+  const liveState = useRef(wallet.isLive);
+  liveState.current = wallet.isLive;
   const transactions = useMemo(() => createStakingTransactionBoundary(networkSession, () => requirement.current()), [networkSession]);
-  const [networkRevision, refreshNetwork] = useState(0);
+  const [, refreshNetwork] = useState(0);
   useEffect(() => {
     const manager = wallet.manager;
     if (!manager) return;
     const ready = (message: WalletReadyMessage) => {
       const session = message.session.hdwalletv1 as { extensions?: unknown };
       const previous = JSON.stringify(networkSession.read());
-      networkSession.accept(session.extensions);
+      if (wallet.manager?.getSessionPaths() && wallet.manager.protocol === 'hdwalletv1') networkSession.accept(session.extensions);
       // Wallets may repeat an identical handshake. Keep ongoing public scans and
       // explicit approvals alive unless the accepted identity/network changes.
       if (JSON.stringify(networkSession.read()) !== previous) refreshNetwork(version => version + 1);
@@ -66,8 +65,8 @@ export default function WalletConnect({ browser=false, getRequiredNetwork = defa
     manager.on('reconnecting', invalidate);
     manager.on('disconnect', invalidate);
     // A live handshake may precede this effect; cached paths alone are never trusted.
-    if (manager.protocol === 'hdwalletv1' && manager.isWalletDiscovered()) {
-      networkSession.accept();
+    if (wallet.state === 'connected' && manager.protocol === 'hdwalletv1' && manager.isWalletDiscovered()) {
+      networkSession.accept(wallet.extensions);
       refreshNetwork(version => version + 1);
     }
     return () => {
@@ -81,9 +80,10 @@ export default function WalletConnect({ browser=false, getRequiredNetwork = defa
     const manager = wallet.manager;
     if (!onTransactions) return;
     function check() {
+      if (!liveState.current()) throw Error('A live chipnet wallet session is required');
       assertChipnetTransactionSession(networkSession, requirement.current());
     }
-    if(browser) {const client=browserWalletClient(manager,check);onTransactions(client);return()=>{client.close?.();onTransactions(null);};}
+    if(browser) {const client=browserWalletClient(manager,check,()=>networkSession.revision);onTransactions(client);return()=>{client.close?.();onTransactions(null);};}
     if(!manager)return;
     const publicKey = () => {
       check();
@@ -91,32 +91,36 @@ export default function WalletConnect({ browser=false, getRequiredNetwork = defa
       if (!key) throw Error('Wallet receive key is unavailable');
       return binToHex(key);
     };
+    const lifetime = new AbortController();
     onTransactions({ publicKey, async execute(intent) {
-      check();
+      const revision=networkSession.revision;
+      const signing=new AbortController();
+      const abort=()=>signing.abort();
+      manager.on('reconnecting',abort); manager.on('disconnect',abort);
+      lifetime.signal.addEventListener('abort',abort);
+      const approvalCheck=()=>{check();if(lifetime.signal.aborted || revision!==networkSession.revision)throw Error('Wallet authorization changed; review and retry');};
+      try {
+      approvalCheck();
       const key = publicKey(), paths = JSON.stringify(manager.getSessionPaths());
       const prepared = await transactionApi('plan',{...intent,publicKey:key});
-      check();
+      approvalCheck();
       if (prepared.network !== 'chipnet' || prepared.genesis !== CHIPNET_NETWORK.genesisHash || JSON.stringify(manager.getSessionPaths()) !== paths) throw Error('Network or wallet changed during transaction preparation');
       const plan = JSON.parse(JSON.stringify(prepared.plan),(_k,v) => v && typeof v === 'object' && 'bytes' in v ? hexToBin(v.bytes) : v && typeof v === 'object' && 'bigint' in v ? BigInt(v.bigint) : v && v.type === 'Buffer' ? new Uint8Array(v.data) : v);
-      const result = await manager.signTransaction({transaction:wizardWireTransaction(plan.request),inputPaths:plan.inputPaths});
-      check();
+      const result = await manager.signTransaction({transaction:wizardWireTransaction(plan.request),inputPaths:plan.inputPaths},{signal:signing.signal});
+      approvalCheck();
       if (JSON.stringify(manager.getSessionPaths()) !== paths) throw Error('Wallet changed while signing');
       if (result.error || !result.signedTransaction) throw Error('Wallet declined transaction signing');
       return transactionApi('submit',{id:prepared.id,signedTransaction:result.signedTransaction});
+      } finally {manager.off('reconnecting',abort);manager.off('disconnect',abort);lifetime.signal.removeEventListener('abort',abort);}
     }});
-    return () => onTransactions(null);
-  }, [wallet.manager, networkSession, onTransactions,browser,networkRevision]);
+    return () => {lifetime.abort();onTransactions(null);};
+  }, [wallet.manager, networkSession, onTransactions,browser]);
   const network = networkSession.read().network;
   const compatibility = transactions.check();
   const required = getRequiredNetwork();
   const [closing, setClosing] = useState(false);
   const [error, setError] = useState('');
-  const active = wallet.state === 'connected' || wallet.state === 'connecting' || wallet.state === 'reconnecting';
-  useEffect(() => {
-    const manager = wallet.manager;
-    if (!active) manager?.destroy();
-    return () => manager?.destroy();
-  }, [wallet.manager, active]);
+  const active = wallet.state === 'connected' || wallet.state === 'connecting' || wallet.state === 'reconnecting' || wallet.state === 'restoring';
   useEffect(() => {
     if (wasActive.current && !active) control.current?.querySelector('button')?.focus();
     wasActive.current = active;
@@ -133,18 +137,25 @@ export default function WalletConnect({ browser=false, getRequiredNetwork = defa
 
   return <div ref={control} className="wallet-control">
     {active ? <>
-      <span className="wallet-status" role="status">{wallet.state === 'connected' ? `Connected to ${wallet.walletName || 'wallet'}` : wallet.state === 'reconnecting' || !wallet.uri ? 'Reconnecting to wallet…' : 'Waiting for wallet…'}</span>
-      <button type="button" className="refresh" disabled={closing} onClick={() => { void disconnect(); }}>{closing ? 'Disconnecting…' : wallet.state === 'connected' ? 'Disconnect' : 'Cancel connection'}</button>
-    </> : <>
-      <button type="button" className="refresh" onClick={() => { setError(''); wallet.connect(); }}>Connect Wallet</button>
-      {wallet.state === 'disconnected' && <small role="status">Wallet disconnected</small>}
-    </>}
+      <span className="wallet-status" role="status">{wallet.state === 'connected' ? 'Connected to Cashonize' : wallet.state === 'restoring' ? 'Restoring Cashonize connection…' : wallet.state === 'reconnecting' ? 'Reconnecting to Cashonize…' : 'Waiting for Cashonize approval…'}</span>
+      <button type="button" className="refresh" disabled={closing} onClick={() => { void disconnect(); }}>{closing ? 'Disconnecting…' : wallet.state === 'connecting' ? 'Cancel connection' : 'Disconnect'}</button>
+    </> : wallet.state === 'offline' ? <>
+      <span role="status">Cashonize connection lost. Cashonize unavailable</span>
+      <button type="button" className="refresh" onClick={wallet.retry}>Retry saved connection</button>
+      <button type="button" className="refresh" onClick={wallet.replace}>Pair wallet again</button>
+      <button type="button" className="refresh" onClick={() => { void disconnect(); }}>Disconnect</button>
+    </> : wallet.state === 'invalid' ? <>
+      <span role="status">The saved pairing is unavailable, revoked or incompatible. New pairing is necessary.</span>
+      <button type="button" className="refresh" onClick={wallet.replace}>Pair Cashonize again</button>
+      <button type="button" className="refresh" onClick={() => { void disconnect(); }}>Disconnect</button>
+    </> : <button type="button" className="refresh" onClick={() => { setError(''); wallet.connect(); }}>Connect Wallet</button>}
+    {!active && <small>Pairing is saved in this browser profile. Clearing or blocking browser storage requires pairing again.</small>}
     {active && <section className="wallet-network-note" role="status" aria-label="Wallet network compatibility">
       <strong>Wallet network: {network.label}</strong>
       <span>{targetLabel} requires: {required ? NETWORK_NAMES[required.network] : 'Unknown'}</span>
       <p>{networkSession.read().connected && network.network === 'testnet' && required?.network === 'chipnet' ? 'Testnet key family. Before each signing request, the application verifies transaction inputs on synchronized chipnet. The wallet protocol does not attest its exact test network.' : compatibility.reason}</p>
     </section>}
-    {(error || wallet.error) && <small className="wallet-error" role="alert">{error || 'Wallet connection failed. Try again.'}</small>}
+    {(error || wallet.error) && <small className="wallet-error" role="alert">{error || wallet.error}</small>}
     {wallet.state === 'connecting' && wallet.uri && wallet.qrUri && <PairingDialog uri={wallet.uri} qrUri={wallet.qrUri} onClose={() => { void disconnect(); }}/>}
   </div>;
 }

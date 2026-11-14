@@ -9,7 +9,7 @@ test('marketplace uses indexed terms and detail links survive reload',async({pag
  await page.reload({waitUntil:'domcontentloaded'});await expect(page.getByText('Maximum reward per period',{exact:true})).toBeVisible();
  await expect(page.getByRole('table')).toBeVisible();
  await expect(page.getByRole('row').nth(1)).toContainText('Offer #01');
- await expect(page.getByRole('navigation').getByRole('link')).toHaveCount(3);
+ await expect(page.getByRole('navigation',{name:'Main navigation'}).getByRole('button',{name:'Connect Wallet'})).toBeVisible();
 });
 test('mobile preview forms are usable without suggesting wallet functionality',async({page})=>{
  await page.setViewportSize({width:390,height:844});await page.route('**/api/vaults',route=>route.fulfill({json:fixture()}));

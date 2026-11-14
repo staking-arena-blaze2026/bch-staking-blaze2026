@@ -67,15 +67,18 @@ export function networkCompatibility(wallet: WalletNetwork, required: NetworkReq
 /** Live state only: persisted SDK paths never constitute a fresh network handshake. */
 export class WalletNetworkSession {
   private live = false;
+  private authorizationRevision = 0;
+  get revision() { return this.authorizationRevision; }
   private extensions: unknown;
   private acceptedPaths = '';
   constructor(private readonly readPaths: () => PublicPath[]) {}
   accept(extensions?: unknown) {
+    if (!this.live || this.acceptedPaths !== JSON.stringify(this.readPaths()) || JSON.stringify(this.extensions) !== JSON.stringify(extensions)) this.authorizationRevision++;
     this.extensions = extensions;
     this.acceptedPaths = JSON.stringify(this.readPaths());
     this.live = true;
   }
-  invalidate() { this.live = false; this.extensions = undefined; this.acceptedPaths = ''; }
+  invalidate() { if (this.live) this.authorizationRevision++; this.live = false; this.extensions = undefined; this.acceptedPaths = ''; }
   read() {
     const paths = this.readPaths();
     const connected = this.live && JSON.stringify(paths) === this.acceptedPaths;

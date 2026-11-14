@@ -1,3 +1,4 @@
+import {EventEmitter} from 'node:events';
 import {expect,it,vi} from 'vitest';
 import {browserWalletClient} from '../src/browserWalletClient';
 import {v3Call} from '../src/v3Client';
@@ -6,7 +7,7 @@ function setup(reject=false){
  class WorkerMock {onmessage:((event:any)=>void)|null=null;terminate=vi.fn();constructor(){queueMicrotask(()=>this.onmessage?.({data:{type:'ready'}}));}postMessage(m:any){queueMicrotask(()=>this.onmessage?.({data:{id:m.id,result:m.method==='list'?[]:undefined}}));}}
  vi.stubGlobal('Worker',WorkerMock);
  const publicKey=Uint8Array.of(2,...new Uint8Array(32).fill(1)),owner={publicKey:Array.from(publicKey,x=>x.toString(16).padStart(2,'0')).join('')},request={broadcast:false,userPrompt:'Caller fee approval',transaction:{version:2,inputs:[],outputs:[],locktime:0},sourceOutputs:[]},plan={label:'Claim; caller pays 10000 sats',request,inputPaths:[[3,'receive',0]]};
- const manager={getSessionPaths:()=>[0],hasPath:(p:number)=>p===0,getPubkey:()=>publicKey,signTransaction:vi.fn(async()=>reject?{error:'User rejected'}:{signedTransaction:'signed'})};
+ const manager=Object.assign(new EventEmitter(),{getSessionPaths:()=>[0],hasPath:(p:number)=>p===0,getPubkey:()=>publicKey,signTransaction:vi.fn(async()=>reject?{error:'User rejected'}:{signedTransaction:'signed'})});
  vi.mocked(v3Call).mockImplementation(async intent=>{if(intent.operation==='claim'||intent.operation==='resume')return {id:'claim',stage:'review',plan};if(intent.operation==='authorize')return {owner,verifiedAt:Date.now(),plan};if(intent.operation==='submit')return {id:'claim',stage:'pending'};return [];});
  return {wallet:browserWalletClient(manager as any,()=>{}),manager,request};
 }
@@ -47,4 +48,15 @@ it('two-approval fallback never authorizes its child automatically',async()=>{
 });
 it('expanding discovery does not authorize or broadcast a transaction',async()=>{
  const {wallet,manager}=setup();try{expect(await wallet.v3!({operation:'expandScan'})).toMatch(/200 addresses/);expect(manager.signTransaction).not.toHaveBeenCalled();expect(vi.mocked(v3Call).mock.calls.some(([i])=>i.operation==='create'||i.operation==='submit')).toBe(false);}finally{wallet.close?.();}
+});
+
+it('invalidates preparation across a transport interruption even when the same identity returns',async()=>{
+ const {wallet,manager}=setup();const original=vi.mocked(v3Call).getMockImplementation()!;
+ vi.mocked(v3Call).mockImplementation(async(...args)=>{const result=await original(...args);if(args[0].operation==='authorize'){manager.emit('reconnecting');}return result;});
+ try{await expect(wallet.v3!({operation:'claim'})).rejects.toThrow(/authorization changed/);expect(manager.signTransaction).not.toHaveBeenCalled();expect(vi.mocked(v3Call).mock.calls.some(([intent])=>intent.operation==='submit')).toBe(false);}finally{wallet.close?.();}
+});
+it('obsolete workers cannot authorize new transactions after being closed',async()=>{
+ const {wallet,manager}=setup();wallet.close?.();
+ await expect(wallet.v3!({operation:'claim'})).rejects.toThrow(/closed/);
+ expect(manager.signTransaction).not.toHaveBeenCalled();
 });
