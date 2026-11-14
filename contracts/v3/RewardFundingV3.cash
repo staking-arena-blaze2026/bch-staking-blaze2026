@@ -1,0 +1,32 @@
+pragma cashscript ^0.14.0;
+// One-shot companion to RegistryGenesisV4 preparation output 0.
+// fundGenesis is permissionless only when spent as input 1 beside the committed genesis script.
+// recover returns the locked reserve to the funding owner with an external fee.
+contract RewardFundingV3(bytes genesisScript, bytes20 owner) {
+    function fundGenesis() {
+        require(this.activeInputIndex == 1);
+        require(tx.version == 2);
+        require(tx.inputs[0].sequenceNumber == 4294967294 && tx.inputs[1].sequenceNumber == 4294967294);
+        require(tx.inputs.length == 2 && tx.outputs.length == 3);
+        require(tx.inputs[0].outpointTransactionHash == tx.inputs[1].outpointTransactionHash);
+        require(tx.inputs[0].outpointIndex == 0);
+        require(tx.inputs[0].lockingBytecode == genesisScript);
+        require(tx.inputs[1].nftCommitment == 0x);
+    }
+
+    function recover(sig authorization, pubkey pk) {
+        require(this.activeInputIndex == 0);
+        require(tx.version == 2);
+        require(tx.inputs[0].sequenceNumber == 4294967294 && tx.inputs[1].sequenceNumber == 4294967294);
+        require(tx.inputs.length == 2 && tx.outputs.length == 1);
+        require(hash160(pk) == owner);
+        require(checkSig(authorization, pk));
+        require(tx.inputs[1].tokenCategory == 0x && tx.inputs[1].tokenAmount == 0);
+        require(tx.inputs[1].value == 10000);
+        require(tx.outputs[0].lockingBytecode == new LockingBytecodeP2PKH(owner));
+        require(tx.inputs[0].nftCommitment == 0x && tx.outputs[0].nftCommitment == 0x);
+        require(tx.outputs[0].value == tx.inputs[0].value);
+        require(tx.outputs[0].tokenCategory == tx.inputs[0].tokenCategory);
+        require(tx.outputs[0].tokenAmount == tx.inputs[0].tokenAmount);
+    }
+}

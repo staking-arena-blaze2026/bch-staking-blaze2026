@@ -31,7 +31,7 @@ it('shows a journaled pending vault card after reload before opening its detail'
  await waitFor(()=>expect(screen.getByText(/Genesis transaction:/)).toHaveTextContent('Pending (0-conf)'));
  expect(screen.getByText(/Genesis transaction:/)).toHaveTextContent(config.genesis);
  expect(screen.queryByRole('button',{name:'Review and pay fee in wallet'})).not.toBeInTheDocument();
- expect(screen.getByText(/Direct creation uses one Cashonize approval/)).toBeInTheDocument();
+ expect(screen.getByText(/Vault creation and claims use one wallet approval/)).toBeInTheDocument();
 });
 
 async function ageDisplay(){vi.spyOn(Date,'now').mockReturnValue(Date.now()+31000);await act(async()=>{await new Promise(resolve=>setTimeout(resolve,1050));});}
@@ -163,6 +163,6 @@ it('shows creation progress immediately and reports rejection beneath Create Vau
  expect(screen.getByRole('status')).toHaveTextContent('Preparing vault');
  act(()=>window.dispatchEvent(new CustomEvent('arena-wallet-progress',{detail:'Checking unconfirmed ancestry…'})));
  expect(screen.getByRole('status')).toHaveTextContent('Checking unconfirmed ancestry');
- await act(async()=>reject(Error('No suitable output 0. Choose the two-approval fallback.')));
- expect(screen.getByRole('status')).toHaveTextContent('two-approval fallback');expect(screen.getByRole('button',{name:/^Create Vault$/})).toBeEnabled();
+ await act(async()=>reject(Error('Insufficient BCH for covenant-controlled preparation.')));
+ expect(screen.getByRole('status')).toHaveTextContent('Insufficient BCH');expect(screen.getByRole('button',{name:/^Create Vault$/})).toBeEnabled();
 });

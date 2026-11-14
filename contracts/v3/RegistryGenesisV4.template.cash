@@ -1,0 +1,67 @@
+pragma cashscript ^0.14.0;
+// Linked preparation genesis: input 0 must be this contract at parent vout=0;
+// input 1 must be the companion parent vout=1 (RewardFundingV3). Existing
+// RegistryGenesisV3 remains unchanged for legacy two-approval factory funding.
+contract RegistryGenesisV4(bytes64 assets, int epoch, int periodSeconds, int periods, int cap, bytes20 owner) {
+    function create() {
+        require(this.activeInputIndex == 0);
+        require(tx.version == 2);
+        require(tx.inputs[0].sequenceNumber == 4294967294 && tx.inputs[1].sequenceNumber == 4294967294);
+        require(tx.inputs.length == 2 && tx.outputs.length == 3);
+        require(tx.inputs[0].outpointIndex == 0 && tx.inputs[0].tokenCategory == 0x && tx.inputs[0].tokenAmount == 0);
+        require(tx.inputs[0].value == 12000);
+        // Cryptographically bind the two preparation outputs from the same parent.
+        require(tx.inputs[1].outpointTransactionHash == tx.inputs[0].outpointTransactionHash);
+        require(tx.inputs[1].outpointIndex == 1);
+        require(epoch >= 500000000 && periodSeconds > 0 && periodSeconds <= 2147483647);
+        require(periods > 0 && periods <= 16 && cap >= 1 && cap <= 1000000);
+        require(epoch + periods * periodSeconds <= 2147483647);
+        bytes32 category = tx.inputs[0].outpointTransactionHash;
+        bytes32 stake = unsafe_bytes32(assets.slice(0,32));
+        bytes32 reward = unsafe_bytes32(assets.slice(32,64));
+        require(category != stake && category != reward);
+        if (reward == 0x0000000000000000000000000000000000000000000000000000000000000000) { require(cap >= 1000); }
+        // Canonical minimal Script integer pushes, including OP_1..OP_16.
+        bytes capPush = toPaddedBytes(bytes(cap).length,1) + bytes(cap);
+        if (cap <= 16) { capPush = toPaddedBytes(80 + cap,1); }
+        bytes lengthPush = toPaddedBytes(bytes(periodSeconds).length,1) + bytes(periodSeconds);
+        if (periodSeconds <= 16) { lengthPush = toPaddedBytes(80 + periodSeconds,1); }
+        bytes prefix = capPush + toPaddedBytes(80 + periods,1) + lengthPush + 0x04 + bytes(epoch) + 0x40 + assets + 0x20 + category;
+        require(tx.outputs[0].lockingBytecode == new LockingBytecodeP2SH32(hash256(prefix + 0x__REGISTRYV3_BODY__)));
+        require(tx.outputs[0].value == 1000 && tx.outputs[0].tokenCategory == category + 0x01 && tx.outputs[0].tokenAmount == 0);
+        bytes empty = 0x__EMPTY_STATE__ + toPaddedBytes(cap * periods,4);
+        require(tx.outputs[0].nftCommitment == hash256(empty));
+        require(tx.outputs[1].lockingBytecode == new LockingBytecodeP2SH32(hash256(0x41 + category + stake + 0x01 + 0x__ASSETROLEV3_BODY__)));
+        require(tx.outputs[1].value == 1000 && tx.outputs[1].tokenCategory == 0x && tx.outputs[1].tokenAmount == 0);
+        require(tx.outputs[2].lockingBytecode == new LockingBytecodeP2SH32(hash256(0x41 + category + reward + 0x02 + 0x__ASSETROLEV3_BODY__)));
+        require(tx.inputs[1].nftCommitment == 0x && tx.outputs[2].nftCommitment == 0x);
+        if (reward == 0x0000000000000000000000000000000000000000000000000000000000000000) {
+            require(tx.inputs[1].value == 1000 + cap * periods && tx.outputs[2].value == 1000 + cap * periods);
+            require(tx.inputs[1].tokenCategory == 0x && tx.outputs[2].tokenCategory == 0x);
+            require(tx.inputs[1].tokenAmount == 0 && tx.outputs[2].tokenAmount == 0);
+        } else {
+            require(tx.inputs[1].value == 1000 && tx.outputs[2].value == 1000);
+            require(tx.inputs[1].tokenCategory == reward && tx.outputs[2].tokenCategory == reward);
+            require(tx.inputs[1].tokenAmount == cap * periods && tx.outputs[2].tokenAmount == cap * periods);
+        }
+    }
+
+    // Owner-authorized recovery of the 12,000-satoshi preparation carrier.
+    // Caller supplies an exact 10,000-satoshi fee input; no reward assets are touched.
+    function refund(sig authorization, pubkey pk) {
+        require(this.activeInputIndex == 0);
+        require(tx.version == 2);
+        require(tx.inputs[0].sequenceNumber == 4294967294 && tx.inputs[1].sequenceNumber == 4294967294);
+        require(tx.inputs.length == 2 && tx.outputs.length == 1);
+        require(hash160(pk) == owner);
+        require(checkSig(authorization, pk));
+        require(tx.inputs[0].tokenCategory == 0x && tx.inputs[0].tokenAmount == 0);
+        require(tx.inputs[0].value == 12000);
+        require(tx.inputs[1].tokenCategory == 0x && tx.inputs[1].tokenAmount == 0);
+        require(tx.inputs[1].value == 10000);
+        require(tx.outputs[0].lockingBytecode == new LockingBytecodeP2PKH(owner));
+        require(tx.outputs[0].value == 12000);
+        require(tx.outputs[0].tokenCategory == 0x && tx.outputs[0].tokenAmount == 0);
+        require(tx.outputs[0].nftCommitment == 0x);
+    }
+}

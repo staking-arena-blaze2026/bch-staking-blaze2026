@@ -6,6 +6,8 @@ import {binToHex,encodeCashAddress,hash160,decodeTransaction,hexToBin,createVirt
 import FeeSponsorV3 from '../../artifacts/FeeSponsorV3.json' with {type:'json'};
 import RegistryV3 from '../../artifacts/RegistryV3.json' with {type:'json'};
 import RegistryGenesisV3 from '../../artifacts/RegistryGenesisV3.json' with {type:'json'};
+import RegistryGenesisV4 from '../../artifacts/RegistryGenesisV4.json' with {type:'json'};
+import RewardFundingV3 from '../../artifacts/RewardFundingV3.json' with {type:'json'};
 import AssetRoleV3 from '../../artifacts/AssetRoleV3.json' with {type:'json'};
 import StakeAllocationV3 from '../../artifacts/StakeAllocationV3.json' with {type:'json'};
 import {allocationTerms,hashState,offer,remainingCommitment} from '../registry.js';
@@ -13,7 +15,7 @@ import {records} from '../arena-core.js';
 import {sourceOutput,type KeeperClock,type Sponsor} from '../keeper-core.js';
 export interface Instance {parameters:Parameters;category:string;state:Buffer;inputs:[SpendableUtxo,SpendableUtxo,SpendableUtxo]}
 import {v3Network as network} from './network.js';
-const artifacts={FeeSponsorV3,RegistryV3,RegistryGenesisV3,AssetRoleV3,StakeAllocationV3};
+const artifacts={FeeSponsorV3,RegistryV3,RegistryGenesisV3,RegistryGenesisV4,RewardFundingV3,AssetRoleV3,StakeAllocationV3};
 export function covenant(name:keyof typeof artifacts,args:(bigint|Uint8Array)[],provider:NetworkProvider){network(provider);return new Contract(artifacts[name],args,{provider,contractType:'p2sh32'});}
 export function parameterArgs(p:Parameters){validateParameters(p);return [Buffer.concat([assetBytes(p.stakingAsset),assetBytes(p.rewardAsset)]),BigInt(p.epoch),BigInt(p.periodSeconds),BigInt(p.periods),p.cap];}
 export function family(p:Parameters,category:string,provider:NetworkProvider){
@@ -43,6 +45,51 @@ export function genesisBuilder(p:Parameters,factoryInput:SpendableUtxo,rewardFun
  const builder=new TransactionBuilder({provider}).addInput(factoryInput,factory.unlock.create()).addInput(rewardFunding.input,rewardFunding.unlocker)
  .addOutput({to:cs.registry.tokenAddress,...stateOutput(factoryInput.txid,state)}).addOutput({to:cs.escrow.address,amount:CARRIER})
  .addOutput({to:cs.reserve.tokenAddress,...assetOutput(p.rewardAsset,p.cap*BigInt(p.periods))});return {builder,state};
+}
+/** Owner-bound V4 genesis + companion reward-funding covenants for one-approval chained creation. */
+export function chainedPreparation(p:Parameters,ownerPubkey:Uint8Array,provider:NetworkProvider){
+ validateParameters(p);const owner=hash160(ownerPubkey);
+ const genesis=covenant('RegistryGenesisV4',[...parameterArgs(p),owner],provider);
+ const funding=covenant('RewardFundingV3',[Buffer.from(genesis.lockingBytecode,'hex'),owner],provider);
+ return {genesis,funding,owner};
+}
+/** Permissionless child: spends parent vout0/vout1 under V4+RewardFunding covenants. No wallet signature. */
+export function chainedChildBuilder(p:Parameters,factoryInput:SpendableUtxo,fundingInput:SpendableUtxo,ownerPubkey:Uint8Array,provider:NetworkProvider){
+ const prep=chainedPreparation(p,ownerPubkey,provider),cs=family(p,factoryInput.txid,provider),state=initialState(p),reserve=p.cap*BigInt(p.periods);
+ if(factoryInput.vout!==0||factoryInput.token||factoryInput.satoshis!==12000n||factoryInput.lockingBytecode!==prep.genesis.lockingBytecode)throw Error('Incorrect chained genesis preparation');
+ if(fundingInput.txid!==factoryInput.txid||fundingInput.vout!==1||!matches(fundingInput,p.rewardAsset,reserve))throw Error('Incorrect chained reward funding companion');
+ if(fundingInput.lockingBytecode!==prep.funding.lockingBytecode)throw Error('Reward funding covenant mismatch');
+ const builder=new TransactionBuilder({provider}).addInput(factoryInput,prep.genesis.unlock.create()).addInput(fundingInput,prep.funding.unlock.fundGenesis())
+ .addOutput({to:cs.registry.tokenAddress,...stateOutput(factoryInput.txid,state)}).addOutput({to:cs.escrow.address,amount:CARRIER})
+ .addOutput({to:cs.reserve.tokenAddress,...assetOutput(p.rewardAsset,reserve)});
+ return {builder,state,category:factoryInput.txid,prep};
+}
+export function chainedGenesisRefundBuilder(factoryInput:SpendableUtxo,fee:Sponsor,ownerPubkey:Uint8Array,authorization:SignatureTemplate|Uint8Array,p:Parameters,provider:NetworkProvider){
+ const prep=chainedPreparation(p,ownerPubkey,provider);
+ if(factoryInput.lockingBytecode!==prep.genesis.lockingBytecode||factoryInput.satoshis!==12000n||factoryInput.token||fee.input.token||fee.input.satoshis!==FEE)throw Error('Invalid genesis refund sources');
+ return new TransactionBuilder({provider}).addInput(factoryInput,prep.genesis.unlock.refund(authorization,ownerPubkey)).addInput(fee.input,fee.unlocker)
+ .addOutput({to:ownerAddress(ownerPubkey,provider),amount:12000n});
+}
+export function chainedFundingRecoverBuilder(fundingInput:SpendableUtxo,fee:Sponsor,ownerPubkey:Uint8Array,authorization:SignatureTemplate|Uint8Array,p:Parameters,provider:NetworkProvider){
+ const prep=chainedPreparation(p,ownerPubkey,provider),reserve=p.cap*BigInt(p.periods);
+ if(fundingInput.lockingBytecode!==prep.funding.lockingBytecode||!matches(fundingInput,p.rewardAsset,reserve)||fee.input.token||fee.input.satoshis!==FEE)throw Error('Invalid funding recovery sources');
+ return new TransactionBuilder({provider}).addInput(fundingInput,prep.funding.unlock.recover(authorization,ownerPubkey)).addInput(fee.input,fee.unlocker)
+ .addOutput({to:ownerAddress(ownerPubkey,provider),...assetOutput(p.rewardAsset,reserve)});
+}
+export function chainedParentBuilder(p:Parameters,coins:import('../transactions-core.js').WalletCoin[],owner:import('../transactions-core.js').WalletKey,provider:NetworkProvider){
+ validateParameters(p);if(!coins.length||coins.length>8||new Set(coins.map(c=>c.utxo.txid+':'+c.utxo.vout)).size!==coins.length)throw Error('Invalid chained parent funding');
+ const prep=chainedPreparation(p,hexToBin(owner.publicKey),provider),reserve=p.cap*BigInt(p.periods),asset=p.rewardAsset;
+ let tokens=0n,total=0n;const builder=new TransactionBuilder({provider});
+ for(const c of coins){if(c.utxo.token&&(c.utxo.token.nft||asset.kind!=='token'||c.utxo.token.category!==asset.category))throw Error('Unrelated tokens or NFTs cannot fund chained preparation');
+ total+=c.utxo.satoshis;tokens+=c.utxo.token?.amount??0n;builder.addInput(c.utxo,placeholderP2PKHUnlocker(ownerAddress(hexToBin(c.publicKey),provider)));}
+ if(asset.kind==='token'&&tokens<reserve)throw Error('Insufficient full reward reserve');
+ builder.addOutput({to:prep.genesis.address,amount:12000n}).addOutput({to:prep.funding.tokenAddress,...assetOutput(asset,reserve)});
+ const address=ownerAddress(hexToBin(owner.publicKey),provider),tokenChange=asset.kind==='token'?tokens-reserve:0n;
+ if(tokenChange>0n&&asset.kind==='token')builder.addOutput({to:address,amount:CARRIER,token:{category:asset.category,amount:tokenChange}});
+ const bchChange=total-12000n-FEE-(asset.kind==='bch'?reserve:0n)-CARRIER-(tokenChange>0n?CARRIER:0n);
+ if(bchChange<0n||bchChange>0n&&bchChange<CARRIER)throw Error('Insufficient BCH or chained parent change below 1000 satoshis');
+ if(bchChange>0n)builder.addOutput({to:address,amount:bchChange});
+ return {builder,prep,reserve,bchChange,tokenChange};
 }
 /** Direct genesis has no factory witness: independently pin every protected output and
  * permit only fungible/BCH change to input wallet scripts. Never consume NFTs. */

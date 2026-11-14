@@ -60,9 +60,16 @@ test('isolated BCHN 29.2: direct genesis and dependent offers/claim without bloc
  assert.equal(binToHex(pendingCreated.plan!.request.transaction.inputs[0]!.outpointTransactionHash),unconfirmedParent);assert.ok((await rpc<string[]>('getrawmempool')).includes(unconfirmedParent));
  const parentTx=await p.transactionStatus(unconfirmedParent),conflict=new TransactionBuilder({provider:p});let conflictTotal=0n;for(const input of parentTx.vin){const source=utxo(await p.transactionStatus(input.txid),input.vout);conflictTotal+=source.satoshis;conflict.addInput(source,key.unlockP2PKH());}conflict.addOutput({to:owner,amount:conflictTotal-10001n});const conflictRaw=conflict.build(),conflictId=(await import('../src/electrum-core.js')).decodeRawTransaction(conflictRaw).txid;
  const [conflictAcceptance]=await rpc('testmempoolaccept',[[conflictRaw]]);assert.equal(conflictAcceptance.allowed,false);p.extra.set(conflictId,conflictRaw);await p.refresh();await assert.rejects(()=>new AssetIndexer(p,pendingCreated.config!).sync(),/double-spend conflict/);p.extra.delete(conflictId);await p.refresh();
- // Explicit fallback is two separate authorizations, with no mining between them.
- await assert.rejects(()=>wallet.create({...params,cap:2200n},keys),/output 0/);const a2=approvals,legacy1=await approve(await wallet.createLegacy({...params,cap:2200n},keys));let legacy2=await wallet.resume(legacy1.id);assert.equal(legacy2.step,'action');legacy2=await approve(legacy2);assert.equal(approvals-a2,2);assert.ok((await new AssetIndexer(p,legacy2.config??{...params,cap:2200n,genesis:legacy2.txid!}).sync()).provisional);
- const fallbackAuthorizations=approvals-a2;
+ // Without a wallet-owned vout=0, Create Vault uses the covenant-controlled chain: two txs, one approval.
+ const burner=await rpc<string>('getnewaddress');
+ const zeros=(await p.getUtxos(owner)).filter(u=>u.vout===0&&!u.token);
+ if(zeros.length){const b=new TransactionBuilder({provider:p});let total=0n;for(const c of zeros){b.addInput(c,key.unlockP2PKH());total+=c.satoshis;}b.addOutput({to:burner,amount:1000n}).addOutput({to:owner,amount:total-11000n});await rpc('sendrawtransaction',[b.build()]);await p.refresh();}
+ const a2=approvals,b2=p.broadcasts,chained=await approve(await wallet.create({...params,cap:2200n},keys));
+ assert.equal(chained.creationMode,'chained');assert.equal(approvals-a2,1);assert.equal(p.broadcasts-b2,2);
+ assert.ok((await new AssetIndexer(p,chained.config!).sync()).provisional);
+ // Legacy two-approval factory path remains available explicitly.
+ const a3=approvals,legacy1=await approve(await wallet.createLegacy({...params,cap:2300n},keys));let legacy2=await wallet.resume(legacy1.id);assert.equal(legacy2.step,'action');legacy2=await approve(legacy2);assert.equal(approvals-a3,2);assert.ok((await new AssetIndexer(p,legacy2.config??{...params,cap:2300n,genesis:legacy2.txid!}).sync()).provisional);
+ const fallbackAuthorizations=approvals-a3;
  const tokenAssets:Asset[]=[],nfts:string[]=[];
  for(let i=0;i<2;i++){
   const seed=await outputZero(),source=utxo(await p.transactionStatus(seed),0);
@@ -79,7 +86,7 @@ test('isolated BCHN 29.2: direct genesis and dependent offers/claim without bloc
   assert.equal(await rpc('getblockcount'),flowHeight);combinations.push({staking:stakingAsset.kind,reward:rewardAsset.kind,sameCategory:stakingAsset.kind==='token'&&rewardAsset.kind==='token'&&stakingAsset.category===rewardAsset.category,genesis:vault.txid!,claim:reward.txid!,authorizations:approvals-a,transactions:p.broadcasts-b});await mine();
  }
  // Refusal, journal durability, metadata substitution and lost acknowledgements.
- await outputZero();let recovery=await wallet.create({...params,cap:2300n},keys);const broadcasts=p.broadcasts;
+ await outputZero();let recovery=await wallet.create({...params,cap:2350n},keys);const broadcasts=p.broadcasts;
  await wallet.signingFailed(recovery.id,'User rejected');assert.equal(p.broadcasts,broadcasts);assert.equal(journal.get(recovery.id)!.raw,undefined);
  const clean=structuredClone(journal.get(recovery.id)!);journal.get(recovery.id)!.plan!.request.broadcast=true;await assert.rejects(()=>wallet.authorize(recovery.id),/disable wallet broadcasting/);journal.set(recovery.id,structuredClone(clean));
  journal.get(recovery.id)!.plan!.request.transaction.outputs[2]!.valueSatoshis--;await assert.rejects(()=>wallet.authorize(recovery.id),/Saved genesis/);journal.set(recovery.id,structuredClone(clean));
@@ -94,5 +101,5 @@ test('isolated BCHN 29.2: direct genesis and dependent offers/claim without bloc
  await rpc('reconsiderblock',[block]);p.headerCache.clear();await p.refresh();assert.equal((await reopened.resume(recovery.id)).stage,'confirmed');
  const evictParent=await approve(await wallet.createLegacy({...params,cap:2400n},keys)),evictChild=await approve(await wallet.resume(evictParent.id)),evictBroadcasts=p.broadcasts;await restartWithoutMempool();p.headerCache.clear();await p.refresh();assert.deepEqual(await rpc('getrawmempool'),[]);assert.equal((await reopened.resume(evictChild.id)).stage,'prepared');assert.equal(p.broadcasts,evictBroadcasts);assert.equal(journal.get(evictChild.id)!.raw,evictChild.raw);
  await reopened.rebroadcastFunding(evictChild.id);const restored=await reopened.rebroadcast(evictChild.id);assert.equal(restored.stage,'pending',restored.error);assert.equal((await new AssetIndexer(p,restored.config!).sync()).provisional,true);
- await writeFile('docs/blaze2026/zero-conf-results.json',JSON.stringify({node:(await rpc('getnetworkinfo')).subversion,verifiedAt:new Date().toISOString(),before,after,benchmarkTransport:'local Electrum facade over isolated BCHN RPC; no public latency',localSignatureHarness:true,realCashonizePromptsTested:false,confirmedZero:true,unconfirmedZero:true,zeroConfCreationOfferClaim:true,fallbackAuthorizations,packageAuthorizationSupported:false,combinations,rejection:true,journalFailure:true,lostAcknowledgement:true,missingParent:true,knownConflict:true,actualParentEvictionAndIdenticalRecovery:true,providerDisagreement:true,reorganization:true,genesis:config.genesis,claim:claim.txid},null,2)+'\n');
+ await writeFile('docs/blaze2026/zero-conf-results.json',JSON.stringify({node:(await rpc('getnetworkinfo')).subversion,verifiedAt:new Date().toISOString(),before,after,benchmarkTransport:'local Electrum facade over isolated BCHN RPC; no public latency',localSignatureHarness:true,realCashonizePromptsTested:false,confirmedZero:true,unconfirmedZero:true,zeroConfCreationOfferClaim:true,chainedAuthorizations:1,chainedTransactions:2,fallbackAuthorizations,packageAuthorizationSupported:false,combinations,rejection:true,journalFailure:true,lostAcknowledgement:true,missingParent:true,knownConflict:true,actualParentEvictionAndIdenticalRecovery:true,providerDisagreement:true,reorganization:true,genesis:config.genesis,claim:claim.txid,chainedGenesis:chained.txid},null,2)+'\n');
 }));

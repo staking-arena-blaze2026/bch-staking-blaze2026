@@ -1,0 +1,136 @@
+{
+  "contractName": "RewardFundingV3",
+  "constructorInputs": [
+    {
+      "name": "genesisScript",
+      "type": "bytes"
+    },
+    {
+      "name": "owner",
+      "type": "bytes20"
+    }
+  ],
+  "abi": [
+    {
+      "name": "fundGenesis",
+      "inputs": []
+    },
+    {
+      "name": "recover",
+      "inputs": [
+        {
+          "name": "authorization",
+          "type": "sig"
+        },
+        {
+          "name": "pk",
+          "type": "pubkey"
+        }
+      ]
+    }
+  ],
+  "bytecode": "OP_2 OP_PICK OP_0 OP_NUMEQUAL OP_IF OP_INPUTINDEX OP_1 OP_NUMEQUALVERIFY OP_TXVERSION OP_2 OP_NUMEQUALVERIFY OP_0 OP_INPUTSEQUENCENUMBER feffffff00 OP_NUMEQUAL OP_1 OP_INPUTSEQUENCENUMBER feffffff00 OP_NUMEQUAL OP_BOOLAND OP_VERIFY OP_TXINPUTCOUNT OP_2 OP_NUMEQUAL OP_TXOUTPUTCOUNT OP_3 OP_NUMEQUAL OP_BOOLAND OP_VERIFY OP_0 OP_OUTPOINTTXHASH OP_1 OP_OUTPOINTTXHASH OP_EQUALVERIFY OP_0 OP_OUTPOINTINDEX OP_0 OP_NUMEQUALVERIFY OP_0 OP_UTXOBYTECODE OP_EQUALVERIFY OP_1 OP_UTXOTOKENCOMMITMENT OP_0 OP_EQUAL OP_NIP OP_NIP OP_ELSE OP_ROT OP_1 OP_NUMEQUALVERIFY OP_INPUTINDEX OP_0 OP_NUMEQUALVERIFY OP_TXVERSION OP_2 OP_NUMEQUALVERIFY OP_0 OP_INPUTSEQUENCENUMBER feffffff00 OP_NUMEQUAL OP_1 OP_INPUTSEQUENCENUMBER feffffff00 OP_NUMEQUAL OP_BOOLAND OP_VERIFY OP_TXINPUTCOUNT OP_2 OP_NUMEQUAL OP_TXOUTPUTCOUNT OP_1 OP_NUMEQUAL OP_BOOLAND OP_VERIFY OP_3 OP_PICK OP_HASH160 OP_2 OP_PICK OP_EQUALVERIFY OP_2SWAP OP_SWAP OP_CHECKSIGVERIFY OP_1 OP_UTXOTOKENCATEGORY OP_0 OP_EQUAL OP_1 OP_UTXOTOKENAMOUNT OP_0 OP_NUMEQUAL OP_BOOLAND OP_VERIFY OP_1 OP_UTXOVALUE 1027 OP_NUMEQUALVERIFY OP_0 OP_OUTPUTBYTECODE 76a914 OP_3 OP_ROLL OP_CAT 88ac OP_CAT OP_EQUALVERIFY OP_0 OP_UTXOTOKENCOMMITMENT OP_0 OP_EQUAL OP_0 OP_OUTPUTTOKENCOMMITMENT OP_0 OP_EQUAL OP_BOOLAND OP_VERIFY OP_0 OP_OUTPUTVALUE OP_0 OP_UTXOVALUE OP_NUMEQUALVERIFY OP_0 OP_OUTPUTTOKENCATEGORY OP_0 OP_UTXOTOKENCATEGORY OP_EQUALVERIFY OP_0 OP_OUTPUTTOKENAMOUNT OP_0 OP_UTXOTOKENAMOUNT OP_NUMEQUAL OP_NIP OP_ENDIF",
+  "source": "pragma cashscript ^0.14.0;\n// One-shot companion to RegistryGenesisV4 preparation output 0.\n// fundGenesis is permissionless only when spent as input 1 beside the committed genesis script.\n// recover returns the locked reserve to the funding owner with an external fee.\ncontract RewardFundingV3(bytes genesisScript, bytes20 owner) {\n    function fundGenesis() {\n        require(this.activeInputIndex == 1);\n        require(tx.version == 2);\n        require(tx.inputs[0].sequenceNumber == 4294967294 && tx.inputs[1].sequenceNumber == 4294967294);\n        require(tx.inputs.length == 2 && tx.outputs.length == 3);\n        require(tx.inputs[0].outpointTransactionHash == tx.inputs[1].outpointTransactionHash);\n        require(tx.inputs[0].outpointIndex == 0);\n        require(tx.inputs[0].lockingBytecode == genesisScript);\n        require(tx.inputs[1].nftCommitment == 0x);\n    }\n\n    function recover(sig authorization, pubkey pk) {\n        require(this.activeInputIndex == 0);\n        require(tx.version == 2);\n        require(tx.inputs[0].sequenceNumber == 4294967294 && tx.inputs[1].sequenceNumber == 4294967294);\n        require(tx.inputs.length == 2 && tx.outputs.length == 1);\n        require(hash160(pk) == owner);\n        require(checkSig(authorization, pk));\n        require(tx.inputs[1].tokenCategory == 0x && tx.inputs[1].tokenAmount == 0);\n        require(tx.inputs[1].value == 10000);\n        require(tx.outputs[0].lockingBytecode == new LockingBytecodeP2PKH(owner));\n        require(tx.inputs[0].nftCommitment == 0x && tx.outputs[0].nftCommitment == 0x);\n        require(tx.outputs[0].value == tx.inputs[0].value);\n        require(tx.outputs[0].tokenCategory == tx.inputs[0].tokenCategory);\n        require(tx.outputs[0].tokenAmount == tx.inputs[0].tokenAmount);\n    }\n}\n",
+  "fingerprint": "b250b9f422b2b9873685be99125d15d34b339bfa7af1220750a3708609135d71",
+  "debug": {
+    "bytecode": "5279009c63c0519dc2529d00cb05feffffff009c51cb05feffffff009c9a69c3529cc4539c9a6900c851c88800c9009d00c78851cf00877777677b519dc0009dc2529d00cb05feffffff009c51cb05feffffff009c9a69c3529cc4519c9a695379a9527988727cad51ce008751d0009c9a6951c60210279d00cd0376a914537a7e0288ac7e8800cf008700d200879a6900cc00c69d00d100ce8800d300d09c7768",
+    "sourceMap": "6:4:15:5;;;;;7:16:7:37;:41::42;:8::44:1;8:16:8:26:0;:30::31;:8::33:1;9:26:9:27:0;:16::43:1;:47::57:0;:16:::1;:71::72:0;:61::88:1;:92::102:0;:61:::1;:16;:8::104;10:16:10:32:0;:36::37;:16:::1;:41::58:0;:62::63;:41:::1;:16;:8::65;11:26:11:27:0;:16::52:1;:66::67:0;:56::92:1;:8::94;12:26:12:27:0;:16::42:1;:46::47:0;:8::49:1;13:26:13:27:0;:16::44:1;:8::63;14:26:14:27:0;:16::42:1;:46::48:0;:8::50:1;6:27:15:5;;:4;17::31::0;;;18:16:18:37;:41::42;:8::44:1;19:16:19:26:0;:30::31;:8::33:1;20:26:20:27:0;:16::43:1;:47::57:0;:16:::1;:71::72:0;:61::88:1;:92::102:0;:61:::1;:16;:8::104;21:16:21:32:0;:36::37;:16:::1;:41::58:0;:62::63;:41:::1;:16;:8::65;22:24:22:26:0;;:16::27:1;:31::36:0;;:8::38:1;23:25:23:42:0;;:8::45:1;24:26:24:27:0;:16::42:1;:46::48:0;:16:::1;:62::63:0;:52::76:1;:80::81:0;:52:::1;:16;:8::83;25:26:25:27:0;:16::34:1;:38::43:0;:8::45:1;26:27:26:28:0;:16::45:1;:49::80:0;:74::79;;:49::80:1;;;:8::82;27:26:27:27:0;:16::42:1;:46::48:0;:16:::1;:63::64:0;:52::79:1;:83::85:0;:52:::1;:16;:8::87;28:27:28:28:0;:16::35:1;:49::50:0;:39::57:1;:8::59;29:27:29:28:0;:16::43:1;:57::58:0;:47::73:1;:8::75;30:27:30:28:0;:16::41:1;:55::56:0;:45::69:1;:8::71;17:51:31:5;5:0:32:1",
+    "logs": [],
+    "requires": [
+      {
+        "ip": 9,
+        "line": 7
+      },
+      {
+        "ip": 12,
+        "line": 8
+      },
+      {
+        "ip": 22,
+        "line": 9
+      },
+      {
+        "ip": 30,
+        "line": 10
+      },
+      {
+        "ip": 35,
+        "line": 11
+      },
+      {
+        "ip": 39,
+        "line": 12
+      },
+      {
+        "ip": 42,
+        "line": 13
+      },
+      {
+        "ip": 47,
+        "line": 14
+      },
+      {
+        "ip": 55,
+        "line": 18
+      },
+      {
+        "ip": 58,
+        "line": 19
+      },
+      {
+        "ip": 68,
+        "line": 20
+      },
+      {
+        "ip": 76,
+        "line": 21
+      },
+      {
+        "ip": 82,
+        "line": 22
+      },
+      {
+        "ip": 85,
+        "line": 23
+      },
+      {
+        "ip": 95,
+        "line": 24
+      },
+      {
+        "ip": 99,
+        "line": 25
+      },
+      {
+        "ip": 108,
+        "line": 26
+      },
+      {
+        "ip": 118,
+        "line": 27
+      },
+      {
+        "ip": 123,
+        "line": 28
+      },
+      {
+        "ip": 128,
+        "line": 29
+      },
+      {
+        "ip": 134,
+        "line": 30
+      }
+    ],
+    "sourceTags": "45:46:sc;132:132:sc"
+  },
+  "compiler": {
+    "name": "cashc",
+    "version": "0.14.0",
+    "options": {
+      "enforceFunctionParameterTypes": true,
+      "enforceLocktimeGuard": true
+    }
+  },
+  "updatedAt": "2026-11-14T19:49:34.167Z"
+}

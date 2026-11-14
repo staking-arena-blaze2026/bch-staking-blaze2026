@@ -46,6 +46,16 @@ it('two-approval fallback never authorizes its child automatically',async()=>{
   await wallet.v3!({operation:'resume',id:'claim'});expect(manager.signTransaction).toHaveBeenCalledTimes(2);
  }finally{wallet.close?.();}
 });
+
+it('covenant-controlled chained creation still requests only one Cashonize approval',async()=>{
+ const {wallet,manager}=setup();const original=vi.mocked(v3Call).getMockImplementation()!;
+ vi.mocked(v3Call).mockImplementation(async(...args)=>{
+  if(args[0].operation==='create'){const result=await original({operation:'claim'});result.creationMode='chained';result.plan.inputPaths=[[0,'receive',0],[1,'change',1]];result.plan.label='Create vault with one approval via covenant-controlled preparation';return result;}
+  if(args[0].operation==='submit')return {id:'chained',stage:'pending',creationMode:'chained',funding:'11'.repeat(32),txid:'22'.repeat(32)};
+  return original(...args);
+ });
+ try{await wallet.v3!({operation:'create',parameters:{}});expect(manager.signTransaction).toHaveBeenCalledTimes(1);expect(vi.mocked(v3Call).mock.calls.some(([i])=>i.operation==='resume')).toBe(false);}finally{wallet.close?.();}
+});
 it('expanding discovery does not authorize or broadcast a transaction',async()=>{
  const {wallet,manager}=setup();try{expect(await wallet.v3!({operation:'expandScan'})).toMatch(/200 addresses/);expect(manager.signTransaction).not.toHaveBeenCalled();expect(vi.mocked(v3Call).mock.calls.some(([i])=>i.operation==='create'||i.operation==='submit')).toBe(false);}finally{wallet.close?.();}
 });
