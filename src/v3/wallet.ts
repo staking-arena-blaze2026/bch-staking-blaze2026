@@ -6,7 +6,7 @@ import {FUNDING_BYTE_BUDGET,FundingSelectionError} from '../wallet-funding-polic
 import {encodeTransaction} from '@bitauth/libauth';
 import {discoverFunding} from './funding-discovery.js';
 import {validateNewOffer} from './offer-policy.js';
-import {v3Network,v3Storage,type V3Network} from './network.js';
+import {v3Network,v3Storage,assertStoredNetwork,type V3Network} from './network.js';
 import {TransactionBuilder,placeholderP2PKHUnlocker,placeholderSignature,type SpendableUtxo,type NetworkProvider} from 'cashscript';
 import {hexToBin,binToHex,createVirtualMachineBch2026,hashTransaction,decodeTransaction,type Transaction} from '@bitauth/libauth';
 import {Buffer} from '../bytes.js';
@@ -17,10 +17,10 @@ import {utxo,records} from '../arena-core.js';
 import {AssetIndexer,type Config,type Snapshot} from './indexer.js';
 import {atomicOfferBuilder,directGenesisBuilder,validateGenesis,ownerAddress,FEE,CARRIER,decision,assetOutput,covenant,parameterArgs,validateParameters,validateTerms,genesisBuilder,chainedParentBuilder,chainedChildBuilder,chainedPreparation,transitionBuilder,sponsorAmount,withdrawalBuilder,rewardRemaining,type Parameters,type Terms,type Asset} from './protocol.js';
 const verifyCoinsAcrossPeers=(p:ElectrumCore,coins:SpendableUtxo[],progress?:(message:string)=>void)=>verifyConfirmedCoinsAcrossPeers(p,coins,true,progress);
-export interface Operation {id:string;version:3;creationMode?:'direct'|'chained';registrationMode?:'atomic';offerPolicy?:'single-win';kind:'create'|'offer'|'action'|'withdraw'|'claim';step:'funding'|'action'|'complete';signing?:'unsigned'|'requested'|'rejected';stage:'review'|'prepared'|'pending'|'confirmed'|'conflicted';parameters:Parameters;config?:Config;terms?:Terms;action?:number;slot?:number;allocation?:string;owner:WalletKey;payer?:WalletKey;source?:string;plan?:BrowserPlan;raw?:string;txid?:string;funding?:string;fundingRaw?:string;fundingPlan?:BrowserPlan;childRaw?:string;error?:string;confirmations?:number}
+export interface Operation {network?:V3Network;id:string;version:3;creationMode?:'direct'|'chained';registrationMode?:'atomic';offerPolicy?:'single-win';kind:'create'|'offer'|'action'|'withdraw'|'claim';step:'funding'|'action'|'complete';signing?:'unsigned'|'requested'|'rejected';stage:'review'|'prepared'|'pending'|'confirmed'|'conflicted';parameters:Parameters;config?:Config;terms?:Terms;action?:number;slot?:number;allocation?:string;owner:WalletKey;payer?:WalletKey;source?:string;plan?:BrowserPlan;raw?:string;txid?:string;funding?:string;fundingRaw?:string;fundingPlan?:BrowserPlan;childRaw?:string;error?:string;confirmations?:number}
 export interface Store {list():Promise<Operation[]>;save(value:Operation):Promise<void>}
 function plan(builder:TransactionBuilder,label:string,coins:{coin:WalletCoin;index:number}[],authorization?:WalletKey):BrowserPlan {
- const request=builder.generateWcTransactionObject({broadcast:false,userPrompt:`V3 EXPERIMENTAL ${v3Network(builder.provider).toUpperCase()} TEST FUNDS: `+label}),tx=request.transaction as Transaction;
+ const request=builder.generateWcTransactionObject({broadcast:false,userPrompt:`V3 EXPERIMENTAL ${v3Network(builder.provider).toUpperCase()} ${v3Network(builder.provider)==='mainnet'?'REAL BCH':'TEST FUNDS'}: `+label}),tx=request.transaction as Transaction;
  const signers:Record<number,string>={},inputPaths:BrowserPlan['inputPaths']=[];
  for(const {coin:c,index}of coins){if(c.utxo.lockingBytecode!==walletScript(c.publicKey))throw Error('Wallet key/source mismatch');signers[index]=c.publicKey;inputPaths.push([index,c.path,c.index]);}
  if(authorization){signers[0]=authorization.publicKey;inputPaths.unshift([0,authorization.path,authorization.index]);}
@@ -147,7 +147,7 @@ export class AssetWallet {
   return false;
  },this.progress);
  const unsigned=new Set(journal.filter(o=>!reservesFunding(o)).flatMap(o=>o.plan?planCoins(o.plan).map(u=>u.txid+':'+u.vout):[]));
- const report=fundingReport(inventory.coins,inventory.queried,reserved,unsigned,asset.kind==='token'?asset.category:undefined);report.milliseconds=inventory.milliseconds;
+ const report=fundingReport(inventory.coins,inventory.queried,reserved,unsigned,asset.kind==='token'?asset.category:undefined,v3Network(this.provider));report.milliseconds=inventory.milliseconds;
  const unsupportedCondition=(coin:WalletCoin)=>/immature|non-final|relative.lock|budget|depth limit/i.test(excluded.get(coin.utxo.txid+':'+coin.utxo.vout)??'');
  const excludedValue=(condition:(coin:WalletCoin)=>boolean)=>inventory.coins.filter(c=>excluded.has(c.utxo.txid+':'+c.utxo.vout)&&condition(c)).reduce((n,c)=>n+c.utxo.satoshis,0n);
  report.unsupportedConditions=excludedValue(unsupportedCondition).toString();report.ancestryExcluded=excludedValue(c=>!unsupportedCondition(c)).toString();
@@ -428,8 +428,8 @@ export class BrowserAssetStore implements Store {
  constructor(readonly network:V3Network='regtest'){}
  private db?:Promise<IDBDatabase>;
  private open(){return this.db??=new Promise<IDBDatabase>((resolve,reject)=>{const r=indexedDB.open(v3Storage('wallet',this.network),1);r.onupgradeneeded=()=>r.result.createObjectStore('operations');r.onerror=()=>reject(r.error);r.onblocked=()=>reject(Error('V3 journal blocked'));r.onsuccess=()=>resolve(r.result);});}
- async list(){const db=await this.open();return new Promise<Operation[]>((resolve,reject)=>{const t=db.transaction('operations'),r=t.objectStore('operations').getAll();r.onsuccess=()=>resolve(r.result);r.onerror=()=>reject(r.error);});}
- async save(op:Operation){const db=await this.open();await new Promise<void>((resolve,reject)=>{const t=db.transaction('operations','readwrite',{durability:'strict'});t.objectStore('operations').put(op,op.id);t.oncomplete=()=>resolve();t.onerror=()=>reject(t.error);t.onabort=()=>reject(t.error);});}
+ async list(){const db=await this.open();return new Promise<Operation[]>((resolve,reject)=>{const t=db.transaction('operations'),r=t.objectStore('operations').getAll();r.onsuccess=()=>{try{for(const row of r.result)assertStoredNetwork(row,this.network);resolve(r.result);}catch(error){reject(error);}};r.onerror=()=>reject(r.error);});}
+ async save(op:Operation){if(op.network!==undefined)assertStoredNetwork(op,this.network);op.network=this.network;const db=await this.open();await new Promise<void>((resolve,reject)=>{const t=db.transaction('operations','readwrite',{durability:'strict'});t.objectStore('operations').put(op,op.id);t.oncomplete=()=>resolve();t.onerror=()=>reject(t.error);t.onabort=()=>reject(t.error);});}
 }
 
 

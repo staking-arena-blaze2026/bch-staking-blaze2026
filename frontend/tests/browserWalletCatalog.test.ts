@@ -1,3 +1,4 @@
+vi.mock('../src/activeNetwork',()=>({activeNetwork:'chipnet',selectedNetwork:()=> 'chipnet',networkLeaving:false,switchNetwork:vi.fn()}));
 import {expect,it,vi} from 'vitest';
 import {browserWalletClient} from '../src/browserWalletClient';
 import {localVaultRecords} from '../src/vaultCatalog';

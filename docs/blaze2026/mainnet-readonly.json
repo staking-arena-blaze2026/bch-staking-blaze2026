@@ -1,0 +1,51 @@
+{
+  "checkedAt": "2026-11-15T17:24:04.967Z",
+  "network": "mainnet",
+  "broadcasts": 0,
+  "walletConnected": false,
+  "result": {
+    "height": 977496,
+    "hash": "00000000000000000050a90ac5989f71a21d5f6336f275c81f1925c2b16a03c5"
+  },
+  "observations": [
+    {
+      "endpoint": "wss://bch.loping.net:50004",
+      "tip": {
+        "height": 977496,
+        "hex": "00409923c87783da5518bf9736bdf9877b606dbf967aed52eb79fe010000000000000000381d4da53e8ec8f6d05ec9c91f85485dd507914a63f26872ad0c023c63138f6006e9f96a1639021840b4c178",
+        "hash": "00000000000000000050a90ac5989f71a21d5f6336f275c81f1925c2b16a03c5",
+        "parent": "000000000000000001fe79eb52ed7a96bf6d607b87f9bd3697bf1855da8377c8",
+        "merkle": "608f13633c020cad7268f2634a9107d55d48851fc9c95ed0f6c88e3ea54d1d38",
+        "time": 1794763014
+      },
+      "checkpoint": {
+        "height": 792773,
+        "hex": "00004020d11e3a6eeb27fe2620c3a99caec74e403e1c8471c478b60200000000000000002bce0a3beaa741afd400f6468bdb266212bfa60d27874541a65b51e1f024df9e563462648c8e05182bd28251",
+        "hash": "000000000000000002fc0cdadaef1857bbd2936d37ea94f80ba3db4a5e8353e8",
+        "parent": "000000000000000002b678c471841c3e404ec7ae9ca9c32026fe27eb6e3a1ed1",
+        "merkle": "9edf24f0e1515ba6414587270da6bf126226db8b46f600d4af41a7ea3b0ace2b",
+        "time": 1684157526
+      }
+    },
+    {
+      "endpoint": "wss://bch.imaginary.cash:50004",
+      "tip": {
+        "height": 977496,
+        "hex": "00409923c87783da5518bf9736bdf9877b606dbf967aed52eb79fe010000000000000000381d4da53e8ec8f6d05ec9c91f85485dd507914a63f26872ad0c023c63138f6006e9f96a1639021840b4c178",
+        "hash": "00000000000000000050a90ac5989f71a21d5f6336f275c81f1925c2b16a03c5",
+        "parent": "000000000000000001fe79eb52ed7a96bf6d607b87f9bd3697bf1855da8377c8",
+        "merkle": "608f13633c020cad7268f2634a9107d55d48851fc9c95ed0f6c88e3ea54d1d38",
+        "time": 1794763014
+      },
+      "checkpoint": {
+        "height": 792773,
+        "hex": "00004020d11e3a6eeb27fe2620c3a99caec74e403e1c8471c478b60200000000000000002bce0a3beaa741afd400f6468bdb266212bfa60d27874541a65b51e1f024df9e563462648c8e05182bd28251",
+        "hash": "000000000000000002fc0cdadaef1857bbd2936d37ea94f80ba3db4a5e8353e8",
+        "parent": "000000000000000002b678c471841c3e404ec7ae9ca9c32026fe27eb6e3a1ed1",
+        "merkle": "9edf24f0e1515ba6414587270da6bf126226db8b46f600d4af41a7ea3b0ace2b",
+        "time": 1684157526
+      }
+    }
+  ],
+  "limits": "Electrum header and provider consistency verification; not independent full-node consensus validation or live wallet workflow evidence."
+}

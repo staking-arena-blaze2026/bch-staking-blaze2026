@@ -1,8 +1,10 @@
+import {activeNetwork,networkLeaving} from './activeNetwork';
 interface Task {resolve:(value:any)=>void;reject:(error:Error)=>void;timer:ReturnType<typeof setTimeout>}
 interface Client {worker:Worker;ready:Promise<void>;tasks:Map<number,Task>}
 let client:Client|undefined,counter=0;
+window.addEventListener('arena-network-leaving',()=>{if(client){client.worker.terminate();for(const task of client.tasks.values()){clearTimeout(task.timer);task.reject(Error('Network changed; saved journals retained'));}client.tasks.clear();client=undefined;}});
 function start():Client{
- const worker=new Worker(new URL('./v3.worker.ts',import.meta.url),{type:'module'}),tasks=new Map<number,Task>();
+ const worker=new Worker(new URL('./v3.worker.ts',import.meta.url),{type:'module',name:activeNetwork}),tasks=new Map<number,Task>();
  let resolveReady!:()=>void,rejectReady!:(e:Error)=>void;
  const ready=new Promise<void>((resolve,reject)=>{resolveReady=resolve;rejectReady=reject;});
  const current:Client={worker,ready,tasks};
@@ -20,6 +22,7 @@ function start():Client{
 }
 /** Wait for module/WASM initialization before sending a request. Inspection needs no wallet; funding and claims require explicit wallet authorization. */
 export async function v3Call(intent:Record<string,unknown>,keys:unknown[]=[]):Promise<any>{
+ if(networkLeaving)throw Error('Network changed; review again');
  const current=client??=start();await current.ready;
  return new Promise((resolve,reject)=>{
   const id=++counter,timer=setTimeout(()=>{current.tasks.delete(id);reject(Error('V3 request timed out; reconcile saved operations before retrying'));},120000);

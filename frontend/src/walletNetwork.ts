@@ -5,6 +5,7 @@ export type BchNetwork = 'mainnet' | 'chipnet' | 'testnet4' | 'regtest';
 export const NETWORK_NAMES: Record<BchNetwork, string> = { mainnet: 'Mainnet', chipnet: 'Chipnet', testnet4: 'Testnet4', regtest: 'Regtest' };
 export interface NetworkRequirement { network: BchNetwork; genesisHash: string }
 export const REGTEST_NETWORK: NetworkRequirement = Object.freeze({ network: 'regtest', genesisHash: '0f9188f13cb7b2c71f2a335e3a4fc328bf5beb436012afca590b1a11466e2206' });
+export const MAINNET_NETWORK: NetworkRequirement = Object.freeze({network:'mainnet',genesisHash:'000000000019d6689c085ae165831e934ff763ae46a2a6c172b3f1b60a8ce26f'});
 export const CHIPNET_NETWORK: NetworkRequirement = Object.freeze({ network: 'chipnet', genesisHash: '000000001dd410c49a788668ce26751718cc797474d3152a5fc073dd44fd9f7b' });
 // Optional, application-specific declaration, NOT a standard WizardConnect field.
 // Current Cashonize sessions omit this; testnet key versions alone never authorize a chain.
@@ -60,8 +61,9 @@ export function networkCompatibility(wallet: WalletNetwork, required: NetworkReq
   if (wallet.source === 'invalid') return { matches: false, reason: `Wallet network information is invalid or conflicting. The vault requires ${target}. Staking transactions are unavailable; you can keep viewing.` };
   if (wallet.network === 'unknown' || wallet.network === 'testnet') return { matches: false, reason: `The wallet has not declared an exact supported blockchain network. The vault requires ${target}. Staking transactions are unavailable; you can keep viewing.` };
   if (wallet.network !== required.network) return { matches: false, reason: `Network mismatch: wallet uses ${NETWORK_NAMES[wallet.network]}, while the vault requires ${target}. Staking transactions are unavailable; you can keep viewing.` };
+  if(required.network==='mainnet'&&wallet.source==='key-family')return {matches:true,reason:'Mainnet wallet key family. Every spend requires live BCH input verification and explicit wallet approval.'};
   if (wallet.source !== 'declaration' || wallet.genesisHash !== required.genesisHash.toLowerCase()) return { matches: false, reason: `The wallet’s chain identity does not confirm the required ${target} network. Staking transactions are unavailable; you can keep viewing.` };
-  return { matches: true, reason: `Wallet declaration matches ${target}. Each transaction still requires chipnet source-output verification.` };
+  return { matches: true, reason: `Wallet declaration matches ${target}. Each transaction still requires source-output verification on the selected chain.` };
 }
 
 /** Live state only: persisted SDK paths never constitute a fresh network handshake. */
@@ -112,4 +114,14 @@ export function assertChipnetTransactionSession(session: WalletNetworkSession, t
   const n = current.network;
   if (!['testnet', 'chipnet'].includes(n.network) || n.source === 'invalid') throw Error('Mainnet, unknown and incompatible wallets cannot sign chipnet transactions');
   if (n.source === 'declaration' && (n.network !== 'chipnet' || n.genesisHash !== CHIPNET_NETWORK.genesisHash)) throw Error('Wallet declares a different chain');
+  throw Error('Chipnet temporarily unavailable for transactions: consensus/provider conflict');
+}
+
+/** Exact live identity plus freshly proved inputs authorize the selected network only. */
+export function assertTransactionSession(session:WalletNetworkSession,target:NetworkRequirement|null) {
+ if(target?.network==='chipnet')throw Error('Chipnet temporarily unavailable for transactions: consensus/provider conflict');
+ const current=session.read(),n=current.network;
+ if(!current.connected||target?.network!=='mainnet'||target.genesisHash!==MAINNET_NETWORK.genesisHash)throw Error('A live mainnet wallet session is required');
+ if(n.network!=='mainnet'||n.source==='invalid')throw Error('A compatible mainnet wallet is required');
+ if(n.source==='declaration'&&n.genesisHash!==target.genesisHash)throw Error('Wallet declares a different chain');
 }

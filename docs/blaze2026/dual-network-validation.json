@@ -1,0 +1,56 @@
+{
+  "verifiedAt": "2026-11-15T17:44:27.037025+00:00",
+  "networkPolicy": {
+    "mainnet": "transactions enabled subject to live wallet approval, independent-provider input verification and signed-plan/VM validation",
+    "chipnet": "read-only; consensus/provider conflict and tick validation remain unresolved"
+  },
+  "frontend": {
+    "uniqueTestsCovered": 139,
+    "fullSweep": {
+      "passed": 138,
+      "failed": 1,
+      "reason": "Existing legacy form option-count assertion omitted the new two-option network selector."
+    },
+    "correctedAppRecheck": {
+      "passed": 10,
+      "failed": 0,
+      "command": "npx vitest run tests/App.test.tsx --testTimeout 30000",
+      "note": "The earlier recheck encountered machine-load timeouts at the default five-second deadline. This final recheck passed all ten tests."
+    }
+  },
+  "checks": {
+    "frontendTypecheck": "passed through blaze:build",
+    "rootTypecheck": "passed",
+    "productionBuild": "passed",
+    "gitDiffCheck": "passed",
+    "productionBrowser": "passed; dual-network-browser.json",
+    "publicMainnetProviders": "passed; mainnet-readonly.json"
+  },
+  "isolatedBchn": {
+    "passed": 3,
+    "failed": 0,
+    "binary": "BCHN 29.2.0",
+    "freshTemporaryDatadirs": true,
+    "rpcPort": 18448,
+    "tests": [
+      "blaze-atomic-offer.test.ts",
+      "blaze-chained-genesis.test.ts",
+      "blaze-zero-conf.test.ts"
+    ],
+    "originalNodeTouched": false
+  },
+  "historicalSyntheticProtocol": {
+    "uniqueTestsCovered": 11,
+    "initialPassed": 9,
+    "correctedTargetedRechecksPassed": 2,
+    "notes": [
+      "Chipnet freeze error is accepted instead of the previous generic broadcast-disabled error.",
+      "Conflicting blockchain evidence is accepted as a fail-closed rejection of the simulated double spend.",
+      "Synthetic pre-upgrade chipnet transport continues to test real covenant VM/lineage logic; it cannot broadcast to public infrastructure."
+    ]
+  },
+  "realWalletApproval": false,
+  "liveMainnetSpendingTested": false,
+  "liveBroadcasts": 0,
+  "originalReports": "Preserved unchanged. Fresh integration reports use the dual-network- prefix."
+}

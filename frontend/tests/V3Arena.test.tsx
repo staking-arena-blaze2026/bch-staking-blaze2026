@@ -76,7 +76,7 @@ it('retains the display after provider failure and never enters the wallet on un
  expect(wallet.v3).not.toHaveBeenCalled();expect(screen.getByRole('status')).toHaveTextContent('Provider unavailable');expect(screen.getByRole('heading',{name:'Live ranked queue'})).toBeInTheDocument();
 });
 it('opens a saved vault automatically without a manual verification click',async()=>{
- stub();window.location.hash='/v3/vault/'+config.genesis;localStorage.setItem('staking-arena-v3-configs-chipnet',JSON.stringify([config],(_,v)=>typeof v==='bigint'?v.toString():v));
+ stub();window.location.hash='/v3/vault/'+config.genesis;localStorage.setItem('staking-arena-v3-configs-mainnet',JSON.stringify([config],(_,v)=>typeof v==='bigint'?v.toString():v));
  render(<WalletTransactionsContext.Provider value={wallet}><V3Arena/></WalletTransactionsContext.Provider>);
  await waitFor(()=>expect(screen.getByRole('button',{name:'Make an Offer'})).toBeEnabled());
  expect(v3Call).toHaveBeenCalledWith({operation:'sync',config});
@@ -136,13 +136,13 @@ it('switches tabs without losing creation inputs and follows browser history has
  expect(screen.getByLabelText('Interval (seconds)')).toHaveValue('7200');expect(screen.getByRole('link',{name:'Create a Vault'})).toHaveAttribute('aria-current','page');
 });
 it('verifies shared configurations before showing figures and links to their dedicated page',async()=>{
- stub();window.location.hash='/v3/offers';vi.stubGlobal('fetch',vi.fn().mockResolvedValue({ok:true,json:async()=>({network:'chipnet',vaults:[{...config,cap:'2000'}]})}));
+ stub();window.location.hash='/v3/offers';vi.stubGlobal('fetch',vi.fn().mockResolvedValue({ok:true,json:async()=>({network:'mainnet',vaults:[{...config,cap:'2000'}]})}));
  render(<V3Arena/>);await waitFor(()=>expect(screen.getByText('Active offers')).toBeInTheDocument());
  const card=screen.getByRole('link',{name:/V3 vault/});expect(card).toHaveAttribute('href','#/v3/vault/'+config.genesis);expect(card).toHaveTextContent('Confirmed · chain verified');expect(card).toHaveTextContent('Remaining reward reserve');
  expect(v3Call).toHaveBeenCalledWith({operation:'sync',config});
 });
 it('withholds shared financial figures if chain verification fails',async()=>{
- stub();window.location.hash='/v3/offers';vi.stubGlobal('fetch',vi.fn().mockResolvedValue({ok:true,json:async()=>({network:'chipnet',vaults:[{...config,cap:'2000'}]})}));
+ stub();window.location.hash='/v3/offers';vi.stubGlobal('fetch',vi.fn().mockResolvedValue({ok:true,json:async()=>({network:'mainnet',vaults:[{...config,cap:'2000'}]})}));
  const previous=vi.mocked(v3Call).getMockImplementation()!;vi.mocked(v3Call).mockImplementation(async(...args)=>{if(args[0].operation==='sync')throw Error('Genesis mismatch');return previous(...args);});
  render(<V3Arena/>);await waitFor(()=>expect(screen.getByText(/Financial state unavailable/)).toHaveTextContent('Genesis mismatch'));expect(screen.queryByText('Remaining reward reserve')).not.toBeInTheDocument();
 });
@@ -189,10 +189,10 @@ it('discovers a public vault in a fresh browser without a connected wallet or lo
 it('retains configuration and stale verified figures through failure, reload and deployment without wallet access',async()=>{
  stub();window.location.hash='/v3/offers';const previous=vi.mocked(v3Call).getMockImplementation()!;
  vi.mocked(v3Call).mockImplementation(async(...args)=>args[0].operation==='discover'?{vaults:[config],observed:1,online:2,rejected:0}:previous(...args));
- const first=render(<V3Arena/>);await waitFor(()=>expect(screen.getByRole('link',{name:/V3 vault/})).toHaveTextContent('Confirmed · chain verified'));await waitFor(()=>expect(JSON.parse(localStorage.getItem('staking-arena-v3-configs-chipnet-snapshots')??'{}')[config.genesis]?.snapshot).toBeDefined());first.unmount();
+ const first=render(<V3Arena/>);await waitFor(()=>expect(screen.getByRole('link',{name:/V3 vault/})).toHaveTextContent('Confirmed · chain verified'));await waitFor(()=>expect(JSON.parse(localStorage.getItem('staking-arena-v3-configs-mainnet-snapshots')??'{}')[config.genesis]?.snapshot).toBeDefined());first.unmount();
  vi.mocked(v3Call).mockImplementation(async intent=>{if(intent.operation==='sync'||intent.operation==='discover')throw Error('Public provider offline');return [];});
  render(<V3Arena/>);await waitFor(()=>expect(screen.getByRole('link',{name:/V3 vault/})).toHaveTextContent('Verification temporarily unavailable'));
  expect(screen.getByRole('link',{name:/V3 vault/})).toHaveTextContent('Stale, non-authoritative snapshot');
  expect(screen.getByRole('link',{name:/V3 vault/})).toHaveTextContent('Remaining reward reserve');
- expect(JSON.parse(localStorage.getItem('staking-arena-v3-configs-chipnet')!)[0].genesis).toBe(config.genesis);
+ expect(JSON.parse(localStorage.getItem('staking-arena-v3-configs-mainnet')!)[0].genesis).toBe(config.genesis);
 });

@@ -1,3 +1,4 @@
+import {activeNetwork,networkLeaving} from './activeNetwork';
 import {signWithRefusalEvidence,ExplicitWalletRefusal} from './walletSigning';
 import {checkedWalletKey,walletChains} from './walletDerivation';
 import {walletDiagnostic} from './usePersistentWallet';
@@ -15,19 +16,20 @@ export function browserWalletClient(manager:DappConnectionManager|null,check:()=
  walletDiagnostic('Wallet worker started');
  const getManager=()=>{if(!manager)throw Error('Connect a chipnet wallet first');return manager;};
  const worker=new Worker(new URL('./wallet.worker.ts',import.meta.url),{type:'module'}),pending=new Map<number,{resolve:(v:any)=>void;reject:(e:Error)=>void}>();let counter=0,scanLimit=40,closed=false,v2Approval=false,v3Approval=false;let signing=new AbortController();let startupTimer:ReturnType<typeof setTimeout>|undefined,startupReject:(e:Error)=>void=()=>{};let derived:WalletKey[]|undefined,derivationIdentity="",v3ScanLimit=2;
- const rpc=(method:string,...args:unknown[])=>new Promise<any>((resolve,reject)=>{if(closed){reject(Error('Wallet session closed; reconnect and resume from the journal'));return;}const id=++counter;pending.set(id,{resolve,reject});worker.postMessage({id,method,args});});
- const startup=new Promise<void>((resolve,reject)=>{startupReject=reject;const timer=startupTimer=setTimeout(()=>reject(Error('Wallet worker startup timeout')),30000);worker.onmessage=event=>{if(event.data?.type==='operation'){window.dispatchEvent(new CustomEvent('arena-wallet-operation',{detail:event.data.operation}));return;}if(event.data?.type==='progress'){window.dispatchEvent(new CustomEvent('arena-wallet-progress',{detail:event.data.message}));return;}if(event.data?.type==='ready'){clearTimeout(timer);try{void rpc('start',browserConfig()).then(()=>rpc('list')).then((list:WalletOperation[])=>{list.forEach(rememberGenesis);resolve();},reject);}catch(error){reject(error);}return;}const task=pending.get(event.data.id);if(!task)return;pending.delete(event.data.id);event.data.error?task.reject(Error(event.data.error)):task.resolve(event.data.result);};});
+ const rpc=(method:string,...args:unknown[])=>new Promise<any>((resolve,reject)=>{if(activeNetwork==='mainnet'){reject(Error('Legacy wallet operations require chipnet; use V3 / Atomic V4 on mainnet'));return;}if(closed){reject(Error('Wallet session closed; reconnect and resume from the journal'));return;}const id=++counter;pending.set(id,{resolve,reject});worker.postMessage({id,method,args});});
+ const startup=new Promise<void>((resolve,reject)=>{startupReject=reject;const timer=startupTimer=setTimeout(()=>reject(Error('Wallet worker startup timeout')),30000);worker.onmessage=event=>{if(event.data?.type==='operation'){window.dispatchEvent(new CustomEvent('arena-wallet-operation',{detail:event.data.operation}));return;}if(event.data?.type==='progress'){window.dispatchEvent(new CustomEvent('arena-wallet-progress',{detail:event.data.message}));return;}if(event.data?.type==='ready'){clearTimeout(timer);if(activeNetwork==='mainnet'){resolve();return;}try{void rpc('start',browserConfig()).then(()=>rpc('list')).then((list:WalletOperation[])=>{list.forEach(rememberGenesis);resolve();},reject);}catch(error){reject(error);}return;}const task=pending.get(event.data.id);if(!task)return;pending.delete(event.data.id);event.data.error?task.reject(Error(event.data.error)):task.resolve(event.data.result);};});
  void startup.catch(()=>{});
  worker.onerror=()=>{clearTimeout(startupTimer);startupReject(Error('Wallet worker failed; reconnect and resume'));for(const task of pending.values())task.reject(Error('Wallet worker failed; reload and resume from the journal'));pending.clear();};
  // A transport interruption invalidates all in-flight preparation/approval contexts,
  // including work that completes after the same wallet reconnects. Journals remain intact.
  let authorizationRevision=0;
  const invalidate=()=>{authorizationRevision++; signing.abort();};
+ window.addEventListener('arena-network-leaving',invalidate);
  manager?.on?.('reconnecting',invalidate);
  manager?.on?.('disconnect',invalidate);
- const authorizationCheck=()=>{if(signing.signal.aborted)signing=new AbortController();const revision=authorizationRevision,networkRevision=getRevision();return ()=>{if(closed)throw Error('Wallet session closed');check();if(revision!==authorizationRevision || networkRevision!==getRevision())throw Error('Wallet authorization changed; review and retry from the journal');};};
+ const authorizationCheck=()=>{if(signing.signal.aborted)signing=new AbortController();const revision=authorizationRevision,networkRevision=getRevision();return ()=>{if(closed||networkLeaving)throw Error('Wallet session closed or network changed');check();if(revision!==authorizationRevision || networkRevision!==getRevision())throw Error('Wallet authorization changed; review and retry from the journal');};};
  const keys=(limit=scanLimit)=>{check();const paths=getManager().getSessionPaths(),identity=JSON.stringify(paths);if(identity!==derivationIdentity){derived=[];derivationIdentity=identity;}const result:WalletKey[]=[];let count=0;
- for(let index=0;index<limit;index++)for(const [path,child] of walletChains){if(!getManager().hasPath(child))continue;let key=derived?.find(k=>k.path===path&&k.index===index);if(!key){key=checkedWalletKey(paths,path,index,(c,i)=>getManager().getPubkey(c,i));(derived??=[]).push(key);count++;}result.push(key);}
+ for(let index=0;index<limit;index++)for(const [path,child] of walletChains){if(!getManager().hasPath(child))continue;let key=derived?.find(k=>k.path===path&&k.index===index);if(!key){key=checkedWalletKey(paths,path,index,(c,i)=>getManager().getPubkey(c,i),activeNetwork==='mainnet'?'mainnet':'testnet');(derived??=[]).push(key);count++;}result.push(key);}
  window.dispatchEvent(new CustomEvent('arena-wallet-derivation',{detail:{derived:count,total:derived?.length??0,first:result.find(k=>k.path==='receive'&&k.index===0),paths:paths.map(p=>p.name)}}));return result;};
  function rememberGenesis(op:WalletOperation){if(op.kind==='create'&&op.genesis&&op.pregenesis)saveLocalVault({...op.parameters,genesis:op.genesis},op.pregenesis);}
  async function finish(op:WalletOperation) {
@@ -82,7 +84,7 @@ export function browserWalletClient(manager:DappConnectionManager|null,check:()=
      let hinted=0;const owner=publicKeys.find(k=>k.path==='receive'&&k.index===0),journal=await v3Call({operation:'list'},[]) as import('../../src/v3/wallet').Operation[];
      for(const op of journal){if(op.owner?.publicKey!==owner?.publicKey||!op.plan)continue;
       for(const [input,path,index] of op.plan.inputPaths){if(!Number.isSafeInteger(index)||index<0||index>=200)continue;const pub=op.plan.signers[input];if(!pub)continue;
-       let current=derived?.find(k=>k.path===path&&k.index===index);if(!current){current=checkedWalletKey(getManager().getSessionPaths(),path,index,(c,i)=>getManager().getPubkey(c,i));(derived??=[]).push(current);hinted++;}if(current.publicKey!==pub)continue;
+       let current=derived?.find(k=>k.path===path&&k.index===index);if(!current){current=checkedWalletKey(getManager().getSessionPaths(),path,index,(c,i)=>getManager().getPubkey(c,i),activeNetwork==='mainnet'?'mainnet':'testnet');(derived??=[]).push(current);hinted++;}if(current.publicKey!==pub)continue;
        const existing=publicKeys.find(k=>k.path===path&&k.index===index);if(existing)existing.fundingHint=true;else publicKeys.push({...current,fundingHint:true});
       }
      }
@@ -132,5 +134,5 @@ export function browserWalletClient(manager:DappConnectionManager|null,check:()=
    op=await rpc('submit',op.id,signed.signedTransaction,publicKeys);
   }
   return finish(op);
- },close(){if(closed)return;closed=true;manager?.off?.('reconnecting',invalidate);manager?.off?.('disconnect',invalidate);walletDiagnostic('Wallet worker stopped; journals preserved');clearTimeout(startupTimer);startupReject(Error('Wallet worker closed'));signing.abort();worker.terminate();for(const t of pending.values())t.reject(Error('Wallet disconnected; operation journal preserved'));pending.clear();}};
+ },close(){if(closed)return;closed=true;window.removeEventListener('arena-network-leaving',invalidate);manager?.off?.('reconnecting',invalidate);manager?.off?.('disconnect',invalidate);walletDiagnostic('Wallet worker stopped; journals preserved');clearTimeout(startupTimer);startupReject(Error('Wallet worker closed'));signing.abort();worker.terminate();for(const t of pending.values())t.reject(Error('Wallet disconnected; operation journal preserved'));pending.clear();}};
 }

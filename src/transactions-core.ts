@@ -12,9 +12,9 @@ export interface WalletKey {fundingHint?:boolean;publicKey:string;path:'receive'
 export interface WalletCoin extends WalletKey {utxo:SpendableUtxo}
 export interface WalletPlan {label:string;request:ReturnType<TransactionBuilder['generateWcTransactionObject']>;inputPaths:WalletPath[]}
 export interface BrowserPlan extends WalletPlan {kind:'create'|'prepare-offer'|'offer';signers:Record<number,string>;fee:string}
-export function walletAddress(key:Uint8Array) {
+export function walletAddress(key:Uint8Array,network:'mainnet'|'chipnet'|'regtest'='chipnet') {
  if(key.length!==33||![2,3].includes(key[0]!)||!secp256k1.validatePublicKey(key))throw Error('Expected compressed wallet public key');
- const address=encodeCashAddress({prefix:'bchtest',type:'p2pkhWithTokens',payload:hash160(key)});if(typeof address==='string')throw Error(address);return address.address;
+ const address=encodeCashAddress({prefix:network==='mainnet'?'bitcoincash':network==='regtest'?'bchreg':'bchtest',type:'p2pkhWithTokens',payload:hash160(key)});if(typeof address==='string')throw Error(address);return address.address;
 }
 export function walletScript(key:string) {const pub=hexToBin(key);walletAddress(pub);return '76a914'+binToHex(hash160(pub))+'88ac';}
 function chipnet(p:NetworkProvider){if(p.network!==Network.CHIPNET)throw Error('Wallet flows are chipnet-only');}

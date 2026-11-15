@@ -91,8 +91,8 @@ test('disconnects, stale tips, invalid proofs and changed ancestry fail closed, 
   provider.corruptHeader=false; provider.pending=true; await index.sync(); assert.deepEqual(index.health.unconfirmed,['ab'.repeat(32)]); assert.equal(json(index.vaults),before);
   const stale = new ElectrumProvider({maxTipAgeSeconds:1}); stale.request=provider.request;
   await assert.rejects(stale.tip(),/Stale/);
-  await assert.rejects(stale.sendRawTransaction('00'),/disabled/);
-  assert.throws(()=>new ElectrumProvider({network:'mainnet'}),/disabled/);
+  await assert.rejects(stale.sendRawTransaction('00'),/disabled|temporarily unavailable/);
+  assert.equal(new ElectrumProvider({network:'mainnet'}).network,'mainnet');
   for(const [options,error] of [[{maxHistoryEntries:1},/history exceeds/],[{maxTransactions:1},/history exceeds/],[{maxRawBytes:10},/byte limit/]] as const) {
     await assert.rejects(new ElectrumIndexer(fixture.configs,new Replay(options)).sync(),error);
   }

@@ -1,3 +1,4 @@
+vi.mock('../src/activeNetwork',()=>({activeNetwork:'chipnet',selectedNetwork:()=> 'chipnet',networkLeaving:false,switchNetwork:vi.fn()}));
 import { act,fireEvent,render,screen,waitFor,within } from '@testing-library/react';
 import { afterEach,expect,it,vi } from 'vitest';
 import App from '../src/App';
@@ -48,7 +49,7 @@ it('calculates the offer preview with exact BCH conversion and never submits a t
 it('offers both asset choices offline with exact BCH funding and no authorization',async()=>{
  vi.stubGlobal('fetch',vi.fn().mockRejectedValue(Error('offline')));window.location.hash='#/create';render(<App/>);
  await screen.findByRole('heading',{name:'Create Vault'});
- expect(screen.getAllByRole('option')).toHaveLength(6);expect(screen.getByRole('combobox',{name:'Reward asset'})).toBeEnabled();
+ expect(screen.getAllByRole('option')).toHaveLength(8);expect(screen.getByRole('combobox',{name:'Reward asset'})).toBeEnabled();
  expect(screen.getByRole('button',{name:'Review funding in wallet'})).toBeDisabled();
  fireEvent.change(screen.getByLabelText(/^Staking asset category/),{target:{value:'e'.repeat(64)}});
  fireEvent.change(screen.getByRole('textbox',{name:/^Maximum reward/}),{target:{value:'0.00001000'}});

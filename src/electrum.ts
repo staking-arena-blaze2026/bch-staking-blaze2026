@@ -5,7 +5,7 @@ export * from './electrum-core.js';
 export class ElectrumProvider extends ElectrumCore {
   constructor(options: ElectrumOptions = {}) {
     super((endpoint, timeout) => new TcpConnection(endpoint, timeout), {
-      ...options, endpoints: options.endpoints ?? (process.env.ARENA_ELECTRUM_ENDPOINTS ?? 'ssl://chipnet.bch.ninja:50002,ssl://chipnet.imaginary.cash:50002').split(','),
+      ...options, endpoints: options.endpoints ?? (process.env.ARENA_ELECTRUM_ENDPOINTS ?? (options.network==='mainnet'?'ssl://bch.loping.net:50002,ssl://bch.imaginary.cash:50002':'ssl://chipnet.bch.ninja:50002,ssl://chipnet.imaginary.cash:50002')).split(','),
       timeoutMs: options.timeoutMs ?? Number(process.env.ARENA_ELECTRUM_TIMEOUT_MS ?? 10000),
     });
   }

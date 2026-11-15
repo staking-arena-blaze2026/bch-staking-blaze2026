@@ -6,7 +6,7 @@ import {ChainExtension,BLOCKCHAIN_REFRESH,ElectrumCore,type Header} from './elec
 import {json,utxo} from './arena-core.js';
 import {walletScript,type WalletKey,type WalletCoin} from './transactions-core.js';
 export {ChainExtension,BLOCKCHAIN_REFRESH};
-export function walletPeers(p:ElectrumCore){if(p.network!==Network.CHIPNET&&p.network!==Network.REGTEST)throw Error('Wallet transactions require chipnet or local regtest');const peers=p.endpoints.filter((v,i,a)=>a.findIndex(x=>new URL(x).hostname===new URL(v).hostname)===i);if(peers.length<2)throw Error('Two different configured WSS hosts are required');return peers;}
+export function walletPeers(p:ElectrumCore){if(p.network!==Network.MAINNET&&p.network!==Network.CHIPNET&&p.network!==Network.REGTEST)throw Error('Wallet transactions require mainnet, chipnet or local regtest');const peers=p.endpoints.filter((v,i,a)=>a.findIndex(x=>new URL(x).hostname===new URL(v).hostname)===i);if(peers.length<2)throw Error('Two different configured WSS hosts are required');return peers;}
 export const coinIdentity=(u:SpendableUtxo)=>json({txid:u.txid,vout:u.vout,satoshis:u.satoshis,script:u.lockingBytecode,token:u.token??null});
 export async function confirmedWalletTransaction(p:ElectrumCore,id:string){
  return verifiedProviders(p,walletPeers(p),async()=>{
@@ -66,7 +66,7 @@ export async function scanWallet(p:ElectrumCore,keys:WalletKey[],options:WalletS
  const peers=walletPeers(p),progress=options.onProgress,sleep=options.sleep??(ms=>new Promise(resolve=>setTimeout(resolve,ms)));
  let lastError='';
  for(let attempt=1;attempt<=3;attempt++) {
-  progress?.(`Checking wallet balances: attempt ${attempt}/3. Verifying all ${keys.length} supplied addresses on two chipnet providers…`);
+  progress?.(`Checking wallet balances: attempt ${attempt}/3. Verifying all ${keys.length} supplied addresses on two selected-network providers…`);
   try {
    const result=await verifiedProviders(p,peers,async peer=>{
      const peerIndex=peers.indexOf(peer);
@@ -106,7 +106,7 @@ export async function scanWallet(p:ElectrumCore,keys:WalletKey[],options:WalletS
    },{attempts:1});
    const coins=result.coins,tokens:Record<string,string>={};
    for(const {utxo:u} of coins)if(u.token&&!u.token.nft)tokens[u.token.category]=(BigInt(tokens[u.token.category]??0)+u.token.amount).toString();
-   progress?.('Wallet balances verified on both chipnet providers.');
+   progress?.('Wallet balances verified on both selected-network providers.');
    return {coins,bch:coins.filter(c=>!c.utxo.token).reduce((n,c)=>n+c.utxo.satoshis,0n).toString(),tokens,addresses:keys.length,gap:0,limit:Math.max(...keys.map(k=>k.index))+1,bounded:true};
   }catch(error){
    if(error instanceof ProviderVerificationError&&error.category==='conflict')throw error;
@@ -114,7 +114,7 @@ export async function scanWallet(p:ElectrumCore,keys:WalletKey[],options:WalletS
    if(attempt<3){const delay=attempt*1000;progress?.(`${lastError}. Snapshot discarded. Retrying both providers in ${delay/1000}s (${attempt+1}/3)…`);await sleep(delay);}
   }
  }
- throw Error(`Wallet balances could not be verified after 3 attempts. No scan data is usable for signing. Wait for chipnet/provider synchronization, check your connection, then click Check wallet balances again. If this persists, try again when both configured Electrum providers are online and agree. Last failure: ${lastError}`);
+ throw Error(`Wallet balances could not be verified after 3 attempts. No scan data is usable for signing. Wait for selected-network/provider synchronization, check your connection, then click Check wallet balances again. If this persists, try again when both configured Electrum providers are online and agree. Last failure: ${lastError}`);
 }
 export function chooseBch(coins:WalletCoin[],required:bigint,used:WalletCoin[]=[]) {
  const selected=[...used];let balance=selected.reduce((n,c)=>n+c.utxo.satoshis,0n);

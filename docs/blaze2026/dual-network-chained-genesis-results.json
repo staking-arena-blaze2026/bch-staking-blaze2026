@@ -1,0 +1,67 @@
+{
+  "node": "/Bitcoin Cash Node:29.2.0/",
+  "verifiedAt": "2026-11-15T17:31:34.999Z",
+  "noWalletVout0": true,
+  "creationMode": "chained",
+  "authorizations": 1,
+  "transactions": 2,
+  "parentChildWithoutMining": true,
+  "untilSigning": {
+    "requests": 96,
+    "milliseconds": 1587.1117000000013,
+    "addresses": 6
+  },
+  "discovery": {
+    "addresses": 6,
+    "milliseconds": 7615.4686999999685,
+    "requests": 232
+  },
+  "combinations": [
+    {
+      "staking": "bch",
+      "reward": "bch",
+      "genesis": "6e67ca74ee821d6b9f2983122424d121364768c6be60041c864c661776a8fe3c",
+      "claim": "8dc5d9d1f35f3b3586193754cd78cc38de05b88845975ea96df32bfb9e3e9698",
+      "authorizations": 4,
+      "transactions": 5
+    },
+    {
+      "staking": "bch",
+      "reward": "token",
+      "genesis": "a40d735dfc2f7ebc1ad79d03e4d77350dd373100d26b0d73e6f1335e9f54eaa9",
+      "claim": "23c867363d80eecc250126c9c95f88d0712d9c7336d9648e8f0e01be0edea97f",
+      "authorizations": 4,
+      "transactions": 5
+    },
+    {
+      "staking": "token",
+      "reward": "bch",
+      "genesis": "584dd854701bb9e67c0b3a4c84f2d32c027f9928afe2483c7d5f5f8146407741",
+      "claim": "1800bbac18dcef888a6a9fbf80a80d298bcae8d15c03df002483e99c21fe5e9d",
+      "authorizations": 4,
+      "transactions": 5
+    },
+    {
+      "staking": "token",
+      "reward": "token",
+      "genesis": "dd292b5b57dec0c31e878213c8a1b9e0d0835bf218b525dc43d03cc82babfdd1",
+      "claim": "ed5445ec075c9de7b4f1893d1934f7654713d4a06e2ac05882e852ac71fbe387",
+      "authorizations": 4,
+      "transactions": 5
+    }
+  ],
+  "theftBlocked": [
+    "divert-reserve",
+    "mempool-reject-divert",
+    "parent-substitution",
+    "intended-child-ok"
+  ],
+  "recoveryWithoutLoss": true,
+  "walletRejection": true,
+  "zeroConfOfferClaim": true,
+  "packageAuthorizationSupported": false,
+  "realCashonizePromptsTested": false,
+  "genesis": "4d76203f2fe03c19643ec69ebe5c5e1976a4f92a0c5ca9e0c3cd50e76a72ffe6",
+  "category": "0468a1ed7d7857ad4dc8e61939832c1a021c928f3658722f9d185b4d7c5db068",
+  "securedGenesis": "9da6984802e7e9bc750bdc2d90a9efffa126c5367043b84c996fde9fe00130ee"
+}

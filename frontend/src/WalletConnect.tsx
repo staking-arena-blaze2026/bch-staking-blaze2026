@@ -1,3 +1,4 @@
+import {networkLeaving} from './activeNetwork';
 import {browserWalletClient} from './browserWalletClient';
 import { binToHex, hexToBin } from '@bitauth/libauth';
 import { transactionApi, wizardWireTransaction, type WalletTransactions } from './walletTransactions';
@@ -5,7 +6,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { AlphanumericQRCode } from '@wizardconnect/react';
 import { usePersistentWallet } from './usePersistentWallet';
 import type { WalletReadyMessage } from '@wizardconnect/core';
-import { assertChipnetTransactionSession, createStakingTransactionBoundary, NETWORK_NAMES, CHIPNET_NETWORK, WalletNetworkSession, type NetworkRequirement } from './walletNetwork';
+import { assertTransactionSession, createStakingTransactionBoundary, NETWORK_NAMES, CHIPNET_NETWORK, WalletNetworkSession, type NetworkRequirement } from './walletNetwork';
 
 function PairingDialog({ uri, qrUri, onClose }: { uri: string; qrUri: string; onClose: () => void }) {
   const dialog = useRef<HTMLDialogElement>(null);
@@ -32,7 +33,7 @@ function PairingDialog({ uri, qrUri, onClose }: { uri: string; qrUri: string; on
     <label>Connection URI<input aria-label="Connection URI" value={uri} readOnly onFocus={event => event.target.select()}/></label>
     <div className="wallet-dialog-actions"><button type="button" className="refresh" onClick={() => { void copy(); }}>Copy connection URI</button><a className="button" href={uri}>Open wallet</a></div>
     <p role="status">{copyStatus || 'Waiting for wallet approval…'}</p>
-    <small>Connecting shares public wallet information. Use a chipnet development wallet and chipnet test funds only. Mainnet keys are rejected before transaction signing.</small>
+    <small>Connecting shares public wallet information. Select the matching wallet network. Mainnet spends real BCH and requires explicit Cashonize approval for each signing request.</small>
   </dialog>;
 }
 
@@ -81,7 +82,8 @@ export default function WalletConnect({ browser=false, getRequiredNetwork = defa
     if (!onTransactions) return;
     function check() {
       if (!liveState.current()) throw Error('A live chipnet wallet session is required');
-      assertChipnetTransactionSession(networkSession, requirement.current());
+      if(networkLeaving)throw Error('Network changed; reconnect and review');
+      assertTransactionSession(networkSession, requirement.current());
     }
     if(browser) {const client=browserWalletClient(manager,check,()=>networkSession.revision);onTransactions(client);return()=>{client.close?.();onTransactions(null);};}
     if(!manager)return;

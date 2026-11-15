@@ -24,6 +24,6 @@ export function parseAnnouncement(hex:string):{parameters:Parameters;mode:'direc
 export const announcementScript=(p:Parameters,mode:'direct'|'parent')=>'6a4c5a'+announcement(p,mode).toString('hex');
 export function addAnnouncement(builder:TransactionBuilder,p:Parameters,mode:'direct'|'parent',provider:NetworkProvider){
  if(p.discovery!==1)return;
- const address=encodeCashAddress({prefix:provider.network===Network.REGTEST?'bchreg':'bchtest',type:'p2sh',payload:markerHash});if(typeof address==='string')throw Error(address);
+ const address=encodeCashAddress({prefix:provider.network===Network.MAINNET?'bitcoincash':provider.network===Network.REGTEST?'bchreg':'bchtest',type:'p2sh',payload:markerHash});if(typeof address==='string')throw Error(address);
  builder.addOutput({to:address.address,amount:DISCOVERY_CARRIER}).addOpReturnOutput(['0x'+announcement(p,mode).toString('hex')]);
 }

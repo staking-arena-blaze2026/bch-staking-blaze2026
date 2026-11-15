@@ -1,9 +1,10 @@
+import {activeNetwork} from './activeNetwork';
 import {useEffect, useRef, useState} from 'react';
 import {DisconnectReason, RelayStatus, type WalletReadyMessage} from '@wizardconnect/core';
 import {InvalidWalletSession, createWalletRelay} from './walletRelay';
 import {DappConnectionManager, loadSession, type SessionStorage} from '@wizardconnect/dapp';
 
-export const WALLET_SESSION_KEY = 'staking-arena-wizardconnect-v1';
+export const WALLET_SESSION_KEY = 'staking-arena-wizardconnect-v1'+(activeNetwork==='chipnet'?'':'-'+activeNetwork);
 const INVALID_SESSION_KEY = `${WALLET_SESSION_KEY}-invalid`;
 export const RESTORE_WINDOW_MS = 30_000;
 export type ConnectionState = 'idle'|'connecting'|'restoring'|'connected'|'reconnecting'|'offline'|'invalid';

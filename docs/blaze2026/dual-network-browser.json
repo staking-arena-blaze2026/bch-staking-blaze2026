@@ -1,0 +1,106 @@
+{
+  "at": "2026-11-15T17:39:23.796Z",
+  "target": "http://127.0.0.1:4184/staking-arena-blaze-site/",
+  "walletConnected": false,
+  "broadcasts": [],
+  "errors": [],
+  "networks": {
+    "mainnet": {
+      "verified": "mainnet providers verified · height 977499",
+      "createRequiresWallet": true,
+      "workerReads": [
+        {
+          "network": "",
+          "requests": []
+        },
+        {
+          "network": "mainnet",
+          "requests": [
+            {
+              "endpoint": "wss://bch.loping.net:50004/",
+              "method": "server.version"
+            },
+            {
+              "endpoint": "wss://bch.loping.net:50004/",
+              "method": "blockchain.block.header"
+            },
+            {
+              "endpoint": "wss://bch.loping.net:50004/",
+              "method": "blockchain.block.header"
+            },
+            {
+              "endpoint": "wss://bch.loping.net:50004/",
+              "method": "blockchain.headers.subscribe"
+            },
+            {
+              "endpoint": "wss://bch.loping.net:50004/",
+              "method": "blockchain.block.header"
+            },
+            {
+              "endpoint": "wss://bch.loping.net:50004/",
+              "method": "blockchain.headers.subscribe"
+            },
+            {
+              "endpoint": "wss://bch.loping.net:50004/",
+              "method": "blockchain.block.header"
+            },
+            {
+              "endpoint": "wss://bch.imaginary.cash:50004/",
+              "method": "server.version"
+            },
+            {
+              "endpoint": "wss://bch.imaginary.cash:50004/",
+              "method": "blockchain.block.header"
+            },
+            {
+              "endpoint": "wss://bch.imaginary.cash:50004/",
+              "method": "blockchain.block.header"
+            },
+            {
+              "endpoint": "wss://bch.imaginary.cash:50004/",
+              "method": "blockchain.headers.subscribe"
+            },
+            {
+              "endpoint": "wss://bch.imaginary.cash:50004/",
+              "method": "blockchain.block.header"
+            },
+            {
+              "endpoint": "wss://bch.imaginary.cash:50004/",
+              "method": "blockchain.headers.subscribe"
+            },
+            {
+              "endpoint": "wss://bch.imaginary.cash:50004/",
+              "method": "blockchain.block.header"
+            },
+            {
+              "endpoint": "wss://bch.loping.net:50004/",
+              "method": "server.version"
+            },
+            {
+              "endpoint": "wss://bch.loping.net:50004/",
+              "method": "blockchain.block.header"
+            },
+            {
+              "endpoint": "wss://bch.loping.net:50004/",
+              "method": "blockchain.block.header"
+            },
+            {
+              "endpoint": "wss://bch.loping.net:50004/",
+              "method": "blockchain.scripthash.get_history"
+            }
+          ]
+        }
+      ]
+    },
+    "chipnet": {
+      "temporarilyUnavailable": true,
+      "knownVaultRetained": true,
+      "journalRetained": true,
+      "createDisabled": true,
+      "mobileFits": true
+    }
+  },
+  "sockets": [],
+  "roundTripSeparation": true,
+  "status": "passed"
+}

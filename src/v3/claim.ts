@@ -1,4 +1,4 @@
-import {v3Storage,type V3Network} from './network.js';
+import {v3Storage,assertStoredNetwork,type V3Network} from './network.js';
 import {Buffer} from '../bytes.js';
 import {walletPeers,verifyCoinsAcrossPeers} from '../electrum-wallet.js';
 import {AssetIndexer,type Config,type Snapshot} from './indexer.js';
@@ -10,7 +10,7 @@ export async function inspectClaim(index:AssetIndexer){
 }
 
 /** The UI retains legacy donation journals for read-only reconciliation. */
-export interface ClaimRecord {id:string;config:Config;source:string;raw:string;status:'prepared'|'pending'|'confirmed'|'conflicted';error?:string}
+export interface ClaimRecord {network?:V3Network;id:string;config:Config;source:string;raw:string;status:'prepared'|'pending'|'confirmed'|'conflicted';error?:string}
 export interface ClaimStore {list():Promise<ClaimRecord[]>;save(record:ClaimRecord):Promise<void>}
 /** Anyone can supply the exact BCH donation. No key, wallet session or keeper is used. */
 export class RewardClaimer {
@@ -44,6 +44,6 @@ export class BrowserClaimStore implements ClaimStore {
  constructor(readonly network:V3Network='regtest'){}
  private db?:Promise<IDBDatabase>;
  private open(){return this.db??=new Promise<IDBDatabase>((resolve,reject)=>{const r=indexedDB.open(v3Storage('claims',this.network),1);r.onupgradeneeded=()=>r.result.createObjectStore('claims');r.onsuccess=()=>resolve(r.result);r.onerror=()=>reject(r.error);r.onblocked=()=>reject(Error('Claim journal blocked'));});}
- async list(){const db=await this.open();return new Promise<ClaimRecord[]>((resolve,reject)=>{const r=db.transaction('claims').objectStore('claims').getAll();r.onsuccess=()=>resolve(r.result);r.onerror=()=>reject(r.error);});}
- async save(r:ClaimRecord){const db=await this.open();await new Promise<void>((resolve,reject)=>{const t=db.transaction('claims','readwrite',{durability:'strict'});t.objectStore('claims').put(r,r.id);t.oncomplete=()=>resolve();t.onerror=()=>reject(t.error);t.onabort=()=>reject(t.error);});}
+ async list(){const db=await this.open();return new Promise<ClaimRecord[]>((resolve,reject)=>{const r=db.transaction('claims').objectStore('claims').getAll();r.onsuccess=()=>{try{for(const row of r.result)assertStoredNetwork(row,this.network);resolve(r.result);}catch(error){reject(error);}};r.onerror=()=>reject(r.error);});}
+ async save(r:ClaimRecord){if(r.network!==undefined)assertStoredNetwork(r,this.network);r.network=this.network;const db=await this.open();await new Promise<void>((resolve,reject)=>{const t=db.transaction('claims','readwrite',{durability:'strict'});t.objectStore('claims').put(r,r.id);t.oncomplete=()=>resolve();t.onerror=()=>reject(t.error);t.onabort=()=>reject(t.error);});}
 }

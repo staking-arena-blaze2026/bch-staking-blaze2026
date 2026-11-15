@@ -42,9 +42,10 @@ export class ElectrumCore implements NetworkProvider {
   request: ElectrumRequest = async () => { throw Error('Electrum operation requires a session'); };
   constructor(readonly connectionFactory: ConnectionFactory, options: ElectrumOptions = {}) {
     this.allowBroadcast=options.allowBroadcast===true;
-    if (!['chipnet','regtest'].includes(options.network??'chipnet')) throw Error('Mainnet Electrum is disabled');
+    if (!['mainnet','chipnet','regtest'].includes(options.network??'chipnet')) throw Error('Unsupported Electrum network');
     if(options.network==='regtest')this.network=Network.REGTEST;
-    this.endpoints = options.endpoints ?? ['wss://chipnet.imaginary.cash:50004', 'wss://electrum-chipnet.optnlabs.com', 'wss://chipnet.bch.ninja:50004'];
+    if(options.network==='mainnet')this.network=Network.MAINNET;
+    this.endpoints = options.endpoints ?? (this.network===Network.MAINNET?['wss://bch.loping.net:50004','wss://bch.imaginary.cash:50004']:['wss://chipnet.imaginary.cash:50004', 'wss://electrum-chipnet.optnlabs.com', 'wss://chipnet.bch.ninja:50004']);
     if(this.network===Network.REGTEST&&this.endpoints.some(e=>!['localhost','127.0.0.1','[::1]'].includes(new URL(e).hostname)))throw Error('Regtest Electrum requires local endpoints');
     this.timeoutMs = options.timeoutMs ?? 10000;
     this.maxTipAgeSeconds = options.maxTipAgeSeconds ?? 21600;
@@ -76,6 +77,7 @@ export class ElectrumCore implements NetworkProvider {
         const version = await this.request('server.version', 'Staking Arena', '1.5.0');
         if (!Array.isArray(version) || !/^1\.(?:[5-9]|[1-9][0-9])(?:\.|$)/.test(version[1])) throw Error('Electrum Cash protocol 1.5.0 required: ' + JSON.stringify(version));
         if(this.network===Network.REGTEST){if((await this.header(0)).hash!=='0f9188f13cb7b2c71f2a335e3a4fc328bf5beb436012afca590b1a11466e2206')throw Error('Electrum regtest identity mismatch');}
+        else if(this.network===Network.MAINNET){if((await this.header(0)).hash!=='000000000019d6689c085ae165831e934ff763ae46a2a6c172b3f1b60a8ce26f'||(await this.header(792773)).hash!=='000000000000000002fc0cdadaef1857bbd2936d37ea94f80ba3db4a5e8353e8')throw Error('Electrum mainnet identity mismatch');}
         else if ((await this.header(0)).hash !== '000000001dd410c49a788668ce26751718cc797474d3152a5fc073dd44fd9f7b'
           || (await this.header(121957)).hash !== '0000000056087dee73fb66178ca70da89dfd0be098b1a63cf6fe93934cd04c78') throw Error('Electrum chipnet identity mismatch');
         this.activeChainSession=true;
@@ -186,7 +188,7 @@ export class ElectrumCore implements NetworkProvider {
   async getBlockHeight() { return (await this.tip()).height; }
   async getUtxos(address: string) {
     const result = cashAddressToLockingBytecode(address);
-    if (typeof result === 'string' || result.prefix !== (this.network===Network.REGTEST?'bchreg':'bchtest')) throw Error('Address network mismatch');
+    if (typeof result === 'string' || result.prefix !== (this.network===Network.MAINNET?'bitcoincash':this.network===Network.REGTEST?'bchreg':'bchtest')) throw Error('Address network mismatch');
     return this.getUtxosForLockingBytecode(result.bytecode);
   }
   async getUtxosForLockingBytecode(script: string | Uint8Array): Promise<SpendableUtxo[]> {
@@ -206,8 +208,9 @@ export class ElectrumCore implements NetworkProvider {
     return outputs;
   }
   async sendRawTransaction(raw: string): Promise<string> {
+    if(this.network===Network.CHIPNET)throw Error('Chipnet temporarily unavailable for transactions: consensus upgrade verification required');
     if(!this.allowBroadcast)throw Error('Electrum broadcasting disabled');
-    if(!this.activeChainSession || (this.network!==Network.CHIPNET&&this.network!==Network.REGTEST))throw Error('Broadcast requires a verified active '+(this.network===Network.REGTEST?'regtest':'chipnet')+' session');
+    if(!this.activeChainSession || (this.network!==Network.MAINNET&&this.network!==Network.REGTEST))throw Error('Broadcast requires a verified active '+(this.network===Network.REGTEST?'regtest':'mainnet')+' session');
     const tx=decodeRawTransaction(raw),result=await this.request('blockchain.transaction.broadcast',raw);
     if(result!==tx.txid)throw Error('Electrum broadcast response does not match transaction ID; acceptance is uncertain');
     return result;

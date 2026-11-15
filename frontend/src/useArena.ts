@@ -1,3 +1,4 @@
+import {activeNetwork} from './activeNetwork';
 import indexerWorkerUrl from './indexer.bootstrap.worker.ts?worker&url';
 import {workerDiagnostic,formatWorkerDiagnostic,probeWorkerResource,type WorkerDiagnostic} from './workerDiagnostics';
 import { useCallback, useEffect, useRef, useState } from 'react';
@@ -10,6 +11,7 @@ export function useArena() {
   const [catalogVersion,setCatalogVersion]=useState(0);
   useEffect(()=>{const changed=(event:Event)=>{if(event.type==='storage'&&(event as StorageEvent).key!=='arena-chipnet-local-vaults-v1')return;setPending(true);setCatalogVersion(v=>v+1);};window.addEventListener('arena-vault-catalog',changed);window.addEventListener('storage',changed);return()=>{window.removeEventListener('arena-vault-catalog',changed);window.removeEventListener('storage',changed);};},[]);
   const [config] = useState(() => {
+    if(activeNetwork==='mainnet')return {base:null,source:'off' as const,error:null};
     try { const base = apiBaseUrl(); return { base, source:indexerSource(base), error: null }; }
     catch (e) { return { base: null, source:'off' as const, error: (e as Error).message }; }
   });

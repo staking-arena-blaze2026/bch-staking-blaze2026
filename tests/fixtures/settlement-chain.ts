@@ -31,7 +31,10 @@ export class SettlementChain {
   }
   provider() {
     const endpoints=['wss://first.fixture:50004','wss://second.fixture:50004'];
-    return new ElectrumCore(endpoint=>({connect:async()=>{if(this.fail)throw Error('Fixture disconnected');},close:()=>{},request:async(method,...params)=>{
+    // Synthetic pre-upgrade chain: exercise real VM/lineage without a public broadcast.
+    // The production chipnet transaction freeze is tested directly against ElectrumCore.
+    class SyntheticProvider extends ElectrumCore {override async sendRawTransaction(raw:string):Promise<string>{return this.request('blockchain.transaction.broadcast',raw);}}
+    return new SyntheticProvider(endpoint=>({connect:async()=>{if(this.fail)throw Error('Fixture disconnected');},close:()=>{},request:async(method,...params)=>{
       this.requestLog.push({endpoint,method});
       const result=await this.request(method,...params);
       if(this.disagree&&endpoint===endpoints[1]&&method==='blockchain.scripthash.get_history')return [];

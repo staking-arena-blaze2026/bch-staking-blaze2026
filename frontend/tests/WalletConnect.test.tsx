@@ -1,3 +1,4 @@
+vi.mock('../src/activeNetwork',()=>({activeNetwork:'chipnet',selectedNetwork:()=> 'chipnet',networkLeaving:false,switchNetwork:vi.fn()}));
 import {deriveHdPrivateNodeFromSeed,deriveHdPublicNode,encodeHdPublicKey} from '@bitauth/libauth';
 import {StrictMode} from 'react';
 import {DappConnectionManager} from '@wizardconnect/dapp';

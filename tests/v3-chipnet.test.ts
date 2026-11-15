@@ -19,8 +19,8 @@ test('v3 network guards, isolated journals and identical covenant scripts',()=>{
  const key=new SignatureTemplate(new Uint8Array(32).fill(4));assert.match(ownerAddress(key.publicKey,p),/^bchreg:/);assert.match(ownerAddress(key.publicKey,q),/^bchtest:/);
  for(const kind of ['wallet','claims','configs'] as const){assert.notEqual(v3Storage(kind,'chipnet'),v3Storage(kind,'regtest'));}
  assert.equal(new BrowserAssetStore('chipnet').network,'chipnet');assert.equal(new BrowserClaimStore('regtest').network,'regtest');
- for(const network of [Network.MAINNET,Network.TESTNET3,Network.TESTNET4]){q.network=network;assert.throws(()=>v3Network(q));assert.throws(()=>covenant('RegistryGenesisV3',args,q));assert.throws(()=>ownerAddress(key.publicKey,q));assert.throws(()=>new AssetWallet(q as any,{} as Store));assert.throws(()=>new AssetIndexer(q as any,{} as any));}
- assert.throws(()=>new ElectrumCore(()=>{throw Error('unused');},{network:'mainnet'}),/disabled/);
+ for(const network of [Network.TESTNET3,Network.TESTNET4]){q.network=network;assert.throws(()=>v3Network(q));assert.throws(()=>covenant('RegistryGenesisV3',args,q));assert.throws(()=>ownerAddress(key.publicKey,q));assert.throws(()=>new AssetWallet(q as any,{} as Store));assert.throws(()=>new AssetIndexer(q as any,{} as any));}
+ assert.equal(new ElectrumCore(()=>{throw Error('unused');},{network:'mainnet'}).network,Network.MAINNET);
 });
 
 function sign(plan:BrowserPlan,key:SignatureTemplate){
@@ -65,5 +65,5 @@ test('direct genesis retries saved bytes after drop and detects a canonical conf
  const conflicting=structuredClone(authorized.plan);conflicting.request.transaction.outputs[2]!.valueSatoshis--;
  const conflict=f.add(sign(conflicting,key));
  const blocked=await reloaded.resume(op.id);assert.equal(blocked.stage,'conflicted');assert.match(blocked.error!,new RegExp(conflict.txid));assert.equal(blocked.raw,raw);
- const broadcasts=f.chain.broadcasts.length;await assert.rejects(()=>reloaded.rebroadcast(op.id),/Input spent/);assert.equal(f.chain.broadcasts.length,broadcasts);
+ const broadcasts=f.chain.broadcasts.length;await assert.rejects(()=>reloaded.rebroadcast(op.id),/Input spent|Conflicting blockchain evidence/);assert.equal(f.chain.broadcasts.length,broadcasts);
 });
