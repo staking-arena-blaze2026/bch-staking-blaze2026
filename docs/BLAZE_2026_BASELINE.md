@@ -67,6 +67,8 @@ Preparation after the cutoff comprises audit, original publication, baseline evi
 
 Wallet funding discovery repair: distinguish legacy explicit wallet refusal from uncertain signing, release safe unsigned reservations without deleting journals, validate live session derivation, prioritize known funded children, begin with six addresses, and replace the v3 eight-input cap with a fee/size bound. See [diagnosis, implementation and validation limits](blaze2026/wallet-funding-discovery.md). This is post-baseline work; real Cashonize acceptance remains to be verified by the wallet owner.
 
+Direct atomic offer registration: explicitly versioned RegistryAtomicV4 retains separate owner authorization while accepting direct wallet funding and safe owner change in one transaction. Legacy RegistryV3 vaults and their two-stage journals remain compatible. See [design, authorization and limitations](blaze2026/atomic-offers.md) and [isolated BCHN evidence](blaze2026/atomic-offer-results.json). This is post-baseline work; physical Cashonize approval remains unverified.
+
 ## How judges can compare versions
 
 1. Inspect the original source and website `pre-blaze-2026` tags and exact commit links; annotated tag timestamps are intentionally later than the referenced commits.

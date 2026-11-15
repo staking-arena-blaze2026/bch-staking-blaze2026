@@ -48,7 +48,8 @@
     "compile:v3": "node scripts/compile-v3.mjs",
     "test:blaze": "ARENA_NETWORK=regtest tsx --test --test-concurrency=1 tests/blaze-*.test.ts",
     "test:v3": "npm run compile:v3 && ARENA_NETWORK=regtest tsx --test --test-concurrency=1 tests/v3*.test.ts",
-    "test:review": "node scripts/test-review.mjs"
+    "test:review": "node scripts/test-review.mjs",
+    "test:atomic": "node scripts/compile-v3.mjs --check && ARENA_NETWORK=regtest tsx --test --test-concurrency=1 tests/blaze-atomic-*.test.ts"
   },
   "keywords": [],
   "author": "",

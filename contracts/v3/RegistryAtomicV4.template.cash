@@ -1,0 +1,237 @@
+pragma cashscript ^0.14.0;
+// Atomic V4: separate owner signature; direct wallet funding and owner-only change.
+// Inputs: 0 state NFT, 1 escrow, 2 reserve, [3 registration commitment], last BCH sponsor.
+// Outputs: 0 state NFT, 1 escrow, 2 reserve, [3 reward/refund], [4 independent allocation].
+// State: reserved zero(5), count(1), live(16*49), remaining reward units(4).
+// Record: pubkey(33), S raw units(4), T seconds(4), R raw units(4), W(1), wins(1), cancelled(1), refunded(1).
+contract RegistryAtomicV4(bytes32 category, bytes64 assets, int epoch, int periodSeconds, int periods, int cap) {
+    function transition(bytes state, int action, int slot, bytes record, sig authorization) {
+        require(this.activeInputIndex == 0);
+        require(tx.version == 2);
+        require(tx.inputs[0].outpointIndex == 0);
+        require(tx.inputs[1].outpointTransactionHash == tx.inputs[0].outpointTransactionHash && tx.inputs[1].outpointIndex == 1);
+        require(tx.inputs[2].outpointTransactionHash == tx.inputs[0].outpointTransactionHash && tx.inputs[2].outpointIndex == 2);
+        require(epoch >= 500000000 && periodSeconds > 0 && periodSeconds <= 2147483647);
+        require(periods > 0 && periods <= 16 && cap >= 1 && cap <= 1000000);
+        // Four-byte positive schedule boundaries. Allocations use relative CSV time.
+        require(epoch + periods * periodSeconds <= 2147483647);
+        require(state.length == 794);
+        require(tx.inputs[0].nftCommitment == hash256(state));
+        require(tx.inputs[0].tokenCategory == category + 0x01);
+        require(tx.inputs[0].tokenAmount == 0);
+        require(tx.outputs[0].lockingBytecode == tx.inputs[0].lockingBytecode);
+        require(tx.outputs[0].tokenCategory == category + 0x01);
+        require(tx.outputs[0].tokenAmount == 0);
+        bytes32 stakingCategory = unsafe_bytes32(assets.slice(0,32));
+        bytes32 rewardCategory = unsafe_bytes32(assets.slice(32,64));
+        require(category != stakingCategory && category != rewardCategory);
+        bytes poolScript = new LockingBytecodeP2SH32(hash256(0x41 + category + stakingCategory + 0x01 + 0x__ASSETROLEV3_BODY__));
+        bytes reserveScript = new LockingBytecodeP2SH32(hash256(0x41 + category + rewardCategory + 0x02 + 0x__ASSETROLEV3_BODY__));
+        require(tx.inputs[1].lockingBytecode == poolScript && tx.outputs[1].lockingBytecode == poolScript);
+        require(tx.inputs[2].lockingBytecode == reserveScript && tx.outputs[2].lockingBytecode == reserveScript);
+        require(tx.inputs[1].nftCommitment == 0x && tx.outputs[1].nftCommitment == 0x);
+        require(tx.inputs[2].nftCommitment == 0x && tx.outputs[2].nftCommitment == 0x);
+        require(state.slice(0,5) == 0x0000000000);
+        int count = int(state.slice(5,6));
+        require(count >= 0 && count <= 16);
+        bytes live = state.slice(6,790);
+        bytes next = state;
+        int baseInputs = 3;
+        if (action != 0) { require(tx.inputs.length == baseInputs + 1); }
+        else { require(tx.inputs.length >= 4 && tx.inputs.length <= 19); }
+        if (action != 0) {
+            require(tx.inputs[baseInputs].tokenCategory == 0x);
+            require(tx.inputs[baseInputs].tokenAmount == 0);
+        }
+        int reserve = int(state.slice(790,794));
+        require(reserve >= 0 && reserve <= periods * cap);
+        require(tx.inputs[0].value == 1000 && tx.outputs[0].value == 1000);
+        int remainingBefore = 0;
+        for (int n = 0; n < 16; n++) {
+            if (n < count && live.slice(n*49+48,n*49+49) == 0x00) {
+                remainingBefore = remainingBefore + int(live.slice(n*49+33,n*49+37))
+                    * (int(live.slice(n*49+45,n*49+46)) - int(live.slice(n*49+46,n*49+47)));
+            }
+        }
+        if (stakingCategory == 0x0000000000000000000000000000000000000000000000000000000000000000) {
+            require(tx.inputs[1].value == 1000 + remainingBefore);
+            require(tx.inputs[1].tokenCategory == 0x && tx.inputs[1].tokenAmount == 0);
+        } else {
+            require(tx.inputs[1].value == 1000 && tx.inputs[1].tokenAmount == remainingBefore);
+            if (remainingBefore == 0) { require(tx.inputs[1].tokenCategory == 0x); }
+            else { require(tx.inputs[1].tokenCategory == stakingCategory); }
+        }
+        if (rewardCategory == 0x0000000000000000000000000000000000000000000000000000000000000000) {
+            require(tx.inputs[2].value == 1000 + reserve);
+            require(tx.inputs[2].tokenCategory == 0x && tx.inputs[2].tokenAmount == 0);
+        } else {
+            require(tx.inputs[2].value == 1000 && tx.inputs[2].tokenAmount == reserve);
+            if (reserve == 0) { require(tx.inputs[2].tokenCategory == 0x); }
+            else { require(tx.inputs[2].tokenCategory == rewardCategory); }
+        }
+        if (action == 0) {
+            require(count < 16);
+            require(slot == count);
+            require(record.length == 49);
+            int s = int(record.slice(33,37));
+            int t = int(record.slice(37,41));
+            int r = int(record.slice(41,45));
+            int maximum = int(record.slice(45,46));
+            require(s >= 1000 && s <= 1000000);
+            require(t > 0 && t <= 33553920);
+            require(r >= 1 && r <= reserve);
+            if (rewardCategory == 0x0000000000000000000000000000000000000000000000000000000000000000) { require(r >= 1000); }
+            require(maximum == 1);
+            require(record.slice(46,49) == 0x000000);
+            require(checkSig(authorization, pubkey(record.slice(0,33))));
+            require(tx.outputs.length >= 3 && tx.outputs.length <= 5);
+            int stakeTokens = 0;
+            for (int f = 3; f < 19; f++) {
+                if (f < tx.inputs.length) {
+                    // An empty commitment alone does not exclude empty-commitment NFTs.
+                    // Exact category equality excludes mutable/minting NFTs. Empty immutable
+                    // NFTs are introspection-indistinguishable; the reviewed wallet plan
+                    // rejects all NFT metadata and ALL|UTXOS signatures bind those sources.
+                    require(tx.inputs[f].nftCommitment == 0x);
+                    if (tx.inputs[f].tokenCategory == 0x) { require(tx.inputs[f].tokenAmount == 0); }
+                    else {
+                        require(stakingCategory != 0x0000000000000000000000000000000000000000000000000000000000000000);
+                        require(tx.inputs[f].tokenCategory == stakingCategory);
+                        stakeTokens = stakeTokens + tx.inputs[f].tokenAmount;
+                    }
+                }
+            }
+            int changeTokens = 0;
+            for (int c = 3; c < 5; c++) {
+                if (c < tx.outputs.length) {
+                    require(tx.outputs[c].lockingBytecode == new LockingBytecodeP2PKH(hash160(record.slice(0,33))));
+                    require(tx.outputs[c].value >= 1000 && tx.outputs[c].nftCommitment == 0x);
+                    if (tx.outputs[c].tokenCategory == 0x) { require(tx.outputs[c].tokenAmount == 0); }
+                    else {
+                        require(stakingCategory != 0x0000000000000000000000000000000000000000000000000000000000000000);
+                        require(tx.outputs[c].tokenCategory == stakingCategory);
+                        changeTokens = changeTokens + tx.outputs[c].tokenAmount;
+                    }
+                }
+            }
+            if (stakingCategory != 0x0000000000000000000000000000000000000000000000000000000000000000) {
+                require(stakeTokens == s + changeTokens);
+            }
+            live = live.slice(0,slot*49) + record + live.slice((slot+1)*49,784);
+            next = state.slice(0,5) + toPaddedBytes(count + 1, 1) + live;
+        } else if (action == 1) {
+            require(tx.outputs.length == 3);
+            require(slot >= 0 && slot < count);
+            bytes entry = live.slice(slot*49,(slot+1)*49);
+            require(checkSig(authorization, pubkey(entry.slice(0,33))));
+            require(entry.slice(47,48) == 0x00);
+            live = live.slice(0,slot*49+47) + 0x01 + live.slice(slot*49+48,784);
+            next = state.slice(0,6) + live;
+        } else if (action == 3) {
+            require(tx.outputs.length == 5 || tx.outputs.length == 6);
+            // Only the external payer's own BCH can return as change.
+            if (tx.outputs.length == 6) {
+                require(tx.outputs[5].lockingBytecode == tx.inputs[3].lockingBytecode);
+                require(tx.outputs[5].value >= 1000);
+                require(tx.outputs[5].tokenCategory == 0x && tx.outputs[5].tokenAmount == 0);
+                require(tx.outputs[5].nftCommitment == 0x);
+            }
+            require(tx.time >= epoch + periodSeconds);
+            int released = (tx.locktime - epoch) / periodSeconds;
+            if (released > periods) { released = periods; }
+            require(slot >= 0 && slot < count);
+            bytes winner = live.slice(slot*49,(slot+1)*49);
+            int s = int(winner.slice(33,37));
+            int t = int(winner.slice(37,41));
+            int r = int(winner.slice(41,45));
+            require(winner.slice(47,49) == 0x0000);
+            require(int(winner.slice(46,47)) < int(winner.slice(45,46)));
+            for (int i = 0; i < 16; i++) {
+                if (i < count) {
+                    bytes candidate = live.slice(i*49,(i+1)*49);
+                    if (candidate.slice(47,49) == 0x0000 && int(candidate.slice(46,47)) < int(candidate.slice(45,46))) {
+                        int left = s * t * int(candidate.slice(41,45));
+                        int right = int(candidate.slice(33,37)) * int(candidate.slice(37,41)) * r;
+                        require(left >= right);
+                        if (i < slot) { require(left > right); }
+                    }
+                }
+            }
+            require(r <= reserve && r <= released * cap - (periods * cap - reserve));
+            bytes entry = live.slice(slot*49,(slot+1)*49);
+            // One win deducts exactly S from W*S escrow and creates a distinct immutable lock.
+            live = live.slice(0,slot*49+46) + toPaddedBytes(int(entry.slice(46,47)) + 1, 1) + live.slice(slot*49+47,784);
+            bytes terms = winner.slice(0,33) + category + toPaddedBytes(slot, 1)
+                + toPaddedBytes(int(entry.slice(46,47)), 4) + toPaddedBytes(s, 4)
+                + toPaddedBytes(4194304 + (t + 511) / 512, 4) + stakingCategory;
+            require(tx.outputs[4].lockingBytecode == new LockingBytecodeP2SH32(hash256(0x4c6e + terms + 0x__STAKEALLOCATIONV3_BODY__)));
+            require(tx.outputs[4].nftCommitment == 0x);
+            if (stakingCategory == 0x0000000000000000000000000000000000000000000000000000000000000000) {
+                require(tx.outputs[4].value == s && tx.outputs[4].tokenCategory == 0x && tx.outputs[4].tokenAmount == 0);
+            } else {
+                require(tx.outputs[4].value == 1000 && tx.outputs[4].tokenCategory == stakingCategory && tx.outputs[4].tokenAmount == s);
+            }
+            next = state.slice(0,6) + live;
+            require(tx.outputs[3].lockingBytecode == new LockingBytecodeP2PKH(hash160(winner.slice(0,33))));
+            require(tx.outputs[3].nftCommitment == 0x);
+            if (rewardCategory == 0x0000000000000000000000000000000000000000000000000000000000000000) {
+                require(tx.outputs[3].value == r && tx.outputs[3].tokenCategory == 0x && tx.outputs[3].tokenAmount == 0);
+            } else {
+                require(tx.outputs[3].value == 1000 && tx.outputs[3].tokenCategory == rewardCategory && tx.outputs[3].tokenAmount == r);
+            }
+            reserve = reserve - r;
+        } else {
+            require(action == 4);
+            require(tx.outputs.length == 4);
+            require(slot >= 0 && slot < count);
+            bytes entry = live.slice(slot*49,(slot+1)*49);
+            require(checkSig(authorization, pubkey(entry.slice(0,33))));
+            require(entry.slice(47,49) == 0x0100);
+            int refund = int(entry.slice(33,37)) * (int(entry.slice(45,46)) - int(entry.slice(46,47)));
+            require(refund > 0);
+            live = live.slice(0,slot*49+48) + 0x01 + live.slice(slot*49+49,784);
+            next = state.slice(0,6) + live;
+            require(tx.outputs[3].lockingBytecode == new LockingBytecodeP2PKH(hash160(entry.slice(0,33))));
+            require(tx.outputs[3].nftCommitment == 0x);
+            if (stakingCategory == 0x0000000000000000000000000000000000000000000000000000000000000000) {
+                require(tx.outputs[3].value == refund && tx.outputs[3].tokenCategory == 0x && tx.outputs[3].tokenAmount == 0);
+            } else {
+                require(tx.outputs[3].value == 1000 && tx.outputs[3].tokenCategory == stakingCategory && tx.outputs[3].tokenAmount == refund);
+            }
+        }
+        int collateral = 0;
+        for (int j = 0; j < 16; j++) {
+            if (j < int(next.slice(5,6)) && next.slice(6+j*49+48,6+j*49+49) == 0x00) {
+                collateral = collateral + int(next.slice(6+j*49+33,6+j*49+37))
+                    * (int(next.slice(6+j*49+45,6+j*49+46)) - int(next.slice(6+j*49+46,6+j*49+47)));
+            }
+        }
+        if (stakingCategory == 0x0000000000000000000000000000000000000000000000000000000000000000) {
+            require(tx.outputs[1].value == 1000 + collateral && tx.outputs[1].tokenCategory == 0x && tx.outputs[1].tokenAmount == 0);
+        } else {
+            require(tx.outputs[1].value == 1000 && tx.outputs[1].tokenAmount == collateral);
+            if (collateral == 0) { require(tx.outputs[1].tokenCategory == 0x); }
+            else { require(tx.outputs[1].tokenCategory == stakingCategory); }
+        }
+        require(reserve >= 0 && reserve <= periods * cap);
+        if (rewardCategory == 0x0000000000000000000000000000000000000000000000000000000000000000) {
+            require(tx.outputs[2].value == 1000 + reserve && tx.outputs[2].tokenCategory == 0x && tx.outputs[2].tokenAmount == 0);
+        } else {
+            require(tx.outputs[2].value == 1000 && tx.outputs[2].tokenAmount == reserve);
+            if (reserve == 0) { require(tx.outputs[2].tokenCategory == 0x); }
+            else { require(tx.outputs[2].tokenCategory == rewardCategory); }
+        }
+        next = next.slice(0,790) + toPaddedBytes(reserve,4);
+        require(tx.outputs[0].nftCommitment == hash256(next));
+        int totalIn = 0;
+        int totalOut = 0;
+        for (int x = 0; x < 19; x++) {
+            if (x < tx.inputs.length) {
+                require(tx.inputs[x].sequenceNumber == 4294967294);
+                totalIn = totalIn + tx.inputs[x].value;
+            }
+            if (x < tx.outputs.length) { totalOut = totalOut + tx.outputs[x].value; }
+        }
+        require(totalIn - totalOut == 10000);
+    }
+}

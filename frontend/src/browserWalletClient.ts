@@ -62,6 +62,7 @@ export function browserWalletClient(manager:DappConnectionManager|null,check:()=
     return v2Updated(await rpc('v2',{operation:'submit',id:result.id,raw:signed.signedTransaction},[]));
    }finally{v2Approval=false;}
   },async v3(intent){
+   const started=performance.now();let derivationMilliseconds=0;
    const check=authorizationCheck();
    if(intent.operation==='expandScan'){check();v3ScanLimit=v3ScanLimit<40?40:200;return `Wallet discovery expanded to ${v3ScanLimit} addresses per path. Retry Create Vault. Only needed addresses will be queried.`;}
    if(['list','sync'].includes(String(intent.operation)))return v3Call(intent,[]);
@@ -72,10 +73,10 @@ export function browserWalletClient(manager:DappConnectionManager|null,check:()=
     // Every spending call is checked against the live session. Inspect/list never ask to sign.
     check();const session=JSON.stringify(getManager().getSessionPaths());
     if(typeof getManager().signTransaction!=='function')throw Error('Wallet does not support transaction signing');
-    window.dispatchEvent(new CustomEvent('arena-wallet-progress',{detail:'Preparing vault…'}));
+    window.dispatchEvent(new CustomEvent('arena-wallet-progress',{detail:intent.operation==='offer'?'Preparing offer…':'Preparing vault…'}));
     let publicKeys:WalletKey[]=[];
     if(intent.operation!=='resume'){
-     publicKeys=keys(v3ScanLimit);
+     const derivationStarted=performance.now();publicKeys=keys(v3ScanLimit);derivationMilliseconds=performance.now()-derivationStarted;
      // Existing public journals point to actual previously funded children. Query these
      // before expanding unrelated addresses; bind each hint to this exact live owner.
      let hinted=0;const owner=publicKeys.find(k=>k.path==='receive'&&k.index===0),journal=await v3Call({operation:'list'},[]) as import('../../src/v3/wallet').Operation[];
@@ -95,9 +96,11 @@ export function browserWalletClient(manager:DappConnectionManager|null,check:()=
     check();if(authorization.owner?.publicKey!==binToHex(getManager().getPubkey(0,0n)??new Uint8Array()))throw Error('Resume with the original v3 wallet owner');
     if(Date.now()-authorization.verifiedAt>10000)throw Error('V3 approval verification became stale; reconcile and retry');
     if(JSON.stringify(getManager().getSessionPaths())!==session)throw Error('Wallet changed before v3 approval');
+    window.dispatchEvent(new CustomEvent('arena-wallet-timing',{detail:{operation:intent.operation,derivationMilliseconds,untilAuthorizationMilliseconds:performance.now()-started}}));
     window.dispatchEvent(new CustomEvent('arena-wallet-progress',{detail:'Requesting Cashonize approval… '+authorization.plan.label}));
     try{
     const signed=await signWithRefusalEvidence(getManager(),{transaction:wizardWireTransaction(authorization.plan.request),inputPaths:authorization.plan.inputPaths},{signal:signing.signal});
+    if(result.registrationMode==='atomic'&&signed.signedTransaction)await v3Call({operation:'retainAtomicSigned',id:result.id,raw:signed.signedTransaction},[]);
     check();if(JSON.stringify(getManager().getSessionPaths())!==session)throw Error('Wallet changed during v3 approval');
     if(!signed.signedTransaction)throw Error('V3 signing status unknown; inputs remain reserved');
     window.dispatchEvent(new CustomEvent('arena-wallet-progress',{detail:'Verifying BCH inputs… Checking unconfirmed ancestry…'}));

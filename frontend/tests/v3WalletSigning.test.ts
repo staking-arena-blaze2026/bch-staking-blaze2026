@@ -78,3 +78,29 @@ it('adds a previously funded deep journal child without deriving all intermediat
  vi.mocked(v3Call).mockImplementation(async(...args)=>args[0].operation==='list'?[{owner:{publicKey:hex(0)},plan:{inputPaths:[[0,'receive',39]],signers:{0:hex(39)}}}]:args[0].operation==='create'?original({operation:'claim'}):original(...args));
  try{await wallet.v3!({operation:'create',parameters:{}});const call=vi.mocked(v3Call).mock.calls.find(([i])=>i.operation==='create')!;expect(call[1]).toHaveLength(3);expect(call[1]).toEqual(expect.arrayContaining([expect.objectContaining({path:'receive',index:39,fundingHint:true})]));expect(manager.signTransaction).toHaveBeenCalledTimes(1);}finally{wallet.close?.();}
 });
+
+it('atomic registration sends the distinct registry and funding input paths in one signing request',async()=>{
+ const {wallet,manager}=setup(),original=vi.mocked(v3Call).getMockImplementation()!;
+ vi.mocked(v3Call).mockImplementation(async(...args)=>{
+  if(args[0].operation==='offer'){const result=await original({operation:'claim'});result.registrationMode='atomic';result.plan.inputPaths=[[0,'receive',0],[3,'receive',0],[4,'change',2]];return result;}
+  return original(...args);
+ });
+ try{
+  await wallet.v3!({operation:'offer',config:{registryVersion:4}});
+  expect(manager.signTransaction).toHaveBeenCalledTimes(1);
+  expect(manager.signTransaction).toHaveBeenCalledWith({transaction:expect.objectContaining({broadcast:false}),inputPaths:[[0,'receive',0],[3,'receive',0],[4,'change',2]]},{signal:expect.any(AbortSignal)});
+  expect(vi.mocked(v3Call).mock.calls.filter(([i])=>i.operation==='submit')).toHaveLength(1);
+  expect(vi.mocked(v3Call).mock.calls.some(([i])=>i.operation==='resume')).toBe(false);
+ }finally{wallet.close?.();}
+});
+
+it('retains an atomic signature returned during reconnection without submitting it',async()=>{
+ const {wallet,manager}=setup(),original=vi.mocked(v3Call).getMockImplementation()!;
+ vi.mocked(v3Call).mockImplementation(async(...args)=>{if(args[0].operation==='offer')return {...await original({operation:'claim'}),registrationMode:'atomic'};return original(...args);});
+ manager.signTransaction.mockImplementation(async()=>{manager.emit('reconnecting');return {signedTransaction:'signed'};});
+ try{
+  await expect(wallet.v3!({operation:'offer',config:{registryVersion:4}})).rejects.toThrow(/authorization changed/);
+  expect(v3Call).toHaveBeenCalledWith({operation:'retainAtomicSigned',id:'claim',raw:'signed'},[]);
+  expect(vi.mocked(v3Call).mock.calls.some(([i])=>i.operation==='submit')).toBe(false);
+ }finally{wallet.close?.();}
+});

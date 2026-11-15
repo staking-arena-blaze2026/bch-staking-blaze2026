@@ -25,6 +25,7 @@ scope.onmessage=event=>{queue=queue.catch(()=>{}).then(async()=>{const {id,inten
   if(intent.operation==='resume'||intent.operation==='inspect')return wallet.resume(intent.id);
   if(intent.operation==='signingFailed')return wallet.signingFailed(intent.id,String(intent.error),intent.rejected===true);
   if(intent.operation==='authorize')return wallet.authorize(intent.id);
+  if(intent.operation==='retainAtomicSigned')return wallet.retainAtomicSigned(intent.id,intent.raw);
   if(intent.operation==='submit')return wallet.submit(intent.id,intent.raw);
   if(intent.operation==='rebroadcast')return wallet.rebroadcast(intent.id);
   if(intent.operation==='rebroadcastFunding')return wallet.rebroadcastFunding(intent.id);

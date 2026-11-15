@@ -166,3 +166,15 @@ it('shows creation progress immediately and reports rejection beneath Create Vau
  await act(async()=>reject(Error('Insufficient BCH for covenant-controlled preparation.')));
  expect(screen.getByRole('status')).toHaveTextContent('Insufficient BCH');expect(screen.getByRole('button',{name:/^Create Vault$/})).toBeEnabled();
 });
+
+it('shows one fee on atomic vaults and refreshes the provisional queue after registration',async()=>{
+ stub();const original=vi.mocked(v3Call).getMockImplementation()!;
+ vi.mocked(v3Call).mockImplementation(async(...args)=>{const result=await original(...args);if(args[0].operation==='sync'){result.snapshot.config={...config,registryVersion:4};result.snapshot.provisional=true;result.snapshot.instance.inputs=[{txid:'cd'.repeat(32)}];}return result;});
+ wallet.v3.mockReset().mockResolvedValue({id:'atomic',kind:'offer',registrationMode:'atomic',step:'action',stage:'pending',txid:'cd'.repeat(32)});
+ await open();expect(screen.getByText(/Atomic registration: one transaction/)).toHaveTextContent('one 10,000-satoshi miner fee');
+ const before=vi.mocked(v3Call).mock.calls.filter(([i])=>i.operation==='sync').length;
+ await act(async()=>fireEvent.click(screen.getByRole('button',{name:'Make an Offer'})));
+ expect(vi.mocked(v3Call).mock.calls.filter(([i])=>i.operation==='sync').length).toBe(before+2);
+ expect(screen.getByText(/Offer registered — Pending/)).toHaveTextContent('cd'.repeat(32));
+ expect(screen.getByRole('cell',{name:/Pending \(0-conf\) · provisional/})).toBeInTheDocument();
+});

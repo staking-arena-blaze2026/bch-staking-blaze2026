@@ -8,6 +8,9 @@ import FeeSponsorV3 from '../../artifacts/FeeSponsorV3.json' with {type:'json'};
 import RegistryV3 from '../../artifacts/RegistryV3.json' with {type:'json'};
 import RegistryGenesisV3 from '../../artifacts/RegistryGenesisV3.json' with {type:'json'};
 import RegistryGenesisV4 from '../../artifacts/RegistryGenesisV4.json' with {type:'json'};
+import RegistryAtomicV4 from '../../artifacts/RegistryAtomicV4.json' with {type:'json'};
+import RegistryAtomicGenesisV4 from '../../artifacts/RegistryAtomicGenesisV4.json' with {type:'json'};
+import RegistryAtomicLinkedGenesisV4 from '../../artifacts/RegistryAtomicLinkedGenesisV4.json' with {type:'json'};
 import RewardFundingV3 from '../../artifacts/RewardFundingV3.json' with {type:'json'};
 import AssetRoleV3 from '../../artifacts/AssetRoleV3.json' with {type:'json'};
 import StakeAllocationV3 from '../../artifacts/StakeAllocationV3.json' with {type:'json'};
@@ -16,13 +19,13 @@ import {records} from '../arena-core.js';
 import {sourceOutput,type KeeperClock,type Sponsor} from '../keeper-core.js';
 export interface Instance {parameters:Parameters;category:string;state:Buffer;inputs:[SpendableUtxo,SpendableUtxo,SpendableUtxo]}
 import {v3Network as network} from './network.js';
-const artifacts={FeeSponsorV3,RegistryV3,RegistryGenesisV3,RegistryGenesisV4,RewardFundingV3,AssetRoleV3,StakeAllocationV3};
+const artifacts={RegistryAtomicV4,RegistryAtomicGenesisV4,RegistryAtomicLinkedGenesisV4,FeeSponsorV3,RegistryV3,RegistryGenesisV3,RegistryGenesisV4,RewardFundingV3,AssetRoleV3,StakeAllocationV3};
 export function covenant(name:keyof typeof artifacts,args:(bigint|Uint8Array)[],provider:NetworkProvider){network(provider);return new Contract(artifacts[name],args,{provider,contractType:'p2sh32'});}
 export function parameterArgs(p:Parameters){validateParameters(p);return [Buffer.concat([assetBytes(p.stakingAsset),assetBytes(p.rewardAsset)]),BigInt(p.epoch),BigInt(p.periodSeconds),BigInt(p.periods),p.cap];}
 export function family(p:Parameters,category:string,provider:NetworkProvider){
  if(!/^[a-f0-9]{64}$/.test(category)||[assetId(p.stakingAsset),assetId(p.rewardAsset)].includes(category))throw Error('State/asset category collision');
  const c=Buffer.from(category,'hex').reverse();return {
- registry:covenant('RegistryV3',[c,...parameterArgs(p)],provider),
+ registry:covenant(p.registryVersion===4?'RegistryAtomicV4':'RegistryV3',[c,...parameterArgs(p)],provider),
  escrow:covenant('AssetRoleV3',[Buffer.concat([c,assetBytes(p.stakingAsset),Buffer.from([1])])],provider),
  reserve:covenant('AssetRoleV3',[Buffer.concat([c,assetBytes(p.rewardAsset),Buffer.from([2])])],provider)};
 }
@@ -41,7 +44,7 @@ export function ownerAddress(owner:Uint8Array,provider:NetworkProvider){network(
 export function termsFor(v:Instance,slot:number){const r=records(v.state,false)[slot];if(!r)throw Error('Missing allocation winner');return allocationTerms(Buffer.from(r.owner,'hex'),v.category,assetId(v.parameters.stakingAsset),slot,r.wins,r.stake,allocationSequence(r.duration));}
 export function stateOutput(category:string,state:Uint8Array){return {amount:CARRIER,token:{category,amount:0n,nft:{capability:'mutable' as const,commitment:hashState(state)}}};}
 export function genesisBuilder(p:Parameters,factoryInput:SpendableUtxo,rewardFunding:Sponsor,provider:NetworkProvider){
- const factory=covenant('RegistryGenesisV3',parameterArgs(p),provider),cs=family(p,factoryInput.txid,provider),state=initialState(p);
+ const factory=covenant(p.registryVersion===4?'RegistryAtomicGenesisV4':'RegistryGenesisV3',parameterArgs(p),provider),cs=family(p,factoryInput.txid,provider),state=initialState(p);
  if(factoryInput.vout!==0||factoryInput.token||factoryInput.satoshis!==12000n||factoryInput.lockingBytecode!==factory.lockingBytecode||!matches(rewardFunding.input,p.rewardAsset,p.cap*BigInt(p.periods)))throw Error('Incorrect factory or exact full reward funding');
  const builder=new TransactionBuilder({provider}).addInput(factoryInput,factory.unlock.create()).addInput(rewardFunding.input,rewardFunding.unlocker)
  .addOutput({to:cs.registry.tokenAddress,...stateOutput(factoryInput.txid,state)}).addOutput({to:cs.escrow.address,amount:CARRIER})
@@ -50,7 +53,7 @@ export function genesisBuilder(p:Parameters,factoryInput:SpendableUtxo,rewardFun
 /** Owner-bound V4 genesis + companion reward-funding covenants for one-approval chained creation. */
 export function chainedPreparation(p:Parameters,ownerPubkey:Uint8Array,provider:NetworkProvider){
  validateParameters(p);const owner=hash160(ownerPubkey);
- const genesis=covenant('RegistryGenesisV4',[...parameterArgs(p),owner],provider);
+ const genesis=covenant(p.registryVersion===4?'RegistryAtomicLinkedGenesisV4':'RegistryGenesisV4',[...parameterArgs(p),owner],provider);
  const funding=covenant('RewardFundingV3',[Buffer.from(genesis.lockingBytecode,'hex'),owner],provider);
  return {genesis,funding,owner};
 }
@@ -176,4 +179,30 @@ export function validateBuilt(raw:string,inputs:SpendableUtxo[],clock:KeeperCloc
  if(fee!==FEE)throw Error('Incorrect external fee');
  const result=createVirtualMachineBch2026().verify({transaction:tx,sourceOutputs:sources});if(result!==true)throw Error('V3 covenant validation failed: '+result);
  return {txid:hashTransaction(hexToBin(raw)),fee,transaction:tx};
+}
+
+/** One transaction, separate registry-input authorization, and direct P2PKH funding. */
+export function atomicOfferBuilder(v:Instance,terms:Terms,owner:Uint8Array,coins:import('../transactions-core.js').WalletCoin[],provider:NetworkProvider,clock:KeeperClock,authorization:SignatureTemplate|Uint8Array){
+ if(v.parameters.registryVersion!==4)throw Error('This immutable registry requires legacy registration');
+ if(terms.maxWins!==1)throw Error('Atomic offers require maxWins = 1');
+ validateTerms(v.parameters,terms,rewardRemaining(v.state));
+ const cs=validateInstance(v,provider),asset=v.parameters.stakingAsset;
+ if(!coins.length||coins.length>16||new Set(coins.map(c=>c.utxo.txid+':'+c.utxo.vout)).size!==coins.length)throw Error('Atomic registration requires 1–16 distinct wallet inputs');
+ const record=offer(owner,Number(terms.stake),terms.duration,Number(terms.reward),1),state=advance(v.state,0,v.state[5]!,record);
+ const builder=new TransactionBuilder({provider}).setLocktime(Math.max(500000000,clock.mtp-1))
+ .addInput(v.inputs[0],cs.registry.unlock.transition(v.state,0n,BigInt(v.state[5]!),record,authorization))
+ .addInput(v.inputs[1],cs.escrow.unlock.spend()).addInput(v.inputs[2],cs.reserve.unlock.spend());
+ let total=0n,tokens=0n;
+ for(const c of coins){if(c.utxo.token&&(c.utxo.token.nft||asset.kind!=='token'||c.utxo.token.category!==asset.category))throw Error('Atomic funding excludes NFTs and unrelated tokens');
+ total+=c.utxo.satoshis;tokens+=c.utxo.token?.amount??0n;builder.addInput(c.utxo,placeholderP2PKHUnlocker(ownerAddress(hexToBin(c.publicKey),provider)));}
+ builder.addOutput({to:cs.registry.tokenAddress,...stateOutput(v.category,state)})
+ .addOutput({to:cs.escrow.tokenAddress,...assetOutput(asset,remainingCommitment(state))})
+ .addOutput({to:cs.reserve.tokenAddress,...assetOutput(v.parameters.rewardAsset,rewardRemaining(state))});
+ const tokenChange=asset.kind==='token'?tokens-terms.stake:0n,address=ownerAddress(owner,provider);
+ if(tokenChange<0n)throw Error('Insufficient staking tokens');
+ if(tokenChange>0n&&asset.kind==='token')builder.addOutput({to:address,amount:CARRIER,token:{category:asset.category,amount:tokenChange}});
+ const bchChange=total-FEE-(asset.kind==='bch'?terms.stake:0n)-(tokenChange>0n?CARRIER:0n);
+ if(bchChange<0n||bchChange>0n&&bchChange<CARRIER)throw Error('Insufficient BCH or atomic change below 1000 satoshis');
+ if(bchChange>0n)builder.addOutput({to:address,amount:bchChange});
+ return {builder,state,bchChange,tokenChange,sources:[...v.inputs,...coins.map(c=>c.utxo)]};
 }
