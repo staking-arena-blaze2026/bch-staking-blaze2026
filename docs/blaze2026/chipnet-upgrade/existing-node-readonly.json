@@ -1,0 +1,14 @@
+{
+  "getblockchaininfo": {
+    "error": "error code: -100\nerror message:\nRPC is disabled. This version of Bitcoin Cash Node is old and may be out of consensus with the network. It is recommended that you upgrade. To proceed without upgrading, and re-enable the RPC interface, restart the node with the configuration option expire=0."
+  },
+  "getnetworkinfo": {
+    "error": "error code: -100\nerror message:\nRPC is disabled. This version of Bitcoin Cash Node is old and may be out of consensus with the network. It is recommended that you upgrade. To proceed without upgrading, and re-enable the RPC interface, restart the node with the configuration option expire=0."
+  },
+  "getchaintips": {
+    "error": "error code: -100\nerror message:\nRPC is disabled. This version of Bitcoin Cash Node is old and may be out of consensus with the network. It is recommended that you upgrade. To proceed without upgrading, and re-enable the RPC interface, restart the node with the configuration option expire=0."
+  },
+  "getblockhash": {
+    "error": "error code: -100\nerror message:\nRPC is disabled. This version of Bitcoin Cash Node is old and may be out of consensus with the network. It is recommended that you upgrade. To proceed without upgrading, and re-enable the RPC interface, restart the node with the configuration option expire=0."
+  }
+}

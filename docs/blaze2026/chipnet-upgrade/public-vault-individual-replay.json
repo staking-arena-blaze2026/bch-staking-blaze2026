@@ -1,0 +1,147 @@
+{
+  "at": "2026-11-15T15:59:13.234Z",
+  "publicVault": "fa5bae8625e61ec15a9d1527157f1e544d6d4bee9a1a268095099320e33e8c86",
+  "observations": [
+    {
+      "endpoint": "wss://chipnet.imaginary.cash:50004",
+      "tip": {
+        "height": 332660,
+        "hex": "04605d09f77d5c3c97ae5a2ac46030809286f415ff7bae125432131d4e0f766e00000000f66180b738b5b3aacd729b7ab86c5664918f1182ecf2ab71bb629847d0c4aa509dd6f96a09e1001b081843e7",
+        "hash": "0000000000003d61b69e2f1d0b342e57ca00aa52f431ae243bd659ae5883cafe",
+        "parent": "000000006e760f4e1d13325412ae7bff15f48692803060c42a5aae973c5c7df7",
+        "merkle": "50aac4d0479862bb71abf2ec82118f9164566cb87a9b72cdaab3b538b78061f6",
+        "time": 1794758301
+      },
+      "mtp": 1794757992,
+      "anchor": {
+        "height": 332453,
+        "hex": "04c0620b747c1ea07b83fae190c5f2c08afa53c57786c4f03d823d78e79f0000000000005c8c1737e4feb809e7b96a1a5c01e64c1eadcb60f2cbb17f7f37e47d527098ac97a7f96aa4f0001b3ca0286e",
+        "hash": "0000000000001873af1d1672acde6b265b54e9f4a705981d923d22a2e0cafba3",
+        "parent": "0000000000009fe7783d823df0c48677c553fa8ac0f2c590e1fa837ba01e7c74",
+        "merkle": "ac9870527de4377f7fb1cbf260cbad1e4ce6015c1a6ab9e709b8fee437178c5c",
+        "time": 1794746263
+      },
+      "replay": {
+        "status": "verified-individually",
+        "stateTxid": "667037e0a4fef18cc36fb5e5acb3ce522e0d6886be52a46440940464f40e0869",
+        "utxos": [
+          {
+            "txid": "667037e0a4fef18cc36fb5e5acb3ce522e0d6886be52a46440940464f40e0869",
+            "vout": 0,
+            "satoshis": "1000"
+          },
+          {
+            "txid": "667037e0a4fef18cc36fb5e5acb3ce522e0d6886be52a46440940464f40e0869",
+            "vout": 1,
+            "satoshis": "3000"
+          },
+          {
+            "txid": "667037e0a4fef18cc36fb5e5acb3ce522e0d6886be52a46440940464f40e0869",
+            "vout": 2,
+            "satoshis": "10000"
+          }
+        ],
+        "ancestry": [],
+        "pending": [],
+        "history": [
+          "fa5bae8625e61ec15a9d1527157f1e544d6d4bee9a1a268095099320e33e8c86",
+          "667037e0a4fef18cc36fb5e5acb3ce522e0d6886be52a46440940464f40e0869"
+        ]
+      }
+    },
+    {
+      "endpoint": "wss://electrum-chipnet.optnlabs.com",
+      "tip": {
+        "height": 332463,
+        "hex": "004009200986d718c1b0acf2a918abd3a1ba4f55c3ad74ae4fadb932450c00000000000028f8ad78f7d825b67ba28168feb894fa3b33ba815e01b673dc8a00fb573fdd9e06d3f96a71982e1a5631ea2b",
+        "hash": "0000000000001b4bfa31a12e9eb5834eba43124b3d7ad20c8f21000b2c0b55eb",
+        "parent": "0000000000000c4532b9ad4fae74adc3554fbaa1d3ab18a9f2acb0c118d78609",
+        "merkle": "9edd3f57fb008adc73b6015e81ba333bfa94b8fe6881a27bb625d8f778adf828",
+        "time": 1794757382
+      },
+      "mtp": 1794754653,
+      "anchor": {
+        "height": 332453,
+        "hex": "00c00e205d1adaafd9938f19c5b630ed415918c73beb31f6cdcf44676333b9b300000000cfb9aaf77375af577913e3772a5048a8077303dfc8f38a7c4d870112b25261b8e5b7f96affff001dc914b42d",
+        "hash": "00000000000c48a5c1b86c884f23124bad9f434f2b59120e6404dcfeaa3c42d5",
+        "parent": "00000000b3b933636744cfcdf631eb3bc7185941ed30b6c5198f93d9afda1a5d",
+        "merkle": "b86152b21201874d7c8af3c8df037307a848502a77e3137957af7573f7aab9cf",
+        "time": 1794750437
+      },
+      "replay": {
+        "status": "verified-individually",
+        "stateTxid": "667037e0a4fef18cc36fb5e5acb3ce522e0d6886be52a46440940464f40e0869",
+        "utxos": [
+          {
+            "txid": "667037e0a4fef18cc36fb5e5acb3ce522e0d6886be52a46440940464f40e0869",
+            "vout": 0,
+            "satoshis": "1000"
+          },
+          {
+            "txid": "667037e0a4fef18cc36fb5e5acb3ce522e0d6886be52a46440940464f40e0869",
+            "vout": 1,
+            "satoshis": "3000"
+          },
+          {
+            "txid": "667037e0a4fef18cc36fb5e5acb3ce522e0d6886be52a46440940464f40e0869",
+            "vout": 2,
+            "satoshis": "10000"
+          }
+        ],
+        "ancestry": [],
+        "pending": [],
+        "history": [
+          "fa5bae8625e61ec15a9d1527157f1e544d6d4bee9a1a268095099320e33e8c86",
+          "667037e0a4fef18cc36fb5e5acb3ce522e0d6886be52a46440940464f40e0869"
+        ]
+      }
+    },
+    {
+      "endpoint": "wss://chipnet.bch.ninja:50004",
+      "tip": {
+        "height": 332660,
+        "hex": "04605d09f77d5c3c97ae5a2ac46030809286f415ff7bae125432131d4e0f766e00000000f66180b738b5b3aacd729b7ab86c5664918f1182ecf2ab71bb629847d0c4aa509dd6f96a09e1001b081843e7",
+        "hash": "0000000000003d61b69e2f1d0b342e57ca00aa52f431ae243bd659ae5883cafe",
+        "parent": "000000006e760f4e1d13325412ae7bff15f48692803060c42a5aae973c5c7df7",
+        "merkle": "50aac4d0479862bb71abf2ec82118f9164566cb87a9b72cdaab3b538b78061f6",
+        "time": 1794758301
+      },
+      "mtp": 1794757992,
+      "anchor": {
+        "height": 332453,
+        "hex": "04c0620b747c1ea07b83fae190c5f2c08afa53c57786c4f03d823d78e79f0000000000005c8c1737e4feb809e7b96a1a5c01e64c1eadcb60f2cbb17f7f37e47d527098ac97a7f96aa4f0001b3ca0286e",
+        "hash": "0000000000001873af1d1672acde6b265b54e9f4a705981d923d22a2e0cafba3",
+        "parent": "0000000000009fe7783d823df0c48677c553fa8ac0f2c590e1fa837ba01e7c74",
+        "merkle": "ac9870527de4377f7fb1cbf260cbad1e4ce6015c1a6ab9e709b8fee437178c5c",
+        "time": 1794746263
+      },
+      "replay": {
+        "status": "verified-individually",
+        "stateTxid": "667037e0a4fef18cc36fb5e5acb3ce522e0d6886be52a46440940464f40e0869",
+        "utxos": [
+          {
+            "txid": "667037e0a4fef18cc36fb5e5acb3ce522e0d6886be52a46440940464f40e0869",
+            "vout": 0,
+            "satoshis": "1000"
+          },
+          {
+            "txid": "667037e0a4fef18cc36fb5e5acb3ce522e0d6886be52a46440940464f40e0869",
+            "vout": 1,
+            "satoshis": "3000"
+          },
+          {
+            "txid": "667037e0a4fef18cc36fb5e5acb3ce522e0d6886be52a46440940464f40e0869",
+            "vout": 2,
+            "satoshis": "10000"
+          }
+        ],
+        "ancestry": [],
+        "pending": [],
+        "history": [
+          "fa5bae8625e61ec15a9d1527157f1e544d6d4bee9a1a268095099320e33e8c86",
+          "667037e0a4fef18cc36fb5e5acb3ce522e0d6886be52a46440940464f40e0869"
+        ]
+      }
+    }
+  ]
+}

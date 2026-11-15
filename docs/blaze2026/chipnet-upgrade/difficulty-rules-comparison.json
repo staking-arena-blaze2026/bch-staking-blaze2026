@@ -1,0 +1,5459 @@
+{
+  "at": "2026-11-15T16:08:08.198Z",
+  "sourceCommit": "3e6827e95c7a17497e09ac15556debd116dea1d0",
+  "anchor": {
+    "height": 16844,
+    "bits": "1d00ffff",
+    "parentTime": 1605451779,
+    "legacyInterval": 600,
+    "newInterval": 60,
+    "halfLife": 3600
+  },
+  "scope": "Contextual header difficulty only. Independent native preview validation is recorded separately; this does not verify transaction scripts, subsidies or full blocks.",
+  "results": [
+    {
+      "endpoint": "wss://chipnet.imaginary.cash:50004",
+      "activationParentHeight": 332450,
+      "preActivationChecks": 150,
+      "preActivationOldMatches": true,
+      "preActivationPreviewMatches": true,
+      "postActivationChecks": 218,
+      "postActivationOldMatches": false,
+      "postActivationPreviewMatches": true,
+      "firstPreviewMismatch": null,
+      "checks": [
+        {
+          "height": 332301,
+          "actualBits": "1a200c9f",
+          "old600SecondBits": "1a200c9f",
+          "previewBits": "1a200c9f"
+        },
+        {
+          "height": 332302,
+          "actualBits": "1a1ddc22",
+          "old600SecondBits": "1a1ddc22",
+          "previewBits": "1a1ddc22"
+        },
+        {
+          "height": 332303,
+          "actualBits": "1a1ba564",
+          "old600SecondBits": "1a1ba564",
+          "previewBits": "1a1ba564"
+        },
+        {
+          "height": 332304,
+          "actualBits": "1a1d3082",
+          "old600SecondBits": "1a1d3082",
+          "previewBits": "1a1d3082"
+        },
+        {
+          "height": 332305,
+          "actualBits": "1d00ffff",
+          "old600SecondBits": "1d00ffff",
+          "previewBits": "1d00ffff"
+        },
+        {
+          "height": 332306,
+          "actualBits": "1a1e09d1",
+          "old600SecondBits": "1a1e09d1",
+          "previewBits": "1a1e09d1"
+        },
+        {
+          "height": 332307,
+          "actualBits": "1a1aee55",
+          "old600SecondBits": "1a1aee55",
+          "previewBits": "1a1aee55"
+        },
+        {
+          "height": 332308,
+          "actualBits": "1a189e17",
+          "old600SecondBits": "1a189e17",
+          "previewBits": "1a189e17"
+        },
+        {
+          "height": 332309,
+          "actualBits": "1a17ad88",
+          "old600SecondBits": "1a17ad88",
+          "previewBits": "1a17ad88"
+        },
+        {
+          "height": 332310,
+          "actualBits": "1d00ffff",
+          "old600SecondBits": "1d00ffff",
+          "previewBits": "1d00ffff"
+        },
+        {
+          "height": 332311,
+          "actualBits": "1a193546",
+          "old600SecondBits": "1a193546",
+          "previewBits": "1a193546"
+        },
+        {
+          "height": 332312,
+          "actualBits": "1d00ffff",
+          "old600SecondBits": "1d00ffff",
+          "previewBits": "1d00ffff"
+        },
+        {
+          "height": 332313,
+          "actualBits": "1a198e36",
+          "old600SecondBits": "1a198e36",
+          "previewBits": "1a198e36"
+        },
+        {
+          "height": 332314,
+          "actualBits": "1a17ef38",
+          "old600SecondBits": "1a17ef38",
+          "previewBits": "1a17ef38"
+        },
+        {
+          "height": 332315,
+          "actualBits": "1a17cbe8",
+          "old600SecondBits": "1a17cbe8",
+          "previewBits": "1a17cbe8"
+        },
+        {
+          "height": 332316,
+          "actualBits": "1a15a74a",
+          "old600SecondBits": "1a15a74a",
+          "previewBits": "1a15a74a"
+        },
+        {
+          "height": 332317,
+          "actualBits": "1a13bd5c",
+          "old600SecondBits": "1a13bd5c",
+          "previewBits": "1a13bd5c"
+        },
+        {
+          "height": 332318,
+          "actualBits": "1a123ffd",
+          "old600SecondBits": "1a123ffd",
+          "previewBits": "1a123ffd"
+        },
+        {
+          "height": 332319,
+          "actualBits": "1a10f66f",
+          "old600SecondBits": "1a10f66f",
+          "previewBits": "1a10f66f"
+        },
+        {
+          "height": 332320,
+          "actualBits": "1a11008e",
+          "old600SecondBits": "1a11008e",
+          "previewBits": "1a11008e"
+        },
+        {
+          "height": 332321,
+          "actualBits": "1a0f90f0",
+          "old600SecondBits": "1a0f90f0",
+          "previewBits": "1a0f90f0"
+        },
+        {
+          "height": 332322,
+          "actualBits": "1a0f9340",
+          "old600SecondBits": "1a0f9340",
+          "previewBits": "1a0f9340"
+        },
+        {
+          "height": 332323,
+          "actualBits": "1d00ffff",
+          "old600SecondBits": "1d00ffff",
+          "previewBits": "1d00ffff"
+        },
+        {
+          "height": 332324,
+          "actualBits": "1d00ffff",
+          "old600SecondBits": "1d00ffff",
+          "previewBits": "1d00ffff"
+        },
+        {
+          "height": 332325,
+          "actualBits": "1a13997c",
+          "old600SecondBits": "1a13997c",
+          "previewBits": "1a13997c"
+        },
+        {
+          "height": 332326,
+          "actualBits": "1a1377dc",
+          "old600SecondBits": "1a1377dc",
+          "previewBits": "1a1377dc"
+        },
+        {
+          "height": 332327,
+          "actualBits": "1a13008c",
+          "old600SecondBits": "1a13008c",
+          "previewBits": "1a13008c"
+        },
+        {
+          "height": 332328,
+          "actualBits": "1d00ffff",
+          "old600SecondBits": "1d00ffff",
+          "previewBits": "1d00ffff"
+        },
+        {
+          "height": 332329,
+          "actualBits": "1a15f16a",
+          "old600SecondBits": "1a15f16a",
+          "previewBits": "1a15f16a"
+        },
+        {
+          "height": 332330,
+          "actualBits": "1a15492a",
+          "old600SecondBits": "1a15492a",
+          "previewBits": "1a15492a"
+        },
+        {
+          "height": 332331,
+          "actualBits": "1a130e8c",
+          "old600SecondBits": "1a130e8c",
+          "previewBits": "1a130e8c"
+        },
+        {
+          "height": 332332,
+          "actualBits": "1a121ded",
+          "old600SecondBits": "1a121ded",
+          "previewBits": "1a121ded"
+        },
+        {
+          "height": 332333,
+          "actualBits": "1d00ffff",
+          "old600SecondBits": "1d00ffff",
+          "previewBits": "1d00ffff"
+        },
+        {
+          "height": 332334,
+          "actualBits": "1d00ffff",
+          "old600SecondBits": "1d00ffff",
+          "previewBits": "1d00ffff"
+        },
+        {
+          "height": 332335,
+          "actualBits": "1a16dee9",
+          "old600SecondBits": "1a16dee9",
+          "previewBits": "1a16dee9"
+        },
+        {
+          "height": 332336,
+          "actualBits": "1a15ccca",
+          "old600SecondBits": "1a15ccca",
+          "previewBits": "1a15ccca"
+        },
+        {
+          "height": 332337,
+          "actualBits": "1a1567aa",
+          "old600SecondBits": "1a1567aa",
+          "previewBits": "1a1567aa"
+        },
+        {
+          "height": 332338,
+          "actualBits": "1a142e5b",
+          "old600SecondBits": "1a142e5b",
+          "previewBits": "1a142e5b"
+        },
+        {
+          "height": 332339,
+          "actualBits": "1a15035a",
+          "old600SecondBits": "1a15035a",
+          "previewBits": "1a15035a"
+        },
+        {
+          "height": 332340,
+          "actualBits": "1a15045a",
+          "old600SecondBits": "1a15045a",
+          "previewBits": "1a15045a"
+        },
+        {
+          "height": 332341,
+          "actualBits": "1a15470a",
+          "old600SecondBits": "1a15470a",
+          "previewBits": "1a15470a"
+        },
+        {
+          "height": 332342,
+          "actualBits": "1a137aac",
+          "old600SecondBits": "1a137aac",
+          "previewBits": "1a137aac"
+        },
+        {
+          "height": 332343,
+          "actualBits": "1d00ffff",
+          "old600SecondBits": "1d00ffff",
+          "previewBits": "1d00ffff"
+        },
+        {
+          "height": 332344,
+          "actualBits": "1a179758",
+          "old600SecondBits": "1a179758",
+          "previewBits": "1a179758"
+        },
+        {
+          "height": 332345,
+          "actualBits": "1a1712f8",
+          "old600SecondBits": "1a1712f8",
+          "previewBits": "1a1712f8"
+        },
+        {
+          "height": 332346,
+          "actualBits": "1a17f8b8",
+          "old600SecondBits": "1a17f8b8",
+          "previewBits": "1a17f8b8"
+        },
+        {
+          "height": 332347,
+          "actualBits": "1a15a96a",
+          "old600SecondBits": "1a15a96a",
+          "previewBits": "1a15a96a"
+        },
+        {
+          "height": 332348,
+          "actualBits": "1d00ffff",
+          "old600SecondBits": "1d00ffff",
+          "previewBits": "1d00ffff"
+        },
+        {
+          "height": 332349,
+          "actualBits": "1a15daca",
+          "old600SecondBits": "1a15daca",
+          "previewBits": "1a15daca"
+        },
+        {
+          "height": 332350,
+          "actualBits": "1a14827b",
+          "old600SecondBits": "1a14827b",
+          "previewBits": "1a14827b"
+        },
+        {
+          "height": 332351,
+          "actualBits": "1d00ffff",
+          "old600SecondBits": "1d00ffff",
+          "previewBits": "1d00ffff"
+        },
+        {
+          "height": 332352,
+          "actualBits": "1a15343a",
+          "old600SecondBits": "1a15343a",
+          "previewBits": "1a15343a"
+        },
+        {
+          "height": 332353,
+          "actualBits": "1a160fc9",
+          "old600SecondBits": "1a160fc9",
+          "previewBits": "1a160fc9"
+        },
+        {
+          "height": 332354,
+          "actualBits": "1a13dd7c",
+          "old600SecondBits": "1a13dd7c",
+          "previewBits": "1a13dd7c"
+        },
+        {
+          "height": 332355,
+          "actualBits": "1a12eced",
+          "old600SecondBits": "1a12eced",
+          "previewBits": "1a12eced"
+        },
+        {
+          "height": 332356,
+          "actualBits": "1a1145ce",
+          "old600SecondBits": "1a1145ce",
+          "previewBits": "1a1145ce"
+        },
+        {
+          "height": 332357,
+          "actualBits": "1a12f19d",
+          "old600SecondBits": "1a12f19d",
+          "previewBits": "1a12f19d"
+        },
+        {
+          "height": 332358,
+          "actualBits": "1a11065e",
+          "old600SecondBits": "1a11065e",
+          "previewBits": "1a11065e"
+        },
+        {
+          "height": 332359,
+          "actualBits": "1d00ffff",
+          "old600SecondBits": "1d00ffff",
+          "previewBits": "1d00ffff"
+        },
+        {
+          "height": 332360,
+          "actualBits": "1a141c7b",
+          "old600SecondBits": "1a141c7b",
+          "previewBits": "1a141c7b"
+        },
+        {
+          "height": 332361,
+          "actualBits": "1d00ffff",
+          "old600SecondBits": "1d00ffff",
+          "previewBits": "1d00ffff"
+        },
+        {
+          "height": 332362,
+          "actualBits": "1a15637a",
+          "old600SecondBits": "1a15637a",
+          "previewBits": "1a15637a"
+        },
+        {
+          "height": 332363,
+          "actualBits": "1a14613b",
+          "old600SecondBits": "1a14613b",
+          "previewBits": "1a14613b"
+        },
+        {
+          "height": 332364,
+          "actualBits": "1a15e9ea",
+          "old600SecondBits": "1a15e9ea",
+          "previewBits": "1a15e9ea"
+        },
+        {
+          "height": 332365,
+          "actualBits": "1a13e16c",
+          "old600SecondBits": "1a13e16c",
+          "previewBits": "1a13e16c"
+        },
+        {
+          "height": 332366,
+          "actualBits": "1a149ddb",
+          "old600SecondBits": "1a149ddb",
+          "previewBits": "1a149ddb"
+        },
+        {
+          "height": 332367,
+          "actualBits": "1a12811d",
+          "old600SecondBits": "1a12811d",
+          "previewBits": "1a12811d"
+        },
+        {
+          "height": 332368,
+          "actualBits": "1a1205ed",
+          "old600SecondBits": "1a1205ed",
+          "previewBits": "1a1205ed"
+        },
+        {
+          "height": 332369,
+          "actualBits": "1a12472d",
+          "old600SecondBits": "1a12472d",
+          "previewBits": "1a12472d"
+        },
+        {
+          "height": 332370,
+          "actualBits": "1a10f82f",
+          "old600SecondBits": "1a10f82f",
+          "previewBits": "1a10f82f"
+        },
+        {
+          "height": 332371,
+          "actualBits": "1a124bad",
+          "old600SecondBits": "1a124bad",
+          "previewBits": "1a124bad"
+        },
+        {
+          "height": 332372,
+          "actualBits": "1d00ffff",
+          "old600SecondBits": "1d00ffff",
+          "previewBits": "1d00ffff"
+        },
+        {
+          "height": 332373,
+          "actualBits": "1d00ffff",
+          "old600SecondBits": "1d00ffff",
+          "previewBits": "1d00ffff"
+        },
+        {
+          "height": 332374,
+          "actualBits": "1a176588",
+          "old600SecondBits": "1a176588",
+          "previewBits": "1a176588"
+        },
+        {
+          "height": 332375,
+          "actualBits": "1d00ffff",
+          "old600SecondBits": "1d00ffff",
+          "previewBits": "1d00ffff"
+        },
+        {
+          "height": 332376,
+          "actualBits": "1a184d37",
+          "old600SecondBits": "1a184d37",
+          "previewBits": "1a184d37"
+        },
+        {
+          "height": 332377,
+          "actualBits": "1a17f9e8",
+          "old600SecondBits": "1a17f9e8",
+          "previewBits": "1a17f9e8"
+        },
+        {
+          "height": 332378,
+          "actualBits": "1a1946b6",
+          "old600SecondBits": "1a1946b6",
+          "previewBits": "1a1946b6"
+        },
+        {
+          "height": 332379,
+          "actualBits": "1d00ffff",
+          "old600SecondBits": "1d00ffff",
+          "previewBits": "1d00ffff"
+        },
+        {
+          "height": 332380,
+          "actualBits": "1a1be884",
+          "old600SecondBits": "1a1be884",
+          "previewBits": "1a1be884"
+        },
+        {
+          "height": 332381,
+          "actualBits": "1a196736",
+          "old600SecondBits": "1a196736",
+          "previewBits": "1a196736"
+        },
+        {
+          "height": 332382,
+          "actualBits": "1a198696",
+          "old600SecondBits": "1a198696",
+          "previewBits": "1a198696"
+        },
+        {
+          "height": 332383,
+          "actualBits": "1d00ffff",
+          "old600SecondBits": "1d00ffff",
+          "previewBits": "1d00ffff"
+        },
+        {
+          "height": 332384,
+          "actualBits": "1a1cf173",
+          "old600SecondBits": "1a1cf173",
+          "previewBits": "1a1cf173"
+        },
+        {
+          "height": 332385,
+          "actualBits": "1a1d24f2",
+          "old600SecondBits": "1a1d24f2",
+          "previewBits": "1a1d24f2"
+        },
+        {
+          "height": 332386,
+          "actualBits": "1d00ffff",
+          "old600SecondBits": "1d00ffff",
+          "previewBits": "1d00ffff"
+        },
+        {
+          "height": 332387,
+          "actualBits": "1a1f15b0",
+          "old600SecondBits": "1a1f15b0",
+          "previewBits": "1a1f15b0"
+        },
+        {
+          "height": 332388,
+          "actualBits": "1d00ffff",
+          "old600SecondBits": "1d00ffff",
+          "previewBits": "1d00ffff"
+        },
+        {
+          "height": 332389,
+          "actualBits": "1a2095ff",
+          "old600SecondBits": "1a2095ff",
+          "previewBits": "1a2095ff"
+        },
+        {
+          "height": 332390,
+          "actualBits": "1a247ffb",
+          "old600SecondBits": "1a247ffb",
+          "previewBits": "1a247ffb"
+        },
+        {
+          "height": 332391,
+          "actualBits": "1a20b95f",
+          "old600SecondBits": "1a20b95f",
+          "previewBits": "1a20b95f"
+        },
+        {
+          "height": 332392,
+          "actualBits": "1a223bfd",
+          "old600SecondBits": "1a223bfd",
+          "previewBits": "1a223bfd"
+        },
+        {
+          "height": 332393,
+          "actualBits": "1a24f75b",
+          "old600SecondBits": "1a24f75b",
+          "previewBits": "1a24f75b"
+        },
+        {
+          "height": 332394,
+          "actualBits": "1a2284dd",
+          "old600SecondBits": "1a2284dd",
+          "previewBits": "1a2284dd"
+        },
+        {
+          "height": 332395,
+          "actualBits": "1a2387bc",
+          "old600SecondBits": "1a2387bc",
+          "previewBits": "1a2387bc"
+        },
+        {
+          "height": 332396,
+          "actualBits": "1a20a13f",
+          "old600SecondBits": "1a20a13f",
+          "previewBits": "1a20a13f"
+        },
+        {
+          "height": 332397,
+          "actualBits": "1d00ffff",
+          "old600SecondBits": "1d00ffff",
+          "previewBits": "1d00ffff"
+        },
+        {
+          "height": 332398,
+          "actualBits": "1a269f79",
+          "old600SecondBits": "1a269f79",
+          "previewBits": "1a269f79"
+        },
+        {
+          "height": 332399,
+          "actualBits": "1a23b6fc",
+          "old600SecondBits": "1a23b6fc",
+          "previewBits": "1a23b6fc"
+        },
+        {
+          "height": 332400,
+          "actualBits": "1a25391a",
+          "old600SecondBits": "1a25391a",
+          "previewBits": "1a25391a"
+        },
+        {
+          "height": 332401,
+          "actualBits": "1a23be1c",
+          "old600SecondBits": "1a23be1c",
+          "previewBits": "1a23be1c"
+        },
+        {
+          "height": 332402,
+          "actualBits": "1d00ffff",
+          "old600SecondBits": "1d00ffff",
+          "previewBits": "1d00ffff"
+        },
+        {
+          "height": 332403,
+          "actualBits": "1a29e5b6",
+          "old600SecondBits": "1a29e5b6",
+          "previewBits": "1a29e5b6"
+        },
+        {
+          "height": 332404,
+          "actualBits": "1a2622d9",
+          "old600SecondBits": "1a2622d9",
+          "previewBits": "1a2622d9"
+        },
+        {
+          "height": 332405,
+          "actualBits": "1a243a1b",
+          "old600SecondBits": "1a243a1b",
+          "previewBits": "1a243a1b"
+        },
+        {
+          "height": 332406,
+          "actualBits": "1a23169c",
+          "old600SecondBits": "1a23169c",
+          "previewBits": "1a23169c"
+        },
+        {
+          "height": 332407,
+          "actualBits": "1d00ffff",
+          "old600SecondBits": "1d00ffff",
+          "previewBits": "1d00ffff"
+        },
+        {
+          "height": 332408,
+          "actualBits": "1a282b17",
+          "old600SecondBits": "1a282b17",
+          "previewBits": "1a282b17"
+        },
+        {
+          "height": 332409,
+          "actualBits": "1a25b2ba",
+          "old600SecondBits": "1a25b2ba",
+          "previewBits": "1a25b2ba"
+        },
+        {
+          "height": 332410,
+          "actualBits": "1d00ffff",
+          "old600SecondBits": "1d00ffff",
+          "previewBits": "1d00ffff"
+        },
+        {
+          "height": 332411,
+          "actualBits": "1d00ffff",
+          "old600SecondBits": "1d00ffff",
+          "previewBits": "1d00ffff"
+        },
+        {
+          "height": 332412,
+          "actualBits": "1a2e1191",
+          "old600SecondBits": "1a2e1191",
+          "previewBits": "1a2e1191"
+        },
+        {
+          "height": 332413,
+          "actualBits": "1a2c1d73",
+          "old600SecondBits": "1a2c1d73",
+          "previewBits": "1a2c1d73"
+        },
+        {
+          "height": 332414,
+          "actualBits": "1a28d097",
+          "old600SecondBits": "1a28d097",
+          "previewBits": "1a28d097"
+        },
+        {
+          "height": 332415,
+          "actualBits": "1a25231a",
+          "old600SecondBits": "1a25231a",
+          "previewBits": "1a25231a"
+        },
+        {
+          "height": 332416,
+          "actualBits": "1a2393fc",
+          "old600SecondBits": "1a2393fc",
+          "previewBits": "1a2393fc"
+        },
+        {
+          "height": 332417,
+          "actualBits": "1a222e5d",
+          "old600SecondBits": "1a222e5d",
+          "previewBits": "1a222e5d"
+        },
+        {
+          "height": 332418,
+          "actualBits": "1a1fbfb0",
+          "old600SecondBits": "1a1fbfb0",
+          "previewBits": "1a1fbfb0"
+        },
+        {
+          "height": 332419,
+          "actualBits": "1d00ffff",
+          "old600SecondBits": "1d00ffff",
+          "previewBits": "1d00ffff"
+        },
+        {
+          "height": 332420,
+          "actualBits": "1a2040ff",
+          "old600SecondBits": "1a2040ff",
+          "previewBits": "1a2040ff"
+        },
+        {
+          "height": 332421,
+          "actualBits": "1a20d01f",
+          "old600SecondBits": "1a20d01f",
+          "previewBits": "1a20d01f"
+        },
+        {
+          "height": 332422,
+          "actualBits": "1a1e1a21",
+          "old600SecondBits": "1a1e1a21",
+          "previewBits": "1a1e1a21"
+        },
+        {
+          "height": 332423,
+          "actualBits": "1a204ddf",
+          "old600SecondBits": "1a204ddf",
+          "previewBits": "1a204ddf"
+        },
+        {
+          "height": 332424,
+          "actualBits": "1a22153d",
+          "old600SecondBits": "1a22153d",
+          "previewBits": "1a22153d"
+        },
+        {
+          "height": 332425,
+          "actualBits": "1a1ff4f0",
+          "old600SecondBits": "1a1ff4f0",
+          "previewBits": "1a1ff4f0"
+        },
+        {
+          "height": 332426,
+          "actualBits": "1a1cabe3",
+          "old600SecondBits": "1a1cabe3",
+          "previewBits": "1a1cabe3"
+        },
+        {
+          "height": 332427,
+          "actualBits": "1a19de26",
+          "old600SecondBits": "1a19de26",
+          "previewBits": "1a19de26"
+        },
+        {
+          "height": 332428,
+          "actualBits": "1a1c6de3",
+          "old600SecondBits": "1a1c6de3",
+          "previewBits": "1a1c6de3"
+        },
+        {
+          "height": 332429,
+          "actualBits": "1d00ffff",
+          "old600SecondBits": "1d00ffff",
+          "previewBits": "1d00ffff"
+        },
+        {
+          "height": 332430,
+          "actualBits": "1a21bfde",
+          "old600SecondBits": "1a21bfde",
+          "previewBits": "1a21bfde"
+        },
+        {
+          "height": 332431,
+          "actualBits": "1a25165a",
+          "old600SecondBits": "1a25165a",
+          "previewBits": "1a25165a"
+        },
+        {
+          "height": 332432,
+          "actualBits": "1a249cbb",
+          "old600SecondBits": "1a249cbb",
+          "previewBits": "1a249cbb"
+        },
+        {
+          "height": 332433,
+          "actualBits": "1a2481bb",
+          "old600SecondBits": "1a2481bb",
+          "previewBits": "1a2481bb"
+        },
+        {
+          "height": 332434,
+          "actualBits": "1a211ade",
+          "old600SecondBits": "1a211ade",
+          "previewBits": "1a211ade"
+        },
+        {
+          "height": 332435,
+          "actualBits": "1a235a3c",
+          "old600SecondBits": "1a235a3c",
+          "previewBits": "1a235a3c"
+        },
+        {
+          "height": 332436,
+          "actualBits": "1d00ffff",
+          "old600SecondBits": "1d00ffff",
+          "previewBits": "1d00ffff"
+        },
+        {
+          "height": 332437,
+          "actualBits": "1a2491fb",
+          "old600SecondBits": "1a2491fb",
+          "previewBits": "1a2491fb"
+        },
+        {
+          "height": 332438,
+          "actualBits": "1a20ebbf",
+          "old600SecondBits": "1a20ebbf",
+          "previewBits": "1a20ebbf"
+        },
+        {
+          "height": 332439,
+          "actualBits": "1a218c7e",
+          "old600SecondBits": "1a218c7e",
+          "previewBits": "1a218c7e"
+        },
+        {
+          "height": 332440,
+          "actualBits": "1a1f4cf0",
+          "old600SecondBits": "1a1f4cf0",
+          "previewBits": "1a1f4cf0"
+        },
+        {
+          "height": 332441,
+          "actualBits": "1d00ffff",
+          "old600SecondBits": "1d00ffff",
+          "previewBits": "1d00ffff"
+        },
+        {
+          "height": 332442,
+          "actualBits": "1a23ac7c",
+          "old600SecondBits": "1a23ac7c",
+          "previewBits": "1a23ac7c"
+        },
+        {
+          "height": 332443,
+          "actualBits": "1a20e1df",
+          "old600SecondBits": "1a20e1df",
+          "previewBits": "1a20e1df"
+        },
+        {
+          "height": 332444,
+          "actualBits": "1a1e4b31",
+          "old600SecondBits": "1a1e4b31",
+          "previewBits": "1a1e4b31"
+        },
+        {
+          "height": 332445,
+          "actualBits": "1d00ffff",
+          "old600SecondBits": "1d00ffff",
+          "previewBits": "1d00ffff"
+        },
+        {
+          "height": 332446,
+          "actualBits": "1a1f8ac0",
+          "old600SecondBits": "1a1f8ac0",
+          "previewBits": "1a1f8ac0"
+        },
+        {
+          "height": 332447,
+          "actualBits": "1a1d8002",
+          "old600SecondBits": "1a1d8002",
+          "previewBits": "1a1d8002"
+        },
+        {
+          "height": 332448,
+          "actualBits": "1a1cdab3",
+          "old600SecondBits": "1a1cdab3",
+          "previewBits": "1a1cdab3"
+        },
+        {
+          "height": 332449,
+          "actualBits": "1a1bdac4",
+          "old600SecondBits": "1a1bdac4",
+          "previewBits": "1a1bdac4"
+        },
+        {
+          "height": 332450,
+          "actualBits": "1a1a55f5",
+          "old600SecondBits": "1a1a55f5",
+          "previewBits": "1a1a55f5"
+        },
+        {
+          "height": 332451,
+          "actualBits": "1d00ffff",
+          "old600SecondBits": "1a179758",
+          "previewBits": "1d00ffff"
+        },
+        {
+          "height": 332452,
+          "actualBits": "1b00f080",
+          "old600SecondBits": "1a15acaa",
+          "previewBits": "1b00f080"
+        },
+        {
+          "height": 332453,
+          "actualBits": "1b00f0a4",
+          "old600SecondBits": "1a138bfc",
+          "previewBits": "1b00f0a4"
+        },
+        {
+          "height": 332454,
+          "actualBits": "1d00ffff",
+          "old600SecondBits": "1a11907e",
+          "previewBits": "1d00ffff"
+        },
+        {
+          "height": 332455,
+          "actualBits": "1b00f2e0",
+          "old600SecondBits": "1a10064f",
+          "previewBits": "1b00f2e0"
+        },
+        {
+          "height": 332456,
+          "actualBits": "1b00ec23",
+          "old600SecondBits": "1a0e0b11",
+          "previewBits": "1b00ec23"
+        },
+        {
+          "height": 332457,
+          "actualBits": "1b00eca3",
+          "old600SecondBits": "1a0cae9b",
+          "previewBits": "1b00eca3"
+        },
+        {
+          "height": 332458,
+          "actualBits": "1b00eb75",
+          "old600SecondBits": "1a0b5f24",
+          "previewBits": "1b00eb75"
+        },
+        {
+          "height": 332459,
+          "actualBits": "1b00ea99",
+          "old600SecondBits": "1a0a362d",
+          "previewBits": "1b00ea99"
+        },
+        {
+          "height": 332460,
+          "actualBits": "1b00ebf4",
+          "old600SecondBits": "1a0941ee",
+          "previewBits": "1b00ebf4"
+        },
+        {
+          "height": 332461,
+          "actualBits": "1d00ffff",
+          "old600SecondBits": "1a084e17",
+          "previewBits": "1d00ffff"
+        },
+        {
+          "height": 332462,
+          "actualBits": "1b00eda5",
+          "old600SecondBits": "1a0792cc",
+          "previewBits": "1b00eda5"
+        },
+        {
+          "height": 332463,
+          "actualBits": "1b00eb46",
+          "old600SecondBits": "1a06c1e5",
+          "previewBits": "1b00eb46"
+        },
+        {
+          "height": 332464,
+          "actualBits": "1b00eba4",
+          "old600SecondBits": "1a06194d",
+          "previewBits": "1b00eba4"
+        },
+        {
+          "height": 332465,
+          "actualBits": "1b00ec81",
+          "old600SecondBits": "1a05843a",
+          "previewBits": "1b00ec81"
+        },
+        {
+          "height": 332466,
+          "actualBits": "1b00ed99",
+          "old600SecondBits": "1a04febb",
+          "previewBits": "1b00ed99"
+        },
+        {
+          "height": 332467,
+          "actualBits": "1d00ffff",
+          "old600SecondBits": "1a047637",
+          "previewBits": "1d00ffff"
+        },
+        {
+          "height": 332468,
+          "actualBits": "1b00ee78",
+          "old600SecondBits": "1a04128b",
+          "previewBits": "1b00ee78"
+        },
+        {
+          "height": 332469,
+          "actualBits": "1b00eee2",
+          "old600SecondBits": "1a03ad48",
+          "previewBits": "1b00eee2"
+        },
+        {
+          "height": 332470,
+          "actualBits": "1b00ee0e",
+          "old600SecondBits": "1a034d58",
+          "previewBits": "1b00ee0e"
+        },
+        {
+          "height": 332471,
+          "actualBits": "1b00eca3",
+          "old600SecondBits": "1a02f53f",
+          "previewBits": "1b00eca3"
+        },
+        {
+          "height": 332472,
+          "actualBits": "1b00ebde",
+          "old600SecondBits": "1a02a839",
+          "previewBits": "1b00ebde"
+        },
+        {
+          "height": 332473,
+          "actualBits": "1b00ec74",
+          "old600SecondBits": "1a0266a7",
+          "previewBits": "1b00ec74"
+        },
+        {
+          "height": 332474,
+          "actualBits": "1b00ead2",
+          "old600SecondBits": "1a02262d",
+          "previewBits": "1b00ead2"
+        },
+        {
+          "height": 332475,
+          "actualBits": "1b00e8b4",
+          "old600SecondBits": "1a01eb5e",
+          "previewBits": "1b00e8b4"
+        },
+        {
+          "height": 332476,
+          "actualBits": "1b00e91b",
+          "old600SecondBits": "1a01bb9e",
+          "previewBits": "1b00e91b"
+        },
+        {
+          "height": 332477,
+          "actualBits": "1b00e6e0",
+          "old600SecondBits": "1a018bf0",
+          "previewBits": "1b00e6e0"
+        },
+        {
+          "height": 332478,
+          "actualBits": "1b00e892",
+          "old600SecondBits": "1a01676f",
+          "previewBits": "1b00e892"
+        },
+        {
+          "height": 332479,
+          "actualBits": "1b00e657",
+          "old600SecondBits": "1a0140d9",
+          "previewBits": "1b00e657"
+        },
+        {
+          "height": 332480,
+          "actualBits": "1b00e444",
+          "old600SecondBits": "1a011e99",
+          "previewBits": "1b00e444"
+        },
+        {
+          "height": 332481,
+          "actualBits": "1b00e358",
+          "old600SecondBits": "1a01013c",
+          "previewBits": "1b00e358"
+        },
+        {
+          "height": 332482,
+          "actualBits": "1b00e36e",
+          "old600SecondBits": "1a00e7f2",
+          "previewBits": "1b00e36e"
+        },
+        {
+          "height": 332483,
+          "actualBits": "1b00e1a5",
+          "old600SecondBits": "1a00cf61",
+          "previewBits": "1b00e1a5"
+        },
+        {
+          "height": 332484,
+          "actualBits": "1b00e0d2",
+          "old600SecondBits": "1a00ba33",
+          "previewBits": "1b00e0d2"
+        },
+        {
+          "height": 332485,
+          "actualBits": "1b00de94",
+          "old600SecondBits": "1a00a624",
+          "previewBits": "1b00de94"
+        },
+        {
+          "height": 332486,
+          "actualBits": "1b00dc7d",
+          "old600SecondBits": "1a009459",
+          "previewBits": "1b00dc7d"
+        },
+        {
+          "height": 332487,
+          "actualBits": "1b00dc88",
+          "old600SecondBits": "1a0085ba",
+          "previewBits": "1b00dc88"
+        },
+        {
+          "height": 332488,
+          "actualBits": "1b00dab7",
+          "old600SecondBits": "19778808",
+          "previewBits": "1b00dab7"
+        },
+        {
+          "height": 332489,
+          "actualBits": "1b00dc06",
+          "old600SecondBits": "196c5e93",
+          "previewBits": "1b00dc06"
+        },
+        {
+          "height": 332490,
+          "actualBits": "1b00da56",
+          "old600SecondBits": "1960e85f",
+          "previewBits": "1b00da56"
+        },
+        {
+          "height": 332491,
+          "actualBits": "1b00d7de",
+          "old600SecondBits": "19565929",
+          "previewBits": "1b00d7de"
+        },
+        {
+          "height": 332492,
+          "actualBits": "1d00ffff",
+          "old600SecondBits": "194d8f32",
+          "previewBits": "1d00ffff"
+        },
+        {
+          "height": 332493,
+          "actualBits": "1b00d9a9",
+          "old600SecondBits": "1946bb79",
+          "previewBits": "1b00d9a9"
+        },
+        {
+          "height": 332494,
+          "actualBits": "1b00daab",
+          "old600SecondBits": "1940093f",
+          "previewBits": "1b00daab"
+        },
+        {
+          "height": 332495,
+          "actualBits": "1b00d97f",
+          "old600SecondBits": "193968a6",
+          "previewBits": "1b00d97f"
+        },
+        {
+          "height": 332496,
+          "actualBits": "1b00d8d3",
+          "old600SecondBits": "1933936c",
+          "previewBits": "1b00d8d3"
+        },
+        {
+          "height": 332497,
+          "actualBits": "1b00d994",
+          "old600SecondBits": "192ea3f1",
+          "previewBits": "1b00d994"
+        },
+        {
+          "height": 332498,
+          "actualBits": "1b00d79e",
+          "old600SecondBits": "1929a7f6",
+          "previewBits": "1b00d79e"
+        },
+        {
+          "height": 332499,
+          "actualBits": "1d00ffff",
+          "old600SecondBits": "192571fa",
+          "previewBits": "1d00ffff"
+        },
+        {
+          "height": 332500,
+          "actualBits": "1b00d994",
+          "old600SecondBits": "192225fd",
+          "previewBits": "1b00d994"
+        },
+        {
+          "height": 332501,
+          "actualBits": "1b00d8d3",
+          "old600SecondBits": "191eab41",
+          "previewBits": "1b00d8d3"
+        },
+        {
+          "height": 332502,
+          "actualBits": "1b00d6f5",
+          "old600SecondBits": "191b66f4",
+          "previewBits": "1b00d6f5"
+        },
+        {
+          "height": 332503,
+          "actualBits": "1b00d793",
+          "old600SecondBits": "1918c3d7",
+          "previewBits": "1b00d793"
+        },
+        {
+          "height": 332504,
+          "actualBits": "1b00d5c2",
+          "old600SecondBits": "19162139",
+          "previewBits": "1b00d5c2"
+        },
+        {
+          "height": 332505,
+          "actualBits": "1b00d38c",
+          "old600SecondBits": "1913bd5c",
+          "previewBits": "1b00d38c"
+        },
+        {
+          "height": 332506,
+          "actualBits": "1d00ffff",
+          "old600SecondBits": "1911fa5e",
+          "previewBits": "1d00ffff"
+        },
+        {
+          "height": 332507,
+          "actualBits": "1b00d849",
+          "old600SecondBits": "191064cf",
+          "previewBits": "1b00d849"
+        },
+        {
+          "height": 332508,
+          "actualBits": "1d00ffff",
+          "old600SecondBits": "190ea479",
+          "previewBits": "1d00ffff"
+        },
+        {
+          "height": 332509,
+          "actualBits": "1b00d8de",
+          "old600SecondBits": "190d5a0a",
+          "previewBits": "1b00d8de"
+        },
+        {
+          "height": 332510,
+          "actualBits": "1b00d6ff",
+          "old600SecondBits": "190bed9c",
+          "previewBits": "1b00d6ff"
+        },
+        {
+          "height": 332511,
+          "actualBits": "1d00ffff",
+          "old600SecondBits": "190ab135",
+          "previewBits": "1d00ffff"
+        },
+        {
+          "height": 332512,
+          "actualBits": "1b00d85e",
+          "old600SecondBits": "1909c03e",
+          "previewBits": "1b00d85e"
+        },
+        {
+          "height": 332513,
+          "actualBits": "1b00d617",
+          "old600SecondBits": "1908b247",
+          "previewBits": "1b00d617"
+        },
+        {
+          "height": 332514,
+          "actualBits": "1b00d583",
+          "old600SecondBits": "1907d0ec",
+          "previewBits": "1b00d583"
+        },
+        {
+          "height": 332515,
+          "actualBits": "1d00ffff",
+          "old600SecondBits": "1906fad5",
+          "previewBits": "1d00ffff"
+        },
+        {
+          "height": 332516,
+          "actualBits": "1b00d60c",
+          "old600SecondBits": "19065d45",
+          "previewBits": "1b00d60c"
+        },
+        {
+          "height": 332517,
+          "actualBits": "1b00d3e0",
+          "old600SecondBits": "1905ad52",
+          "previewBits": "1b00d3e0"
+        },
+        {
+          "height": 332518,
+          "actualBits": "1b00d26a",
+          "old600SecondBits": "190514d2",
+          "previewBits": "1b00d26a"
+        },
+        {
+          "height": 332519,
+          "actualBits": "1b00d028",
+          "old600SecondBits": "190487ef",
+          "previewBits": "1b00d028"
+        },
+        {
+          "height": 332520,
+          "actualBits": "1b00d0b8",
+          "old600SecondBits": "1904182f",
+          "previewBits": "1b00d0b8"
+        },
+        {
+          "height": 332521,
+          "actualBits": "1b00d31a",
+          "old600SecondBits": "1903bb84",
+          "previewBits": "1b00d31a"
+        },
+        {
+          "height": 332522,
+          "actualBits": "1d00ffff",
+          "old600SecondBits": "190358d2",
+          "previewBits": "1d00ffff"
+        },
+        {
+          "height": 332523,
+          "actualBits": "1b00d487",
+          "old600SecondBits": "19030d42",
+          "previewBits": "1b00d487"
+        },
+        {
+          "height": 332524,
+          "actualBits": "1b00d60c",
+          "old600SecondBits": "1902c51b",
+          "previewBits": "1b00d60c"
+        },
+        {
+          "height": 332525,
+          "actualBits": "1b00d4b1",
+          "old600SecondBits": "19027b13",
+          "previewBits": "1b00d4b1"
+        },
+        {
+          "height": 332526,
+          "actualBits": "1b00d53a",
+          "old600SecondBits": "19023ddd",
+          "previewBits": "1b00d53a"
+        },
+        {
+          "height": 332527,
+          "actualBits": "1d00ffff",
+          "old600SecondBits": "190206dd",
+          "previewBits": "1d00ffff"
+        },
+        {
+          "height": 332528,
+          "actualBits": "1b00d873",
+          "old600SecondBits": "1901d92f",
+          "previewBits": "1b00d873"
+        },
+        {
+          "height": 332529,
+          "actualBits": "1d00ffff",
+          "old600SecondBits": "1901aac3",
+          "previewBits": "1d00ffff"
+        },
+        {
+          "height": 332530,
+          "actualBits": "1b00db2d",
+          "old600SecondBits": "19018520",
+          "previewBits": "1b00db2d"
+        },
+        {
+          "height": 332531,
+          "actualBits": "1d00ffff",
+          "old600SecondBits": "19015ab9",
+          "previewBits": "1d00ffff"
+        },
+        {
+          "height": 332532,
+          "actualBits": "1b00db43",
+          "old600SecondBits": "19013c32",
+          "previewBits": "1b00db43"
+        },
+        {
+          "height": 332533,
+          "actualBits": "1b00dbe5",
+          "old600SecondBits": "19011dd3",
+          "previewBits": "1b00dbe5"
+        },
+        {
+          "height": 332534,
+          "actualBits": "1b00db58",
+          "old600SecondBits": "190100ef",
+          "previewBits": "1b00db58"
+        },
+        {
+          "height": 332535,
+          "actualBits": "1b00da4a",
+          "old600SecondBits": "1900e67a",
+          "previewBits": "1b00da4a"
+        },
+        {
+          "height": 332536,
+          "actualBits": "1b00da76",
+          "old600SecondBits": "1900cfdc",
+          "previewBits": "1b00da76"
+        },
+        {
+          "height": 332537,
+          "actualBits": "1b00db43",
+          "old600SecondBits": "1900bc00",
+          "previewBits": "1b00db43"
+        },
+        {
+          "height": 332538,
+          "actualBits": "1b00dcea",
+          "old600SecondBits": "1900aab6",
+          "previewBits": "1b00dcea"
+        },
+        {
+          "height": 332539,
+          "actualBits": "1b00daab",
+          "old600SecondBits": "1900984e",
+          "previewBits": "1b00daab"
+        },
+        {
+          "height": 332540,
+          "actualBits": "1b00d8e9",
+          "old600SecondBits": "1900882c",
+          "previewBits": "1b00d8e9"
+        },
+        {
+          "height": 332541,
+          "actualBits": "1b00d89e",
+          "old600SecondBits": "187a8ec5",
+          "previewBits": "1b00d89e"
+        },
+        {
+          "height": 332542,
+          "actualBits": "1d00ffff",
+          "old600SecondBits": "186ddcd2",
+          "previewBits": "1d00ffff"
+        },
+        {
+          "height": 332543,
+          "actualBits": "1b00d9ff",
+          "old600SecondBits": "18642c5b",
+          "previewBits": "1b00d9ff"
+        },
+        {
+          "height": 332544,
+          "actualBits": "1b00d7f4",
+          "old600SecondBits": "18596d66",
+          "previewBits": "1b00d7f4"
+        },
+        {
+          "height": 332545,
+          "actualBits": "1b00d74a",
+          "old600SecondBits": "18505a2f",
+          "previewBits": "1b00d74a"
+        },
+        {
+          "height": 332546,
+          "actualBits": "1b00d56f",
+          "old600SecondBits": "1847cd78",
+          "previewBits": "1b00d56f"
+        },
+        {
+          "height": 332547,
+          "actualBits": "1b00d602",
+          "old600SecondBits": "1840e1ff",
+          "previewBits": "1b00d602"
+        },
+        {
+          "height": 332548,
+          "actualBits": "1b00d54f",
+          "old600SecondBits": "183a49e5",
+          "previewBits": "1b00d54f"
+        },
+        {
+          "height": 332549,
+          "actualBits": "1b00d58d",
+          "old600SecondBits": "1834970b",
+          "previewBits": "1b00d58d"
+        },
+        {
+          "height": 332550,
+          "actualBits": "1b00d453",
+          "old600SecondBits": "182f1e50",
+          "previewBits": "1b00d453"
+        },
+        {
+          "height": 332551,
+          "actualBits": "1b00d491",
+          "old600SecondBits": "182a8395",
+          "previewBits": "1b00d491"
+        },
+        {
+          "height": 332552,
+          "actualBits": "1b00d305",
+          "old600SecondBits": "18260a59",
+          "previewBits": "1b00d305"
+        },
+        {
+          "height": 332553,
+          "actualBits": "1d00ffff",
+          "old600SecondBits": "1821f53e",
+          "previewBits": "1d00ffff"
+        },
+        {
+          "height": 332554,
+          "actualBits": "1b00d378",
+          "old600SecondBits": "181ef731",
+          "previewBits": "1b00d378"
+        },
+        {
+          "height": 332555,
+          "actualBits": "1b00d115",
+          "old600SecondBits": "181b97c4",
+          "previewBits": "1b00d115"
+        },
+        {
+          "height": 332556,
+          "actualBits": "1b00d066",
+          "old600SecondBits": "1818c8b7",
+          "previewBits": "1b00d066"
+        },
+        {
+          "height": 332557,
+          "actualBits": "1b00cf5c",
+          "old600SecondBits": "18163939",
+          "previewBits": "1b00cf5c"
+        },
+        {
+          "height": 332558,
+          "actualBits": "1b00cd22",
+          "old600SecondBits": "1813d0cc",
+          "previewBits": "1b00cd22"
+        },
+        {
+          "height": 332559,
+          "actualBits": "1b00cd04",
+          "old600SecondBits": "1811d9ce",
+          "previewBits": "1b00cd04"
+        },
+        {
+          "height": 332560,
+          "actualBits": "1b00ce5d",
+          "old600SecondBits": "1810314f",
+          "previewBits": "1b00ce5d"
+        },
+        {
+          "height": 332561,
+          "actualBits": "1b00d099",
+          "old600SecondBits": "180ec0b9",
+          "previewBits": "1b00d099"
+        },
+        {
+          "height": 332562,
+          "actualBits": "1d00ffff",
+          "old600SecondBits": "180d2a4a",
+          "previewBits": "1d00ffff"
+        },
+        {
+          "height": 332563,
+          "actualBits": "1b00d10a",
+          "old600SecondBits": "180c01ab",
+          "previewBits": "1b00d10a"
+        },
+        {
+          "height": 332564,
+          "actualBits": "1d00ffff",
+          "old600SecondBits": "180ad42d",
+          "previewBits": "1d00ffff"
+        },
+        {
+          "height": 332565,
+          "actualBits": "1b00d3b6",
+          "old600SecondBits": "1809e096",
+          "previewBits": "1b00d3b6"
+        },
+        {
+          "height": 332566,
+          "actualBits": "1b00d45e",
+          "old600SecondBits": "1808ee2f",
+          "previewBits": "1b00d45e"
+        },
+        {
+          "height": 332567,
+          "actualBits": "1b00d4bb",
+          "old600SecondBits": "18080fdf",
+          "previewBits": "1b00d4bb"
+        },
+        {
+          "height": 332568,
+          "actualBits": "1b00d324",
+          "old600SecondBits": "1807364c",
+          "previewBits": "1b00d324"
+        },
+        {
+          "height": 332569,
+          "actualBits": "1d00ffff",
+          "old600SecondBits": "180670d5",
+          "previewBits": "1d00ffff"
+        },
+        {
+          "height": 332570,
+          "actualBits": "1b00d3c1",
+          "old600SecondBits": "1805dfbe",
+          "previewBits": "1b00d3c1"
+        },
+        {
+          "height": 332571,
+          "actualBits": "1b00d40a",
+          "old600SecondBits": "18054d0e",
+          "previewBits": "1b00d40a"
+        },
+        {
+          "height": 332572,
+          "actualBits": "1d00ffff",
+          "old600SecondBits": "1804c41f",
+          "previewBits": "1d00ffff"
+        },
+        {
+          "height": 332573,
+          "actualBits": "1b00d602",
+          "old600SecondBits": "180458b7",
+          "previewBits": "1b00d602"
+        },
+        {
+          "height": 332574,
+          "actualBits": "1b00d617",
+          "old600SecondBits": "1803eb2a",
+          "previewBits": "1b00d617"
+        },
+        {
+          "height": 332575,
+          "actualBits": "1b00d3ff",
+          "old600SecondBits": "18037f4e",
+          "previewBits": "1b00d3ff"
+        },
+        {
+          "height": 332576,
+          "actualBits": "1b00d579",
+          "old600SecondBits": "18032c6e",
+          "previewBits": "1b00d579"
+        },
+        {
+          "height": 332577,
+          "actualBits": "1d00ffff",
+          "old600SecondBits": "1802d4b7",
+          "previewBits": "1d00ffff"
+        },
+        {
+          "height": 332578,
+          "actualBits": "1b00d5d8",
+          "old600SecondBits": "18029501",
+          "previewBits": "1b00d5d8"
+        },
+        {
+          "height": 332579,
+          "actualBits": "1d00ffff",
+          "old600SecondBits": "18024d85",
+          "previewBits": "1d00ffff"
+        },
+        {
+          "height": 332580,
+          "actualBits": "1d00ffff",
+          "old600SecondBits": "180219b5",
+          "previewBits": "1d00ffff"
+        },
+        {
+          "height": 332581,
+          "actualBits": "1b00d8a8",
+          "old600SecondBits": "1801ea53",
+          "previewBits": "1b00d8a8"
+        },
+        {
+          "height": 332582,
+          "actualBits": "1d00ffff",
+          "old600SecondBits": "1801ba56",
+          "previewBits": "1d00ffff"
+        },
+        {
+          "height": 332583,
+          "actualBits": "1d00ffff",
+          "old600SecondBits": "18019368",
+          "previewBits": "1d00ffff"
+        },
+        {
+          "height": 332584,
+          "actualBits": "1b00de11",
+          "old600SecondBits": "18016fd6",
+          "previewBits": "1b00de11"
+        },
+        {
+          "height": 332585,
+          "actualBits": "1b00dbe5",
+          "old600SecondBits": "18014848",
+          "previewBits": "1b00dbe5"
+        },
+        {
+          "height": 332586,
+          "actualBits": "1b00d9a9",
+          "old600SecondBits": "180124e5",
+          "previewBits": "1b00d9a9"
+        },
+        {
+          "height": 332587,
+          "actualBits": "1d00ffff",
+          "old600SecondBits": "180105be",
+          "previewBits": "1d00ffff"
+        },
+        {
+          "height": 332588,
+          "actualBits": "1b00da6b",
+          "old600SecondBits": "1800eebd",
+          "previewBits": "1b00da6b"
+        },
+        {
+          "height": 332589,
+          "actualBits": "1b00d833",
+          "old600SecondBits": "1800d4f8",
+          "previewBits": "1b00d833"
+        },
+        {
+          "height": 332590,
+          "actualBits": "1b00d789",
+          "old600SecondBits": "1800bf54",
+          "previewBits": "1b00d789"
+        },
+        {
+          "height": 332591,
+          "actualBits": "1d00ffff",
+          "old600SecondBits": "1800aa62",
+          "previewBits": "1d00ffff"
+        },
+        {
+          "height": 332592,
+          "actualBits": "1d00ffff",
+          "old600SecondBits": "18009b6a",
+          "previewBits": "1d00ffff"
+        },
+        {
+          "height": 332593,
+          "actualBits": "1b00da15",
+          "old600SecondBits": "18008dbc",
+          "previewBits": "1b00da15"
+        },
+        {
+          "height": 332594,
+          "actualBits": "1d00ffff",
+          "old600SecondBits": "177fed00",
+          "previewBits": "1d00ffff"
+        },
+        {
+          "height": 332595,
+          "actualBits": "1b00dd00",
+          "old600SecondBits": "1774aacb",
+          "previewBits": "1b00dd00"
+        },
+        {
+          "height": 332596,
+          "actualBits": "1b00dc26",
+          "old600SecondBits": "1768bc17",
+          "previewBits": "1b00dc26"
+        },
+        {
+          "height": 332597,
+          "actualBits": "1d00ffff",
+          "old600SecondBits": "175d7122",
+          "previewBits": "1d00ffff"
+        },
+        {
+          "height": 332598,
+          "actualBits": "1d00ffff",
+          "old600SecondBits": "175539aa",
+          "previewBits": "1d00ffff"
+        },
+        {
+          "height": 332599,
+          "actualBits": "1b00df2e",
+          "old600SecondBits": "174db932",
+          "previewBits": "1b00df2e"
+        },
+        {
+          "height": 332600,
+          "actualBits": "1b00dcea",
+          "old600SecondBits": "1745583a",
+          "previewBits": "1b00dcea"
+        },
+        {
+          "height": 332601,
+          "actualBits": "1b00dd6d",
+          "old600SecondBits": "173ea321",
+          "previewBits": "1b00dd6d"
+        },
+        {
+          "height": 332602,
+          "actualBits": "1b00dcbe",
+          "old600SecondBits": "173847e7",
+          "previewBits": "1b00dcbe"
+        },
+        {
+          "height": 332603,
+          "actualBits": "1b00dc26",
+          "old600SecondBits": "173294ed",
+          "previewBits": "1b00dc26"
+        },
+        {
+          "height": 332604,
+          "actualBits": "1b00dcdf",
+          "old600SecondBits": "172dbb92",
+          "previewBits": "1b00dcdf"
+        },
+        {
+          "height": 332605,
+          "actualBits": "1d00ffff",
+          "old600SecondBits": "1728e6b7",
+          "previewBits": "1d00ffff"
+        },
+        {
+          "height": 332606,
+          "actualBits": "1b00ddc4",
+          "old600SecondBits": "17254d3a",
+          "previewBits": "1b00ddc4"
+        },
+        {
+          "height": 332607,
+          "actualBits": "1b00de3c",
+          "old600SecondBits": "1721b0fe",
+          "previewBits": "1b00de3c"
+        },
+        {
+          "height": 332608,
+          "actualBits": "1d00ffff",
+          "old600SecondBits": "171e2901",
+          "previewBits": "1d00ffff"
+        },
+        {
+          "height": 332609,
+          "actualBits": "1b00df5a",
+          "old600SecondBits": "171b80b4",
+          "previewBits": "1b00df5a"
+        },
+        {
+          "height": 332610,
+          "actualBits": "1d00ffff",
+          "old600SecondBits": "17188987",
+          "previewBits": "1d00ffff"
+        },
+        {
+          "height": 332611,
+          "actualBits": "1b00dfbd",
+          "old600SecondBits": "17165fc9",
+          "previewBits": "1b00dfbd"
+        },
+        {
+          "height": 332612,
+          "actualBits": "1b00dd82",
+          "old600SecondBits": "1713f70c",
+          "previewBits": "1b00dd82"
+        },
+        {
+          "height": 332613,
+          "actualBits": "1b00dcd4",
+          "old600SecondBits": "1711f0ae",
+          "previewBits": "1b00dcd4"
+        },
+        {
+          "height": 332614,
+          "actualBits": "1d00ffff",
+          "old600SecondBits": "17100e2f",
+          "previewBits": "1d00ffff"
+        },
+        {
+          "height": 332615,
+          "actualBits": "1b00dde5",
+          "old600SecondBits": "170ea479",
+          "previewBits": "1b00dde5"
+        },
+        {
+          "height": 332616,
+          "actualBits": "1b00de68",
+          "old600SecondBits": "170d39ea",
+          "previewBits": "1b00de68"
+        },
+        {
+          "height": 332617,
+          "actualBits": "1b00dc1b",
+          "old600SecondBits": "170bcbac",
+          "previewBits": "1b00dc1b"
+        },
+        {
+          "height": 332618,
+          "actualBits": "1b00db99",
+          "old600SecondBits": "170a9b25",
+          "previewBits": "1b00db99"
+        },
+        {
+          "height": 332619,
+          "actualBits": "1d00ffff",
+          "old600SecondBits": "1709883e",
+          "previewBits": "1d00ffff"
+        },
+        {
+          "height": 332620,
+          "actualBits": "1b00dd8d",
+          "old600SecondBits": "1708b16f",
+          "previewBits": "1b00dd8d"
+        },
+        {
+          "height": 332621,
+          "actualBits": "1b00db2d",
+          "old600SecondBits": "1707c014",
+          "previewBits": "1b00db2d"
+        },
+        {
+          "height": 332622,
+          "actualBits": "1d00ffff",
+          "old600SecondBits": "1706f1e5",
+          "previewBits": "1d00ffff"
+        },
+        {
+          "height": 332623,
+          "actualBits": "1b00dcb3",
+          "old600SecondBits": "170656ad",
+          "previewBits": "1b00dcb3"
+        },
+        {
+          "height": 332624,
+          "actualBits": "1b00dd37",
+          "old600SecondBits": "1705b9b2",
+          "previewBits": "1b00dd37"
+        },
+        {
+          "height": 332625,
+          "actualBits": "1b00dba4",
+          "old600SecondBits": "17051f9a",
+          "previewBits": "1b00dba4"
+        },
+        {
+          "height": 332626,
+          "actualBits": "1b00d8fe",
+          "old600SecondBits": "17048fff",
+          "previewBits": "1b00d8fe"
+        },
+        {
+          "height": 332627,
+          "actualBits": "1d00ffff",
+          "old600SecondBits": "17041f17",
+          "previewBits": "1d00ffff"
+        },
+        {
+          "height": 332628,
+          "actualBits": "1b00dc10",
+          "old600SecondBits": "1703c228",
+          "previewBits": "1b00dc10"
+        },
+        {
+          "height": 332629,
+          "actualBits": "1d00ffff",
+          "old600SecondBits": "17035e20",
+          "previewBits": "1d00ffff"
+        },
+        {
+          "height": 332630,
+          "actualBits": "1b00dd62",
+          "old600SecondBits": "17031218",
+          "previewBits": "1b00dd62"
+        },
+        {
+          "height": 332631,
+          "actualBits": "1b00db17",
+          "old600SecondBits": "1702bd19",
+          "previewBits": "1b00db17"
+        },
+        {
+          "height": 332632,
+          "actualBits": "1b00d929",
+          "old600SecondBits": "17027259",
+          "previewBits": "1b00d929"
+        },
+        {
+          "height": 332633,
+          "actualBits": "1d00ffff",
+          "old600SecondBits": "17022f41",
+          "previewBits": "1d00ffff"
+        },
+        {
+          "height": 332634,
+          "actualBits": "1b00d9b4",
+          "old600SecondBits": "1701fe08",
+          "previewBits": "1b00d9b4"
+        },
+        {
+          "height": 332635,
+          "actualBits": "1d00ffff",
+          "old600SecondBits": "1701cc6c",
+          "previewBits": "1d00ffff"
+        },
+        {
+          "height": 332636,
+          "actualBits": "1d00ffff",
+          "old600SecondBits": "1701a3e9",
+          "previewBits": "1d00ffff"
+        },
+        {
+          "height": 332637,
+          "actualBits": "1b00df44",
+          "old600SecondBits": "17017ee1",
+          "previewBits": "1b00df44"
+        },
+        {
+          "height": 332638,
+          "actualBits": "1b00dcdf",
+          "old600SecondBits": "1701555b",
+          "previewBits": "1b00dcdf"
+        },
+        {
+          "height": 332639,
+          "actualBits": "1d00ffff",
+          "old600SecondBits": "170131ac",
+          "previewBits": "1d00ffff"
+        },
+        {
+          "height": 332640,
+          "actualBits": "1b00de05",
+          "old600SecondBits": "170116c4",
+          "previewBits": "1b00de05"
+        },
+        {
+          "height": 332641,
+          "actualBits": "1d00ffff",
+          "old600SecondBits": "1700fb76",
+          "previewBits": "1d00ffff"
+        },
+        {
+          "height": 332642,
+          "actualBits": "1b00e0dc",
+          "old600SecondBits": "1700e553",
+          "previewBits": "1b00e0dc"
+        },
+        {
+          "height": 332643,
+          "actualBits": "1b00e0f3",
+          "old600SecondBits": "1700cebe",
+          "previewBits": "1b00e0f3"
+        },
+        {
+          "height": 332644,
+          "actualBits": "1b00deb5",
+          "old600SecondBits": "1700b873",
+          "previewBits": "1b00deb5"
+        },
+        {
+          "height": 332645,
+          "actualBits": "1d00ffff",
+          "old600SecondBits": "1700a5ba",
+          "previewBits": "1d00ffff"
+        },
+        {
+          "height": 332646,
+          "actualBits": "1b00e0a5",
+          "old600SecondBits": "17009724",
+          "previewBits": "1b00e0a5"
+        },
+        {
+          "height": 332647,
+          "actualBits": "1b00de94",
+          "old600SecondBits": "170086f8",
+          "previewBits": "1b00de94"
+        },
+        {
+          "height": 332648,
+          "actualBits": "1b00dd20",
+          "old600SecondBits": "1678d947",
+          "previewBits": "1b00dd20"
+        },
+        {
+          "height": 332649,
+          "actualBits": "1b00dfa7",
+          "old600SecondBits": "166e28d1",
+          "previewBits": "1b00dfa7"
+        },
+        {
+          "height": 332650,
+          "actualBits": "1d00ffff",
+          "old600SecondBits": "16631e1c",
+          "previewBits": "1d00ffff"
+        },
+        {
+          "height": 332651,
+          "actualBits": "1b00e1f2",
+          "old600SecondBits": "165a6125",
+          "previewBits": "1b00e1f2"
+        },
+        {
+          "height": 332652,
+          "actualBits": "1b00dfe9",
+          "old600SecondBits": "1650b96f",
+          "previewBits": "1b00dfe9"
+        },
+        {
+          "height": 332653,
+          "actualBits": "1d00ffff",
+          "old600SecondBits": "1648c9f7",
+          "previewBits": "1d00ffff"
+        },
+        {
+          "height": 332654,
+          "actualBits": "1b00e2a4",
+          "old600SecondBits": "1642607d",
+          "previewBits": "1b00e2a4"
+        },
+        {
+          "height": 332655,
+          "actualBits": "1b00e020",
+          "old600SecondBits": "163b28c4",
+          "previewBits": "1b00e020"
+        },
+        {
+          "height": 332656,
+          "actualBits": "1d00ffff",
+          "old600SecondBits": "1634ed0b",
+          "previewBits": "1d00ffff"
+        },
+        {
+          "height": 332657,
+          "actualBits": "1b00e11f",
+          "old600SecondBits": "1630420f",
+          "previewBits": "1b00e11f"
+        },
+        {
+          "height": 332658,
+          "actualBits": "1b00def7",
+          "old600SecondBits": "162b12f4",
+          "previewBits": "1b00def7"
+        },
+        {
+          "height": 332659,
+          "actualBits": "1d00ffff",
+          "old600SecondBits": "1626ba19",
+          "previewBits": "1d00ffff"
+        },
+        {
+          "height": 332660,
+          "actualBits": "1b00e109",
+          "old600SecondBits": "1623517c",
+          "previewBits": "1b00e109"
+        },
+        {
+          "height": 332661,
+          "actualBits": "1b00dee1",
+          "old600SecondBits": "161f8620",
+          "previewBits": "1b00dee1"
+        },
+        {
+          "height": 332662,
+          "actualBits": "1b00dd98",
+          "old600SecondBits": "161c3fc3",
+          "previewBits": "1b00dd98"
+        },
+        {
+          "height": 332663,
+          "actualBits": "1b00dd41",
+          "old600SecondBits": "16196af6",
+          "previewBits": "1b00dd41"
+        },
+        {
+          "height": 332664,
+          "actualBits": "1b00dc3c",
+          "old600SecondBits": "1616cce9",
+          "previewBits": "1b00dc3c"
+        },
+        {
+          "height": 332665,
+          "actualBits": "1b00dc1b",
+          "old600SecondBits": "1614899b",
+          "previewBits": "1b00dc1b"
+        },
+        {
+          "height": 332666,
+          "actualBits": "1b00dc5c",
+          "old600SecondBits": "1612885d",
+          "previewBits": "1b00dc5c"
+        },
+        {
+          "height": 332667,
+          "actualBits": "1b00dbc5",
+          "old600SecondBits": "1610a87f",
+          "previewBits": "1b00dbc5"
+        },
+        {
+          "height": 332668,
+          "actualBits": "1d00ffff",
+          "old600SecondBits": "160f0670",
+          "previewBits": "1d00ffff"
+        }
+      ]
+    },
+    {
+      "endpoint": "wss://electrum-chipnet.optnlabs.com",
+      "activationParentHeight": 332450,
+      "preActivationChecks": 150,
+      "preActivationOldMatches": true,
+      "preActivationPreviewMatches": true,
+      "postActivationChecks": 14,
+      "postActivationOldMatches": true,
+      "postActivationPreviewMatches": false,
+      "firstPreviewMismatch": {
+        "height": 332454,
+        "actualBits": "1a273ab8",
+        "old600SecondBits": "1a273ab8",
+        "previewBits": "1d00ffff"
+      },
+      "checks": [
+        {
+          "height": 332301,
+          "actualBits": "1a200c9f",
+          "old600SecondBits": "1a200c9f",
+          "previewBits": "1a200c9f"
+        },
+        {
+          "height": 332302,
+          "actualBits": "1a1ddc22",
+          "old600SecondBits": "1a1ddc22",
+          "previewBits": "1a1ddc22"
+        },
+        {
+          "height": 332303,
+          "actualBits": "1a1ba564",
+          "old600SecondBits": "1a1ba564",
+          "previewBits": "1a1ba564"
+        },
+        {
+          "height": 332304,
+          "actualBits": "1a1d3082",
+          "old600SecondBits": "1a1d3082",
+          "previewBits": "1a1d3082"
+        },
+        {
+          "height": 332305,
+          "actualBits": "1d00ffff",
+          "old600SecondBits": "1d00ffff",
+          "previewBits": "1d00ffff"
+        },
+        {
+          "height": 332306,
+          "actualBits": "1a1e09d1",
+          "old600SecondBits": "1a1e09d1",
+          "previewBits": "1a1e09d1"
+        },
+        {
+          "height": 332307,
+          "actualBits": "1a1aee55",
+          "old600SecondBits": "1a1aee55",
+          "previewBits": "1a1aee55"
+        },
+        {
+          "height": 332308,
+          "actualBits": "1a189e17",
+          "old600SecondBits": "1a189e17",
+          "previewBits": "1a189e17"
+        },
+        {
+          "height": 332309,
+          "actualBits": "1a17ad88",
+          "old600SecondBits": "1a17ad88",
+          "previewBits": "1a17ad88"
+        },
+        {
+          "height": 332310,
+          "actualBits": "1d00ffff",
+          "old600SecondBits": "1d00ffff",
+          "previewBits": "1d00ffff"
+        },
+        {
+          "height": 332311,
+          "actualBits": "1a193546",
+          "old600SecondBits": "1a193546",
+          "previewBits": "1a193546"
+        },
+        {
+          "height": 332312,
+          "actualBits": "1d00ffff",
+          "old600SecondBits": "1d00ffff",
+          "previewBits": "1d00ffff"
+        },
+        {
+          "height": 332313,
+          "actualBits": "1a198e36",
+          "old600SecondBits": "1a198e36",
+          "previewBits": "1a198e36"
+        },
+        {
+          "height": 332314,
+          "actualBits": "1a17ef38",
+          "old600SecondBits": "1a17ef38",
+          "previewBits": "1a17ef38"
+        },
+        {
+          "height": 332315,
+          "actualBits": "1a17cbe8",
+          "old600SecondBits": "1a17cbe8",
+          "previewBits": "1a17cbe8"
+        },
+        {
+          "height": 332316,
+          "actualBits": "1a15a74a",
+          "old600SecondBits": "1a15a74a",
+          "previewBits": "1a15a74a"
+        },
+        {
+          "height": 332317,
+          "actualBits": "1a13bd5c",
+          "old600SecondBits": "1a13bd5c",
+          "previewBits": "1a13bd5c"
+        },
+        {
+          "height": 332318,
+          "actualBits": "1a123ffd",
+          "old600SecondBits": "1a123ffd",
+          "previewBits": "1a123ffd"
+        },
+        {
+          "height": 332319,
+          "actualBits": "1a10f66f",
+          "old600SecondBits": "1a10f66f",
+          "previewBits": "1a10f66f"
+        },
+        {
+          "height": 332320,
+          "actualBits": "1a11008e",
+          "old600SecondBits": "1a11008e",
+          "previewBits": "1a11008e"
+        },
+        {
+          "height": 332321,
+          "actualBits": "1a0f90f0",
+          "old600SecondBits": "1a0f90f0",
+          "previewBits": "1a0f90f0"
+        },
+        {
+          "height": 332322,
+          "actualBits": "1a0f9340",
+          "old600SecondBits": "1a0f9340",
+          "previewBits": "1a0f9340"
+        },
+        {
+          "height": 332323,
+          "actualBits": "1d00ffff",
+          "old600SecondBits": "1d00ffff",
+          "previewBits": "1d00ffff"
+        },
+        {
+          "height": 332324,
+          "actualBits": "1d00ffff",
+          "old600SecondBits": "1d00ffff",
+          "previewBits": "1d00ffff"
+        },
+        {
+          "height": 332325,
+          "actualBits": "1a13997c",
+          "old600SecondBits": "1a13997c",
+          "previewBits": "1a13997c"
+        },
+        {
+          "height": 332326,
+          "actualBits": "1a1377dc",
+          "old600SecondBits": "1a1377dc",
+          "previewBits": "1a1377dc"
+        },
+        {
+          "height": 332327,
+          "actualBits": "1a13008c",
+          "old600SecondBits": "1a13008c",
+          "previewBits": "1a13008c"
+        },
+        {
+          "height": 332328,
+          "actualBits": "1d00ffff",
+          "old600SecondBits": "1d00ffff",
+          "previewBits": "1d00ffff"
+        },
+        {
+          "height": 332329,
+          "actualBits": "1a15f16a",
+          "old600SecondBits": "1a15f16a",
+          "previewBits": "1a15f16a"
+        },
+        {
+          "height": 332330,
+          "actualBits": "1a15492a",
+          "old600SecondBits": "1a15492a",
+          "previewBits": "1a15492a"
+        },
+        {
+          "height": 332331,
+          "actualBits": "1a130e8c",
+          "old600SecondBits": "1a130e8c",
+          "previewBits": "1a130e8c"
+        },
+        {
+          "height": 332332,
+          "actualBits": "1a121ded",
+          "old600SecondBits": "1a121ded",
+          "previewBits": "1a121ded"
+        },
+        {
+          "height": 332333,
+          "actualBits": "1d00ffff",
+          "old600SecondBits": "1d00ffff",
+          "previewBits": "1d00ffff"
+        },
+        {
+          "height": 332334,
+          "actualBits": "1d00ffff",
+          "old600SecondBits": "1d00ffff",
+          "previewBits": "1d00ffff"
+        },
+        {
+          "height": 332335,
+          "actualBits": "1a16dee9",
+          "old600SecondBits": "1a16dee9",
+          "previewBits": "1a16dee9"
+        },
+        {
+          "height": 332336,
+          "actualBits": "1a15ccca",
+          "old600SecondBits": "1a15ccca",
+          "previewBits": "1a15ccca"
+        },
+        {
+          "height": 332337,
+          "actualBits": "1a1567aa",
+          "old600SecondBits": "1a1567aa",
+          "previewBits": "1a1567aa"
+        },
+        {
+          "height": 332338,
+          "actualBits": "1a142e5b",
+          "old600SecondBits": "1a142e5b",
+          "previewBits": "1a142e5b"
+        },
+        {
+          "height": 332339,
+          "actualBits": "1a15035a",
+          "old600SecondBits": "1a15035a",
+          "previewBits": "1a15035a"
+        },
+        {
+          "height": 332340,
+          "actualBits": "1a15045a",
+          "old600SecondBits": "1a15045a",
+          "previewBits": "1a15045a"
+        },
+        {
+          "height": 332341,
+          "actualBits": "1a15470a",
+          "old600SecondBits": "1a15470a",
+          "previewBits": "1a15470a"
+        },
+        {
+          "height": 332342,
+          "actualBits": "1a137aac",
+          "old600SecondBits": "1a137aac",
+          "previewBits": "1a137aac"
+        },
+        {
+          "height": 332343,
+          "actualBits": "1d00ffff",
+          "old600SecondBits": "1d00ffff",
+          "previewBits": "1d00ffff"
+        },
+        {
+          "height": 332344,
+          "actualBits": "1a179758",
+          "old600SecondBits": "1a179758",
+          "previewBits": "1a179758"
+        },
+        {
+          "height": 332345,
+          "actualBits": "1a1712f8",
+          "old600SecondBits": "1a1712f8",
+          "previewBits": "1a1712f8"
+        },
+        {
+          "height": 332346,
+          "actualBits": "1a17f8b8",
+          "old600SecondBits": "1a17f8b8",
+          "previewBits": "1a17f8b8"
+        },
+        {
+          "height": 332347,
+          "actualBits": "1a15a96a",
+          "old600SecondBits": "1a15a96a",
+          "previewBits": "1a15a96a"
+        },
+        {
+          "height": 332348,
+          "actualBits": "1d00ffff",
+          "old600SecondBits": "1d00ffff",
+          "previewBits": "1d00ffff"
+        },
+        {
+          "height": 332349,
+          "actualBits": "1a15daca",
+          "old600SecondBits": "1a15daca",
+          "previewBits": "1a15daca"
+        },
+        {
+          "height": 332350,
+          "actualBits": "1a14827b",
+          "old600SecondBits": "1a14827b",
+          "previewBits": "1a14827b"
+        },
+        {
+          "height": 332351,
+          "actualBits": "1d00ffff",
+          "old600SecondBits": "1d00ffff",
+          "previewBits": "1d00ffff"
+        },
+        {
+          "height": 332352,
+          "actualBits": "1a15343a",
+          "old600SecondBits": "1a15343a",
+          "previewBits": "1a15343a"
+        },
+        {
+          "height": 332353,
+          "actualBits": "1a160fc9",
+          "old600SecondBits": "1a160fc9",
+          "previewBits": "1a160fc9"
+        },
+        {
+          "height": 332354,
+          "actualBits": "1a13dd7c",
+          "old600SecondBits": "1a13dd7c",
+          "previewBits": "1a13dd7c"
+        },
+        {
+          "height": 332355,
+          "actualBits": "1a12eced",
+          "old600SecondBits": "1a12eced",
+          "previewBits": "1a12eced"
+        },
+        {
+          "height": 332356,
+          "actualBits": "1a1145ce",
+          "old600SecondBits": "1a1145ce",
+          "previewBits": "1a1145ce"
+        },
+        {
+          "height": 332357,
+          "actualBits": "1a12f19d",
+          "old600SecondBits": "1a12f19d",
+          "previewBits": "1a12f19d"
+        },
+        {
+          "height": 332358,
+          "actualBits": "1a11065e",
+          "old600SecondBits": "1a11065e",
+          "previewBits": "1a11065e"
+        },
+        {
+          "height": 332359,
+          "actualBits": "1d00ffff",
+          "old600SecondBits": "1d00ffff",
+          "previewBits": "1d00ffff"
+        },
+        {
+          "height": 332360,
+          "actualBits": "1a141c7b",
+          "old600SecondBits": "1a141c7b",
+          "previewBits": "1a141c7b"
+        },
+        {
+          "height": 332361,
+          "actualBits": "1d00ffff",
+          "old600SecondBits": "1d00ffff",
+          "previewBits": "1d00ffff"
+        },
+        {
+          "height": 332362,
+          "actualBits": "1a15637a",
+          "old600SecondBits": "1a15637a",
+          "previewBits": "1a15637a"
+        },
+        {
+          "height": 332363,
+          "actualBits": "1a14613b",
+          "old600SecondBits": "1a14613b",
+          "previewBits": "1a14613b"
+        },
+        {
+          "height": 332364,
+          "actualBits": "1a15e9ea",
+          "old600SecondBits": "1a15e9ea",
+          "previewBits": "1a15e9ea"
+        },
+        {
+          "height": 332365,
+          "actualBits": "1a13e16c",
+          "old600SecondBits": "1a13e16c",
+          "previewBits": "1a13e16c"
+        },
+        {
+          "height": 332366,
+          "actualBits": "1a149ddb",
+          "old600SecondBits": "1a149ddb",
+          "previewBits": "1a149ddb"
+        },
+        {
+          "height": 332367,
+          "actualBits": "1a12811d",
+          "old600SecondBits": "1a12811d",
+          "previewBits": "1a12811d"
+        },
+        {
+          "height": 332368,
+          "actualBits": "1a1205ed",
+          "old600SecondBits": "1a1205ed",
+          "previewBits": "1a1205ed"
+        },
+        {
+          "height": 332369,
+          "actualBits": "1a12472d",
+          "old600SecondBits": "1a12472d",
+          "previewBits": "1a12472d"
+        },
+        {
+          "height": 332370,
+          "actualBits": "1a10f82f",
+          "old600SecondBits": "1a10f82f",
+          "previewBits": "1a10f82f"
+        },
+        {
+          "height": 332371,
+          "actualBits": "1a124bad",
+          "old600SecondBits": "1a124bad",
+          "previewBits": "1a124bad"
+        },
+        {
+          "height": 332372,
+          "actualBits": "1d00ffff",
+          "old600SecondBits": "1d00ffff",
+          "previewBits": "1d00ffff"
+        },
+        {
+          "height": 332373,
+          "actualBits": "1d00ffff",
+          "old600SecondBits": "1d00ffff",
+          "previewBits": "1d00ffff"
+        },
+        {
+          "height": 332374,
+          "actualBits": "1a176588",
+          "old600SecondBits": "1a176588",
+          "previewBits": "1a176588"
+        },
+        {
+          "height": 332375,
+          "actualBits": "1d00ffff",
+          "old600SecondBits": "1d00ffff",
+          "previewBits": "1d00ffff"
+        },
+        {
+          "height": 332376,
+          "actualBits": "1a184d37",
+          "old600SecondBits": "1a184d37",
+          "previewBits": "1a184d37"
+        },
+        {
+          "height": 332377,
+          "actualBits": "1a17f9e8",
+          "old600SecondBits": "1a17f9e8",
+          "previewBits": "1a17f9e8"
+        },
+        {
+          "height": 332378,
+          "actualBits": "1a1946b6",
+          "old600SecondBits": "1a1946b6",
+          "previewBits": "1a1946b6"
+        },
+        {
+          "height": 332379,
+          "actualBits": "1d00ffff",
+          "old600SecondBits": "1d00ffff",
+          "previewBits": "1d00ffff"
+        },
+        {
+          "height": 332380,
+          "actualBits": "1a1be884",
+          "old600SecondBits": "1a1be884",
+          "previewBits": "1a1be884"
+        },
+        {
+          "height": 332381,
+          "actualBits": "1a196736",
+          "old600SecondBits": "1a196736",
+          "previewBits": "1a196736"
+        },
+        {
+          "height": 332382,
+          "actualBits": "1a198696",
+          "old600SecondBits": "1a198696",
+          "previewBits": "1a198696"
+        },
+        {
+          "height": 332383,
+          "actualBits": "1d00ffff",
+          "old600SecondBits": "1d00ffff",
+          "previewBits": "1d00ffff"
+        },
+        {
+          "height": 332384,
+          "actualBits": "1a1cf173",
+          "old600SecondBits": "1a1cf173",
+          "previewBits": "1a1cf173"
+        },
+        {
+          "height": 332385,
+          "actualBits": "1a1d24f2",
+          "old600SecondBits": "1a1d24f2",
+          "previewBits": "1a1d24f2"
+        },
+        {
+          "height": 332386,
+          "actualBits": "1d00ffff",
+          "old600SecondBits": "1d00ffff",
+          "previewBits": "1d00ffff"
+        },
+        {
+          "height": 332387,
+          "actualBits": "1a1f15b0",
+          "old600SecondBits": "1a1f15b0",
+          "previewBits": "1a1f15b0"
+        },
+        {
+          "height": 332388,
+          "actualBits": "1d00ffff",
+          "old600SecondBits": "1d00ffff",
+          "previewBits": "1d00ffff"
+        },
+        {
+          "height": 332389,
+          "actualBits": "1a2095ff",
+          "old600SecondBits": "1a2095ff",
+          "previewBits": "1a2095ff"
+        },
+        {
+          "height": 332390,
+          "actualBits": "1a247ffb",
+          "old600SecondBits": "1a247ffb",
+          "previewBits": "1a247ffb"
+        },
+        {
+          "height": 332391,
+          "actualBits": "1a20b95f",
+          "old600SecondBits": "1a20b95f",
+          "previewBits": "1a20b95f"
+        },
+        {
+          "height": 332392,
+          "actualBits": "1a223bfd",
+          "old600SecondBits": "1a223bfd",
+          "previewBits": "1a223bfd"
+        },
+        {
+          "height": 332393,
+          "actualBits": "1a24f75b",
+          "old600SecondBits": "1a24f75b",
+          "previewBits": "1a24f75b"
+        },
+        {
+          "height": 332394,
+          "actualBits": "1a2284dd",
+          "old600SecondBits": "1a2284dd",
+          "previewBits": "1a2284dd"
+        },
+        {
+          "height": 332395,
+          "actualBits": "1a2387bc",
+          "old600SecondBits": "1a2387bc",
+          "previewBits": "1a2387bc"
+        },
+        {
+          "height": 332396,
+          "actualBits": "1a20a13f",
+          "old600SecondBits": "1a20a13f",
+          "previewBits": "1a20a13f"
+        },
+        {
+          "height": 332397,
+          "actualBits": "1d00ffff",
+          "old600SecondBits": "1d00ffff",
+          "previewBits": "1d00ffff"
+        },
+        {
+          "height": 332398,
+          "actualBits": "1a269f79",
+          "old600SecondBits": "1a269f79",
+          "previewBits": "1a269f79"
+        },
+        {
+          "height": 332399,
+          "actualBits": "1a23b6fc",
+          "old600SecondBits": "1a23b6fc",
+          "previewBits": "1a23b6fc"
+        },
+        {
+          "height": 332400,
+          "actualBits": "1a25391a",
+          "old600SecondBits": "1a25391a",
+          "previewBits": "1a25391a"
+        },
+        {
+          "height": 332401,
+          "actualBits": "1a23be1c",
+          "old600SecondBits": "1a23be1c",
+          "previewBits": "1a23be1c"
+        },
+        {
+          "height": 332402,
+          "actualBits": "1d00ffff",
+          "old600SecondBits": "1d00ffff",
+          "previewBits": "1d00ffff"
+        },
+        {
+          "height": 332403,
+          "actualBits": "1a29e5b6",
+          "old600SecondBits": "1a29e5b6",
+          "previewBits": "1a29e5b6"
+        },
+        {
+          "height": 332404,
+          "actualBits": "1a2622d9",
+          "old600SecondBits": "1a2622d9",
+          "previewBits": "1a2622d9"
+        },
+        {
+          "height": 332405,
+          "actualBits": "1a243a1b",
+          "old600SecondBits": "1a243a1b",
+          "previewBits": "1a243a1b"
+        },
+        {
+          "height": 332406,
+          "actualBits": "1a23169c",
+          "old600SecondBits": "1a23169c",
+          "previewBits": "1a23169c"
+        },
+        {
+          "height": 332407,
+          "actualBits": "1d00ffff",
+          "old600SecondBits": "1d00ffff",
+          "previewBits": "1d00ffff"
+        },
+        {
+          "height": 332408,
+          "actualBits": "1a282b17",
+          "old600SecondBits": "1a282b17",
+          "previewBits": "1a282b17"
+        },
+        {
+          "height": 332409,
+          "actualBits": "1a25b2ba",
+          "old600SecondBits": "1a25b2ba",
+          "previewBits": "1a25b2ba"
+        },
+        {
+          "height": 332410,
+          "actualBits": "1d00ffff",
+          "old600SecondBits": "1d00ffff",
+          "previewBits": "1d00ffff"
+        },
+        {
+          "height": 332411,
+          "actualBits": "1d00ffff",
+          "old600SecondBits": "1d00ffff",
+          "previewBits": "1d00ffff"
+        },
+        {
+          "height": 332412,
+          "actualBits": "1a2e1191",
+          "old600SecondBits": "1a2e1191",
+          "previewBits": "1a2e1191"
+        },
+        {
+          "height": 332413,
+          "actualBits": "1a2c1d73",
+          "old600SecondBits": "1a2c1d73",
+          "previewBits": "1a2c1d73"
+        },
+        {
+          "height": 332414,
+          "actualBits": "1a28d097",
+          "old600SecondBits": "1a28d097",
+          "previewBits": "1a28d097"
+        },
+        {
+          "height": 332415,
+          "actualBits": "1a25231a",
+          "old600SecondBits": "1a25231a",
+          "previewBits": "1a25231a"
+        },
+        {
+          "height": 332416,
+          "actualBits": "1a2393fc",
+          "old600SecondBits": "1a2393fc",
+          "previewBits": "1a2393fc"
+        },
+        {
+          "height": 332417,
+          "actualBits": "1a222e5d",
+          "old600SecondBits": "1a222e5d",
+          "previewBits": "1a222e5d"
+        },
+        {
+          "height": 332418,
+          "actualBits": "1a1fbfb0",
+          "old600SecondBits": "1a1fbfb0",
+          "previewBits": "1a1fbfb0"
+        },
+        {
+          "height": 332419,
+          "actualBits": "1d00ffff",
+          "old600SecondBits": "1d00ffff",
+          "previewBits": "1d00ffff"
+        },
+        {
+          "height": 332420,
+          "actualBits": "1a2040ff",
+          "old600SecondBits": "1a2040ff",
+          "previewBits": "1a2040ff"
+        },
+        {
+          "height": 332421,
+          "actualBits": "1a20d01f",
+          "old600SecondBits": "1a20d01f",
+          "previewBits": "1a20d01f"
+        },
+        {
+          "height": 332422,
+          "actualBits": "1a1e1a21",
+          "old600SecondBits": "1a1e1a21",
+          "previewBits": "1a1e1a21"
+        },
+        {
+          "height": 332423,
+          "actualBits": "1a204ddf",
+          "old600SecondBits": "1a204ddf",
+          "previewBits": "1a204ddf"
+        },
+        {
+          "height": 332424,
+          "actualBits": "1a22153d",
+          "old600SecondBits": "1a22153d",
+          "previewBits": "1a22153d"
+        },
+        {
+          "height": 332425,
+          "actualBits": "1a1ff4f0",
+          "old600SecondBits": "1a1ff4f0",
+          "previewBits": "1a1ff4f0"
+        },
+        {
+          "height": 332426,
+          "actualBits": "1a1cabe3",
+          "old600SecondBits": "1a1cabe3",
+          "previewBits": "1a1cabe3"
+        },
+        {
+          "height": 332427,
+          "actualBits": "1a19de26",
+          "old600SecondBits": "1a19de26",
+          "previewBits": "1a19de26"
+        },
+        {
+          "height": 332428,
+          "actualBits": "1a1c6de3",
+          "old600SecondBits": "1a1c6de3",
+          "previewBits": "1a1c6de3"
+        },
+        {
+          "height": 332429,
+          "actualBits": "1d00ffff",
+          "old600SecondBits": "1d00ffff",
+          "previewBits": "1d00ffff"
+        },
+        {
+          "height": 332430,
+          "actualBits": "1a21bfde",
+          "old600SecondBits": "1a21bfde",
+          "previewBits": "1a21bfde"
+        },
+        {
+          "height": 332431,
+          "actualBits": "1a25165a",
+          "old600SecondBits": "1a25165a",
+          "previewBits": "1a25165a"
+        },
+        {
+          "height": 332432,
+          "actualBits": "1a249cbb",
+          "old600SecondBits": "1a249cbb",
+          "previewBits": "1a249cbb"
+        },
+        {
+          "height": 332433,
+          "actualBits": "1a2481bb",
+          "old600SecondBits": "1a2481bb",
+          "previewBits": "1a2481bb"
+        },
+        {
+          "height": 332434,
+          "actualBits": "1a211ade",
+          "old600SecondBits": "1a211ade",
+          "previewBits": "1a211ade"
+        },
+        {
+          "height": 332435,
+          "actualBits": "1a235a3c",
+          "old600SecondBits": "1a235a3c",
+          "previewBits": "1a235a3c"
+        },
+        {
+          "height": 332436,
+          "actualBits": "1d00ffff",
+          "old600SecondBits": "1d00ffff",
+          "previewBits": "1d00ffff"
+        },
+        {
+          "height": 332437,
+          "actualBits": "1a2491fb",
+          "old600SecondBits": "1a2491fb",
+          "previewBits": "1a2491fb"
+        },
+        {
+          "height": 332438,
+          "actualBits": "1a20ebbf",
+          "old600SecondBits": "1a20ebbf",
+          "previewBits": "1a20ebbf"
+        },
+        {
+          "height": 332439,
+          "actualBits": "1a218c7e",
+          "old600SecondBits": "1a218c7e",
+          "previewBits": "1a218c7e"
+        },
+        {
+          "height": 332440,
+          "actualBits": "1a1f4cf0",
+          "old600SecondBits": "1a1f4cf0",
+          "previewBits": "1a1f4cf0"
+        },
+        {
+          "height": 332441,
+          "actualBits": "1d00ffff",
+          "old600SecondBits": "1d00ffff",
+          "previewBits": "1d00ffff"
+        },
+        {
+          "height": 332442,
+          "actualBits": "1a23ac7c",
+          "old600SecondBits": "1a23ac7c",
+          "previewBits": "1a23ac7c"
+        },
+        {
+          "height": 332443,
+          "actualBits": "1a20e1df",
+          "old600SecondBits": "1a20e1df",
+          "previewBits": "1a20e1df"
+        },
+        {
+          "height": 332444,
+          "actualBits": "1a1e4b31",
+          "old600SecondBits": "1a1e4b31",
+          "previewBits": "1a1e4b31"
+        },
+        {
+          "height": 332445,
+          "actualBits": "1d00ffff",
+          "old600SecondBits": "1d00ffff",
+          "previewBits": "1d00ffff"
+        },
+        {
+          "height": 332446,
+          "actualBits": "1a1f8ac0",
+          "old600SecondBits": "1a1f8ac0",
+          "previewBits": "1a1f8ac0"
+        },
+        {
+          "height": 332447,
+          "actualBits": "1a1d8002",
+          "old600SecondBits": "1a1d8002",
+          "previewBits": "1a1d8002"
+        },
+        {
+          "height": 332448,
+          "actualBits": "1a1cdab3",
+          "old600SecondBits": "1a1cdab3",
+          "previewBits": "1a1cdab3"
+        },
+        {
+          "height": 332449,
+          "actualBits": "1a1bdac4",
+          "old600SecondBits": "1a1bdac4",
+          "previewBits": "1a1bdac4"
+        },
+        {
+          "height": 332450,
+          "actualBits": "1a1a55f5",
+          "old600SecondBits": "1a1a55f5",
+          "previewBits": "1a1a55f5"
+        },
+        {
+          "height": 332451,
+          "actualBits": "1d00ffff",
+          "old600SecondBits": "1d00ffff",
+          "previewBits": "1d00ffff"
+        },
+        {
+          "height": 332452,
+          "actualBits": "1d00ffff",
+          "old600SecondBits": "1d00ffff",
+          "previewBits": "1d00ffff"
+        },
+        {
+          "height": 332453,
+          "actualBits": "1d00ffff",
+          "old600SecondBits": "1d00ffff",
+          "previewBits": "1d00ffff"
+        },
+        {
+          "height": 332454,
+          "actualBits": "1a273ab8",
+          "old600SecondBits": "1a273ab8",
+          "previewBits": "1d00ffff"
+        },
+        {
+          "height": 332455,
+          "actualBits": "1a283af7",
+          "old600SecondBits": "1a283af7",
+          "previewBits": "1d00ffff"
+        },
+        {
+          "height": 332456,
+          "actualBits": "1a2ce733",
+          "old600SecondBits": "1a2ce733",
+          "previewBits": "1d00ffff"
+        },
+        {
+          "height": 332457,
+          "actualBits": "1a2d3df2",
+          "old600SecondBits": "1a2d3df2",
+          "previewBits": "1d00ffff"
+        },
+        {
+          "height": 332458,
+          "actualBits": "1a2f90d0",
+          "old600SecondBits": "1a2f90d0",
+          "previewBits": "1d00ffff"
+        },
+        {
+          "height": 332459,
+          "actualBits": "1a3193ee",
+          "old600SecondBits": "1a3193ee",
+          "previewBits": "1d00ffff"
+        },
+        {
+          "height": 332460,
+          "actualBits": "1a34188b",
+          "old600SecondBits": "1a34188b",
+          "previewBits": "1d00ffff"
+        },
+        {
+          "height": 332461,
+          "actualBits": "1a34b8eb",
+          "old600SecondBits": "1a34b8eb",
+          "previewBits": "1b05d335"
+        },
+        {
+          "height": 332462,
+          "actualBits": "1a2f3350",
+          "old600SecondBits": "1a2f3350",
+          "previewBits": "1d00ffff"
+        },
+        {
+          "height": 332463,
+          "actualBits": "1a2e9871",
+          "old600SecondBits": "1a2e9871",
+          "previewBits": "1d00ffff"
+        },
+        {
+          "height": 332464,
+          "actualBits": "1d00ffff",
+          "old600SecondBits": "1d00ffff",
+          "previewBits": "1d00ffff"
+        }
+      ]
+    },
+    {
+      "endpoint": "wss://chipnet.bch.ninja:50004",
+      "activationParentHeight": 332450,
+      "preActivationChecks": 150,
+      "preActivationOldMatches": true,
+      "preActivationPreviewMatches": true,
+      "postActivationChecks": 218,
+      "postActivationOldMatches": false,
+      "postActivationPreviewMatches": true,
+      "firstPreviewMismatch": null,
+      "checks": [
+        {
+          "height": 332301,
+          "actualBits": "1a200c9f",
+          "old600SecondBits": "1a200c9f",
+          "previewBits": "1a200c9f"
+        },
+        {
+          "height": 332302,
+          "actualBits": "1a1ddc22",
+          "old600SecondBits": "1a1ddc22",
+          "previewBits": "1a1ddc22"
+        },
+        {
+          "height": 332303,
+          "actualBits": "1a1ba564",
+          "old600SecondBits": "1a1ba564",
+          "previewBits": "1a1ba564"
+        },
+        {
+          "height": 332304,
+          "actualBits": "1a1d3082",
+          "old600SecondBits": "1a1d3082",
+          "previewBits": "1a1d3082"
+        },
+        {
+          "height": 332305,
+          "actualBits": "1d00ffff",
+          "old600SecondBits": "1d00ffff",
+          "previewBits": "1d00ffff"
+        },
+        {
+          "height": 332306,
+          "actualBits": "1a1e09d1",
+          "old600SecondBits": "1a1e09d1",
+          "previewBits": "1a1e09d1"
+        },
+        {
+          "height": 332307,
+          "actualBits": "1a1aee55",
+          "old600SecondBits": "1a1aee55",
+          "previewBits": "1a1aee55"
+        },
+        {
+          "height": 332308,
+          "actualBits": "1a189e17",
+          "old600SecondBits": "1a189e17",
+          "previewBits": "1a189e17"
+        },
+        {
+          "height": 332309,
+          "actualBits": "1a17ad88",
+          "old600SecondBits": "1a17ad88",
+          "previewBits": "1a17ad88"
+        },
+        {
+          "height": 332310,
+          "actualBits": "1d00ffff",
+          "old600SecondBits": "1d00ffff",
+          "previewBits": "1d00ffff"
+        },
+        {
+          "height": 332311,
+          "actualBits": "1a193546",
+          "old600SecondBits": "1a193546",
+          "previewBits": "1a193546"
+        },
+        {
+          "height": 332312,
+          "actualBits": "1d00ffff",
+          "old600SecondBits": "1d00ffff",
+          "previewBits": "1d00ffff"
+        },
+        {
+          "height": 332313,
+          "actualBits": "1a198e36",
+          "old600SecondBits": "1a198e36",
+          "previewBits": "1a198e36"
+        },
+        {
+          "height": 332314,
+          "actualBits": "1a17ef38",
+          "old600SecondBits": "1a17ef38",
+          "previewBits": "1a17ef38"
+        },
+        {
+          "height": 332315,
+          "actualBits": "1a17cbe8",
+          "old600SecondBits": "1a17cbe8",
+          "previewBits": "1a17cbe8"
+        },
+        {
+          "height": 332316,
+          "actualBits": "1a15a74a",
+          "old600SecondBits": "1a15a74a",
+          "previewBits": "1a15a74a"
+        },
+        {
+          "height": 332317,
+          "actualBits": "1a13bd5c",
+          "old600SecondBits": "1a13bd5c",
+          "previewBits": "1a13bd5c"
+        },
+        {
+          "height": 332318,
+          "actualBits": "1a123ffd",
+          "old600SecondBits": "1a123ffd",
+          "previewBits": "1a123ffd"
+        },
+        {
+          "height": 332319,
+          "actualBits": "1a10f66f",
+          "old600SecondBits": "1a10f66f",
+          "previewBits": "1a10f66f"
+        },
+        {
+          "height": 332320,
+          "actualBits": "1a11008e",
+          "old600SecondBits": "1a11008e",
+          "previewBits": "1a11008e"
+        },
+        {
+          "height": 332321,
+          "actualBits": "1a0f90f0",
+          "old600SecondBits": "1a0f90f0",
+          "previewBits": "1a0f90f0"
+        },
+        {
+          "height": 332322,
+          "actualBits": "1a0f9340",
+          "old600SecondBits": "1a0f9340",
+          "previewBits": "1a0f9340"
+        },
+        {
+          "height": 332323,
+          "actualBits": "1d00ffff",
+          "old600SecondBits": "1d00ffff",
+          "previewBits": "1d00ffff"
+        },
+        {
+          "height": 332324,
+          "actualBits": "1d00ffff",
+          "old600SecondBits": "1d00ffff",
+          "previewBits": "1d00ffff"
+        },
+        {
+          "height": 332325,
+          "actualBits": "1a13997c",
+          "old600SecondBits": "1a13997c",
+          "previewBits": "1a13997c"
+        },
+        {
+          "height": 332326,
+          "actualBits": "1a1377dc",
+          "old600SecondBits": "1a1377dc",
+          "previewBits": "1a1377dc"
+        },
+        {
+          "height": 332327,
+          "actualBits": "1a13008c",
+          "old600SecondBits": "1a13008c",
+          "previewBits": "1a13008c"
+        },
+        {
+          "height": 332328,
+          "actualBits": "1d00ffff",
+          "old600SecondBits": "1d00ffff",
+          "previewBits": "1d00ffff"
+        },
+        {
+          "height": 332329,
+          "actualBits": "1a15f16a",
+          "old600SecondBits": "1a15f16a",
+          "previewBits": "1a15f16a"
+        },
+        {
+          "height": 332330,
+          "actualBits": "1a15492a",
+          "old600SecondBits": "1a15492a",
+          "previewBits": "1a15492a"
+        },
+        {
+          "height": 332331,
+          "actualBits": "1a130e8c",
+          "old600SecondBits": "1a130e8c",
+          "previewBits": "1a130e8c"
+        },
+        {
+          "height": 332332,
+          "actualBits": "1a121ded",
+          "old600SecondBits": "1a121ded",
+          "previewBits": "1a121ded"
+        },
+        {
+          "height": 332333,
+          "actualBits": "1d00ffff",
+          "old600SecondBits": "1d00ffff",
+          "previewBits": "1d00ffff"
+        },
+        {
+          "height": 332334,
+          "actualBits": "1d00ffff",
+          "old600SecondBits": "1d00ffff",
+          "previewBits": "1d00ffff"
+        },
+        {
+          "height": 332335,
+          "actualBits": "1a16dee9",
+          "old600SecondBits": "1a16dee9",
+          "previewBits": "1a16dee9"
+        },
+        {
+          "height": 332336,
+          "actualBits": "1a15ccca",
+          "old600SecondBits": "1a15ccca",
+          "previewBits": "1a15ccca"
+        },
+        {
+          "height": 332337,
+          "actualBits": "1a1567aa",
+          "old600SecondBits": "1a1567aa",
+          "previewBits": "1a1567aa"
+        },
+        {
+          "height": 332338,
+          "actualBits": "1a142e5b",
+          "old600SecondBits": "1a142e5b",
+          "previewBits": "1a142e5b"
+        },
+        {
+          "height": 332339,
+          "actualBits": "1a15035a",
+          "old600SecondBits": "1a15035a",
+          "previewBits": "1a15035a"
+        },
+        {
+          "height": 332340,
+          "actualBits": "1a15045a",
+          "old600SecondBits": "1a15045a",
+          "previewBits": "1a15045a"
+        },
+        {
+          "height": 332341,
+          "actualBits": "1a15470a",
+          "old600SecondBits": "1a15470a",
+          "previewBits": "1a15470a"
+        },
+        {
+          "height": 332342,
+          "actualBits": "1a137aac",
+          "old600SecondBits": "1a137aac",
+          "previewBits": "1a137aac"
+        },
+        {
+          "height": 332343,
+          "actualBits": "1d00ffff",
+          "old600SecondBits": "1d00ffff",
+          "previewBits": "1d00ffff"
+        },
+        {
+          "height": 332344,
+          "actualBits": "1a179758",
+          "old600SecondBits": "1a179758",
+          "previewBits": "1a179758"
+        },
+        {
+          "height": 332345,
+          "actualBits": "1a1712f8",
+          "old600SecondBits": "1a1712f8",
+          "previewBits": "1a1712f8"
+        },
+        {
+          "height": 332346,
+          "actualBits": "1a17f8b8",
+          "old600SecondBits": "1a17f8b8",
+          "previewBits": "1a17f8b8"
+        },
+        {
+          "height": 332347,
+          "actualBits": "1a15a96a",
+          "old600SecondBits": "1a15a96a",
+          "previewBits": "1a15a96a"
+        },
+        {
+          "height": 332348,
+          "actualBits": "1d00ffff",
+          "old600SecondBits": "1d00ffff",
+          "previewBits": "1d00ffff"
+        },
+        {
+          "height": 332349,
+          "actualBits": "1a15daca",
+          "old600SecondBits": "1a15daca",
+          "previewBits": "1a15daca"
+        },
+        {
+          "height": 332350,
+          "actualBits": "1a14827b",
+          "old600SecondBits": "1a14827b",
+          "previewBits": "1a14827b"
+        },
+        {
+          "height": 332351,
+          "actualBits": "1d00ffff",
+          "old600SecondBits": "1d00ffff",
+          "previewBits": "1d00ffff"
+        },
+        {
+          "height": 332352,
+          "actualBits": "1a15343a",
+          "old600SecondBits": "1a15343a",
+          "previewBits": "1a15343a"
+        },
+        {
+          "height": 332353,
+          "actualBits": "1a160fc9",
+          "old600SecondBits": "1a160fc9",
+          "previewBits": "1a160fc9"
+        },
+        {
+          "height": 332354,
+          "actualBits": "1a13dd7c",
+          "old600SecondBits": "1a13dd7c",
+          "previewBits": "1a13dd7c"
+        },
+        {
+          "height": 332355,
+          "actualBits": "1a12eced",
+          "old600SecondBits": "1a12eced",
+          "previewBits": "1a12eced"
+        },
+        {
+          "height": 332356,
+          "actualBits": "1a1145ce",
+          "old600SecondBits": "1a1145ce",
+          "previewBits": "1a1145ce"
+        },
+        {
+          "height": 332357,
+          "actualBits": "1a12f19d",
+          "old600SecondBits": "1a12f19d",
+          "previewBits": "1a12f19d"
+        },
+        {
+          "height": 332358,
+          "actualBits": "1a11065e",
+          "old600SecondBits": "1a11065e",
+          "previewBits": "1a11065e"
+        },
+        {
+          "height": 332359,
+          "actualBits": "1d00ffff",
+          "old600SecondBits": "1d00ffff",
+          "previewBits": "1d00ffff"
+        },
+        {
+          "height": 332360,
+          "actualBits": "1a141c7b",
+          "old600SecondBits": "1a141c7b",
+          "previewBits": "1a141c7b"
+        },
+        {
+          "height": 332361,
+          "actualBits": "1d00ffff",
+          "old600SecondBits": "1d00ffff",
+          "previewBits": "1d00ffff"
+        },
+        {
+          "height": 332362,
+          "actualBits": "1a15637a",
+          "old600SecondBits": "1a15637a",
+          "previewBits": "1a15637a"
+        },
+        {
+          "height": 332363,
+          "actualBits": "1a14613b",
+          "old600SecondBits": "1a14613b",
+          "previewBits": "1a14613b"
+        },
+        {
+          "height": 332364,
+          "actualBits": "1a15e9ea",
+          "old600SecondBits": "1a15e9ea",
+          "previewBits": "1a15e9ea"
+        },
+        {
+          "height": 332365,
+          "actualBits": "1a13e16c",
+          "old600SecondBits": "1a13e16c",
+          "previewBits": "1a13e16c"
+        },
+        {
+          "height": 332366,
+          "actualBits": "1a149ddb",
+          "old600SecondBits": "1a149ddb",
+          "previewBits": "1a149ddb"
+        },
+        {
+          "height": 332367,
+          "actualBits": "1a12811d",
+          "old600SecondBits": "1a12811d",
+          "previewBits": "1a12811d"
+        },
+        {
+          "height": 332368,
+          "actualBits": "1a1205ed",
+          "old600SecondBits": "1a1205ed",
+          "previewBits": "1a1205ed"
+        },
+        {
+          "height": 332369,
+          "actualBits": "1a12472d",
+          "old600SecondBits": "1a12472d",
+          "previewBits": "1a12472d"
+        },
+        {
+          "height": 332370,
+          "actualBits": "1a10f82f",
+          "old600SecondBits": "1a10f82f",
+          "previewBits": "1a10f82f"
+        },
+        {
+          "height": 332371,
+          "actualBits": "1a124bad",
+          "old600SecondBits": "1a124bad",
+          "previewBits": "1a124bad"
+        },
+        {
+          "height": 332372,
+          "actualBits": "1d00ffff",
+          "old600SecondBits": "1d00ffff",
+          "previewBits": "1d00ffff"
+        },
+        {
+          "height": 332373,
+          "actualBits": "1d00ffff",
+          "old600SecondBits": "1d00ffff",
+          "previewBits": "1d00ffff"
+        },
+        {
+          "height": 332374,
+          "actualBits": "1a176588",
+          "old600SecondBits": "1a176588",
+          "previewBits": "1a176588"
+        },
+        {
+          "height": 332375,
+          "actualBits": "1d00ffff",
+          "old600SecondBits": "1d00ffff",
+          "previewBits": "1d00ffff"
+        },
+        {
+          "height": 332376,
+          "actualBits": "1a184d37",
+          "old600SecondBits": "1a184d37",
+          "previewBits": "1a184d37"
+        },
+        {
+          "height": 332377,
+          "actualBits": "1a17f9e8",
+          "old600SecondBits": "1a17f9e8",
+          "previewBits": "1a17f9e8"
+        },
+        {
+          "height": 332378,
+          "actualBits": "1a1946b6",
+          "old600SecondBits": "1a1946b6",
+          "previewBits": "1a1946b6"
+        },
+        {
+          "height": 332379,
+          "actualBits": "1d00ffff",
+          "old600SecondBits": "1d00ffff",
+          "previewBits": "1d00ffff"
+        },
+        {
+          "height": 332380,
+          "actualBits": "1a1be884",
+          "old600SecondBits": "1a1be884",
+          "previewBits": "1a1be884"
+        },
+        {
+          "height": 332381,
+          "actualBits": "1a196736",
+          "old600SecondBits": "1a196736",
+          "previewBits": "1a196736"
+        },
+        {
+          "height": 332382,
+          "actualBits": "1a198696",
+          "old600SecondBits": "1a198696",
+          "previewBits": "1a198696"
+        },
+        {
+          "height": 332383,
+          "actualBits": "1d00ffff",
+          "old600SecondBits": "1d00ffff",
+          "previewBits": "1d00ffff"
+        },
+        {
+          "height": 332384,
+          "actualBits": "1a1cf173",
+          "old600SecondBits": "1a1cf173",
+          "previewBits": "1a1cf173"
+        },
+        {
+          "height": 332385,
+          "actualBits": "1a1d24f2",
+          "old600SecondBits": "1a1d24f2",
+          "previewBits": "1a1d24f2"
+        },
+        {
+          "height": 332386,
+          "actualBits": "1d00ffff",
+          "old600SecondBits": "1d00ffff",
+          "previewBits": "1d00ffff"
+        },
+        {
+          "height": 332387,
+          "actualBits": "1a1f15b0",
+          "old600SecondBits": "1a1f15b0",
+          "previewBits": "1a1f15b0"
+        },
+        {
+          "height": 332388,
+          "actualBits": "1d00ffff",
+          "old600SecondBits": "1d00ffff",
+          "previewBits": "1d00ffff"
+        },
+        {
+          "height": 332389,
+          "actualBits": "1a2095ff",
+          "old600SecondBits": "1a2095ff",
+          "previewBits": "1a2095ff"
+        },
+        {
+          "height": 332390,
+          "actualBits": "1a247ffb",
+          "old600SecondBits": "1a247ffb",
+          "previewBits": "1a247ffb"
+        },
+        {
+          "height": 332391,
+          "actualBits": "1a20b95f",
+          "old600SecondBits": "1a20b95f",
+          "previewBits": "1a20b95f"
+        },
+        {
+          "height": 332392,
+          "actualBits": "1a223bfd",
+          "old600SecondBits": "1a223bfd",
+          "previewBits": "1a223bfd"
+        },
+        {
+          "height": 332393,
+          "actualBits": "1a24f75b",
+          "old600SecondBits": "1a24f75b",
+          "previewBits": "1a24f75b"
+        },
+        {
+          "height": 332394,
+          "actualBits": "1a2284dd",
+          "old600SecondBits": "1a2284dd",
+          "previewBits": "1a2284dd"
+        },
+        {
+          "height": 332395,
+          "actualBits": "1a2387bc",
+          "old600SecondBits": "1a2387bc",
+          "previewBits": "1a2387bc"
+        },
+        {
+          "height": 332396,
+          "actualBits": "1a20a13f",
+          "old600SecondBits": "1a20a13f",
+          "previewBits": "1a20a13f"
+        },
+        {
+          "height": 332397,
+          "actualBits": "1d00ffff",
+          "old600SecondBits": "1d00ffff",
+          "previewBits": "1d00ffff"
+        },
+        {
+          "height": 332398,
+          "actualBits": "1a269f79",
+          "old600SecondBits": "1a269f79",
+          "previewBits": "1a269f79"
+        },
+        {
+          "height": 332399,
+          "actualBits": "1a23b6fc",
+          "old600SecondBits": "1a23b6fc",
+          "previewBits": "1a23b6fc"
+        },
+        {
+          "height": 332400,
+          "actualBits": "1a25391a",
+          "old600SecondBits": "1a25391a",
+          "previewBits": "1a25391a"
+        },
+        {
+          "height": 332401,
+          "actualBits": "1a23be1c",
+          "old600SecondBits": "1a23be1c",
+          "previewBits": "1a23be1c"
+        },
+        {
+          "height": 332402,
+          "actualBits": "1d00ffff",
+          "old600SecondBits": "1d00ffff",
+          "previewBits": "1d00ffff"
+        },
+        {
+          "height": 332403,
+          "actualBits": "1a29e5b6",
+          "old600SecondBits": "1a29e5b6",
+          "previewBits": "1a29e5b6"
+        },
+        {
+          "height": 332404,
+          "actualBits": "1a2622d9",
+          "old600SecondBits": "1a2622d9",
+          "previewBits": "1a2622d9"
+        },
+        {
+          "height": 332405,
+          "actualBits": "1a243a1b",
+          "old600SecondBits": "1a243a1b",
+          "previewBits": "1a243a1b"
+        },
+        {
+          "height": 332406,
+          "actualBits": "1a23169c",
+          "old600SecondBits": "1a23169c",
+          "previewBits": "1a23169c"
+        },
+        {
+          "height": 332407,
+          "actualBits": "1d00ffff",
+          "old600SecondBits": "1d00ffff",
+          "previewBits": "1d00ffff"
+        },
+        {
+          "height": 332408,
+          "actualBits": "1a282b17",
+          "old600SecondBits": "1a282b17",
+          "previewBits": "1a282b17"
+        },
+        {
+          "height": 332409,
+          "actualBits": "1a25b2ba",
+          "old600SecondBits": "1a25b2ba",
+          "previewBits": "1a25b2ba"
+        },
+        {
+          "height": 332410,
+          "actualBits": "1d00ffff",
+          "old600SecondBits": "1d00ffff",
+          "previewBits": "1d00ffff"
+        },
+        {
+          "height": 332411,
+          "actualBits": "1d00ffff",
+          "old600SecondBits": "1d00ffff",
+          "previewBits": "1d00ffff"
+        },
+        {
+          "height": 332412,
+          "actualBits": "1a2e1191",
+          "old600SecondBits": "1a2e1191",
+          "previewBits": "1a2e1191"
+        },
+        {
+          "height": 332413,
+          "actualBits": "1a2c1d73",
+          "old600SecondBits": "1a2c1d73",
+          "previewBits": "1a2c1d73"
+        },
+        {
+          "height": 332414,
+          "actualBits": "1a28d097",
+          "old600SecondBits": "1a28d097",
+          "previewBits": "1a28d097"
+        },
+        {
+          "height": 332415,
+          "actualBits": "1a25231a",
+          "old600SecondBits": "1a25231a",
+          "previewBits": "1a25231a"
+        },
+        {
+          "height": 332416,
+          "actualBits": "1a2393fc",
+          "old600SecondBits": "1a2393fc",
+          "previewBits": "1a2393fc"
+        },
+        {
+          "height": 332417,
+          "actualBits": "1a222e5d",
+          "old600SecondBits": "1a222e5d",
+          "previewBits": "1a222e5d"
+        },
+        {
+          "height": 332418,
+          "actualBits": "1a1fbfb0",
+          "old600SecondBits": "1a1fbfb0",
+          "previewBits": "1a1fbfb0"
+        },
+        {
+          "height": 332419,
+          "actualBits": "1d00ffff",
+          "old600SecondBits": "1d00ffff",
+          "previewBits": "1d00ffff"
+        },
+        {
+          "height": 332420,
+          "actualBits": "1a2040ff",
+          "old600SecondBits": "1a2040ff",
+          "previewBits": "1a2040ff"
+        },
+        {
+          "height": 332421,
+          "actualBits": "1a20d01f",
+          "old600SecondBits": "1a20d01f",
+          "previewBits": "1a20d01f"
+        },
+        {
+          "height": 332422,
+          "actualBits": "1a1e1a21",
+          "old600SecondBits": "1a1e1a21",
+          "previewBits": "1a1e1a21"
+        },
+        {
+          "height": 332423,
+          "actualBits": "1a204ddf",
+          "old600SecondBits": "1a204ddf",
+          "previewBits": "1a204ddf"
+        },
+        {
+          "height": 332424,
+          "actualBits": "1a22153d",
+          "old600SecondBits": "1a22153d",
+          "previewBits": "1a22153d"
+        },
+        {
+          "height": 332425,
+          "actualBits": "1a1ff4f0",
+          "old600SecondBits": "1a1ff4f0",
+          "previewBits": "1a1ff4f0"
+        },
+        {
+          "height": 332426,
+          "actualBits": "1a1cabe3",
+          "old600SecondBits": "1a1cabe3",
+          "previewBits": "1a1cabe3"
+        },
+        {
+          "height": 332427,
+          "actualBits": "1a19de26",
+          "old600SecondBits": "1a19de26",
+          "previewBits": "1a19de26"
+        },
+        {
+          "height": 332428,
+          "actualBits": "1a1c6de3",
+          "old600SecondBits": "1a1c6de3",
+          "previewBits": "1a1c6de3"
+        },
+        {
+          "height": 332429,
+          "actualBits": "1d00ffff",
+          "old600SecondBits": "1d00ffff",
+          "previewBits": "1d00ffff"
+        },
+        {
+          "height": 332430,
+          "actualBits": "1a21bfde",
+          "old600SecondBits": "1a21bfde",
+          "previewBits": "1a21bfde"
+        },
+        {
+          "height": 332431,
+          "actualBits": "1a25165a",
+          "old600SecondBits": "1a25165a",
+          "previewBits": "1a25165a"
+        },
+        {
+          "height": 332432,
+          "actualBits": "1a249cbb",
+          "old600SecondBits": "1a249cbb",
+          "previewBits": "1a249cbb"
+        },
+        {
+          "height": 332433,
+          "actualBits": "1a2481bb",
+          "old600SecondBits": "1a2481bb",
+          "previewBits": "1a2481bb"
+        },
+        {
+          "height": 332434,
+          "actualBits": "1a211ade",
+          "old600SecondBits": "1a211ade",
+          "previewBits": "1a211ade"
+        },
+        {
+          "height": 332435,
+          "actualBits": "1a235a3c",
+          "old600SecondBits": "1a235a3c",
+          "previewBits": "1a235a3c"
+        },
+        {
+          "height": 332436,
+          "actualBits": "1d00ffff",
+          "old600SecondBits": "1d00ffff",
+          "previewBits": "1d00ffff"
+        },
+        {
+          "height": 332437,
+          "actualBits": "1a2491fb",
+          "old600SecondBits": "1a2491fb",
+          "previewBits": "1a2491fb"
+        },
+        {
+          "height": 332438,
+          "actualBits": "1a20ebbf",
+          "old600SecondBits": "1a20ebbf",
+          "previewBits": "1a20ebbf"
+        },
+        {
+          "height": 332439,
+          "actualBits": "1a218c7e",
+          "old600SecondBits": "1a218c7e",
+          "previewBits": "1a218c7e"
+        },
+        {
+          "height": 332440,
+          "actualBits": "1a1f4cf0",
+          "old600SecondBits": "1a1f4cf0",
+          "previewBits": "1a1f4cf0"
+        },
+        {
+          "height": 332441,
+          "actualBits": "1d00ffff",
+          "old600SecondBits": "1d00ffff",
+          "previewBits": "1d00ffff"
+        },
+        {
+          "height": 332442,
+          "actualBits": "1a23ac7c",
+          "old600SecondBits": "1a23ac7c",
+          "previewBits": "1a23ac7c"
+        },
+        {
+          "height": 332443,
+          "actualBits": "1a20e1df",
+          "old600SecondBits": "1a20e1df",
+          "previewBits": "1a20e1df"
+        },
+        {
+          "height": 332444,
+          "actualBits": "1a1e4b31",
+          "old600SecondBits": "1a1e4b31",
+          "previewBits": "1a1e4b31"
+        },
+        {
+          "height": 332445,
+          "actualBits": "1d00ffff",
+          "old600SecondBits": "1d00ffff",
+          "previewBits": "1d00ffff"
+        },
+        {
+          "height": 332446,
+          "actualBits": "1a1f8ac0",
+          "old600SecondBits": "1a1f8ac0",
+          "previewBits": "1a1f8ac0"
+        },
+        {
+          "height": 332447,
+          "actualBits": "1a1d8002",
+          "old600SecondBits": "1a1d8002",
+          "previewBits": "1a1d8002"
+        },
+        {
+          "height": 332448,
+          "actualBits": "1a1cdab3",
+          "old600SecondBits": "1a1cdab3",
+          "previewBits": "1a1cdab3"
+        },
+        {
+          "height": 332449,
+          "actualBits": "1a1bdac4",
+          "old600SecondBits": "1a1bdac4",
+          "previewBits": "1a1bdac4"
+        },
+        {
+          "height": 332450,
+          "actualBits": "1a1a55f5",
+          "old600SecondBits": "1a1a55f5",
+          "previewBits": "1a1a55f5"
+        },
+        {
+          "height": 332451,
+          "actualBits": "1d00ffff",
+          "old600SecondBits": "1a179758",
+          "previewBits": "1d00ffff"
+        },
+        {
+          "height": 332452,
+          "actualBits": "1b00f080",
+          "old600SecondBits": "1a15acaa",
+          "previewBits": "1b00f080"
+        },
+        {
+          "height": 332453,
+          "actualBits": "1b00f0a4",
+          "old600SecondBits": "1a138bfc",
+          "previewBits": "1b00f0a4"
+        },
+        {
+          "height": 332454,
+          "actualBits": "1d00ffff",
+          "old600SecondBits": "1a11907e",
+          "previewBits": "1d00ffff"
+        },
+        {
+          "height": 332455,
+          "actualBits": "1b00f2e0",
+          "old600SecondBits": "1a10064f",
+          "previewBits": "1b00f2e0"
+        },
+        {
+          "height": 332456,
+          "actualBits": "1b00ec23",
+          "old600SecondBits": "1a0e0b11",
+          "previewBits": "1b00ec23"
+        },
+        {
+          "height": 332457,
+          "actualBits": "1b00eca3",
+          "old600SecondBits": "1a0cae9b",
+          "previewBits": "1b00eca3"
+        },
+        {
+          "height": 332458,
+          "actualBits": "1b00eb75",
+          "old600SecondBits": "1a0b5f24",
+          "previewBits": "1b00eb75"
+        },
+        {
+          "height": 332459,
+          "actualBits": "1b00ea99",
+          "old600SecondBits": "1a0a362d",
+          "previewBits": "1b00ea99"
+        },
+        {
+          "height": 332460,
+          "actualBits": "1b00ebf4",
+          "old600SecondBits": "1a0941ee",
+          "previewBits": "1b00ebf4"
+        },
+        {
+          "height": 332461,
+          "actualBits": "1d00ffff",
+          "old600SecondBits": "1a084e17",
+          "previewBits": "1d00ffff"
+        },
+        {
+          "height": 332462,
+          "actualBits": "1b00eda5",
+          "old600SecondBits": "1a0792cc",
+          "previewBits": "1b00eda5"
+        },
+        {
+          "height": 332463,
+          "actualBits": "1b00eb46",
+          "old600SecondBits": "1a06c1e5",
+          "previewBits": "1b00eb46"
+        },
+        {
+          "height": 332464,
+          "actualBits": "1b00eba4",
+          "old600SecondBits": "1a06194d",
+          "previewBits": "1b00eba4"
+        },
+        {
+          "height": 332465,
+          "actualBits": "1b00ec81",
+          "old600SecondBits": "1a05843a",
+          "previewBits": "1b00ec81"
+        },
+        {
+          "height": 332466,
+          "actualBits": "1b00ed99",
+          "old600SecondBits": "1a04febb",
+          "previewBits": "1b00ed99"
+        },
+        {
+          "height": 332467,
+          "actualBits": "1d00ffff",
+          "old600SecondBits": "1a047637",
+          "previewBits": "1d00ffff"
+        },
+        {
+          "height": 332468,
+          "actualBits": "1b00ee78",
+          "old600SecondBits": "1a04128b",
+          "previewBits": "1b00ee78"
+        },
+        {
+          "height": 332469,
+          "actualBits": "1b00eee2",
+          "old600SecondBits": "1a03ad48",
+          "previewBits": "1b00eee2"
+        },
+        {
+          "height": 332470,
+          "actualBits": "1b00ee0e",
+          "old600SecondBits": "1a034d58",
+          "previewBits": "1b00ee0e"
+        },
+        {
+          "height": 332471,
+          "actualBits": "1b00eca3",
+          "old600SecondBits": "1a02f53f",
+          "previewBits": "1b00eca3"
+        },
+        {
+          "height": 332472,
+          "actualBits": "1b00ebde",
+          "old600SecondBits": "1a02a839",
+          "previewBits": "1b00ebde"
+        },
+        {
+          "height": 332473,
+          "actualBits": "1b00ec74",
+          "old600SecondBits": "1a0266a7",
+          "previewBits": "1b00ec74"
+        },
+        {
+          "height": 332474,
+          "actualBits": "1b00ead2",
+          "old600SecondBits": "1a02262d",
+          "previewBits": "1b00ead2"
+        },
+        {
+          "height": 332475,
+          "actualBits": "1b00e8b4",
+          "old600SecondBits": "1a01eb5e",
+          "previewBits": "1b00e8b4"
+        },
+        {
+          "height": 332476,
+          "actualBits": "1b00e91b",
+          "old600SecondBits": "1a01bb9e",
+          "previewBits": "1b00e91b"
+        },
+        {
+          "height": 332477,
+          "actualBits": "1b00e6e0",
+          "old600SecondBits": "1a018bf0",
+          "previewBits": "1b00e6e0"
+        },
+        {
+          "height": 332478,
+          "actualBits": "1b00e892",
+          "old600SecondBits": "1a01676f",
+          "previewBits": "1b00e892"
+        },
+        {
+          "height": 332479,
+          "actualBits": "1b00e657",
+          "old600SecondBits": "1a0140d9",
+          "previewBits": "1b00e657"
+        },
+        {
+          "height": 332480,
+          "actualBits": "1b00e444",
+          "old600SecondBits": "1a011e99",
+          "previewBits": "1b00e444"
+        },
+        {
+          "height": 332481,
+          "actualBits": "1b00e358",
+          "old600SecondBits": "1a01013c",
+          "previewBits": "1b00e358"
+        },
+        {
+          "height": 332482,
+          "actualBits": "1b00e36e",
+          "old600SecondBits": "1a00e7f2",
+          "previewBits": "1b00e36e"
+        },
+        {
+          "height": 332483,
+          "actualBits": "1b00e1a5",
+          "old600SecondBits": "1a00cf61",
+          "previewBits": "1b00e1a5"
+        },
+        {
+          "height": 332484,
+          "actualBits": "1b00e0d2",
+          "old600SecondBits": "1a00ba33",
+          "previewBits": "1b00e0d2"
+        },
+        {
+          "height": 332485,
+          "actualBits": "1b00de94",
+          "old600SecondBits": "1a00a624",
+          "previewBits": "1b00de94"
+        },
+        {
+          "height": 332486,
+          "actualBits": "1b00dc7d",
+          "old600SecondBits": "1a009459",
+          "previewBits": "1b00dc7d"
+        },
+        {
+          "height": 332487,
+          "actualBits": "1b00dc88",
+          "old600SecondBits": "1a0085ba",
+          "previewBits": "1b00dc88"
+        },
+        {
+          "height": 332488,
+          "actualBits": "1b00dab7",
+          "old600SecondBits": "19778808",
+          "previewBits": "1b00dab7"
+        },
+        {
+          "height": 332489,
+          "actualBits": "1b00dc06",
+          "old600SecondBits": "196c5e93",
+          "previewBits": "1b00dc06"
+        },
+        {
+          "height": 332490,
+          "actualBits": "1b00da56",
+          "old600SecondBits": "1960e85f",
+          "previewBits": "1b00da56"
+        },
+        {
+          "height": 332491,
+          "actualBits": "1b00d7de",
+          "old600SecondBits": "19565929",
+          "previewBits": "1b00d7de"
+        },
+        {
+          "height": 332492,
+          "actualBits": "1d00ffff",
+          "old600SecondBits": "194d8f32",
+          "previewBits": "1d00ffff"
+        },
+        {
+          "height": 332493,
+          "actualBits": "1b00d9a9",
+          "old600SecondBits": "1946bb79",
+          "previewBits": "1b00d9a9"
+        },
+        {
+          "height": 332494,
+          "actualBits": "1b00daab",
+          "old600SecondBits": "1940093f",
+          "previewBits": "1b00daab"
+        },
+        {
+          "height": 332495,
+          "actualBits": "1b00d97f",
+          "old600SecondBits": "193968a6",
+          "previewBits": "1b00d97f"
+        },
+        {
+          "height": 332496,
+          "actualBits": "1b00d8d3",
+          "old600SecondBits": "1933936c",
+          "previewBits": "1b00d8d3"
+        },
+        {
+          "height": 332497,
+          "actualBits": "1b00d994",
+          "old600SecondBits": "192ea3f1",
+          "previewBits": "1b00d994"
+        },
+        {
+          "height": 332498,
+          "actualBits": "1b00d79e",
+          "old600SecondBits": "1929a7f6",
+          "previewBits": "1b00d79e"
+        },
+        {
+          "height": 332499,
+          "actualBits": "1d00ffff",
+          "old600SecondBits": "192571fa",
+          "previewBits": "1d00ffff"
+        },
+        {
+          "height": 332500,
+          "actualBits": "1b00d994",
+          "old600SecondBits": "192225fd",
+          "previewBits": "1b00d994"
+        },
+        {
+          "height": 332501,
+          "actualBits": "1b00d8d3",
+          "old600SecondBits": "191eab41",
+          "previewBits": "1b00d8d3"
+        },
+        {
+          "height": 332502,
+          "actualBits": "1b00d6f5",
+          "old600SecondBits": "191b66f4",
+          "previewBits": "1b00d6f5"
+        },
+        {
+          "height": 332503,
+          "actualBits": "1b00d793",
+          "old600SecondBits": "1918c3d7",
+          "previewBits": "1b00d793"
+        },
+        {
+          "height": 332504,
+          "actualBits": "1b00d5c2",
+          "old600SecondBits": "19162139",
+          "previewBits": "1b00d5c2"
+        },
+        {
+          "height": 332505,
+          "actualBits": "1b00d38c",
+          "old600SecondBits": "1913bd5c",
+          "previewBits": "1b00d38c"
+        },
+        {
+          "height": 332506,
+          "actualBits": "1d00ffff",
+          "old600SecondBits": "1911fa5e",
+          "previewBits": "1d00ffff"
+        },
+        {
+          "height": 332507,
+          "actualBits": "1b00d849",
+          "old600SecondBits": "191064cf",
+          "previewBits": "1b00d849"
+        },
+        {
+          "height": 332508,
+          "actualBits": "1d00ffff",
+          "old600SecondBits": "190ea479",
+          "previewBits": "1d00ffff"
+        },
+        {
+          "height": 332509,
+          "actualBits": "1b00d8de",
+          "old600SecondBits": "190d5a0a",
+          "previewBits": "1b00d8de"
+        },
+        {
+          "height": 332510,
+          "actualBits": "1b00d6ff",
+          "old600SecondBits": "190bed9c",
+          "previewBits": "1b00d6ff"
+        },
+        {
+          "height": 332511,
+          "actualBits": "1d00ffff",
+          "old600SecondBits": "190ab135",
+          "previewBits": "1d00ffff"
+        },
+        {
+          "height": 332512,
+          "actualBits": "1b00d85e",
+          "old600SecondBits": "1909c03e",
+          "previewBits": "1b00d85e"
+        },
+        {
+          "height": 332513,
+          "actualBits": "1b00d617",
+          "old600SecondBits": "1908b247",
+          "previewBits": "1b00d617"
+        },
+        {
+          "height": 332514,
+          "actualBits": "1b00d583",
+          "old600SecondBits": "1907d0ec",
+          "previewBits": "1b00d583"
+        },
+        {
+          "height": 332515,
+          "actualBits": "1d00ffff",
+          "old600SecondBits": "1906fad5",
+          "previewBits": "1d00ffff"
+        },
+        {
+          "height": 332516,
+          "actualBits": "1b00d60c",
+          "old600SecondBits": "19065d45",
+          "previewBits": "1b00d60c"
+        },
+        {
+          "height": 332517,
+          "actualBits": "1b00d3e0",
+          "old600SecondBits": "1905ad52",
+          "previewBits": "1b00d3e0"
+        },
+        {
+          "height": 332518,
+          "actualBits": "1b00d26a",
+          "old600SecondBits": "190514d2",
+          "previewBits": "1b00d26a"
+        },
+        {
+          "height": 332519,
+          "actualBits": "1b00d028",
+          "old600SecondBits": "190487ef",
+          "previewBits": "1b00d028"
+        },
+        {
+          "height": 332520,
+          "actualBits": "1b00d0b8",
+          "old600SecondBits": "1904182f",
+          "previewBits": "1b00d0b8"
+        },
+        {
+          "height": 332521,
+          "actualBits": "1b00d31a",
+          "old600SecondBits": "1903bb84",
+          "previewBits": "1b00d31a"
+        },
+        {
+          "height": 332522,
+          "actualBits": "1d00ffff",
+          "old600SecondBits": "190358d2",
+          "previewBits": "1d00ffff"
+        },
+        {
+          "height": 332523,
+          "actualBits": "1b00d487",
+          "old600SecondBits": "19030d42",
+          "previewBits": "1b00d487"
+        },
+        {
+          "height": 332524,
+          "actualBits": "1b00d60c",
+          "old600SecondBits": "1902c51b",
+          "previewBits": "1b00d60c"
+        },
+        {
+          "height": 332525,
+          "actualBits": "1b00d4b1",
+          "old600SecondBits": "19027b13",
+          "previewBits": "1b00d4b1"
+        },
+        {
+          "height": 332526,
+          "actualBits": "1b00d53a",
+          "old600SecondBits": "19023ddd",
+          "previewBits": "1b00d53a"
+        },
+        {
+          "height": 332527,
+          "actualBits": "1d00ffff",
+          "old600SecondBits": "190206dd",
+          "previewBits": "1d00ffff"
+        },
+        {
+          "height": 332528,
+          "actualBits": "1b00d873",
+          "old600SecondBits": "1901d92f",
+          "previewBits": "1b00d873"
+        },
+        {
+          "height": 332529,
+          "actualBits": "1d00ffff",
+          "old600SecondBits": "1901aac3",
+          "previewBits": "1d00ffff"
+        },
+        {
+          "height": 332530,
+          "actualBits": "1b00db2d",
+          "old600SecondBits": "19018520",
+          "previewBits": "1b00db2d"
+        },
+        {
+          "height": 332531,
+          "actualBits": "1d00ffff",
+          "old600SecondBits": "19015ab9",
+          "previewBits": "1d00ffff"
+        },
+        {
+          "height": 332532,
+          "actualBits": "1b00db43",
+          "old600SecondBits": "19013c32",
+          "previewBits": "1b00db43"
+        },
+        {
+          "height": 332533,
+          "actualBits": "1b00dbe5",
+          "old600SecondBits": "19011dd3",
+          "previewBits": "1b00dbe5"
+        },
+        {
+          "height": 332534,
+          "actualBits": "1b00db58",
+          "old600SecondBits": "190100ef",
+          "previewBits": "1b00db58"
+        },
+        {
+          "height": 332535,
+          "actualBits": "1b00da4a",
+          "old600SecondBits": "1900e67a",
+          "previewBits": "1b00da4a"
+        },
+        {
+          "height": 332536,
+          "actualBits": "1b00da76",
+          "old600SecondBits": "1900cfdc",
+          "previewBits": "1b00da76"
+        },
+        {
+          "height": 332537,
+          "actualBits": "1b00db43",
+          "old600SecondBits": "1900bc00",
+          "previewBits": "1b00db43"
+        },
+        {
+          "height": 332538,
+          "actualBits": "1b00dcea",
+          "old600SecondBits": "1900aab6",
+          "previewBits": "1b00dcea"
+        },
+        {
+          "height": 332539,
+          "actualBits": "1b00daab",
+          "old600SecondBits": "1900984e",
+          "previewBits": "1b00daab"
+        },
+        {
+          "height": 332540,
+          "actualBits": "1b00d8e9",
+          "old600SecondBits": "1900882c",
+          "previewBits": "1b00d8e9"
+        },
+        {
+          "height": 332541,
+          "actualBits": "1b00d89e",
+          "old600SecondBits": "187a8ec5",
+          "previewBits": "1b00d89e"
+        },
+        {
+          "height": 332542,
+          "actualBits": "1d00ffff",
+          "old600SecondBits": "186ddcd2",
+          "previewBits": "1d00ffff"
+        },
+        {
+          "height": 332543,
+          "actualBits": "1b00d9ff",
+          "old600SecondBits": "18642c5b",
+          "previewBits": "1b00d9ff"
+        },
+        {
+          "height": 332544,
+          "actualBits": "1b00d7f4",
+          "old600SecondBits": "18596d66",
+          "previewBits": "1b00d7f4"
+        },
+        {
+          "height": 332545,
+          "actualBits": "1b00d74a",
+          "old600SecondBits": "18505a2f",
+          "previewBits": "1b00d74a"
+        },
+        {
+          "height": 332546,
+          "actualBits": "1b00d56f",
+          "old600SecondBits": "1847cd78",
+          "previewBits": "1b00d56f"
+        },
+        {
+          "height": 332547,
+          "actualBits": "1b00d602",
+          "old600SecondBits": "1840e1ff",
+          "previewBits": "1b00d602"
+        },
+        {
+          "height": 332548,
+          "actualBits": "1b00d54f",
+          "old600SecondBits": "183a49e5",
+          "previewBits": "1b00d54f"
+        },
+        {
+          "height": 332549,
+          "actualBits": "1b00d58d",
+          "old600SecondBits": "1834970b",
+          "previewBits": "1b00d58d"
+        },
+        {
+          "height": 332550,
+          "actualBits": "1b00d453",
+          "old600SecondBits": "182f1e50",
+          "previewBits": "1b00d453"
+        },
+        {
+          "height": 332551,
+          "actualBits": "1b00d491",
+          "old600SecondBits": "182a8395",
+          "previewBits": "1b00d491"
+        },
+        {
+          "height": 332552,
+          "actualBits": "1b00d305",
+          "old600SecondBits": "18260a59",
+          "previewBits": "1b00d305"
+        },
+        {
+          "height": 332553,
+          "actualBits": "1d00ffff",
+          "old600SecondBits": "1821f53e",
+          "previewBits": "1d00ffff"
+        },
+        {
+          "height": 332554,
+          "actualBits": "1b00d378",
+          "old600SecondBits": "181ef731",
+          "previewBits": "1b00d378"
+        },
+        {
+          "height": 332555,
+          "actualBits": "1b00d115",
+          "old600SecondBits": "181b97c4",
+          "previewBits": "1b00d115"
+        },
+        {
+          "height": 332556,
+          "actualBits": "1b00d066",
+          "old600SecondBits": "1818c8b7",
+          "previewBits": "1b00d066"
+        },
+        {
+          "height": 332557,
+          "actualBits": "1b00cf5c",
+          "old600SecondBits": "18163939",
+          "previewBits": "1b00cf5c"
+        },
+        {
+          "height": 332558,
+          "actualBits": "1b00cd22",
+          "old600SecondBits": "1813d0cc",
+          "previewBits": "1b00cd22"
+        },
+        {
+          "height": 332559,
+          "actualBits": "1b00cd04",
+          "old600SecondBits": "1811d9ce",
+          "previewBits": "1b00cd04"
+        },
+        {
+          "height": 332560,
+          "actualBits": "1b00ce5d",
+          "old600SecondBits": "1810314f",
+          "previewBits": "1b00ce5d"
+        },
+        {
+          "height": 332561,
+          "actualBits": "1b00d099",
+          "old600SecondBits": "180ec0b9",
+          "previewBits": "1b00d099"
+        },
+        {
+          "height": 332562,
+          "actualBits": "1d00ffff",
+          "old600SecondBits": "180d2a4a",
+          "previewBits": "1d00ffff"
+        },
+        {
+          "height": 332563,
+          "actualBits": "1b00d10a",
+          "old600SecondBits": "180c01ab",
+          "previewBits": "1b00d10a"
+        },
+        {
+          "height": 332564,
+          "actualBits": "1d00ffff",
+          "old600SecondBits": "180ad42d",
+          "previewBits": "1d00ffff"
+        },
+        {
+          "height": 332565,
+          "actualBits": "1b00d3b6",
+          "old600SecondBits": "1809e096",
+          "previewBits": "1b00d3b6"
+        },
+        {
+          "height": 332566,
+          "actualBits": "1b00d45e",
+          "old600SecondBits": "1808ee2f",
+          "previewBits": "1b00d45e"
+        },
+        {
+          "height": 332567,
+          "actualBits": "1b00d4bb",
+          "old600SecondBits": "18080fdf",
+          "previewBits": "1b00d4bb"
+        },
+        {
+          "height": 332568,
+          "actualBits": "1b00d324",
+          "old600SecondBits": "1807364c",
+          "previewBits": "1b00d324"
+        },
+        {
+          "height": 332569,
+          "actualBits": "1d00ffff",
+          "old600SecondBits": "180670d5",
+          "previewBits": "1d00ffff"
+        },
+        {
+          "height": 332570,
+          "actualBits": "1b00d3c1",
+          "old600SecondBits": "1805dfbe",
+          "previewBits": "1b00d3c1"
+        },
+        {
+          "height": 332571,
+          "actualBits": "1b00d40a",
+          "old600SecondBits": "18054d0e",
+          "previewBits": "1b00d40a"
+        },
+        {
+          "height": 332572,
+          "actualBits": "1d00ffff",
+          "old600SecondBits": "1804c41f",
+          "previewBits": "1d00ffff"
+        },
+        {
+          "height": 332573,
+          "actualBits": "1b00d602",
+          "old600SecondBits": "180458b7",
+          "previewBits": "1b00d602"
+        },
+        {
+          "height": 332574,
+          "actualBits": "1b00d617",
+          "old600SecondBits": "1803eb2a",
+          "previewBits": "1b00d617"
+        },
+        {
+          "height": 332575,
+          "actualBits": "1b00d3ff",
+          "old600SecondBits": "18037f4e",
+          "previewBits": "1b00d3ff"
+        },
+        {
+          "height": 332576,
+          "actualBits": "1b00d579",
+          "old600SecondBits": "18032c6e",
+          "previewBits": "1b00d579"
+        },
+        {
+          "height": 332577,
+          "actualBits": "1d00ffff",
+          "old600SecondBits": "1802d4b7",
+          "previewBits": "1d00ffff"
+        },
+        {
+          "height": 332578,
+          "actualBits": "1b00d5d8",
+          "old600SecondBits": "18029501",
+          "previewBits": "1b00d5d8"
+        },
+        {
+          "height": 332579,
+          "actualBits": "1d00ffff",
+          "old600SecondBits": "18024d85",
+          "previewBits": "1d00ffff"
+        },
+        {
+          "height": 332580,
+          "actualBits": "1d00ffff",
+          "old600SecondBits": "180219b5",
+          "previewBits": "1d00ffff"
+        },
+        {
+          "height": 332581,
+          "actualBits": "1b00d8a8",
+          "old600SecondBits": "1801ea53",
+          "previewBits": "1b00d8a8"
+        },
+        {
+          "height": 332582,
+          "actualBits": "1d00ffff",
+          "old600SecondBits": "1801ba56",
+          "previewBits": "1d00ffff"
+        },
+        {
+          "height": 332583,
+          "actualBits": "1d00ffff",
+          "old600SecondBits": "18019368",
+          "previewBits": "1d00ffff"
+        },
+        {
+          "height": 332584,
+          "actualBits": "1b00de11",
+          "old600SecondBits": "18016fd6",
+          "previewBits": "1b00de11"
+        },
+        {
+          "height": 332585,
+          "actualBits": "1b00dbe5",
+          "old600SecondBits": "18014848",
+          "previewBits": "1b00dbe5"
+        },
+        {
+          "height": 332586,
+          "actualBits": "1b00d9a9",
+          "old600SecondBits": "180124e5",
+          "previewBits": "1b00d9a9"
+        },
+        {
+          "height": 332587,
+          "actualBits": "1d00ffff",
+          "old600SecondBits": "180105be",
+          "previewBits": "1d00ffff"
+        },
+        {
+          "height": 332588,
+          "actualBits": "1b00da6b",
+          "old600SecondBits": "1800eebd",
+          "previewBits": "1b00da6b"
+        },
+        {
+          "height": 332589,
+          "actualBits": "1b00d833",
+          "old600SecondBits": "1800d4f8",
+          "previewBits": "1b00d833"
+        },
+        {
+          "height": 332590,
+          "actualBits": "1b00d789",
+          "old600SecondBits": "1800bf54",
+          "previewBits": "1b00d789"
+        },
+        {
+          "height": 332591,
+          "actualBits": "1d00ffff",
+          "old600SecondBits": "1800aa62",
+          "previewBits": "1d00ffff"
+        },
+        {
+          "height": 332592,
+          "actualBits": "1d00ffff",
+          "old600SecondBits": "18009b6a",
+          "previewBits": "1d00ffff"
+        },
+        {
+          "height": 332593,
+          "actualBits": "1b00da15",
+          "old600SecondBits": "18008dbc",
+          "previewBits": "1b00da15"
+        },
+        {
+          "height": 332594,
+          "actualBits": "1d00ffff",
+          "old600SecondBits": "177fed00",
+          "previewBits": "1d00ffff"
+        },
+        {
+          "height": 332595,
+          "actualBits": "1b00dd00",
+          "old600SecondBits": "1774aacb",
+          "previewBits": "1b00dd00"
+        },
+        {
+          "height": 332596,
+          "actualBits": "1b00dc26",
+          "old600SecondBits": "1768bc17",
+          "previewBits": "1b00dc26"
+        },
+        {
+          "height": 332597,
+          "actualBits": "1d00ffff",
+          "old600SecondBits": "175d7122",
+          "previewBits": "1d00ffff"
+        },
+        {
+          "height": 332598,
+          "actualBits": "1d00ffff",
+          "old600SecondBits": "175539aa",
+          "previewBits": "1d00ffff"
+        },
+        {
+          "height": 332599,
+          "actualBits": "1b00df2e",
+          "old600SecondBits": "174db932",
+          "previewBits": "1b00df2e"
+        },
+        {
+          "height": 332600,
+          "actualBits": "1b00dcea",
+          "old600SecondBits": "1745583a",
+          "previewBits": "1b00dcea"
+        },
+        {
+          "height": 332601,
+          "actualBits": "1b00dd6d",
+          "old600SecondBits": "173ea321",
+          "previewBits": "1b00dd6d"
+        },
+        {
+          "height": 332602,
+          "actualBits": "1b00dcbe",
+          "old600SecondBits": "173847e7",
+          "previewBits": "1b00dcbe"
+        },
+        {
+          "height": 332603,
+          "actualBits": "1b00dc26",
+          "old600SecondBits": "173294ed",
+          "previewBits": "1b00dc26"
+        },
+        {
+          "height": 332604,
+          "actualBits": "1b00dcdf",
+          "old600SecondBits": "172dbb92",
+          "previewBits": "1b00dcdf"
+        },
+        {
+          "height": 332605,
+          "actualBits": "1d00ffff",
+          "old600SecondBits": "1728e6b7",
+          "previewBits": "1d00ffff"
+        },
+        {
+          "height": 332606,
+          "actualBits": "1b00ddc4",
+          "old600SecondBits": "17254d3a",
+          "previewBits": "1b00ddc4"
+        },
+        {
+          "height": 332607,
+          "actualBits": "1b00de3c",
+          "old600SecondBits": "1721b0fe",
+          "previewBits": "1b00de3c"
+        },
+        {
+          "height": 332608,
+          "actualBits": "1d00ffff",
+          "old600SecondBits": "171e2901",
+          "previewBits": "1d00ffff"
+        },
+        {
+          "height": 332609,
+          "actualBits": "1b00df5a",
+          "old600SecondBits": "171b80b4",
+          "previewBits": "1b00df5a"
+        },
+        {
+          "height": 332610,
+          "actualBits": "1d00ffff",
+          "old600SecondBits": "17188987",
+          "previewBits": "1d00ffff"
+        },
+        {
+          "height": 332611,
+          "actualBits": "1b00dfbd",
+          "old600SecondBits": "17165fc9",
+          "previewBits": "1b00dfbd"
+        },
+        {
+          "height": 332612,
+          "actualBits": "1b00dd82",
+          "old600SecondBits": "1713f70c",
+          "previewBits": "1b00dd82"
+        },
+        {
+          "height": 332613,
+          "actualBits": "1b00dcd4",
+          "old600SecondBits": "1711f0ae",
+          "previewBits": "1b00dcd4"
+        },
+        {
+          "height": 332614,
+          "actualBits": "1d00ffff",
+          "old600SecondBits": "17100e2f",
+          "previewBits": "1d00ffff"
+        },
+        {
+          "height": 332615,
+          "actualBits": "1b00dde5",
+          "old600SecondBits": "170ea479",
+          "previewBits": "1b00dde5"
+        },
+        {
+          "height": 332616,
+          "actualBits": "1b00de68",
+          "old600SecondBits": "170d39ea",
+          "previewBits": "1b00de68"
+        },
+        {
+          "height": 332617,
+          "actualBits": "1b00dc1b",
+          "old600SecondBits": "170bcbac",
+          "previewBits": "1b00dc1b"
+        },
+        {
+          "height": 332618,
+          "actualBits": "1b00db99",
+          "old600SecondBits": "170a9b25",
+          "previewBits": "1b00db99"
+        },
+        {
+          "height": 332619,
+          "actualBits": "1d00ffff",
+          "old600SecondBits": "1709883e",
+          "previewBits": "1d00ffff"
+        },
+        {
+          "height": 332620,
+          "actualBits": "1b00dd8d",
+          "old600SecondBits": "1708b16f",
+          "previewBits": "1b00dd8d"
+        },
+        {
+          "height": 332621,
+          "actualBits": "1b00db2d",
+          "old600SecondBits": "1707c014",
+          "previewBits": "1b00db2d"
+        },
+        {
+          "height": 332622,
+          "actualBits": "1d00ffff",
+          "old600SecondBits": "1706f1e5",
+          "previewBits": "1d00ffff"
+        },
+        {
+          "height": 332623,
+          "actualBits": "1b00dcb3",
+          "old600SecondBits": "170656ad",
+          "previewBits": "1b00dcb3"
+        },
+        {
+          "height": 332624,
+          "actualBits": "1b00dd37",
+          "old600SecondBits": "1705b9b2",
+          "previewBits": "1b00dd37"
+        },
+        {
+          "height": 332625,
+          "actualBits": "1b00dba4",
+          "old600SecondBits": "17051f9a",
+          "previewBits": "1b00dba4"
+        },
+        {
+          "height": 332626,
+          "actualBits": "1b00d8fe",
+          "old600SecondBits": "17048fff",
+          "previewBits": "1b00d8fe"
+        },
+        {
+          "height": 332627,
+          "actualBits": "1d00ffff",
+          "old600SecondBits": "17041f17",
+          "previewBits": "1d00ffff"
+        },
+        {
+          "height": 332628,
+          "actualBits": "1b00dc10",
+          "old600SecondBits": "1703c228",
+          "previewBits": "1b00dc10"
+        },
+        {
+          "height": 332629,
+          "actualBits": "1d00ffff",
+          "old600SecondBits": "17035e20",
+          "previewBits": "1d00ffff"
+        },
+        {
+          "height": 332630,
+          "actualBits": "1b00dd62",
+          "old600SecondBits": "17031218",
+          "previewBits": "1b00dd62"
+        },
+        {
+          "height": 332631,
+          "actualBits": "1b00db17",
+          "old600SecondBits": "1702bd19",
+          "previewBits": "1b00db17"
+        },
+        {
+          "height": 332632,
+          "actualBits": "1b00d929",
+          "old600SecondBits": "17027259",
+          "previewBits": "1b00d929"
+        },
+        {
+          "height": 332633,
+          "actualBits": "1d00ffff",
+          "old600SecondBits": "17022f41",
+          "previewBits": "1d00ffff"
+        },
+        {
+          "height": 332634,
+          "actualBits": "1b00d9b4",
+          "old600SecondBits": "1701fe08",
+          "previewBits": "1b00d9b4"
+        },
+        {
+          "height": 332635,
+          "actualBits": "1d00ffff",
+          "old600SecondBits": "1701cc6c",
+          "previewBits": "1d00ffff"
+        },
+        {
+          "height": 332636,
+          "actualBits": "1d00ffff",
+          "old600SecondBits": "1701a3e9",
+          "previewBits": "1d00ffff"
+        },
+        {
+          "height": 332637,
+          "actualBits": "1b00df44",
+          "old600SecondBits": "17017ee1",
+          "previewBits": "1b00df44"
+        },
+        {
+          "height": 332638,
+          "actualBits": "1b00dcdf",
+          "old600SecondBits": "1701555b",
+          "previewBits": "1b00dcdf"
+        },
+        {
+          "height": 332639,
+          "actualBits": "1d00ffff",
+          "old600SecondBits": "170131ac",
+          "previewBits": "1d00ffff"
+        },
+        {
+          "height": 332640,
+          "actualBits": "1b00de05",
+          "old600SecondBits": "170116c4",
+          "previewBits": "1b00de05"
+        },
+        {
+          "height": 332641,
+          "actualBits": "1d00ffff",
+          "old600SecondBits": "1700fb76",
+          "previewBits": "1d00ffff"
+        },
+        {
+          "height": 332642,
+          "actualBits": "1b00e0dc",
+          "old600SecondBits": "1700e553",
+          "previewBits": "1b00e0dc"
+        },
+        {
+          "height": 332643,
+          "actualBits": "1b00e0f3",
+          "old600SecondBits": "1700cebe",
+          "previewBits": "1b00e0f3"
+        },
+        {
+          "height": 332644,
+          "actualBits": "1b00deb5",
+          "old600SecondBits": "1700b873",
+          "previewBits": "1b00deb5"
+        },
+        {
+          "height": 332645,
+          "actualBits": "1d00ffff",
+          "old600SecondBits": "1700a5ba",
+          "previewBits": "1d00ffff"
+        },
+        {
+          "height": 332646,
+          "actualBits": "1b00e0a5",
+          "old600SecondBits": "17009724",
+          "previewBits": "1b00e0a5"
+        },
+        {
+          "height": 332647,
+          "actualBits": "1b00de94",
+          "old600SecondBits": "170086f8",
+          "previewBits": "1b00de94"
+        },
+        {
+          "height": 332648,
+          "actualBits": "1b00dd20",
+          "old600SecondBits": "1678d947",
+          "previewBits": "1b00dd20"
+        },
+        {
+          "height": 332649,
+          "actualBits": "1b00dfa7",
+          "old600SecondBits": "166e28d1",
+          "previewBits": "1b00dfa7"
+        },
+        {
+          "height": 332650,
+          "actualBits": "1d00ffff",
+          "old600SecondBits": "16631e1c",
+          "previewBits": "1d00ffff"
+        },
+        {
+          "height": 332651,
+          "actualBits": "1b00e1f2",
+          "old600SecondBits": "165a6125",
+          "previewBits": "1b00e1f2"
+        },
+        {
+          "height": 332652,
+          "actualBits": "1b00dfe9",
+          "old600SecondBits": "1650b96f",
+          "previewBits": "1b00dfe9"
+        },
+        {
+          "height": 332653,
+          "actualBits": "1d00ffff",
+          "old600SecondBits": "1648c9f7",
+          "previewBits": "1d00ffff"
+        },
+        {
+          "height": 332654,
+          "actualBits": "1b00e2a4",
+          "old600SecondBits": "1642607d",
+          "previewBits": "1b00e2a4"
+        },
+        {
+          "height": 332655,
+          "actualBits": "1b00e020",
+          "old600SecondBits": "163b28c4",
+          "previewBits": "1b00e020"
+        },
+        {
+          "height": 332656,
+          "actualBits": "1d00ffff",
+          "old600SecondBits": "1634ed0b",
+          "previewBits": "1d00ffff"
+        },
+        {
+          "height": 332657,
+          "actualBits": "1b00e11f",
+          "old600SecondBits": "1630420f",
+          "previewBits": "1b00e11f"
+        },
+        {
+          "height": 332658,
+          "actualBits": "1b00def7",
+          "old600SecondBits": "162b12f4",
+          "previewBits": "1b00def7"
+        },
+        {
+          "height": 332659,
+          "actualBits": "1d00ffff",
+          "old600SecondBits": "1626ba19",
+          "previewBits": "1d00ffff"
+        },
+        {
+          "height": 332660,
+          "actualBits": "1b00e109",
+          "old600SecondBits": "1623517c",
+          "previewBits": "1b00e109"
+        },
+        {
+          "height": 332661,
+          "actualBits": "1b00dee1",
+          "old600SecondBits": "161f8620",
+          "previewBits": "1b00dee1"
+        },
+        {
+          "height": 332662,
+          "actualBits": "1b00dd98",
+          "old600SecondBits": "161c3fc3",
+          "previewBits": "1b00dd98"
+        },
+        {
+          "height": 332663,
+          "actualBits": "1b00dd41",
+          "old600SecondBits": "16196af6",
+          "previewBits": "1b00dd41"
+        },
+        {
+          "height": 332664,
+          "actualBits": "1b00dc3c",
+          "old600SecondBits": "1616cce9",
+          "previewBits": "1b00dc3c"
+        },
+        {
+          "height": 332665,
+          "actualBits": "1b00dc1b",
+          "old600SecondBits": "1614899b",
+          "previewBits": "1b00dc1b"
+        },
+        {
+          "height": 332666,
+          "actualBits": "1b00dc5c",
+          "old600SecondBits": "1612885d",
+          "previewBits": "1b00dc5c"
+        },
+        {
+          "height": 332667,
+          "actualBits": "1b00dbc5",
+          "old600SecondBits": "1610a87f",
+          "previewBits": "1b00dbc5"
+        },
+        {
+          "height": 332668,
+          "actualBits": "1d00ffff",
+          "old600SecondBits": "160f0670",
+          "previewBits": "1d00ffff"
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,29 @@
+{
+  "officialNotice": "https://bitcoincashnode.org/en/newsroom/2026-11-14_opinion_on_faster_blocktime",
+  "previewSourceCommit": "3e6827e95c7a17497e09ac15556debd116dea1d0",
+  "binaryUrl": "https://download.bitcoincashnode.org/misc/builds/upgrade2027_temp/linux/bitcoin-cash-node-29.2.1-x86_64-linux-gnu.tar.gz",
+  "sha256": "9fe52bd83cd397f97810b0558b543fd746175c92b91263b4e14ad2feca9d8a9a",
+  "signaturesVerified": [
+    "D465135F97D0047E18E99DC321810A542031C02C",
+    "BA578BC691D53253036D02C8A93E50646A20ED95"
+  ],
+  "fingerprintSource": "https://gitlab.com/bitcoin-cash-node/bitcoin-cash-node/-/raw/master/contrib/gitian-signing/keys.txt",
+  "architecture": "x86_64",
+  "glibcRequired": "2.34",
+  "glibcHost": "2.44",
+  "availableDiskGiB": 4.2,
+  "separateDataDirectory": "/home/omarchy/bch-staking-blaze2026/.verification-artifacts/chipnet-upgrade/reference-node",
+  "rpcPort": 48442,
+  "p2pPort": 48443,
+  "walletDisabled": true,
+  "blocksonly": true,
+  "assumevalid": 0,
+  "existingNodeRestarted": false,
+  "regtestOrWalletDataCopied": false,
+  "executedBinaryVersion": "v29.2.1-3e6827e95",
+  "isolatedNodeStopped": true,
+  "fullBlockSyncComplete": false,
+  "headersValidatedThrough": 332652,
+  "personalWebOfTrustEstablished": false,
+  "keyTrustBasis": "Fingerprint match against official BCHN signing key list, plus two valid public signatures on the identical archive hash."
+}

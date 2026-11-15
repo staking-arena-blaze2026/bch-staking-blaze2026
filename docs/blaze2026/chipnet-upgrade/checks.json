@@ -1,0 +1,22 @@
+{
+  "lastLiveCheck": "2026-11-15T16:08:08.198Z",
+  "providersReadOnly": 3,
+  "linkedHeadersAndOwnPoWChecked": true,
+  "forkAtFirstActivatedBlock": 332451,
+  "independentPreviewRejectsOldDifficulty": true,
+  "fullBlockSyncComplete": false,
+  "publicProfilesWithoutWallet": 2,
+  "pageErrors": 0,
+  "publicVaultIndividuallyReplayedProviders": 3,
+  "crossProviderFinancialAuthorityEstablished": false,
+  "existingNodeExpiredRpc": true,
+  "existingNodeRestarted": false,
+  "isolatedPreviewStopped": true,
+  "originalRegtestOrWalletDataModified": false,
+  "realTransactionsSignedOrBroadcast": false,
+  "conflictLatchCleared": false,
+  "providerExcluded": false,
+  "financialCodeChanged": false,
+  "productionRedeployed": false,
+  "typecheck": "passed"
+}

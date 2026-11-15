@@ -71,6 +71,8 @@ Direct atomic offer registration: explicitly versioned RegistryAtomicV4 retains 
 
 Public vault discovery and retained listings: new on-chain marker announcements use existing public Electrum script indexes, with independently replayed V3/V4 state, bounded pages, persistent recovery hints and stale display snapshots. Three-provider verification distinguishes proven extension, propagation/unavailability and security conflicts. Live diagnostics found an actual provider branch divergence; it remains a signing block. See [architecture and limits](blaze2026/public-discovery.md) and [public provider evidence](blaze2026/provider-diagnostics.json). This is post-baseline work; it is not a complete historical index or a claim of live wallet approval.
 
+Read-only chipnet upgrade investigation: [activation evidence and operator report](blaze2026/chipnet-upgrade/README.md) identify the November 2026 faster-block consensus split and an Optnlabs header rejected by a signature-verified isolated BCHN 29.2.1 preview. The installed 29.2.0 node was expired and left untouched; the preview reference validated headers but did not finish full-block synchronization. Required tick-aware input verification is documented, not silently substituted into transaction rules. This investigation changes diagnostics/documentation only.
+
 ## How judges can compare versions
 
 1. Inspect the original source and website `pre-blaze-2026` tags and exact commit links; annotated tag timestamps are intentionally later than the referenced commits.

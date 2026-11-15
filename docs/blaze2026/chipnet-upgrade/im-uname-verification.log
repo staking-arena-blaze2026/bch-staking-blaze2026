@@ -1,0 +1,13 @@
+[GNUPG:] NEWSIG im_uname@bitcoincashnode.org
+gpg: Signature made Fri Nov 13 18:58:10 2026 CET
+gpg:                using EDDSA key BA578BC691D53253036D02C8A93E50646A20ED95
+gpg:                issuer "im_uname@bitcoincashnode.org"
+[GNUPG:] KEY_CONSIDERED BA578BC691D53253036D02C8A93E50646A20ED95 0
+[GNUPG:] SIG_ID GqF4E3u0FgeSOSN7bx9W+pU6upk 2026-11-13 1794592690
+[GNUPG:] GOODSIG A93E50646A20ED95 im_uname (2025) <im_uname@bitcoincashnode.org>
+gpg: Good signature from "im_uname (2025) <im_uname@bitcoincashnode.org>" [unknown]
+[GNUPG:] VALIDSIG BA578BC691D53253036D02C8A93E50646A20ED95 2026-11-13 1794592690 0 4 0 22 10 01 BA578BC691D53253036D02C8A93E50646A20ED95
+[GNUPG:] TRUST_UNDEFINED 0 pgp im_uname@bitcoincashnode.org
+gpg: WARNING: The key's User ID is not certified with a trusted signature!
+gpg:          There is no indication that the signature belongs to the owner.
+Primary key fingerprint: BA57 8BC6 91D5 3253 036D  02C8 A93E 5064 6A20 ED95

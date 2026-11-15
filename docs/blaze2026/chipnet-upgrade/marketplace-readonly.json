@@ -1,0 +1,43 @@
+{
+  "at": "2026-11-15T15:44:59.857Z",
+  "productionUrl": "https://staking-arena-blaze2026.github.io/staking-arena-blaze-site/",
+  "sourceCommit": "9e8e18a6e0ec8fd89c98750be3eed2e46fc1f30f",
+  "catalog": {
+    "network": "chipnet",
+    "complete": false,
+    "vaults": [
+      {
+        "version": 3,
+        "genesis": "fa5bae8625e61ec15a9d1527157f1e544d6d4bee9a1a268095099320e33e8c86",
+        "stakingAsset": {
+          "kind": "bch"
+        },
+        "rewardAsset": {
+          "kind": "bch"
+        },
+        "epoch": 1794738991,
+        "periodSeconds": 360,
+        "periods": 9,
+        "cap": "1000"
+      }
+    ]
+  },
+  "profiles": [
+    {
+      "freshProfile": true,
+      "walletConnected": false,
+      "listing": "V3 vault fa5bae8625e61ec1 → Make an Offer\n\nGenesis transaction: fa5bae8625e61ec15a9d1527157f1e544d6d4bee9a1a268095099320e33e8c86 · Verification temporarily unavailable · stale, non-authoritative\n\nVerification temporarily unavailable. Error: Error: Conflicting blockchain evidence — transaction blocked. Financial state unavailable. Staking: BCH · Rewards: BCH · Maximum reward per period: 0.00001000 BCH (1000 satoshis) · Interval: 360s (configuration hints). Remaining reward reserve: unverified. Active offer count: unverified. Current top-ranked offer: unverified.",
+      "discovery": "Public on-chain discovery: 4 announcements observed. Covers new announced vaults and the historical catalog; not a complete historical index. Some announcements could not be loaded or were invalid.",
+      "pageErrors": []
+    },
+    {
+      "freshProfile": true,
+      "walletConnected": false,
+      "listing": "V3 vault fa5bae8625e61ec1 → Make an Offer\n\nGenesis transaction: fa5bae8625e61ec15a9d1527157f1e544d6d4bee9a1a268095099320e33e8c86 · Verification temporarily unavailable · stale, non-authoritative\n\nVerification temporarily unavailable. Error: Error: Conflicting blockchain evidence — transaction blocked. Financial state unavailable. Staking: BCH · Rewards: BCH · Maximum reward per period: 0.00001000 BCH (1000 satoshis) · Interval: 360s (configuration hints). Remaining reward reserve: unverified. Active offer count: unverified. Current top-ranked offer: unverified.",
+      "discovery": "Public on-chain discovery: 4 announcements observed. Covers new announced vaults and the historical catalog; not a complete historical index. Some announcements could not be loaded or were invalid.",
+      "pageErrors": []
+    }
+  ],
+  "liveWalletSigning": false,
+  "newLiveAnnouncedVaultVerified": false
+}

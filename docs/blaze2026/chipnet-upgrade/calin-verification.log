@@ -1,0 +1,16 @@
+[GNUPG:] NEWSIG
+gpg: Signature made Sat Nov 14 12:03:22 2026 CET
+gpg:                using DSA key D465135F97D0047E18E99DC321810A542031C02C
+[GNUPG:] KEY_CONSIDERED D465135F97D0047E18E99DC321810A542031C02C 0
+[GNUPG:] SIG_ID kRREX0viiB0WQn0AAczsSQ6YdeI 2026-11-14 1794654202
+[GNUPG:] GOODSIG 21810A542031C02C Calin Culianu (NilacTheGrim) <calin.culianu@gmail.com>
+gpg: Good signature from "Calin Culianu (NilacTheGrim) <calin.culianu@gmail.com>" [unknown]
+gpg: Signature notation: manu=2,2.5+1.12,0,3
+[GNUPG:] NOTATION_NAME manu
+[GNUPG:] NOTATION_FLAGS 0 1
+[GNUPG:] NOTATION_DATA 2,2.5+1.12,0,3
+[GNUPG:] VALIDSIG D465135F97D0047E18E99DC321810A542031C02C 2026-11-14 1794654202 0 4 0 17 8 01 D465135F97D0047E18E99DC321810A542031C02C
+[GNUPG:] TRUST_UNDEFINED 0 pgp
+gpg: WARNING: This key is not certified with a trusted signature!
+gpg:          There is no indication that the signature belongs to the owner.
+Primary key fingerprint: D465 135F 97D0 047E 18E9  9DC3 2181 0A54 2031 C02C

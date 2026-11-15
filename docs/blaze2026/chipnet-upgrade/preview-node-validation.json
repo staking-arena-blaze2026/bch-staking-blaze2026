@@ -1,0 +1,357 @@
+{
+  "at": "2026-11-15T15:51:49.788262+00:00",
+  "version": {
+    "version": 29020100,
+    "subversion": "/Bitcoin Cash Node:29.2.1/",
+    "protocolversion": 70016,
+    "connections": 8,
+    "networkactive": true,
+    "warnings": ""
+  },
+  "before": {
+    "chain": "chip",
+    "blocks": 11859,
+    "blocks_ticks": 7115400,
+    "headers": 332652,
+    "headers_ticks": 199482120,
+    "bestblockhash": "0000000000bfa2e46175417c821c63bef429aeb3fd8d20fd94d62c96f8d1a5af",
+    "difficulty": 147.2722484594182,
+    "target_time": 600,
+    "next_target_time": 600,
+    "mediantime": 1603060957,
+    "verificationprogress": 0.004488715822482634,
+    "initialblockdownload": true,
+    "chainwork": "00000000000000000000000000000000000000000000000000068dbd28aa82b0",
+    "size_on_disk": 6028004,
+    "pruned": true,
+    "pruneheight": 0,
+    "automatic_pruning": true,
+    "prune_target_size": 576716800,
+    "upgrade_status": {
+      "name": "May 2027 Upgrade (chipnet)",
+      "mempool_activated": false,
+      "mempool_activation_mtp": 1794744000,
+      "block_preactivation_height": null,
+      "block_preactivation_hash": null,
+      "block_postactivation_height": null,
+      "block_postactivation_hash": null,
+      "software_expiration_time": 1826280000
+    },
+    "warnings": ""
+  },
+  "tipsBefore": [
+    {
+      "height": 332652,
+      "hash": "00000000638944517d17b29b20abdba8d5eb72ceb05774d2e8c6e3850b81835d",
+      "branchlen": 320787,
+      "status": "headers-only"
+    },
+    {
+      "height": 332453,
+      "hash": "00000000000c48a5c1b86c884f23124bad9f434f2b59120e6404dcfeaa3c42d5",
+      "branchlen": 320588,
+      "status": "headers-only"
+    },
+    {
+      "height": 11865,
+      "hash": "0000000015d4cd2d4a55ba94e38a88b77ee16b1bb70df936c4eab0311df56047",
+      "branchlen": 0,
+      "status": "active"
+    }
+  ],
+  "headers": {
+    "wss://chipnet.imaginary.cash:50004": {
+      "common": {
+        "hash": "00000000000015fed5ba357ba4baa1f9a283e9446b6ebc12de63152421764051",
+        "confirmations": -1,
+        "confirmations_ticks": -1,
+        "height": 332450,
+        "ticks": 199470000,
+        "version": 25690116,
+        "versionHex": "01880004",
+        "merkleroot": "f625165d129ba2e0b82f28e6f9f931cb7dc8f70e8d3c0360b644dbea437f6a2f",
+        "time": 1794745996,
+        "mediantime": 1794744504,
+        "nonce": 4229905676,
+        "bits": "1a1a55f5",
+        "difficulty": 637040.8087877859,
+        "target_time": 600,
+        "next_target_time": 60,
+        "chainwork": "000000000000000000000000000000000000000000000000f99d242e7b775e3e",
+        "nTx": 0,
+        "previousblockhash": "000000000000191d2bf64d546a6b8896eeeb7970335735b08ddb60274d59f4cd"
+      },
+      "block332453": {
+        "hash": "0000000000001873af1d1672acde6b265b54e9f4a705981d923d22a2e0cafba3",
+        "confirmations": -1,
+        "confirmations_ticks": -1,
+        "height": 332453,
+        "ticks": 199470180,
+        "version": 191021060,
+        "versionHex": "0b62c004",
+        "merkleroot": "ac9870527de4377f7fb1cbf260cbad1e4ce6015c1a6ab9e709b8fee437178c5c",
+        "time": 1794746263,
+        "mediantime": 1794745658,
+        "nonce": 1848156220,
+        "bits": "1b00f0a4",
+        "difficulty": 69717.9040322057,
+        "target_time": 60,
+        "next_target_time": 60,
+        "chainwork": "000000000000000000000000000000000000000000000000f99f45062f1e0ea1",
+        "nTx": 0,
+        "previousblockhash": "0000000000009fe7783d823df0c48677c553fa8ac0f2c590e1fa837ba01e7c74"
+      }
+    },
+    "wss://electrum-chipnet.optnlabs.com": {
+      "common": {
+        "hash": "00000000000015fed5ba357ba4baa1f9a283e9446b6ebc12de63152421764051",
+        "confirmations": -1,
+        "confirmations_ticks": -1,
+        "height": 332450,
+        "ticks": 199470000,
+        "version": 25690116,
+        "versionHex": "01880004",
+        "merkleroot": "f625165d129ba2e0b82f28e6f9f931cb7dc8f70e8d3c0360b644dbea437f6a2f",
+        "time": 1794745996,
+        "mediantime": 1794744504,
+        "nonce": 4229905676,
+        "bits": "1a1a55f5",
+        "difficulty": 637040.8087877859,
+        "target_time": 600,
+        "next_target_time": 60,
+        "chainwork": "000000000000000000000000000000000000000000000000f99d242e7b775e3e",
+        "nTx": 0,
+        "previousblockhash": "000000000000191d2bf64d546a6b8896eeeb7970335735b08ddb60274d59f4cd"
+      },
+      "block332453": {
+        "hash": "00000000000c48a5c1b86c884f23124bad9f434f2b59120e6404dcfeaa3c42d5",
+        "confirmations": -1,
+        "confirmations_ticks": -1,
+        "height": 332453,
+        "ticks": 199470180,
+        "version": 537837568,
+        "versionHex": "200ec000",
+        "merkleroot": "b86152b21201874d7c8af3c8df037307a848502a77e3137957af7573f7aab9cf",
+        "time": 1794750437,
+        "mediantime": 1794745658,
+        "nonce": 766776521,
+        "bits": "1d00ffff",
+        "difficulty": 1,
+        "target_time": 60,
+        "next_target_time": 60,
+        "chainwork": "000000000000000000000000000000000000000000000000f99d24317b7a5e41",
+        "nTx": 0,
+        "previousblockhash": "00000000b3b933636744cfcdf631eb3bc7185941ed30b6c5198f93d9afda1a5d"
+      }
+    },
+    "wss://chipnet.bch.ninja:50004": {
+      "common": {
+        "hash": "00000000000015fed5ba357ba4baa1f9a283e9446b6ebc12de63152421764051",
+        "confirmations": -1,
+        "confirmations_ticks": -1,
+        "height": 332450,
+        "ticks": 199470000,
+        "version": 25690116,
+        "versionHex": "01880004",
+        "merkleroot": "f625165d129ba2e0b82f28e6f9f931cb7dc8f70e8d3c0360b644dbea437f6a2f",
+        "time": 1794745996,
+        "mediantime": 1794744504,
+        "nonce": 4229905676,
+        "bits": "1a1a55f5",
+        "difficulty": 637040.8087877859,
+        "target_time": 600,
+        "next_target_time": 60,
+        "chainwork": "000000000000000000000000000000000000000000000000f99d242e7b775e3e",
+        "nTx": 0,
+        "previousblockhash": "000000000000191d2bf64d546a6b8896eeeb7970335735b08ddb60274d59f4cd"
+      },
+      "block332453": {
+        "hash": "0000000000001873af1d1672acde6b265b54e9f4a705981d923d22a2e0cafba3",
+        "confirmations": -1,
+        "confirmations_ticks": -1,
+        "height": 332453,
+        "ticks": 199470180,
+        "version": 191021060,
+        "versionHex": "0b62c004",
+        "merkleroot": "ac9870527de4377f7fb1cbf260cbad1e4ce6015c1a6ab9e709b8fee437178c5c",
+        "time": 1794746263,
+        "mediantime": 1794745658,
+        "nonce": 1848156220,
+        "bits": "1b00f0a4",
+        "difficulty": 69717.9040322057,
+        "target_time": 60,
+        "next_target_time": 60,
+        "chainwork": "000000000000000000000000000000000000000000000000f99f45062f1e0ea1",
+        "nTx": 0,
+        "previousblockhash": "0000000000009fe7783d823df0c48677c553fa8ac0f2c590e1fa837ba01e7c74"
+      }
+    }
+  },
+  "scope": "Own isolated, wallet-disabled node. Headers synchronized; full block IBD not complete. No existing node changed.",
+  "networkDisabledForLocalValidation": false,
+  "offlineHeaderSubmissions": [
+    {
+      "height": 332451,
+      "hash": "000000003a2af5b142c6c6fe3ec1f566ab83089850739004be7c8ba61fdf83c1",
+      "bits": "1d00ffff",
+      "result": "",
+      "localHeader": {
+        "hash": "000000003a2af5b142c6c6fe3ec1f566ab83089850739004be7c8ba61fdf83c1",
+        "confirmations": -1,
+        "confirmations_ticks": -1,
+        "height": 332451,
+        "ticks": 199470060,
+        "version": 536870912,
+        "versionHex": "20000000",
+        "merkleroot": "19b4cc8f93f84d140664059dbd9590ffe4172ffd49b3040e27c1f17f28a95731",
+        "time": 1794747652,
+        "mediantime": 1794744756,
+        "nonce": 2618684675,
+        "bits": "1d00ffff",
+        "difficulty": 1,
+        "target_time": 60,
+        "next_target_time": 60,
+        "chainwork": "000000000000000000000000000000000000000000000000f99d242f7b785e3f",
+        "nTx": 0,
+        "previousblockhash": "00000000000015fed5ba357ba4baa1f9a283e9446b6ebc12de63152421764051"
+      }
+    },
+    {
+      "height": 332452,
+      "hash": "00000000b3b933636744cfcdf631eb3bc7185941ed30b6c5198f93d9afda1a5d",
+      "bits": "1d00ffff",
+      "result": "",
+      "localHeader": {
+        "hash": "00000000b3b933636744cfcdf631eb3bc7185941ed30b6c5198f93d9afda1a5d",
+        "confirmations": -1,
+        "confirmations_ticks": -1,
+        "height": 332452,
+        "ticks": 199470120,
+        "version": 536870912,
+        "versionHex": "20000000",
+        "merkleroot": "ccdebccf361dd9d6d6d68b35a01e1d2a7de2bbaebe854cd8f27692d02884f6d0",
+        "time": 1794749229,
+        "mediantime": 1794745241,
+        "nonce": 2427176716,
+        "bits": "1d00ffff",
+        "difficulty": 1,
+        "target_time": 60,
+        "next_target_time": 60,
+        "chainwork": "000000000000000000000000000000000000000000000000f99d24307b795e40",
+        "nTx": 0,
+        "previousblockhash": "000000003a2af5b142c6c6fe3ec1f566ab83089850739004be7c8ba61fdf83c1"
+      }
+    },
+    {
+      "height": 332453,
+      "hash": "00000000000c48a5c1b86c884f23124bad9f434f2b59120e6404dcfeaa3c42d5",
+      "bits": "1d00ffff",
+      "result": "",
+      "localHeader": {
+        "hash": "00000000000c48a5c1b86c884f23124bad9f434f2b59120e6404dcfeaa3c42d5",
+        "confirmations": -1,
+        "confirmations_ticks": -1,
+        "height": 332453,
+        "ticks": 199470180,
+        "version": 537837568,
+        "versionHex": "200ec000",
+        "merkleroot": "b86152b21201874d7c8af3c8df037307a848502a77e3137957af7573f7aab9cf",
+        "time": 1794750437,
+        "mediantime": 1794745658,
+        "nonce": 766776521,
+        "bits": "1d00ffff",
+        "difficulty": 1,
+        "target_time": 60,
+        "next_target_time": 60,
+        "chainwork": "000000000000000000000000000000000000000000000000f99d24317b7a5e41",
+        "nTx": 0,
+        "previousblockhash": "00000000b3b933636744cfcdf631eb3bc7185941ed30b6c5198f93d9afda1a5d"
+      }
+    },
+    {
+      "height": 332454,
+      "hash": "00000000000004976ae5f40c5414662fe0dc926566b59fa6f5ae9e7048cbcbb4",
+      "bits": "1a273ab8",
+      "result": {
+        "rpcError": "error code: -25\nerror message:\nbad-diffbits"
+      },
+      "localHeader": {
+        "rpcError": "error code: -5\nerror message:\nBlock not found"
+      }
+    }
+  ],
+  "tipsAfter": [
+    {
+      "height": 332652,
+      "hash": "00000000638944517d17b29b20abdba8d5eb72ceb05774d2e8c6e3850b81835d",
+      "branchlen": 320747,
+      "status": "headers-only"
+    },
+    {
+      "height": 332453,
+      "hash": "00000000000c48a5c1b86c884f23124bad9f434f2b59120e6404dcfeaa3c42d5",
+      "branchlen": 320548,
+      "status": "headers-only"
+    },
+    {
+      "height": 11905,
+      "hash": "000000000072c4172e337883bfcef30757fbf96f124610c45a6972cd0dd91b06",
+      "branchlen": 0,
+      "status": "active"
+    }
+  ],
+  "after": {
+    "chain": "chip",
+    "blocks": 11905,
+    "blocks_ticks": 7143000,
+    "headers": 332652,
+    "headers_ticks": 199482120,
+    "bestblockhash": "000000000072c4172e337883bfcef30757fbf96f124610c45a6972cd0dd91b06",
+    "difficulty": 132.219691536564,
+    "target_time": 600,
+    "next_target_time": 600,
+    "mediantime": 1603086040,
+    "verificationprogress": 0.004503840978645202,
+    "initialblockdownload": true,
+    "chainwork": "0000000000000000000000000000000000000000000000000006a0f8e36094bd",
+    "size_on_disk": 6040378,
+    "pruned": true,
+    "pruneheight": 0,
+    "automatic_pruning": true,
+    "prune_target_size": 576716800,
+    "upgrade_status": {
+      "name": "May 2027 Upgrade (chipnet)",
+      "mempool_activated": false,
+      "mempool_activation_mtp": 1794744000,
+      "block_preactivation_height": null,
+      "block_preactivation_hash": null,
+      "block_postactivation_height": null,
+      "block_postactivation_hash": null,
+      "software_expiration_time": 1826280000
+    },
+    "warnings": ""
+  },
+  "bestIndependentlyValidatedHeader": {
+    "hash": "00000000638944517d17b29b20abdba8d5eb72ceb05774d2e8c6e3850b81835d",
+    "confirmations": -1,
+    "confirmations_ticks": -1,
+    "height": 332652,
+    "ticks": 199482120,
+    "version": 4,
+    "versionHex": "00000004",
+    "merkleroot": "272720c7f3e844d2459593ced7eda3ec705632551a55adbe36b461f078abdfec",
+    "time": 1794757906,
+    "mediantime": 1794757480,
+    "nonce": 3635414322,
+    "bits": "1d00ffff",
+    "difficulty": 1,
+    "target_time": 60,
+    "next_target_time": 60,
+    "chainwork": "000000000000000000000000000000000000000000000000fa517c926e92b5e5",
+    "nTx": 0,
+    "previousblockhash": "000000000000a8472b5b3ffc769cdc732f6a0a6bfe008b89a724d8caa1dfd240"
+  },
+  "fullBlockValidationComplete": false,
+  "shutdownAt": "2026-11-15T15:59:23.031956+00:00",
+  "shutdownResult": "Bitcoin server stopping"
+}

@@ -1,0 +1,26 @@
+{
+  "scope": "Native preview accepts these first three branch headers; acceptance is not full block validity. The following Optnlabs header 332454 fails contextual difficulty.",
+  "results": [
+    {
+      "endpoint": "wss://chipnet.imaginary.cash:50004",
+      "height": 332453,
+      "nativeChainwork": "000000000000000000000000000000000000000000000000f99f45062f1e0ea1",
+      "calculatedChainwork": "000000000000000000000000000000000000000000000000f99f45062f1e0ea1",
+      "matches": true
+    },
+    {
+      "endpoint": "wss://electrum-chipnet.optnlabs.com",
+      "height": 332453,
+      "nativeChainwork": "000000000000000000000000000000000000000000000000f99d24317b7a5e41",
+      "calculatedChainwork": "000000000000000000000000000000000000000000000000f99d24317b7a5e41",
+      "matches": true
+    },
+    {
+      "endpoint": "wss://chipnet.bch.ninja:50004",
+      "height": 332453,
+      "nativeChainwork": "000000000000000000000000000000000000000000000000f99f45062f1e0ea1",
+      "calculatedChainwork": "000000000000000000000000000000000000000000000000f99f45062f1e0ea1",
+      "matches": true
+    }
+  ]
+}
