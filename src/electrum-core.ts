@@ -51,6 +51,8 @@ export class ElectrumCore implements NetworkProvider {
   }
   /** Public verification category only; never includes wallet scripts or outpoints. */
   onVerificationProgress?:(message:string)=>void;
+  unresolvedChainPeers=new Set<string>();
+  persistChainConflict?:(peers:string[])=>Promise<void>;
   private rawCache?: Map<string,string>;
   private queue: Promise<unknown> = Promise.resolve();
   session<T>(work: () => Promise<T>, endpoint?: string): Promise<T> {

@@ -11,6 +11,8 @@ export interface VerifiedRead<T>{value:T;tip:Header;identity:string}
  * sequential because ElectrumCore pins mutable transport state to one connection. */
 export async function verifiedProviders<T>(p:ElectrumCore,peers:string[],read:(peer:string)=>Promise<VerifiedRead<T>>,options:{attempts?:number;sleep?:(ms:number)=>Promise<void>}={}):Promise<T>{
  let category:'synchronizing'|'unavailable'='unavailable';
+ const unresolved=p.unresolvedChainPeers??=new Set<string>();
+ const conflict=async(hosts:string[])=>{for(const host of hosts)unresolved.add(host);try{await p.persistChainConflict?.([...unresolved]);}catch{/* Failure to persist never authorizes a conflicting snapshot. */}throw new ProviderVerificationError('conflict');};
  for(let attempt=0;attempt<(options.attempts??3);attempt++){
   const good:{peer:string;result:VerifiedRead<T>}[]=[],tips=new Map<string,Header>();
   for(const peer of peers)try{const result=await p.session(async()=>{tips.set(peer,await p.tip());return read(peer);},peer);tips.set(peer,result.tip);good.push({peer,result});}catch(error){
@@ -25,11 +27,12 @@ export async function verifiedProviders<T>(p:ElectrumCore,peers:string[],read:(p
    for(let i=1;i<sorted.length;i++){
     const low=sorted[i-1]!,high=sorted[i]!;
     if(low.result.tip.hash===high.result.tip.hash)continue;
-    if(low.result.tip.height===high.result.tip.height)throw new ProviderVerificationError('conflict');
-    try{await p.session(()=>p.verifyHeaderChain(low.result.tip.height,high.result.tip,new Map([[low.result.tip.height,low.result.tip.hash]])),high.peer);}catch(error){if(/mismatch|[Ii]nconsistent/.test(String(error)))throw new ProviderVerificationError('conflict');unavailableLink=true;}
+    if(low.result.tip.height===high.result.tip.height)await conflict([...tips.keys()]);
+    try{await p.session(()=>p.verifyHeaderChain(low.result.tip.height,high.result.tip,new Map([[low.result.tip.height,low.result.tip.hash]])),high.peer);}catch(error){if(/mismatch|[Ii]nconsistent/.test(String(error)))await conflict([...tips.keys()]);unavailableLink=true;}
    }
    // Equal identity includes tip and all action-relevant state. All inputs have
    // been re-read on both selected sources during this attempt.
+   if(unresolved.size){if(unavailableLink||[...unresolved].some(peer=>!tips.has(peer)))throw new ProviderVerificationError('conflict');await p.persistChainConflict?.([]);unresolved.clear();}
    const latest=Math.max(...[...tips.values()].map(t=>t.height));
    const current=good.filter(x=>x.result.tip.height===latest);
    // A verified pending transition seen by even one source cannot be voted away.

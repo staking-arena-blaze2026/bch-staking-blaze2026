@@ -14,6 +14,8 @@ All distinct configured hosts are considered, in sequential pinned sessions. Eve
 
 Two sources must agree on the latest observed snapshot and all action-relevant evidence. A lower tip is excluded only after its hash is linked to the higher tip by the existing header verifier. Two lagging peers cannot overrule a known newer tip. A verified pending transition cannot be voted away by two empty mempools. Contradictory branches or verified input/ancestry double spends block immediately, including evidence from the third source. Missing data and propagation differences retry up to three full attempts with bounded backoff. No previous input verification is reused across attempts. Signing/submission revalidates sources; the final pinned broadcast check verifies the entire selected-input ancestry again and requires the selected snapshot hash to remain unchanged. Signed bytes remain journaled if a last-moment tip change prevents broadcasting.
 
+A proved cross-provider chain conflict is latched, including across browser reloads in a separate public provider-evidence IndexedDB database. An implicated host going offline does not clear it. All implicated hosts must return compatible checked tips and linked headers before the latch clears automatically. Evidence storage failures block verification/transactions while discovery hints and recovery journals remain readable. This store never shares or changes a signed operation journal.
+
 Messages distinguish synchronization, missing second verification and conflicting blockchain evidence. Public messages omit wallet outpoints, scripts and addresses.
 
 ## Public index architecture
