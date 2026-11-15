@@ -1,0 +1,12 @@
+{
+  "at": "2026-11-15T14:58:09.792Z",
+  "before": {
+    "at": "2026-11-15T14:38:26.663Z",
+    "sourceCommit": "8eed4763dfb5741df1daeb0e098f85ad07d063ae",
+    "publicConfigurationOnly": true
+  },
+  "afterSourceCommit": "9e8e18a6e0ec8fd89c98750be3eed2e46fc1f30f",
+  "retainedPublicConfiguration": true,
+  "walletConnected": false,
+  "realUserWallet": false
+}

@@ -1,24 +1,24 @@
 {
   "node": "/Bitcoin Cash Node:29.2.0/",
-  "verifiedAt": "2026-11-15T14:35:02.388Z",
+  "verifiedAt": "2026-11-15T14:53:11.538Z",
   "before": {
     "addresses": 120,
     "requests": 534,
-    "milliseconds": 94.02496100000008,
+    "milliseconds": 69.58781799999997,
     "untilSigning": {
       "requests": 666,
-      "milliseconds": 200.44333300000017
+      "milliseconds": 154.7621670000001
     },
     "transactions": 1,
     "authorizations": 1
   },
   "after": {
     "addresses": 6,
-    "milliseconds": 63.2231670000001,
+    "milliseconds": 42.41445699999986,
     "requests": 108,
     "untilSigning": {
       "requests": 174,
-      "milliseconds": 116.68087300000025
+      "milliseconds": 96.37852100000009
     },
     "transactions": 1,
     "authorizations": 1
@@ -38,8 +38,8 @@
       "staking": "bch",
       "reward": "bch",
       "sameCategory": false,
-      "genesis": "218c91de5480d6b7b3d72f12d75aa85deeb7a778da51c070afc42f04c4e4549a",
-      "claim": "fe19abc52d7a400eb72a9323ba1456f36b5981708f6761927e7bdc0226742457",
+      "genesis": "1105d8c610f4fe59cc030593b33d40db07b170b6c2a7026b952dc3d42589037f",
+      "claim": "afb7a0e297bb3a15bd7396d4a6df97d50fe838a37374962346cbf35a7d496ba9",
       "authorizations": 4,
       "transactions": 4
     },
@@ -47,8 +47,8 @@
       "staking": "bch",
       "reward": "token",
       "sameCategory": false,
-      "genesis": "f9ad03f8c6514c3ed304d9156ac935395a4e62b230c4dc2767b140403d0b8fad",
-      "claim": "329728884de1be8374904f8475c2fd89e0aeac25a1b9210532d6bd75d29e276b",
+      "genesis": "a9666376a33b66bf50342cac6bd1b6fbf5455d14cd4c9d519b10ad95804ef0e0",
+      "claim": "344dca97e4da450a95e7b7114c0c4550fa90c842c7528984df33958021de6b8a",
       "authorizations": 4,
       "transactions": 4
     },
@@ -56,8 +56,8 @@
       "staking": "token",
       "reward": "bch",
       "sameCategory": false,
-      "genesis": "1c3e8c3adf0ea3f129050188c6a02d8b37bc249c2de582d5e5326a69bc73c746",
-      "claim": "c10e29147d6c3a5e3257961da0977933278dbd90771236f2cf4a267a3dd2e7e7",
+      "genesis": "6a9ca304993be47860015f8acb9b735327d53b2dd7a66111bd34376f9d88dae8",
+      "claim": "76180927cb2501bcb3207e2f3ede3dbc1135198ace7d6a55176faba992402ceb",
       "authorizations": 4,
       "transactions": 4
     },
@@ -65,8 +65,8 @@
       "staking": "token",
       "reward": "token",
       "sameCategory": false,
-      "genesis": "5a0f032ddd84ceebe5689bb9236a328c5b70f9b207c32806277423d035dac999",
-      "claim": "5dac89e08cb7bc9a14403fdb49243b98fb6e449cb91ab845bb64b7941b49981f",
+      "genesis": "5d3f579f8b18300e7e05017ad5d973ca5d0fc093f078b70b4fa7a71d015093f0",
+      "claim": "de9f61173e598bc073877437f730292ee6bf81fb47979b8941f73c630884e905",
       "authorizations": 4,
       "transactions": 4
     },
@@ -74,8 +74,8 @@
       "staking": "token",
       "reward": "token",
       "sameCategory": true,
-      "genesis": "f8afbb4b71b01d022b346da3ac109a44b003bac64ef128501d23ca77693d5178",
-      "claim": "bfeb846d596adee5861105367fe6ae44a9e8d87aced31fb0a52403d115b2da28",
+      "genesis": "c768b838a7d8033c06ab66a865e0e23fbd6875de6048d86e997836c13c2beb2d",
+      "claim": "5b8d711ad60ebf8f054627bb2a17b41cb992f02773f1ac7ba30390286a8c55f8",
       "authorizations": 4,
       "transactions": 4
     }
@@ -88,7 +88,7 @@
   "actualParentEvictionAndIdenticalRecovery": true,
   "providerDisagreement": true,
   "reorganization": true,
-  "genesis": "218c91de5480d6b7b3d72f12d75aa85deeb7a778da51c070afc42f04c4e4549a",
-  "claim": "fe19abc52d7a400eb72a9323ba1456f36b5981708f6761927e7bdc0226742457",
-  "chainedGenesis": "da60b4fbfb02765228c7848c60e899863c5efe229d06b5ec0dec7b82ec88caf0"
+  "genesis": "1105d8c610f4fe59cc030593b33d40db07b170b6c2a7026b952dc3d42589037f",
+  "claim": "afb7a0e297bb3a15bd7396d4a6df97d50fe838a37374962346cbf35a7d496ba9",
+  "chainedGenesis": "f7c107e572074bafb8b5b350716f787430ff651b34724ec9fd43ed1461031ca6"
 }

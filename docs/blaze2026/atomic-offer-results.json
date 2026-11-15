@@ -1,13 +1,13 @@
 {
-  "verifiedAt": "2026-11-15T14:34:57.206Z",
+  "verifiedAt": "2026-11-15T14:53:07.248Z",
   "node": "/Bitcoin Cash Node:29.2.0/",
   "realCashonizeApproval": false,
   "before": {
     "approvals": 2,
     "transactions": 2,
     "fees": 20000,
-    "preparationMilliseconds": 628.951387000001,
-    "totalMilliseconds": 2063.3083399999996,
+    "preparationMilliseconds": 466.7957800000004,
+    "totalMilliseconds": 1594.6926129999993,
     "electrumRequests": 2147
   },
   "attacks": [
@@ -32,19 +32,19 @@
       "reward": {
         "kind": "bch"
       },
-      "txid": "4715d1296c1dbf8cd347302290adae5c044401be99b58eb0a977c0c0413b0dc2",
-      "claim": "9b1d04a93902a004b8362139a1175429c107a356496bcf29e623978301dddab4",
+      "txid": "2bf7eb99f446445eb016892164a0d8a0e7f548f1861733908cf8b478f9e93932",
+      "claim": "2727f7bab620c0c9dca6fa7694386476a890005f588bb8c43931e25372cfe9e6",
       "approvals": 1,
       "transactions": 1,
       "fee": "10000",
-      "milliseconds": 459.80888099999993,
+      "milliseconds": 351.3877430000002,
       "electrumRequests": 442,
       "inputConfirmations": [
         1
       ],
       "discovery": {
         "addresses": 6,
-        "milliseconds": 36.42627300000004,
+        "milliseconds": 28.82999800000016,
         "requests": 54
       },
       "bytes": 4777
@@ -55,21 +55,21 @@
       },
       "reward": {
         "kind": "token",
-        "category": "b0e27d5fe910d1e87ab439ae607ffa0564bb571cca1ed4d3bb7e85f1193db8e4"
+        "category": "ad9fe037a7fd21aa1abac1dd360721971e71962e9534890b93d268f2c7b4e38d"
       },
-      "txid": "96c1099a6c374e7cf11ad56a61e78ecba24b7a40fbce2675ea0dc2f07e7ffb3c",
-      "claim": "7057d0f8b3a04530d1f926ab8230913a63c334d03056ed78b0a988bb1a2eb87b",
+      "txid": "ce04efcc9f83dd52d1ecc3c1b09a221f013a1643d566c22ef868ce2be5908cdb",
+      "claim": "efa2b8a93cba0d6ad7d369a5ca6a6322a8ed28166598bb5fcdc45fdeef97d55f",
       "approvals": 1,
       "transactions": 1,
       "fee": "10000",
-      "milliseconds": 507.43694400000004,
+      "milliseconds": 414.32322400000066,
       "electrumRequests": 536,
       "inputConfirmations": [
         0
       ],
       "discovery": {
         "addresses": 6,
-        "milliseconds": 51.654693999999836,
+        "milliseconds": 38.32157499999994,
         "requests": 52
       },
       "bytes": 4814
@@ -77,17 +77,17 @@
     {
       "staking": {
         "kind": "token",
-        "category": "b0e27d5fe910d1e87ab439ae607ffa0564bb571cca1ed4d3bb7e85f1193db8e4"
+        "category": "ad9fe037a7fd21aa1abac1dd360721971e71962e9534890b93d268f2c7b4e38d"
       },
       "reward": {
         "kind": "bch"
       },
-      "txid": "45b5563410ae21ce60fa7bae6f2dab195fa4e7af26c6dceae5505bb4bc0b2a42",
-      "claim": "483d5d6ca902d3349518a30b139533778f4415433d1997f3b2ce3c667915de93",
+      "txid": "dff655bf7515eeb396d4c76bf60bd044c3c20ca39dbbae201b51ff5df7d51bd9",
+      "claim": "af4c2aa0dbbff14d00dd716a3b249298f8c58ef612974e21c38d2beb2d3cec87",
       "approvals": 1,
       "transactions": 1,
       "fee": "10000",
-      "milliseconds": 609.2832579999995,
+      "milliseconds": 485.98724200000015,
       "electrumRequests": 648,
       "inputConfirmations": [
         1,
@@ -95,7 +95,7 @@
       ],
       "discovery": {
         "addresses": 6,
-        "milliseconds": 67.56948099999863,
+        "milliseconds": 49.61259599999994,
         "requests": 68
       },
       "bytes": 5028
@@ -103,18 +103,18 @@
     {
       "staking": {
         "kind": "token",
-        "category": "b0e27d5fe910d1e87ab439ae607ffa0564bb571cca1ed4d3bb7e85f1193db8e4"
+        "category": "ad9fe037a7fd21aa1abac1dd360721971e71962e9534890b93d268f2c7b4e38d"
       },
       "reward": {
         "kind": "token",
-        "category": "33b33f082648f95f846b08068ca8b0aa027311e38749ad69dd70980bbfd5ebe5"
+        "category": "4f4a9d0b5d7cf6ce1c95b0c666b1a35f6007eb41f9d602e8bf9807a1f188388a"
       },
-      "txid": "7eab70a3998767744c1b3c022ac0c1d46357895f9cb1839d97b5b6b4661bc4b8",
-      "claim": "196a16ac43d177f4562b999e5b92b67e2ae850a77ef8b0a5adfe918542a53a7f",
+      "txid": "4d3bd3c5bc1fcd1a4e9a6562cad9053bb4fa647be906e4efc2190939da09cca0",
+      "claim": "5aea9edc78de890e756283a1c479ea3e46c5592486f200c68cff8af490fd928d",
       "approvals": 1,
       "transactions": 1,
       "fee": "10000",
-      "milliseconds": 693.5918329999986,
+      "milliseconds": 543.6448970000001,
       "electrumRequests": 682,
       "inputConfirmations": [
         1,
@@ -122,7 +122,7 @@
       ],
       "discovery": {
         "addresses": 6,
-        "milliseconds": 83.65344099999857,
+        "milliseconds": 64.38788100000056,
         "requests": 70
       },
       "bytes": 5065
@@ -130,18 +130,18 @@
     {
       "staking": {
         "kind": "token",
-        "category": "b0e27d5fe910d1e87ab439ae607ffa0564bb571cca1ed4d3bb7e85f1193db8e4"
+        "category": "ad9fe037a7fd21aa1abac1dd360721971e71962e9534890b93d268f2c7b4e38d"
       },
       "reward": {
         "kind": "token",
-        "category": "b0e27d5fe910d1e87ab439ae607ffa0564bb571cca1ed4d3bb7e85f1193db8e4"
+        "category": "ad9fe037a7fd21aa1abac1dd360721971e71962e9534890b93d268f2c7b4e38d"
       },
-      "txid": "78bef2e205a899f045a94bddd478c7a4e91a084d2c88a6d76988b779acc76bdd",
-      "claim": "1da2eda6bc20485e2595b84ba00b2c3b137953bfa14a05f3c8760358b12a6e47",
+      "txid": "31fc4b96a1fe4c719fa60f533ea078b394ae9688eaf6c68f812e1f3b8844b0f6",
+      "claim": "e022a96ae9c7b4721e25fec7f4b534c43ac2502c36de61917cc7dd9aae431e8d",
       "approvals": 1,
       "transactions": 1,
       "fee": "10000",
-      "milliseconds": 828.8019129999993,
+      "milliseconds": 682.4251640000002,
       "electrumRequests": 790,
       "inputConfirmations": [
         0,
@@ -149,7 +149,7 @@
       ],
       "discovery": {
         "addresses": 6,
-        "milliseconds": 105.992929,
+        "milliseconds": 82.04842000000099,
         "requests": 86
       },
       "bytes": 5065

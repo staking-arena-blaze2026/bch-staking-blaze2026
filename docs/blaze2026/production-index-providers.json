@@ -1,0 +1,52 @@
+{
+  "discovery": {
+    "vaults": [],
+    "observed": 4,
+    "rejected": 4,
+    "online": 3,
+    "complete": false
+  },
+  "at": "2026-11-15T14:59:26.547Z",
+  "rpc": "blockchain.scripthash.get_history",
+  "script": "a914da1745e9b549bd0bfa1a569971c77eba30cd5a4b87",
+  "scripthash": "0a13081785a298b8b9dc427343ee7252e963361394f4b196aaad918e85315fb0",
+  "results": [
+    {
+      "endpoint": "wss://chipnet.imaginary.cash:50004",
+      "tip": {
+        "height": 332601,
+        "hex": "00000020c1b6ae590c32f593a3c7c0a0cafe2b58ffb72f61f12eb74fc21c000000000000a61e666089dfa4a90e60cb5acd1bc94ae9011e960c6825863b702fef6351bc1d97c8f96a6ddd001b004f5d97",
+        "hash": "0000000000002640390ab5a21b929159d7dc166863183e938c74b6c6c6f951d2",
+        "parent": "0000000000001cc24fb72ef1612fb7ff582bfecaa0c0c7a393f5320c59aeb6c1",
+        "merkle": "1dbc5163ef2f703b8625680c961e01e94ac91bcd5acb600ea9a4df8960661ea6",
+        "time": 1794754711
+      },
+      "entries": 4
+    },
+    {
+      "endpoint": "wss://electrum-chipnet.optnlabs.com",
+      "tip": {
+        "height": 332458,
+        "hex": "00200d208b1efc5060f8085c4ca2c3438140dd1db1b73970152869ee4a0f00000000000099abd8ea73c1805cd906629785b15388463512c5414f5b618ef3320ac6f8d42f5dc8f96ad0902f1ae8ef63ac",
+        "hash": "00000000000006a5dc4a2c823bc8f93912c30a37237ee36b6ed36e69e3c9e983",
+        "parent": "0000000000000f4aee6928157039b7b11ddd408143c3a24c5c08f86050fc1e8b",
+        "merkle": "2fd4f8c60a32f38e615b4f41c51235468853b185976206d95c80c173ead8ab99",
+        "time": 1794754653
+      },
+      "entries": 4
+    },
+    {
+      "endpoint": "wss://chipnet.bch.ninja:50004",
+      "tip": {
+        "height": 332601,
+        "hex": "00000020c1b6ae590c32f593a3c7c0a0cafe2b58ffb72f61f12eb74fc21c000000000000a61e666089dfa4a90e60cb5acd1bc94ae9011e960c6825863b702fef6351bc1d97c8f96a6ddd001b004f5d97",
+        "hash": "0000000000002640390ab5a21b929159d7dc166863183e938c74b6c6c6f951d2",
+        "parent": "0000000000001cc24fb72ef1612fb7ff582bfecaa0c0c7a393f5320c59aeb6c1",
+        "merkle": "1dbc5163ef2f703b8625680c961e01e94ac91bcd5acb600ea9a4df8960661ea6",
+        "time": 1794754711
+      },
+      "entries": 4
+    }
+  ],
+  "financialAuthorization": false
+}

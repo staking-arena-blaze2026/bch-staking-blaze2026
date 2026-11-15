@@ -1,10 +1,10 @@
 {
-  "testedSourceCommit": "031902dc0da7b12b6ec1723493314d9c4f3408b7",
-  "workflow": "https://github.com/staking-arena-blaze2026/bch-staking-blaze2026/actions/runs/43725079776",
+  "testedSourceCommit": "9e8e18a6e0ec8fd89c98750be3eed2e46fc1f30f",
+  "workflow": "https://github.com/staking-arena-blaze2026/bch-staking-blaze2026/actions/runs/43726716009",
   "result": "success",
   "isolatedBchnVersion": "29.2.0",
-  "isolatedBchnSuitesPassed": 4,
-  "providerAndDiscoveryUnitTestsPassed": 19,
+  "isolatedBchnSuitesPassed": 5,
+  "providerAndDiscoveryUnitTestsPassed": 21,
   "frontendTestsPassed": 131,
   "browserScenariosPassed": 5,
   "productionBuild": "passed",
@@ -13,5 +13,15 @@
   "browserProfiles": "fresh independent profiles; no connected wallet",
   "physicalCashonizeApproval": false,
   "newLiveChipnetAnnouncementVerified": false,
-  "localResourceNote": "A concurrent local Atomic run exceeded 15 minutes; the full hosted isolated run passed. That local timeout is not counted as a pass."
+  "localResourceNote": "A concurrent local Atomic run exceeded 15 minutes; the full hosted isolated run passed. That local timeout is not counted as a pass.",
+  "isolatedBchnTestCasesPassed": 10,
+  "productionWebsiteCommit": "d05991880d1b6405192f73e9c5392b852b1e9575",
+  "productionSharedCatalogVerified": true,
+  "productionProviderIndexOnline": 3,
+  "productionIndexCandidates": 4,
+  "productionRejectedCandidates": 4,
+  "productionValidNewAnnouncements": 0,
+  "productionFreshProfilesVerified": 2,
+  "productionAssetHashesMatched": 25,
+  "realDeploymentPublicHintMigration": true
 }
