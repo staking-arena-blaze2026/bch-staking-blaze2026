@@ -189,7 +189,7 @@ it('discovers a public vault in a fresh browser without a connected wallet or lo
 it('retains configuration and stale verified figures through failure, reload and deployment without wallet access',async()=>{
  stub();window.location.hash='/v3/offers';const previous=vi.mocked(v3Call).getMockImplementation()!;
  vi.mocked(v3Call).mockImplementation(async(...args)=>args[0].operation==='discover'?{vaults:[config],observed:1,online:2,rejected:0}:previous(...args));
- const first=render(<V3Arena/>);await waitFor(()=>expect(screen.getByRole('link',{name:/V3 vault/})).toHaveTextContent('Remaining reward reserve'));first.unmount();
+ const first=render(<V3Arena/>);await waitFor(()=>expect(screen.getByRole('link',{name:/V3 vault/})).toHaveTextContent('Confirmed · chain verified'));await waitFor(()=>expect(JSON.parse(localStorage.getItem('staking-arena-v3-configs-chipnet-snapshots')??'{}')[config.genesis]?.snapshot).toBeDefined());first.unmount();
  vi.mocked(v3Call).mockImplementation(async intent=>{if(intent.operation==='sync'||intent.operation==='discover')throw Error('Public provider offline');return [];});
  render(<V3Arena/>);await waitFor(()=>expect(screen.getByRole('link',{name:/V3 vault/})).toHaveTextContent('Verification temporarily unavailable'));
  expect(screen.getByRole('link',{name:/V3 vault/})).toHaveTextContent('Stale, non-authoritative snapshot');
