@@ -17,7 +17,7 @@ try {
  await page.getByRole('link',{name:'Create Vault'}).click();await page.getByRole('heading',{name:'Create Vault'}).waitFor();
  await page.reload({waitUntil:'domcontentloaded'});await page.getByRole('heading',{name:'Create Vault',exact:true}).waitFor();
  assert.equal(await page.getByRole('button',{name:'Review funding in wallet'}).isEnabled(),false);
- assert.equal(await page.getByRole('option').count(),6);
+ assert.equal(await page.getByRole('option').count(),8);
  console.log('PASS: production offline marketplace, direct creation route and preview-only controls');
  const id='a'.repeat(64);let online=true;
  await page.route('https://indexer.example.test/read-only/vaults',route=>online?route.fulfill({json:fixture(),headers:{'Access-Control-Allow-Origin':'*'}}):route.abort());

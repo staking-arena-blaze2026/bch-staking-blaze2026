@@ -25,7 +25,7 @@ async function start(page:Page){
  },{file,config:{network:'chipnet',vaults:[settlementConfig],endpoints:['wss://127.0.0.1:4177','wss://localhost:4177'],timeoutMs:10000,pollMs:1000,maxHistoryEntries:1000,maxTransactions:1000,maxRawBytes:16777216,tabId:'fixture-wallet'}});
 }
 async function call(page:Page,method:string,...args:unknown[]){const encoded=await page.evaluate(async({method,args})=>{const result=await (window as any).walletCall(method,...args);return JSON.stringify(result,(_k,v)=>typeof v==='bigint'?`<bigint: ${v}n>`:v instanceof Uint8Array?`<Uint8Array: 0x${[...v].map(x=>x.toString(16).padStart(2,'0')).join('')}>`:v);},{method,args});return parseExtendedJson(encoded);}
-test('native wallet worker persists signed factory intent, resumes after reload and admits confirmed genesis',async({page})=>{
+test.fixme('native wallet worker persists signed factory intent, resumes after reload and admits confirmed genesis',async({page})=>{
  await start(page);const balances=await call(page,'scan',fixture.keys);expect(balances.tokens[fixture.asset]).toBe('2500');let op=await call(page,'create',fixture.parameters(),fixture.keys);const signed=fixture.sign(op.plan);op=await call(page,'submit',op.id,signed,fixture.keys);expect(op.stage).toBe('pending');const id=op.id;
  const blocked=await page.evaluate(async id=>navigator.locks.request('arena-chipnet-wallet-submission',async()=>{
   try {await (window as any).walletCall('get',id);return false;}catch(error){return String(error).includes('Another tab');}
@@ -37,7 +37,7 @@ test('native wallet worker reserves unsigned funding, permits explicit discard a
  await start(page);await call(page,'scan',fixture.keys);let op=await call(page,'create',fixture.parameters(),fixture.keys);await expect(call(page,'create',fixture.parameters(),fixture.keys)).rejects.toThrow(/Insufficient BCH/);op=await call(page,'cancel',op.id);expect(op.stage).toBe('cancelled');op=await call(page,'create',fixture.parameters(),fixture.keys);op.plan.request.transaction.outputs[0].valueSatoshis--;const raw=fixture.sign(op.plan);await expect(call(page,'submit',op.id,raw,fixture.keys)).rejects.toThrow(/changed/);expect(fixture.chain.broadcasts).toHaveLength(0);
 });
 
-for(const pair of ['token-bch','bch-token','token-token','bch-bch','same-category'])test(`v2 native worker ${pair}: reserve, offer, keeper and allocation withdrawal`,async({page})=>{
+for(const pair of ['token-bch','bch-token','token-token','bch-bch','same-category'])test.fixme(`v2 native worker ${pair}: reserve, offer, keeper and allocation withdrawal`,async({page})=>{
  test.setTimeout(180000);await start(page);
  const token={kind:'token',category:fixture.asset},other={kind:'token',category:fixture.other},native={kind:'bch'},stakingAsset=pair.startsWith('bch')?native:token,rewardAsset=pair==='same-category'?token:pair.endsWith('bch')?native:other;
  const parameters={version:2,stakingAsset,rewardAsset,cap:rewardAsset.kind==='bch'?2000n:10n,periods:2,epoch:fixture.chain.clock().mtp-10000,periodSeconds:10};
@@ -76,4 +76,11 @@ for(const minimum of [0,1])test(`mock Electrum browser: pending genesis visibili
  fixture.chain.mine();await page.getByRole('button',{name:'Refresh data',exact:true}).click();
  await expect(listing).toHaveCount(1,{timeout:60000});await expect(listing).toContainText('Confirmed');await expect(listing).not.toContainText('Unconfirmed');
  await page.reload();await expect(listing).toHaveCount(1,{timeout:60000});await expect(listing).toContainText('Confirmed');
+});
+
+// Public chipnet is frozen. Historical success cases above remain for the consensus upgrade.
+test('chipnet freeze prevents native-worker broadcast and retains signed recovery bytes',async({page})=>{
+ await start(page);await call(page,'scan',fixture.keys);const op=await call(page,'create',fixture.parameters(),fixture.keys),signed=fixture.sign(op.plan);
+ const result=await call(page,'submit',op.id,signed,fixture.keys);expect(result.error).toContain('Chipnet temporarily unavailable');expect(fixture.chain.broadcasts).toHaveLength(0);
+ await page.reload();await start(page);expect((await call(page,'list')).find((o:any)=>o.id===op.id).raw).toBe(signed);expect(fixture.chain.broadcasts).toHaveLength(0);
 });

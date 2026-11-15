@@ -25,7 +25,7 @@ test.beforeEach(()=>{chain=new SettlementChain();disconnectAfterAccept=false;hol
 const category=()=>chain.transactions.get(settlementConfig.genesis)!.vin[0]!.txid;
 async function open(page:Page){await page.goto(`http://127.0.0.1:4176/settlement/#/vault/${category()}`);}
 const status=(page:Page)=>page.getByTestId('settlement-status');
-test('mandatory automation ignores saved false, needs no wallet interaction and processes confirmed periods sequentially',async({page})=>{
+test.fixme('mandatory automation ignores saved false, needs no wallet interaction and processes confirmed periods sequentially',async({page})=>{
  await page.addInitScript(()=>{localStorage.setItem('arena-chipnet-automatic-settlement','false');(window as any).walletMethods=[];const original=Worker.prototype.postMessage;Worker.prototype.postMessage=function(message:any,...rest:any[]){if(message?.method)(window as any).walletMethods.push(message.method);if(message?.type==='start'){const result=original.call(this,{...message,automatic:false},...rest as []);original.call(this,{type:'keeper-settings',automatic:false});return result;}return original.call(this,message,...rest as []);};});
  await open(page);
  await expect(page.getByRole('button',{name:'Connect Wallet',exact:true})).toBeVisible();expect(await page.getByRole('checkbox').count()).toBe(0);
@@ -40,17 +40,24 @@ test('mandatory automation ignores saved false, needs no wallet interaction and 
  expect(chain.broadcasts.length).toBe(4);expect(await page.evaluate(()=>localStorage.getItem('arena-chipnet-automatic-settlement'))).toBeNull();
  expect(await page.evaluate(()=>(window as any).walletMethods.some((method:string)=>['authorize','submit','offer'].includes(method)))).toBe(false);
 });
-test('two independent browsers converge on a single pending canonical transaction',async({browser,page})=>{
+test.fixme('two independent browsers converge on a single pending canonical transaction',async({browser,page})=>{
  const other=await browser.newContext({ignoreHTTPSErrors:true}),second=await other.newPage();
  try{await Promise.all([open(page),open(second)]);await expect.poll(()=>chain.pending.size,{timeout:30000}).toBe(1);await expect(status(second)).toContainText(/Pending confirmation|reconciling|retrying/,{timeout:30000});expect(new Set(chain.broadcasts).size).toBe(1);expect(chain.broadcasts.length).toBeLessThanOrEqual(2);}
  finally{await other.close();}
 });
-test('reload preserves pending intents and tab leadership transfer resumes without a control',async({context,page})=>{
+test.fixme('reload preserves pending intents and tab leadership transfer resumes without a control',async({context,page})=>{
  disconnectAfterAccept=true;await open(page);await expect.poll(()=>chain.pending.size,{timeout:30000}).toBe(1);await page.reload();await expect(status(page)).toContainText('Pending confirmation',{timeout:30000});expect(chain.broadcasts.length).toBe(1);
  const second=await context.newPage();await open(second);await expect(status(second)).toContainText('Pending confirmation',{timeout:30000});await page.close();chain.mine();
  await expect.poll(()=>chain.broadcasts.length,{timeout:30000}).toBe(2);expect(chain.pending.size).toBe(1);expect(chain.confirmed.has(chain.transactions.get([...chain.pending][0]!)!.vin[0]!.txid)).toBe(true);
 });
-test('provider contradiction prevents all automatic broadcasts and recovery starts without a toggle',async({page})=>{
+test.fixme('provider contradiction prevents all automatic broadcasts and recovery starts without a toggle',async({page})=>{
  chain.disagree=true;await open(page);await expect(status(page)).toContainText('disagreement',{timeout:30000});expect(chain.broadcasts.length).toBe(0);chain.disagree=false;
  await expect.poll(()=>chain.pending.size,{timeout:30000}).toBe(1);
+});
+
+// Frozen consensus policy supersedes the historical automatic-spending expectations above.
+test('chipnet period processing stays read-only even when the synthetic providers agree',async({page})=>{
+ await open(page);await expect(page.getByText(/Chipnet temporarily unavailable for transactions:/)).toBeVisible();
+ await expect(status(page)).toContainText('Chipnet temporarily unavailable',{timeout:60000});expect(chain.broadcasts).toHaveLength(0);expect(chain.pending.size).toBe(0);
+ await expect(page.getByRole('button',{name:'Process Period',exact:true})).toBeDisabled();
 });

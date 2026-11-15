@@ -16,6 +16,14 @@
       "failed": 0,
       "command": "npx vitest run tests/App.test.tsx --testTimeout 30000",
       "note": "The earlier recheck encountered machine-load timeouts at the default five-second deadline. This final recheck passed all ten tests."
+    },
+    "ciFullSweep": {
+      "sourceCommit": "5751d9362e429b1ee5b4c8969a3756e2deb8b098",
+      "passed": 139,
+      "files": 27,
+      "step": "npm test",
+      "run": "https://github.com/staking-arena-blaze2026/bch-staking-blaze2026/actions/runs/43742839204",
+      "note": "The unit step passed completely. The run subsequently found legacy static browser fixtures inheriting the new mainnet default; explicit chipnet fixture builds repair that mismatch."
     }
   },
   "checks": {
@@ -52,5 +60,33 @@
   "realWalletApproval": false,
   "liveMainnetSpendingTested": false,
   "liveBroadcasts": 0,
-  "originalReports": "Preserved unchanged. Fresh integration reports use the dual-network- prefix."
+  "originalReports": "Preserved unchanged. Fresh integration reports use the dual-network- prefix.",
+  "followUpVerifiedAt": "2026-11-15T19:25:43.982563+00:00",
+  "browserFollowUp": {
+    "static": {
+      "passed": 2,
+      "failed": 0
+    },
+    "standaloneStaticSmoke": "passed, GET-only, no JavaScript errors",
+    "electrum": {
+      "passed": 11,
+      "failed": 0,
+      "historicalChipnetTransactionCasesTemporarilyParked": 10,
+      "replacementCoverage": [
+        "broadcast blocked even with agreeing synthetic providers",
+        "signed recovery bytes retained across reload",
+        "Process Period disabled",
+        "pending genesis retained at both display thresholds",
+        "outage, reorganization, leadership, proof and storage-error recovery"
+      ]
+    }
+  },
+  "publisherRepair": {
+    "websiteCommit": "0151835",
+    "localManifestValidation": "passed",
+    "bothCatalogsRequired": true,
+    "mainnetDefault": true,
+    "chipnetTransactionsEnabled": false,
+    "realWalletVerificationClaimed": false
+  }
 }

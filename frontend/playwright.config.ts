@@ -20,6 +20,6 @@ export default defineConfig({
     screenshot: 'only-on-failure',
     video: 'off',
   },
-  webServer: { command: `VITE_INDEXER_MODE=api VITE_API_BASE_URL=/api npm run dev -- --port ${port}`, url: `http://127.0.0.1:${port}`, reuseExistingServer: !process.env.CI, timeout: 30000 },
+  webServer: { command: `VITE_V3_NETWORK=chipnet VITE_INDEXER_MODE=api VITE_API_BASE_URL=/api npm run dev -- --port ${port}`, url: `http://127.0.0.1:${port}`, reuseExistingServer: !process.env.CI, timeout: 30000 },
   reporter: [['list']],
 });
