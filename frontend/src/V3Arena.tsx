@@ -15,11 +15,11 @@ import {v3Call} from './v3Client';
 import {useWalletTransactions} from './walletTransactions';
 const encode=(v:unknown)=>JSON.stringify(v,(_,x)=>typeof x==='bigint'?x.toString():x,2),storage=v3ConfigStorage;
 export function parseV3(text:string):Config{const c=JSON.parse(text);c.cap=BigInt(c.cap);validateParameters(c);if(!/^[a-f0-9]{64}$/.test(c.genesis))throw Error('Invalid genesis ID');return c;}
-function saved():Config[]{try{return JSON.parse(localStorage.getItem(storage)??'[]').slice(0,1000).flatMap((c:Config)=>{try{return [parseV3(encode(c))];}catch{return [];}});}catch{return [];}}
-function save(c:Config){localStorage.setItem(storage,encode([c,...saved().filter(x=>x.genesis!==c.genesis)].slice(0,1000)));}
+function saved():Config[]{try{return JSON.parse(localStorage.getItem(storage)??'[]').flatMap((c:Config)=>{try{return [parseV3(encode(c))];}catch{return [];}});}catch{return [];}}
+function save(c:Config){localStorage.setItem(storage,encode([c,...saved().filter(x=>x.genesis!==c.genesis)]));}
 function loadDisplaySnapshots(key:string):Record<string,{snapshot?:Snapshot;error?:string;at:number}>{
  const result:Record<string,{snapshot?:Snapshot;error?:string;at:number}>={};
- try{const values=JSON.parse(localStorage.getItem(key)??'{}');for(const [id,row]of Object.entries(values).slice(0,1000) as [string,any][]){try{
+ try{const values=JSON.parse(localStorage.getItem(key)??'{}');for(const [id,row]of Object.entries(values) as [string,any][]){try{
   const v=row.snapshot;if(!v||v.config.genesis!==id)continue;
   v.config=parseV3(encode(v.config));v.instance.state=Buffer.from(v.instance.state.data??v.instance.state);
   if(v.instance.state.length!==794||v.instance.state[5]>16||!Number.isFinite(v.clock.mtp)||!Array.isArray(v.pending)||!Array.isArray(v.allocations))continue;
