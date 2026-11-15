@@ -15,7 +15,8 @@ export async function verifiedProviders<T>(p:ElectrumCore,peers:string[],read:(p
  const conflict=async(hosts:string[])=>{for(const host of hosts)unresolved.add(host);try{await p.persistChainConflict?.([...unresolved]);}catch{/* Failure to persist never authorizes a conflicting snapshot. */}throw new ProviderVerificationError('conflict');};
  for(let attempt=0;attempt<(options.attempts??3);attempt++){
   const good:{peer:string;result:VerifiedRead<T>}[]=[],tips=new Map<string,Header>(),observations:{peer:string;result:{tip:Header}}[]=[];let movement=false;
-  for(const peer of peers)try{const result=await p.session(async()=>{const tip=await p.tip();tips.set(peer,tip);observations.push({peer,result:{tip}});return read(peer);},peer);tips.set(peer,result.tip);observations.push({peer,result:{tip:result.tip}});good.push({peer,result});}catch(error){
+  for(const peer of peers)try{const result=await p.session(async()=>{const tip=await p.tip();tips.set(peer,tip);observations.push({peer,result:{tip}});return read(peer);},peer);const initial=tips.get(peer)!;if(result.tip.height<initial.height||(result.tip.height===initial.height&&result.tip.hash!==initial.hash))await conflict([...tips.keys()]);tips.set(peer,result.tip);observations.push({peer,result:{tip:result.tip}});good.push({peer,result});}catch(error){
+   if(error instanceof ProviderVerificationError&&error.category==='conflict')throw error;
    if(/synchronizing|[Tt]ip changed|normal blockchain extension/.test(String(error)))movement=true;
    if(/[Rr]eorganization/.test(String(error)))await conflict([...tips.keys()]);
    // Explicit evidence of conflict must never be masked by two other providers.
@@ -36,7 +37,7 @@ export async function verifiedProviders<T>(p:ElectrumCore,peers:string[],read:(p
    // Equal identity includes tip and all action-relevant state. All inputs have
    // been re-read on both selected sources during this attempt.
    if(unresolved.size){if(unavailableLink||[...unresolved].some(peer=>!tips.has(peer)))throw new ProviderVerificationError('conflict');await p.persistChainConflict?.([]);unresolved.clear();}
-   const latest=Math.max(...[...tips.values()].map(t=>t.height));
+   const latest=Math.max(...observations.map(o=>o.result.tip.height));
    const current=good.filter(x=>x.result.tip.height===latest);
    // A verified pending transition seen by even one source cannot be voted away.
    // Wait for propagation; never authorize an older snapshot when a newer tip is known.
