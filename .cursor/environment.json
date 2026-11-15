@@ -1,0 +1,5 @@
+{
+  "name": "Staking Arena",
+  "install": "set -euo pipefail\nexport NVM_DIR=\"${NVM_DIR:-$HOME/.nvm}\"\n. \"$NVM_DIR/nvm.sh\"\nnvm install 24.22.2\nnvm alias default 24.22.2\nexport PATH=\"$NVM_DIR/versions/node/v24.22.2/bin:$PATH\"\nhash -r\nNODE_BIN=\"$NVM_DIR/versions/node/v24.22.2/bin\"\nsudo ln -sfn \"$NODE_BIN/node\" /usr/local/cargo/bin/node\nsudo ln -sfn \"$NODE_BIN/npm\" /usr/local/cargo/bin/npm\nsudo ln -sfn \"$NODE_BIN/npx\" /usr/local/cargo/bin/npx\nsudo ln -sfn \"$NODE_BIN/corepack\" /usr/local/cargo/bin/corepack\n[ ! -d '/agent/repos/bch-staking-blaze2026' ] || cd '/agent/repos/bch-staking-blaze2026' || exit $?\nnpm ci --ignore-scripts\nnpm --prefix frontend ci --ignore-scripts\n",
+  "start": "set -euo pipefail\nexport NVM_DIR=\"${NVM_DIR:-$HOME/.nvm}\"\n. \"$NVM_DIR/nvm.sh\"\nexport PATH=\"$NVM_DIR/versions/node/v24.22.2/bin:$PATH\"\nhash -r\n[ ! -d '/agent/repos/bch-staking-blaze2026' ] || cd '/agent/repos/bch-staking-blaze2026' || exit $?\nif curl -fsS --max-time 2 http://127.0.0.1:5174/ >/dev/null 2>&1; then\n  echo \"Staking Arena dev server already listening on 127.0.0.1:5174\"\n  exit 0\nfi\nexec npm run blaze:dev\n"
+}
