@@ -144,7 +144,7 @@ it('verifies shared configurations before showing figures and links to their ded
 it('withholds shared financial figures if chain verification fails',async()=>{
  stub();window.location.hash='/v3/offers';vi.stubGlobal('fetch',vi.fn().mockResolvedValue({ok:true,json:async()=>({network:'chipnet',vaults:[{...config,cap:'2000'}]})}));
  const previous=vi.mocked(v3Call).getMockImplementation()!;vi.mocked(v3Call).mockImplementation(async(...args)=>{if(args[0].operation==='sync')throw Error('Genesis mismatch');return previous(...args);});
- render(<V3Arena/>);await waitFor(()=>expect(screen.getByText(/Financial data withheld/)).toHaveTextContent('Genesis mismatch'));expect(screen.queryByText('Remaining reward reserve')).not.toBeInTheDocument();
+ render(<V3Arena/>);await waitFor(()=>expect(screen.getByText(/Financial state unavailable/)).toHaveTextContent('Genesis mismatch'));expect(screen.queryByText('Remaining reward reserve')).not.toBeInTheDocument();
 });
 it('ranks exact priority ties by registration and estimates a new tie after existing offers with zero buffer',async()=>{
  stub();const previous=vi.mocked(v3Call).getMockImplementation()!;
@@ -177,4 +177,22 @@ it('shows one fee on atomic vaults and refreshes the provisional queue after reg
  expect(vi.mocked(v3Call).mock.calls.filter(([i])=>i.operation==='sync').length).toBe(before+2);
  expect(screen.getByText(/Offer registered — Pending/)).toHaveTextContent('cd'.repeat(32));
  expect(screen.getByRole('cell',{name:/Pending \(0-conf\) · provisional/})).toBeInTheDocument();
+});
+
+it('discovers a public vault in a fresh browser without a connected wallet or local configurations',async()=>{
+ stub();window.location.hash='/v3/offers';const previous=vi.mocked(v3Call).getMockImplementation()!;
+ vi.mocked(v3Call).mockImplementation(async(...args)=>args[0].operation==='discover'?{vaults:[config],observed:1,online:2,rejected:0}:previous(...args));
+ expect(localStorage.length).toBe(0);render(<WalletTransactionsContext.Provider value={null}><V3Arena/></WalletTransactionsContext.Provider>);
+ await waitFor(()=>expect(screen.getByRole('link',{name:/V3 vault/})).toHaveTextContent('Confirmed · chain verified'));
+ expect(v3Call).toHaveBeenCalledWith({operation:'discover',cursor:undefined,limit:20});
+});
+it('retains configuration and stale verified figures through failure, reload and deployment without wallet access',async()=>{
+ stub();window.location.hash='/v3/offers';const previous=vi.mocked(v3Call).getMockImplementation()!;
+ vi.mocked(v3Call).mockImplementation(async(...args)=>args[0].operation==='discover'?{vaults:[config],observed:1,online:2,rejected:0}:previous(...args));
+ const first=render(<V3Arena/>);await waitFor(()=>expect(screen.getByRole('link',{name:/V3 vault/})).toHaveTextContent('Remaining reward reserve'));first.unmount();
+ vi.mocked(v3Call).mockImplementation(async intent=>{if(intent.operation==='sync'||intent.operation==='discover')throw Error('Public provider offline');return [];});
+ render(<V3Arena/>);await waitFor(()=>expect(screen.getByRole('link',{name:/V3 vault/})).toHaveTextContent('Verification temporarily unavailable'));
+ expect(screen.getByRole('link',{name:/V3 vault/})).toHaveTextContent('Stale, non-authoritative snapshot');
+ expect(screen.getByRole('link',{name:/V3 vault/})).toHaveTextContent('Remaining reward reserve');
+ expect(JSON.parse(localStorage.getItem('staking-arena-v3-configs-chipnet')!)[0].genesis).toBe(config.genesis);
 });

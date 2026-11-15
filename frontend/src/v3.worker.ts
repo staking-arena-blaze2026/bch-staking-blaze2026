@@ -1,3 +1,5 @@
+import {verifiedProviders} from '../../src/verified-providers';
+import {discoverPublicVaults} from '../../src/v3/public-discovery';
 /// <reference lib="webworker" />
 import {BrowserElectrumProvider} from '../../src/electrum-wss';
 import {AssetIndexer} from '../../src/v3/indexer';
@@ -7,11 +9,13 @@ import {v3Config} from './v3Config';
 import {walletPeers} from '../../src/electrum-wallet';
 const options=v3Config();
 const provider=new BrowserElectrumProvider(options),wallet=new AssetWallet(provider,new BrowserAssetStore(options.network),message=>self.postMessage({type:'progress',message}),report=>self.postMessage({type:'funding-report',report}));
+provider.onVerificationProgress=message=>self.postMessage({type:'progress',message});
 const scope=self as unknown as DedicatedWorkerGlobalScope;
 let queue=Promise.resolve();
 scope.onmessage=event=>{queue=queue.catch(()=>{}).then(async()=>{const {id,intent,keys=[]}=event.data;try{
  const run=async()=>{
-  if(intent.operation==='connect'){const tips=[];for(const peer of walletPeers(provider))tips.push(await provider.session(async()=>{const tip=await provider.tip();return {hash:tip.hash,height:tip.height,endpoint:provider.endpoint};},peer));if(tips[0]!.hash!==tips[1]!.hash)throw Error('V3 providers disagree on tip; refresh');return {network:options.network,tips};}
+  if(intent.operation==='connect'){const tip=await verifiedProviders(provider,walletPeers(provider),async()=>{const tip=await provider.tip();return {tip,value:{hash:tip.hash,height:tip.height,endpoint:provider.endpoint},identity:tip.hash};});return {network:options.network,tips:[tip]};}
+  if(intent.operation==='discover')return discoverPublicVaults(provider,intent.cursor,intent.limit??20);
   if(intent.operation==='list')return wallet.store.list();
   if(intent.operation==='sync')return inspectClaim(new AssetIndexer(provider,intent.config));
   if(intent.operation==='claim')return wallet.claim(intent.config,keys);

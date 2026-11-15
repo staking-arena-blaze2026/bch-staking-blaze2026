@@ -39,7 +39,7 @@ export class RegtestElectrum extends ElectrumCore {
     if(method==='blockchain.headers.subscribe'){const height=await rpc('getblockcount');return {height,hex:await this.request('blockchain.block.header',height)};}
     if(method==='blockchain.block.header'){const height=Number(params[0]);if(!this.headerCache.has(height))this.headerCache.set(height,await rpc('getblockheader',[await rpc('getblockhash',[height]),false]));return this.headerCache.get(height);}
     if(method==='blockchain.block.headers'){const hex=[];for(let offset=0;offset<Number(params[1]);offset+=8)hex.push(...await Promise.all(Array.from({length:Math.min(8,Number(params[1])-offset)},(_,i)=>this.request('blockchain.block.header',Number(params[0])+offset+i))));return {count:params[1],hex:hex.join('')};}
-    if(method==='blockchain.transaction.get')return this.extra.get(String(params[0])) ?? rpc('getrawtransaction',[params[0]]);
+    if(method==='blockchain.transaction.get')return this.extra.get(String(params[0])) ?? this.rows.get(String(params[0]))?.tx.hex ?? rpc('getrawtransaction',[params[0]]);
     if(method==='blockchain.transaction.get_merkle'){
       const block=await rpc('getblock',[await rpc('getblockhash',[params[1]]),1]);
       let position=block.tx.indexOf(params[0]);const pos=position,merkle:string[]=[];

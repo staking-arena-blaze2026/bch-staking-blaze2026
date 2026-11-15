@@ -1,3 +1,4 @@
+import {verifiedProviders} from '../verified-providers.js';
 import type {ElectrumCore} from '../electrum-core.js';
 import {coinIdentity,walletPeers} from '../electrum-wallet.js';
 import {walletScript,type WalletKey,type WalletCoin} from '../transactions-core.js';
@@ -12,18 +13,15 @@ export async function discoverFunding(p:ElectrumCore,keys:WalletKey[],enough:(co
  const coins:WalletCoin[]=[],started=performance.now();let addresses=0;const queried:WalletKey[]=[];
  progress?.('Finding wallet funds…');
  for(let start=0;start<ordered.length;start+=6){
-  const batch=ordered.slice(start,start+6);let first:WalletCoin[]|undefined;
-  for(const peer of walletPeers(p)){
-   const found=await p.session(async()=>{
+  const batch=ordered.slice(start,start+6);
+  const first=await verifiedProviders(p,walletPeers(p),async()=>{
     const tip=await p.tip();
     const settled=await Promise.allSettled(batch.map(async key=>(await p.getUtxosForLockingBytecode(walletScript(key.publicKey))).map(utxo=>({...key,utxo}))));
     const rows:WalletCoin[]=[];for(const result of settled){if(result.status==='rejected')throw result.reason;rows.push(...result.value);}
     if((await p.tip()).hash!==tip.hash)throw Error('Tip changed during funding discovery; retry');
-    return rows.sort((a,b)=>coinIdentity(a.utxo).localeCompare(coinIdentity(b.utxo)));
-   },peer);
-   if(first&&first.map(c=>coinIdentity(c.utxo)+':'+(c.utxo as {height?:number}).height).join('\n')!==found.map(c=>coinIdentity(c.utxo)+':'+(c.utxo as {height?:number}).height).join('\n'))throw Error('The two chipnet providers disagree about available funds; retry discovery');
-   first=found;
-  }
+    const value=rows.sort((a,b)=>coinIdentity(a.utxo).localeCompare(coinIdentity(b.utxo)));
+    return {value,tip,identity:tip.hash+value.map(c=>coinIdentity(c.utxo)+':'+(c.utxo as {height?:number}).height).join('\n')};
+  });
   for(const key of batch)cache.set(key.publicKey,first!.filter(c=>c.publicKey===key.publicKey));
   coins.push(...first!);addresses+=batch.length;queried.push(...batch);
   progress?.(`Finding wallet funds… ${addresses}/${keys.length} addresses checked on two providers`);

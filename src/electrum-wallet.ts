@@ -1,15 +1,18 @@
+import {verifiedProviders,ProviderVerificationError} from './verified-providers.js';
 import {checkFundingInputCount,FundingSelectionError} from './wallet-funding-policy.js';
 import {ancestryVerifier} from './zero-conf.js';
 import {Network,type SpendableUtxo} from 'cashscript';
 import {ElectrumCore,type Header} from './electrum-core.js';
 import {json,utxo} from './arena-core.js';
 import {walletScript,type WalletKey,type WalletCoin} from './transactions-core.js';
-export function walletPeers(p:ElectrumCore){if(p.network!==Network.CHIPNET&&p.network!==Network.REGTEST)throw Error('Wallet transactions require chipnet or local regtest');const peers=p.endpoints.filter((v,i,a)=>a.findIndex(x=>new URL(x).hostname===new URL(v).hostname)===i);if(peers.length<2)throw Error('Two different configured WSS hosts are required');return peers.slice(0,2);}
+export function walletPeers(p:ElectrumCore){if(p.network!==Network.CHIPNET&&p.network!==Network.REGTEST)throw Error('Wallet transactions require chipnet or local regtest');const peers=p.endpoints.filter((v,i,a)=>a.findIndex(x=>new URL(x).hostname===new URL(v).hostname)===i);if(peers.length<2)throw Error('Two different configured WSS hosts are required');return peers;}
 export const coinIdentity=(u:SpendableUtxo)=>json({txid:u.txid,vout:u.vout,satoshis:u.satoshis,script:u.lockingBytecode,token:u.token??null});
 export async function confirmedWalletTransaction(p:ElectrumCore,id:string){
- let first:any;
- for(const peer of walletPeers(p)){const tx=await p.session(()=>p.transactionStatus(id),peer);if(first&&(first.height!==tx.height||first.blockhash!==tx.blockhash||first.hex!==tx.hex))throw Error('Electrum transaction confirmation disagreement');first=tx;}
- return first;
+ return verifiedProviders(p,walletPeers(p),async()=>{
+  const tip=await p.tip(),value=await p.transactionStatus(id);
+  if((await p.tip()).hash!==tip.hash)throw Error('Tip changed during transaction verification');
+  return {value,tip,identity:json({tip:tip.hash,height:value.height,blockhash:value.blockhash,hex:value.hex})};
+ });
 }
 /** Verify supplied public source coins against raw transactions, token UTXOs, proofs and linked tip headers. */
 export async function verifyCoins(p:ElectrumCore,coins:SpendableUtxo[],peer:string,allowUnconfirmed=false){
@@ -18,7 +21,19 @@ export async function verifyCoins(p:ElectrumCore,coins:SpendableUtxo[],peer:stri
   if(!coin.lockingBytecode)throw Error('Missing source script');
   if(!scriptCoins.has(coin.lockingBytecode))scriptCoins.set(coin.lockingBytecode,p.getUtxosForLockingBytecode(coin.lockingBytecode));
   const actual=(await scriptCoins.get(coin.lockingBytecode)!).find(u=>u.txid===coin.txid&&u.vout===coin.vout);
-  if(!actual||coinIdentity(actual)!==coinIdentity(coin))throw Error('Input spent, pending, or changed; rebuild and request fresh approval');
+  if(!actual){
+   // Missing listunspent data alone is propagation/availability evidence. A raw,
+   // independently validated spender is a security conflict, even on one peer.
+   for(const row of await p.history(coin.lockingBytecode)){
+    if(row.tx_hash===coin.txid)continue;
+    const candidate=await p.transaction(row.tx_hash);
+    if(!candidate.vin.some((i:any)=>i.txid===coin.txid&&i.vout===coin.vout))continue;
+    if(row.height>0)await p.transactionStatus(row.tx_hash);else await ancestry(row.tx_hash);
+    throw Error('Known double-spend conflict for selected input');
+   }
+   throw Error('Input availability temporarily unverified');
+  }
+  if(coinIdentity(actual)!==coinIdentity(coin))throw Error('Source-output proof mismatch');
   let status=transactions.get(coin.txid);if(!status){status=allowUnconfirmed?await ancestry(coin.txid):await p.transactionStatus(coin.txid);transactions.set(coin.txid,status);}if(!allowUnconfirmed&&status.confirmations<=0)throw Error('Only confirmed wallet/covenant inputs may be spent');
   if(allowUnconfirmed&&status.vin?.length===1&&status.vin[0].vout===0xffffffff&&/^0+$/.test(status.vin[0].txid)&&status.confirmations<100)throw Error('Immature coinbase input');
   if(coinIdentity(utxo(status,coin.vout))!==coinIdentity(coin))throw Error('Source-output proof mismatch');
@@ -27,9 +42,11 @@ export async function verifyCoins(p:ElectrumCore,coins:SpendableUtxo[],peer:stri
  return {height:tip.height,hash:tip.hash,mtp,peer,...(allowUnconfirmed?{ancestry:[...ancestry.evidence].map(([id,tx])=>[id,tx.hex,tx.height??0,tx.confirmations>0]).sort((a,b)=>String(a[0]).localeCompare(String(b[0])))}:{})};
 }
 export async function verifyCoinsAcrossPeers(p:ElectrumCore,coins:SpendableUtxo[],allowUnconfirmed=false) {
- let first:Awaited<ReturnType<typeof verifyCoins>>|undefined;
- for(const peer of walletPeers(p)){const value=await p.session(()=>verifyCoins(p,coins,peer,allowUnconfirmed),peer);if(first&&(first.hash!==value.hash||first.mtp!==value.mtp||json(first.ancestry)!==json(value.ancestry)))throw Error('Electrum tip/MTP disagreement');first=value;}
- return first!;
+ return verifiedProviders(p,walletPeers(p),async peer=>{
+  const value=await verifyCoins(p,coins,peer,allowUnconfirmed),tip=await p.tip();
+  if(tip.hash!==value.hash)throw Error('Tip changed during input verification');
+  return {value,tip,identity:json({hash:value.hash,mtp:value.mtp,ancestry:value.ancestry})};
+ });
 }
 export interface WalletInventory {coins:WalletCoin[];bch:string;tokens:Record<string,string>;addresses:number;gap:number;limit:number;bounded:true}
 /** A changed tip is never accepted as a snapshot. Prove extension, then restart all reads. */
@@ -50,11 +67,9 @@ export async function scanWallet(p:ElectrumCore,keys:WalletKey[],options:WalletS
  for(let attempt=1;attempt<=3;attempt++) {
   progress?.(`Checking wallet balances: attempt ${attempt}/3. Verifying all ${keys.length} supplied addresses on two chipnet providers…`);
   try {
-   let first:WalletCoin[]|undefined,anchor:Header|undefined;
-   for(const [peerIndex,peer] of peers.entries()) {
-    const result=await p.session(async()=>{
+   const result=await verifiedProviders(p,peers,async peer=>{
+     const peerIndex=peers.indexOf(peer);
      const tip=await p.tip(),found:WalletCoin[]=[],expected=new Map<number,string>();
-     if(anchor)await unchangedScanTip(p,anchor,tip);
      // Four addresses at a time bounds server load. Scan EVERY supplied child,
      // including those after an unused gap; listunspent always includes CashTokens.
      for(let start=0;start<keys.length;start+=4) {
@@ -77,7 +92,7 @@ export async function scanWallet(p:ElectrumCore,keys:WalletKey[],options:WalletS
        expected.set(entry.height,tx.blockhash);
        found.push({...key,utxo:coin});
       }
-      progress?.(`Checking wallet balances: attempt ${attempt}/3, provider ${peerIndex+1}/2, ${Math.min(start+4,keys.length)}/${keys.length} addresses checked.`);
+      progress?.(`Checking wallet balances: attempt ${attempt}/3, provider ${peerIndex+1}/${peers.length}, ${Math.min(start+4,keys.length)}/${keys.length} addresses checked.`);
      }
      // Link the union of confirmation headers once, rather than downloading
      // the same chain again for every output. Merkle/raw-output checks remain.
@@ -86,18 +101,14 @@ export async function scanWallet(p:ElectrumCore,keys:WalletKey[],options:WalletS
      await unchangedScanTip(p,tip,await p.tip());
      const coins=found.sort((a,b)=>(a.utxo.txid+':'+a.utxo.vout).localeCompare(b.utxo.txid+':'+b.utxo.vout));
      if(new Set(coins.map(c=>c.utxo.txid+':'+c.utxo.vout)).size!==coins.length)throw Error('Duplicate wallet outpoints');
-     return {coins,tip};
-    },peer);
-    if(first&&json(first)!==json(result.coins))throw Error('Electrum wallet UTXO disagreement');
-    first=result.coins;anchor=result.tip;
-   }
-   // The first provider may have advanced while the second was being scanned.
-   await p.session(async()=>unchangedScanTip(p,anchor!,await p.tip()),peers[0]);
-   const coins=first!,tokens:Record<string,string>={};
+     return {value:{coins,tip},tip,identity:json({coins,hash:tip.hash})};
+   },{attempts:1});
+   const coins=result.coins,tokens:Record<string,string>={};
    for(const {utxo:u} of coins)if(u.token&&!u.token.nft)tokens[u.token.category]=(BigInt(tokens[u.token.category]??0)+u.token.amount).toString();
    progress?.('Wallet balances verified on both chipnet providers.');
    return {coins,bch:coins.filter(c=>!c.utxo.token).reduce((n,c)=>n+c.utxo.satoshis,0n).toString(),tokens,addresses:keys.length,gap:0,limit:Math.max(...keys.map(k=>k.index))+1,bounded:true};
   }catch(error){
+   if(error instanceof ProviderVerificationError&&error.category==='conflict')throw error;
    lastError=String(error);
    if(attempt<3){const delay=attempt*1000;progress?.(`${lastError}. Snapshot discarded. Retrying both providers in ${delay/1000}s (${attempt+1}/3)…`);await sleep(delay);}
   }

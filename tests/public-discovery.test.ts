@@ -1,0 +1,12 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {announcement,parseAnnouncement,announcementScript,DISCOVERY_SCRIPT} from '../src/v3/discovery.js';
+import {discoverPublicVaults} from '../src/v3/public-discovery.js';
+import type {ElectrumCore} from '../src/electrum-core.js';
+const parameters={version:3 as const,discovery:1 as const,stakingAsset:{kind:'bch' as const},rewardAsset:{kind:'token' as const,category:'ab'.repeat(32)},epoch:1794738991,periodSeconds:360,periods:9,cap:1000n};
+test('canonical public announcement roundtrips both registry versions and modes',()=>{for(const registryVersion of [undefined,4] as const)for(const mode of ['direct','parent'] as const){const p={...parameters,...(registryVersion?{registryVersion}:{})};assert.deepEqual(parseAnnouncement(announcement(p,mode).toString('hex')),{parameters:p,mode});}});
+test('malformed announcements rejected',()=>{for(const raw of ['',announcement(parameters,'direct').toString('hex').slice(2),'00'.repeat(90)])assert.throws(()=>parseAnnouncement(raw));});
+test('discovery unions endpoints, deduplicates and bounds transaction loading; malformed hints rejected',async()=>{let reads=0;const ids=Array.from({length:5000},(_,i)=>i.toString(16).padStart(64,'0'));const p={network:'chipnet',endpoints:['wss://a.test','wss://b.test','wss://c.test'],session:async(f:()=>Promise<unknown>)=>f(),history:async()=>ids.map(tx_hash=>({tx_hash,height:1})),transaction:async(id:string)=>{reads++;return {vout:[{value:0.00001,scriptPubKey:{hex:DISCOVERY_SCRIPT}},{scriptPubKey:{hex:id===ids[0]?'6a00':announcementScript(parameters,'direct')}}]};}} as unknown as ElectrumCore;
+ const page=await discoverPublicVaults(p,undefined,20);assert.equal(page.observed,5000);assert.equal(page.vaults.length,19);assert.equal(page.rejected,1);assert.ok(reads<=22);assert.ok(page.next);const second=await discoverPublicVaults(p,page.next,20);assert.equal(second.vaults.length,20);assert.equal(new Set([...page.vaults,...second.vaults].map(c=>c.genesis)).size,39);await assert.rejects(discoverPublicVaults(p,undefined,51));
+});
+test('all discovery endpoints offline gives recovery message',async()=>{const p={network:'chipnet',endpoints:['wss://a.test','wss://b.test'],session:async()=>{throw Error('offline');}} as unknown as ElectrumCore;await assert.rejects(discoverPublicVaults(p),/retained catalog/);});

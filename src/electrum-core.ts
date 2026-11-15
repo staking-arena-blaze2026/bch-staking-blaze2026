@@ -49,6 +49,8 @@ export class ElectrumCore implements NetworkProvider {
     if (!this.endpoints.length || !Number.isSafeInteger(this.timeoutMs) || this.timeoutMs < 100) throw Error('Invalid Electrum configuration');
     for (const limit of [this.maxTransactions,this.maxHistoryEntries,this.maxRawBytes,this.maxTipAgeSeconds]) if (!Number.isSafeInteger(limit) || limit<1) throw Error('Invalid Electrum safety limit');
   }
+  /** Public verification category only; never includes wallet scripts or outpoints. */
+  onVerificationProgress?:(message:string)=>void;
   private rawCache?: Map<string,string>;
   private queue: Promise<unknown> = Promise.resolve();
   session<T>(work: () => Promise<T>, endpoint?: string): Promise<T> {

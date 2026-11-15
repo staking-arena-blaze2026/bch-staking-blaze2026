@@ -17,7 +17,7 @@ test('adaptive discovery stops early and cache remains a hint; empty addresses a
  f.funded.clear();f.funded.add(0);assert.ok((await discoverFunding(f.provider,keys,enough)).coins.some(c=>c.index===0));
 });
 test('discovery withholds contradictory independent provider observations',async()=>{
- const f=fixture();f.disagree();await assert.rejects(()=>discoverFunding(f.provider,keys,coins=>coins.length>0),/providers disagree/);
+ const f=fixture();f.disagree();await assert.rejects(()=>discoverFunding(f.provider,keys,coins=>coins.length>0),/synchronizing/);
 });
 test('full supplied bound is searched without an unused gap assumption',async()=>{
  const f=fixture();f.funded.clear();assert.equal((await discoverFunding(f.provider,keys,()=>false)).addresses,40);assert.equal(f.calls(),80);

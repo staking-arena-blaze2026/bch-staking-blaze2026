@@ -1,3 +1,4 @@
+import {verifiedProviders} from '../verified-providers.js';
 import {ancestryVerifier} from '../zero-conf.js';
 import {v3Network} from './network.js';
 import {Buffer} from '../bytes.js';
@@ -20,11 +21,10 @@ export class AssetIndexer {
  snapshot?:Snapshot;error?:string;private busy=false;
  constructor(readonly electrum:ElectrumCore,readonly config:Config){v3Network(electrum);}
  async sync(){if(this.busy)throw Error('V3 synchronization already running');this.busy=true;try{
-  const peers=walletPeers(this.electrum);
-  const one=await this.electrum.session(()=>this.replay(),peers[0]);
-  const two=await this.electrum.session(()=>this.replay(),peers[1]);
-  if(identity(one)!==identity(two))throw Error('V3 providers disagree');this.snapshot=two;this.error=undefined;return two;
- }catch(e){this.snapshot=undefined;this.error=String(e);throw e;}finally{this.busy=false;}}
+  const result=await verifiedProviders(this.electrum,walletPeers(this.electrum),async()=>{
+   const value=await this.replay();return {value,tip:value.tip,identity:identity(value)};
+  });this.snapshot=result;this.error=undefined;return result;
+ }catch(e){this.error=String(e);throw e;}finally{this.busy=false;}}
  private async replay():Promise<Snapshot>{
   const e=this.electrum,c=this.config,tip=await e.tip(),clock={height:tip.height,mtp:await e.medianTime(tip.height,tip.hash)},proofs=new Map<number,string>(),pending=new Set<string>(),allocations:Allocation[]=[],cache=new Map<string,any>(),pendingHistory:string[]=[];
   const ancestry=ancestryVerifier(e,clock);

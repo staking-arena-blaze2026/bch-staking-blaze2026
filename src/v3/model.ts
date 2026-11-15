@@ -3,10 +3,11 @@ import {records,rankings} from '../arena-core.js';
 import {periodBoundary} from '../registry.js';
 export {assetId,assetBytes,ZERO,FEE,CARRIER,type Asset} from '../v2/model.js';
 import {assetId,type Asset} from '../v2/model.js';
-export interface Parameters {version:3;registryVersion?:4;stakingAsset:Asset;rewardAsset:Asset;epoch:number;periodSeconds:number;periods:number;cap:bigint}
+export interface Parameters {version:3;registryVersion?:4;discovery?:1;stakingAsset:Asset;rewardAsset:Asset;epoch:number;periodSeconds:number;periods:number;cap:bigint}
 export interface Terms {stake:bigint;duration:number;reward:bigint;maxWins:number}
 export const V3_STATE_SIZE=794;
 export function validateParameters(p:Parameters){
+ if(p.discovery!==undefined&&p.discovery!==1)throw Error('Unsupported discovery version');
  if(p.registryVersion!==undefined&&p.registryVersion!==4)throw Error('Unsupported registry covenant version');
  if(p.version!==3)throw Error('Unsupported covenant version');assetId(p.stakingAsset);assetId(p.rewardAsset);
  if(typeof p.cap!=='bigint'||p.cap<(p.rewardAsset.kind==='bch'?1000n:1n)||p.cap>1000000n||!Number.isInteger(p.periods)||p.periods<1||p.periods>16)throw Error('Invalid release count or amount');

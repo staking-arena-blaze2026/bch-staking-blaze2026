@@ -1,3 +1,5 @@
+import {ProviderVerificationError} from '../verified-providers.js';
+import {addAnnouncement,announcementScript,DISCOVERY_SCRIPT,DISCOVERY_CARRIER} from './discovery.js';
 import {selectAtomicFunding} from './atomic-funding.js';
 import {fundingReport,fundingOutpoints,reservesFunding,type FundingReport} from './funding-report.js';
 import {FUNDING_BYTE_BUDGET,FundingSelectionError} from '../wallet-funding-policy.js';
@@ -9,7 +11,7 @@ import {TransactionBuilder,placeholderP2PKHUnlocker,placeholderSignature,type Sp
 import {hexToBin,binToHex,createVirtualMachineBch2026,hashTransaction,decodeTransaction,type Transaction} from '@bitauth/libauth';
 import {Buffer} from '../bytes.js';
 import {walletScript,validateWalletSigned,walletPlanIdentity,type BrowserPlan,type WalletKey,type WalletCoin} from '../transactions-core.js';
-import {chooseBch,chooseTokens,verifyCoinsAcrossPeers as verifyConfirmedCoinsAcrossPeers,confirmedWalletTransaction,walletPeers} from '../electrum-wallet.js';
+import {chooseBch,chooseTokens,verifyCoinsAcrossPeers as verifyConfirmedCoinsAcrossPeers,confirmedWalletTransaction,walletPeers,verifyCoins} from '../electrum-wallet.js';
 import type {ElectrumCore} from '../electrum-core.js';
 import {utxo,records} from '../arena-core.js';
 import {AssetIndexer,type Config,type Snapshot} from './indexer.js';
@@ -44,6 +46,8 @@ export function validateFundingPlan(op:Operation,provider:NetworkProvider){
  if(op.plan?.request.broadcast!==false)throw Error('V3 wallet requests must disable wallet broadcasting');
  if(!op.plan||BigInt(op.plan.fee)!==FEE)throw Error('Unexpected v3 wallet fee');
  if(op.step!=='funding'&&!(op.kind==='create'&&op.creationMode==='chained'&&op.step==='action'))return;
+ const discovery=op.kind==='create'&&op.parameters.discovery===1;
+ if(discovery){const outputs=op.plan.request.transaction.outputs;for(const i of [2,3]){const output=outputs[i];if(!output||output.token||output.valueSatoshis!==(i===2?DISCOVERY_CARRIER:0n)||binToHex(output.lockingBytecode)!==(i===2?DISCOVERY_SCRIPT:announcementScript(op.parameters,'parent')))throw Error('Wallet preparation changes public discovery outputs');}}
  if(op.creationMode==='chained'&&op.kind==='create'){
   const asset=op.parameters.rewardAsset,category=asset.kind==='token'?asset.category:undefined,prep=chainedPreparation(op.parameters,hexToBin(op.owner.publicKey),provider);
   let inputTokens=0n,outputTokens=0n;const tx=op.plan.request.transaction as Transaction,owner=walletScript(op.owner.publicKey);
@@ -53,6 +57,7 @@ export function validateFundingPlan(op:Operation,provider:NetworkProvider){
   if(!second||second.valueSatoshis!==expected.amount||binToHex(second.lockingBytecode)!==prep.funding.lockingBytecode||(expected.token?second.token?.amount!==expected.token.amount||binToHex(second.token.category)!==expected.token.category:!!second.token))throw Error('Chained parent changes RewardFundingV3 reserve');
   for(const [i,output]of tx.outputs.entries()){
    if(output.token?.nft||output.token&&binToHex(output.token.category)!==category)throw Error('Unexpected chained funding token output');outputTokens+=output.token?.amount??0n;
+   if(discovery&&(i===2||i===3))continue;
    if(i>1&&binToHex(output.lockingBytecode)!==owner)throw Error('Chained parent diverts wallet change');
   }
   if(inputTokens!==outputTokens)throw Error('Chained parent must conserve all fungible tokens');
@@ -76,6 +81,7 @@ export function validateFundingPlan(op:Operation,provider:NetworkProvider){
 
  for(const [i,output]of tx.outputs.entries()){
   if(output.token?.nft||output.token&&binToHex(output.token.category)!==category)throw Error('Unexpected wallet funding token output');outputTokens+=output.token?.amount??0n;
+  if(discovery&&(i===2||i===3))continue;
   if(!(op.kind==='create'&&i===0)&&binToHex(output.lockingBytecode)!==owner)throw Error('Wallet preparation diverts funding or change');
  }
  if(inputTokens!==outputTokens)throw Error('Wallet preparation must conserve all fungible tokens');
@@ -99,6 +105,7 @@ function intentSource(op:Partial<Operation>,snapshot:Snapshot){
 export class AssetWallet {
  constructor(readonly provider:ElectrumCore,readonly store:Store,readonly progress:(message:string)=>void=()=>{},readonly onFundingReport:(report:FundingReport)=>void=()=>{}){v3Network(provider);}
  async create(parameters:Parameters,keys:WalletKey[]){
+ parameters={...parameters,discovery:1};
  validateParameters(parameters);const owner=keys.find(k=>k.path==='receive'&&k.index===0);if(!owner)throw Error('Receive child zero required');
  const journal=await this.store.list(),reserved=new Set(journal.filter(reservesFunding).flatMap(o=>o.plan?planCoins(o.plan).map(u=>u.txid+':'+u.vout):[]));
  const asset=parameters.rewardAsset,reserve=parameters.cap*BigInt(parameters.periods),excluded=new Map<string,string>();
@@ -108,7 +115,7 @@ export class AssetWallet {
  if(!genesis)throw Error('No suitable token-free output 0');
  let selected=asset.kind==='token'?chooseTokens(coins,asset.category,reserve):[];
  selected=[genesis,...selected.filter(c=>c.utxo.txid!==genesis.utxo.txid||c.utxo.vout!==0)];
- const tokenChange=asset.kind==='token'&&selected.reduce((n,c)=>n+(c.utxo.token?.amount??0n),0n)>reserve,required=FEE+3n*CARRIER+(asset.kind==='bch'?reserve:0n)+(tokenChange?CARRIER:0n);
+ const tokenChange=asset.kind==='token'&&selected.reduce((n,c)=>n+(c.utxo.token?.amount??0n),0n)>reserve,required=(parameters.discovery===1?CARRIER:0n)+FEE+3n*CARRIER+(asset.kind==='bch'?reserve:0n)+(tokenChange?CARRIER:0n);
  selected=chooseBch(coins,required,selected);const change=selected.reduce((n,c)=>n+c.utxo.satoshis,0n)-required;
  if(change>0n&&change<CARRIER)selected=chooseBch(coins,required+CARRIER,selected);return selected;
  };
@@ -116,7 +123,7 @@ export class AssetWallet {
  const selectChained=(inventory:WalletCoin[])=>{const coins=inventory.filter(c=>!reserved.has(c.utxo.txid+':'+c.utxo.vout)&&!excluded.has(c.utxo.txid+':'+c.utxo.vout));
  let selected=asset.kind==='token'?chooseTokens(coins,asset.category,reserve):[];
  const tokenChange=asset.kind==='token'&&selected.reduce((n,c)=>n+(c.utxo.token?.amount??0n),0n)>reserve;
- const required=12000n+FEE+CARRIER+(asset.kind==='bch'?reserve:0n)+(tokenChange?CARRIER:0n);
+ const required=(parameters.discovery===1?CARRIER:0n)+12000n+FEE+CARRIER+(asset.kind==='bch'?reserve:0n)+(tokenChange?CARRIER:0n);
  selected=chooseBch(coins,required,selected);const change=selected.reduce((n,c)=>n+c.utxo.satoshis,0n)-required;
  if(change>0n&&change<CARRIER)selected=chooseBch(coins,required+CARRIER,selected);return selected;
  };
@@ -128,10 +135,10 @@ export class AssetWallet {
    try{await verifyCoinsAcrossPeers(this.provider,candidate.map(c=>c.utxo));verifiedSelection=identity(candidate);return true;}
    catch(error){
     // A contradictory snapshot must not be disguised as a low balance.
-    if(/disagree|Tip changed|mismatch/i.test(String(error)))throw error;
+    if(error instanceof ProviderVerificationError||/disagree|Tip changed|mismatch/i.test(String(error)))throw error;
     let rejected=0;
     for(const coin of candidate)try{await verifyCoinsAcrossPeers(this.provider,[coin.utxo]);}catch(reason){
-     if(/disagree|Tip changed|mismatch/i.test(String(reason)))throw reason;
+     if(reason instanceof ProviderVerificationError||/disagree|Tip changed|mismatch/i.test(String(reason)))throw reason;
      excluded.set(coin.utxo.txid+':'+coin.utxo.vout,String(reason));rejected++;
     }
     if(!rejected)throw Error('Selected inputs cannot be verified together: '+String(error));
@@ -165,7 +172,8 @@ export class AssetWallet {
  catch(error){report.ancestryExcluded=selected.reduce((n,c)=>n+c.utxo.satoshis,0n).toString();report.available='0';report.reason='verification-failed';this.onFundingReport(report);throw Error('Wallet funds were discovered, but selected inputs could not be verified (conflict, ancestry, maturity or provider status). '+String(error));}
  report.verification='selected-inputs-verified';this.onFundingReport(report);await this.store.save(op);return op;
  }
- async createLegacy(parameters:Parameters,keys:WalletKey[]){validateParameters(parameters);return this.prepare({kind:'create',parameters},keys);}
+ async createLegacy(parameters:Parameters,keys:WalletKey[]){
+ parameters={...parameters,discovery:1};validateParameters(parameters);return this.prepare({kind:'create',parameters},keys);}
  private checkDirect(op:Operation){
  if(!op.plan||op.kind!=='create'||op.creationMode!=='direct'||op.step!=='action')throw Error('Invalid direct creation journal');
  const coins=planCoins(op.plan).map((u,index)=>{const path=op.plan!.inputPaths.find(p=>p[0]===index),publicKey=op.plan!.signers[index];if(!path||!publicKey)throw Error('Missing genesis wallet signer');return {utxo:u,publicKey,path:path[1],index:path[2]};});
@@ -284,13 +292,13 @@ export class AssetWallet {
  else {
   extra=request.kind==='withdraw'?FEE:sponsorAmount(snapshot!.instance,request.action!);
  }
- const required=base+(asset.kind==='bch'?amount:0n)+extra+FEE+CARRIER+(asset.kind==='token'?CARRIER:0n);
+ const required=(request.kind==='create'&&request.parameters.discovery===1?DISCOVERY_CARRIER:0n)+base+(asset.kind==='bch'?amount:0n)+extra+FEE+CARRIER+(asset.kind==='token'?CARRIER:0n);
  const select=(found:WalletCoin[])=>{const coins=found.filter(c=>!reserved.has(c.utxo.txid+':'+c.utxo.vout));return chooseBch(coins,required,asset.kind==='token'?chooseTokens(coins,asset.category,amount):[]);};
  const inventory=await discoverFunding(this.provider,keys,coins=>{try{select(coins);return true;}catch{return false;}},this.progress),selected=select(inventory.coins);
  const total=selected.reduce((n,c)=>n+c.utxo.satoshis,0n),tokens=selected.reduce((n,c)=>n+(c.utxo.token?.amount??0n),0n),builder=new TransactionBuilder({provider:this.provider});
  for(const c of selected)builder.addInput(c.utxo,placeholderP2PKHUnlocker(ownerAddress(hexToBin(c.publicKey),this.provider)));
  let sent=extra;
- if(request.kind==='create'){const factory=covenant(request.parameters.registryVersion===4?'RegistryAtomicGenesisV4':'RegistryGenesisV3',parameterArgs(request.parameters),this.provider);builder.addOutput({to:factory.address,amount:12000n}).addOutput({to:ownerAddress(hexToBin(owner.publicKey),this.provider),...assetOutput(asset,amount,base)});sent+=base+(asset.kind==='bch'?amount:0n);}
+ if(request.kind==='create'){const factory=covenant(request.parameters.registryVersion===4?'RegistryAtomicGenesisV4':'RegistryGenesisV3',parameterArgs(request.parameters),this.provider);builder.addOutput({to:factory.address,amount:12000n}).addOutput({to:ownerAddress(hexToBin(owner.publicKey),this.provider),...assetOutput(asset,amount,base)});sent+=base+(asset.kind==='bch'?amount:0n);addAnnouncement(builder,request.parameters,'parent',this.provider);if(request.parameters.discovery===1)sent+=DISCOVERY_CARRIER;}
  else if(request.kind==='offer'){builder.addOutput({to:ownerAddress(hexToBin(owner.publicKey),this.provider),...assetOutput(asset,amount,base)}).addOutput({to:ownerAddress(hexToBin(owner.publicKey),this.provider),amount:extra});sent+=base+(asset.kind==='bch'?amount:0n);}
  else builder.addOutput({to:ownerAddress(hexToBin(owner.publicKey),this.provider),amount:extra});
  const tokenChange=asset.kind==='token'&&tokens>amount;
@@ -370,7 +378,7 @@ export class AssetWallet {
  async signingFailed(id:string,error:string,rejected=false){const op=(await this.store.list()).find(o=>o.id===id);if(!op||op.raw||op.txid)return op;const next={...op,signing:rejected?'rejected' as const:op.signing,error:'Wallet authorization interrupted or refused: '+error.slice(0,500)};await this.store.save(next);return next;}
  async rebroadcastFunding(id:string){const op=(await this.store.list()).find(o=>o.id===id);if(!op?.fundingRaw||!op.fundingPlan)throw Error('No saved signed funding transaction');
  validateFundingPlan({...op,step:'funding',plan:op.fundingPlan},this.provider);const inputs=planCoins(op.fundingPlan),clock=await verifyCoinsAcrossPeers(this.provider,inputs);validateWalletSigned(op.fundingPlan,op.fundingRaw,clock);
- await this.provider.session(async()=>{await verifyCoinsAcrossPinned(this.provider,inputs);await this.provider.sendRawTransaction(op.fundingRaw!);},clock.peer);
+ await this.provider.session(async()=>{await verifyCoinsAcrossPinned(this.provider,inputs,clock.hash);await this.provider.sendRawTransaction(op.fundingRaw!);},clock.peer);
  const pending={...op,stage:'pending' as const,error:'Identical funding transaction retried; reconcile provider acceptance before continuing (no block required)'};await this.store.save(pending);return pending;
  }
  async rebroadcast(id:string){const op=(await this.store.list()).find(o=>o.id===id);if(!op?.raw||!op.plan||!op.txid||op.step==='complete')throw Error('No uncertain signed transaction');
@@ -406,16 +414,16 @@ export class AssetWallet {
   const child=this.buildChainedChild(op,raw);
   const prepared:Operation={...op,fundingRaw:raw,funding:child.parentId,fundingPlan:op.plan,childRaw:child.raw,raw:child.raw,txid:child.txid,stage:'prepared',config:{...op.parameters,genesis:child.txid}};
   await this.store.save(prepared);this.progress('Broadcasting preparation and permissionless genesis…');
-  try{await this.provider.session(async()=>{await verifyCoinsAcrossPinned(this.provider,inputs);const parentAccepted=await this.provider.sendRawTransaction(raw);if(parentAccepted!==child.parentId)throw Error('Parent broadcast returned an unexpected transaction ID');const childAccepted=await this.provider.sendRawTransaction(child.raw);if(childAccepted!==child.txid)throw Error('Child broadcast returned an unexpected transaction ID');},clock.peer);
+  try{await this.provider.session(async()=>{await verifyCoinsAcrossPinned(this.provider,inputs,clock.hash);const parentAccepted=await this.provider.sendRawTransaction(raw);if(parentAccepted!==child.parentId)throw Error('Parent broadcast returned an unexpected transaction ID');const childAccepted=await this.provider.sendRawTransaction(child.raw);if(childAccepted!==child.txid)throw Error('Child broadcast returned an unexpected transaction ID');},clock.peer);
    const sent={...prepared,stage:'pending' as const,confirmations:0};await this.store.save(sent);this.progress('Vault pending (0-conf)');return sent;
   }catch(e){const uncertain={...prepared,error:String(e)};await this.store.save(uncertain);return uncertain;}
  }
  const prepared={...op,raw,txid:validated.txid,stage:'prepared' as const,...(op.kind==='create'&&op.step==='action'?{config:{...op.parameters,genesis:validated.txid}}:{})};if(op.creationMode==='direct')validateGenesis(op.parameters,raw,inputs,this.provider);await this.store.save(prepared);
  this.progress('Broadcasting vault…');
- try {await this.provider.session(async()=>{await verifyCoinsAcrossPinned(this.provider,inputs);const accepted=await this.provider.sendRawTransaction(raw);if(accepted!==validated.txid)throw Error('Broadcast returned an unexpected transaction ID');},clock.peer);const sent={...prepared,stage:'pending' as const,...(op.creationMode==='direct'?{confirmations:0}:{})};await this.store.save(sent);this.progress(op.kind==='create'?'Vault pending (0-conf)':'Transaction pending (0-conf)');return sent;}catch(e){const uncertain={...prepared,error:String(e)};await this.store.save(uncertain);return uncertain;}
+ try {await this.provider.session(async()=>{await verifyCoinsAcrossPinned(this.provider,inputs,clock.hash);const accepted=await this.provider.sendRawTransaction(raw);if(accepted!==validated.txid)throw Error('Broadcast returned an unexpected transaction ID');},clock.peer);const sent={...prepared,stage:'pending' as const,...(op.creationMode==='direct'?{confirmations:0}:{})};await this.store.save(sent);this.progress(op.kind==='create'?'Vault pending (0-conf)':'Transaction pending (0-conf)');return sent;}catch(e){const uncertain={...prepared,error:String(e)};await this.store.save(uncertain);return uncertain;}
  }
 }
-async function verifyCoinsAcrossPinned(p:ElectrumCore,inputs:SpendableUtxo[]){for(const i of inputs)if(!(await p.getUtxosForLockingBytecode(i.lockingBytecode!)).some(u=>u.txid===i.txid&&u.vout===i.vout))throw Error('Input spent before broadcast');}
+async function verifyCoinsAcrossPinned(p:ElectrumCore,inputs:SpendableUtxo[],hash:string){if((await p.tip()).hash!==hash)throw new ProviderVerificationError('synchronizing');const checked=await verifyCoins(p,inputs,p.endpoint,true);if(checked.hash!==hash)throw new ProviderVerificationError('synchronizing');}
 export class BrowserAssetStore implements Store {
  constructor(readonly network:V3Network='regtest'){}
  private db?:Promise<IDBDatabase>;

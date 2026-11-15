@@ -1,3 +1,4 @@
+import {addAnnouncement,announcementScript,DISCOVERY_SCRIPT,DISCOVERY_CARRIER} from './discovery.js';
 import {MAX_FUNDING_INPUTS} from '../wallet-funding-policy.js';
 import {ZERO,FEE,CARRIER,assetId,assetBytes,validateParameters,validateTerms,decision,initialState,rewardRemaining,advance,allocationSequence,V3_STATE_SIZE,type Asset,type Parameters,type Terms} from './model.js';
 export * from './model.js';
@@ -88,9 +89,10 @@ export function chainedParentBuilder(p:Parameters,coins:import('../transactions-
  total+=c.utxo.satoshis;tokens+=c.utxo.token?.amount??0n;builder.addInput(c.utxo,placeholderP2PKHUnlocker(ownerAddress(hexToBin(c.publicKey),provider)));}
  if(asset.kind==='token'&&tokens<reserve)throw Error('Insufficient full reward reserve');
  builder.addOutput({to:prep.genesis.address,amount:12000n}).addOutput({to:prep.funding.tokenAddress,...assetOutput(asset,reserve)});
+ addAnnouncement(builder,p,'parent',provider);
  const address=ownerAddress(hexToBin(owner.publicKey),provider),tokenChange=asset.kind==='token'?tokens-reserve:0n;
  if(tokenChange>0n&&asset.kind==='token')builder.addOutput({to:address,amount:CARRIER,token:{category:asset.category,amount:tokenChange}});
- const bchChange=total-12000n-FEE-(asset.kind==='bch'?reserve:0n)-CARRIER-(tokenChange>0n?CARRIER:0n);
+ const bchChange=total-(p.discovery===1?DISCOVERY_CARRIER:0n)-12000n-FEE-(asset.kind==='bch'?reserve:0n)-CARRIER-(tokenChange>0n?CARRIER:0n);
  if(bchChange<0n||bchChange>0n&&bchChange<CARRIER)throw Error('Insufficient BCH or chained parent change below 1000 satoshis');
  if(bchChange>0n)builder.addOutput({to:address,amount:bchChange});
  return {builder,prep,reserve,bchChange,tokenChange};
@@ -109,6 +111,7 @@ export function validateGenesis(p:Parameters,raw:string,inputs:SpendableUtxo[],p
  for(const u of inputs)if(u.token)totals.set(u.token.category,(totals.get(u.token.category)??0n)+u.token.amount);
  const scripts=new Set(inputs.map(u=>u.lockingBytecode).filter(s=>/^76a914[0-9a-f]{40}88ac$/.test(s??'')));
  for(const [i,o]of outputs.entries()){
+  if(p.discovery===1&&outputs[3]?.lockingBytecode===DISCOVERY_SCRIPT&&(i===3||i===4)){if(o.token||o.lockingBytecode!==(i===3?DISCOVERY_SCRIPT:announcementScript(p,'direct'))||o.satoshis!==(i===3?DISCOVERY_CARRIER:0n))throw Error('Invalid discovery output');continue;}
   if(i>=3&&(!scripts.has(o.lockingBytecode)||o.satoshis<CARRIER||o.token?.nft))throw Error('Invalid genesis wallet change');
   if(i===0)continue;
   if(o.token){if(o.token.nft||o.token.category===category)throw Error('Unexpected genesis token mint');totals.set(o.token.category,(totals.get(o.token.category)??0n)-o.token.amount);}
@@ -124,9 +127,10 @@ export function directGenesisBuilder(p:Parameters,coins:import('../transactions-
  total+=c.utxo.satoshis;tokens+=c.utxo.token?.amount??0n;builder.addInput(c.utxo,placeholderP2PKHUnlocker(ownerAddress(hexToBin(c.publicKey),provider)));}
  if(asset.kind==='token'&&tokens<reserve)throw Error('Insufficient full reward reserve');
  builder.addOutput({to:cs.registry.tokenAddress,...stateOutput(category,state)}).addOutput({to:cs.escrow.address,amount:CARRIER}).addOutput({to:cs.reserve.tokenAddress,...assetOutput(asset,reserve)});
+ addAnnouncement(builder,p,'direct',provider);
  const address=ownerAddress(hexToBin(change.publicKey),provider),tokenChange=asset.kind==='token'?tokens-reserve:0n;
  if(tokenChange>0n&&asset.kind==='token')builder.addOutput({to:address,amount:CARRIER,token:{category:asset.category,amount:tokenChange}});
- const bchChange=total-3n*CARRIER-FEE-(asset.kind==='bch'?reserve:0n)-(tokenChange>0n?CARRIER:0n);
+ const bchChange=total-(p.discovery===1?DISCOVERY_CARRIER:0n)-3n*CARRIER-FEE-(asset.kind==='bch'?reserve:0n)-(tokenChange>0n?CARRIER:0n);
  if(bchChange<0n||bchChange>0n&&bchChange<CARRIER)throw Error('Insufficient BCH or genesis change below 1000 satoshis');
  if(bchChange>0n)builder.addOutput({to:address,amount:bchChange});
  return {builder,state,category};

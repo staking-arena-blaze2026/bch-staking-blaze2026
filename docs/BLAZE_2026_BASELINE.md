@@ -69,6 +69,8 @@ Wallet funding discovery repair: distinguish legacy explicit wallet refusal from
 
 Direct atomic offer registration: explicitly versioned RegistryAtomicV4 retains separate owner authorization while accepting direct wallet funding and safe owner change in one transaction. Legacy RegistryV3 vaults and their two-stage journals remain compatible. See [design, authorization and limitations](blaze2026/atomic-offers.md) and [isolated BCHN evidence](blaze2026/atomic-offer-results.json). This is post-baseline work; physical Cashonize approval remains unverified.
 
+Public vault discovery and retained listings: new on-chain marker announcements use existing public Electrum script indexes, with independently replayed V3/V4 state, bounded pages, persistent recovery hints and stale display snapshots. Three-provider verification distinguishes proven extension, propagation/unavailability and security conflicts. Live diagnostics found an actual provider branch divergence; it remains a signing block. See [architecture and limits](blaze2026/public-discovery.md) and [public provider evidence](blaze2026/provider-diagnostics.json). This is post-baseline work; it is not a complete historical index or a claim of live wallet approval.
+
 ## How judges can compare versions
 
 1. Inspect the original source and website `pre-blaze-2026` tags and exact commit links; annotated tag timestamps are intentionally later than the referenced commits.

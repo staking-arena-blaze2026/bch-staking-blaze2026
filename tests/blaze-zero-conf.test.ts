@@ -59,7 +59,7 @@ test('isolated BCHN 29.2: direct genesis and dependent offers/claim without bloc
  const pendingCreated=await approve(await wallet.create({...params,cap:2100n},keys));assert.equal(approvals-a1,1);assert.equal(pendingCreated.plan!.request.transaction.inputs[0]!.outpointIndex,0);
  assert.equal(binToHex(pendingCreated.plan!.request.transaction.inputs[0]!.outpointTransactionHash),unconfirmedParent);assert.ok((await rpc<string[]>('getrawmempool')).includes(unconfirmedParent));
  const parentTx=await p.transactionStatus(unconfirmedParent),conflict=new TransactionBuilder({provider:p});let conflictTotal=0n;for(const input of parentTx.vin){const source=utxo(await p.transactionStatus(input.txid),input.vout);conflictTotal+=source.satoshis;conflict.addInput(source,key.unlockP2PKH());}conflict.addOutput({to:owner,amount:conflictTotal-10001n});const conflictRaw=conflict.build(),conflictId=(await import('../src/electrum-core.js')).decodeRawTransaction(conflictRaw).txid;
- const [conflictAcceptance]=await rpc('testmempoolaccept',[[conflictRaw]]);assert.equal(conflictAcceptance.allowed,false);p.extra.set(conflictId,conflictRaw);await p.refresh();await assert.rejects(()=>new AssetIndexer(p,pendingCreated.config!).sync(),/double-spend conflict/);p.extra.delete(conflictId);await p.refresh();
+ const [conflictAcceptance]=await rpc('testmempoolaccept',[[conflictRaw]]);assert.equal(conflictAcceptance.allowed,false);p.extra.set(conflictId,conflictRaw);await p.refresh();await assert.rejects(()=>new AssetIndexer(p,pendingCreated.config!).sync(),/Conflicting blockchain evidence/);p.extra.delete(conflictId);await p.refresh();
  // Without a wallet-owned vout=0, Create Vault uses the covenant-controlled chain: two txs, one approval.
  const burner=await rpc<string>('getnewaddress');
  const zeros=(await p.getUtxos(owner)).filter(u=>u.vout===0&&!u.token);
@@ -93,7 +93,7 @@ test('isolated BCHN 29.2: direct genesis and dependent offers/claim without bloc
  const authorized=await wallet.authorize(recovery.id),signed=sign(authorized.plan),broken=new AssetWallet(p,{list:store.list,save:async()=>{throw Error('Quota');}});await assert.rejects(()=>broken.submit(recovery.id,signed),/Quota/);assert.equal(p.broadcasts,broadcasts);
  p.loseAcknowledgement=true;recovery=await wallet.submit(recovery.id,signed);assert.equal(recovery.stage,'prepared');assert.equal(p.broadcasts,broadcasts+1);const bytes=recovery.raw;
  const reopened=new AssetWallet(p,store);assert.equal((await reopened.resume(recovery.id)).stage,'pending');assert.equal(p.broadcasts,broadcasts+1);
- const parent=binToHex(recovery.plan!.request.transaction.inputs[0]!.outpointTransactionHash);p.hidden.add(parent);await assert.rejects(()=>new AssetIndexer(p,recovery.config!).sync(),/unavailable/);p.hidden.delete(parent);
+ const parent=binToHex(recovery.plan!.request.transaction.inputs[0]!.outpointTransactionHash);p.hidden.add(parent);await assert.rejects(()=>new AssetIndexer(p,recovery.config!).sync(),/second verified provider/);p.hidden.delete(parent);
  p.hidden.add(recovery.txid!);assert.equal((await reopened.resume(recovery.id)).stage,'prepared');assert.equal(journal.get(recovery.id)!.raw,bytes);p.hidden.delete(recovery.txid!);assert.equal((await reopened.resume(recovery.id)).stage,'pending');
  p.disagree=true;await assert.rejects(()=>new AssetIndexer(p,recovery.config!).sync());p.disagree=false;
  // Mine only after all 0-conf paths finished, then remove/reconsider that block.

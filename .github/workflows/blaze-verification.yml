@@ -1,0 +1,67 @@
+name: Blaze discovery verification
+on:
+  push:
+    branches: [blaze2026, verify/public-discovery]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  isolated-bchn:
+    if: github.repository == 'staking-arena-blaze2026/bch-staking-blaze2026'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        suite: [blaze-public-discovery, blaze-zero-conf, blaze-chained-genesis, blaze-atomic-offer]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: frontend/.node-version
+          cache: npm
+          cache-dependency-path: package-lock.json
+      - run: npm ci --ignore-scripts
+      - name: Install pinned BCHN 29.2.0 (release asset SHA256)
+        run: |
+          curl -fL --retry 3 -o "$RUNNER_TEMP/bchn.tar.gz" https://github.com/bitcoin-cash-node/bitcoin-cash-node/releases/download/v29.2.0/bitcoin-cash-node-29.2.0-x86_64-linux-gnu.tar.gz
+          echo "23bbe9ff749136a9b832a2a59023ce76a5391322c1ea2f4f24b5b91f035081bc  $RUNNER_TEMP/bchn.tar.gz" | sha256sum --check
+          mkdir "$RUNNER_TEMP/bchn"
+          tar -xzf "$RUNNER_TEMP/bchn.tar.gz" -C "$RUNNER_TEMP/bchn" --strip-components=1
+          echo "BCHN_TEST_BINARY=$RUNNER_TEMP/bchn/bin/bitcoind" >> "$GITHUB_ENV"
+      - name: Real isolated BCHN tests (no public wallet or node)
+        run: ARENA_NETWORK=regtest npx tsx --test tests/${{ matrix.suite }}.test.ts
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ${{ matrix.suite }}-evidence
+          path: docs/blaze2026/*results.json
+  browser-and-unit:
+    if: github.repository == 'staking-arena-blaze2026/bch-staking-blaze2026'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: frontend/.node-version
+          cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            frontend/package-lock.json
+      - run: npm ci --ignore-scripts
+      - run: npm --prefix frontend ci --ignore-scripts
+      - run: npm run typecheck
+      - run: npm run frontend:typecheck
+      - run: npx tsx --test --test-concurrency=1 tests/verified-providers.test.ts tests/public-discovery.test.ts tests/blaze-funding-discovery.test.ts
+      - run: npm run frontend:test
+      - run: npx --prefix frontend playwright install --with-deps chromium --only-shell
+      - run: npm --prefix frontend run test:v3:browser
+      - run: npm run blaze:build
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: browser-discovery-evidence
+          path: |
+            frontend/test-results/
+            frontend/playwright-report/
