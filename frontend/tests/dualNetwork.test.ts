@@ -1,3 +1,5 @@
+import {renderHook} from '@testing-library/react';
+import {useArena} from '../src/useArena';
 import {expect,it,vi} from 'vitest';
 import {Network,MockNetworkProvider} from 'cashscript';
 import {deriveHdPrivateNodeFromSeed,deriveHdPublicNode,encodeHdPublicKey,hexToBin} from '@bitauth/libauth';
@@ -50,4 +52,8 @@ it('refuses transplanted signed journals, accepting untagged historical records 
  expect(()=>assertStoredNetwork({network:'chipnet'},'mainnet')).toThrow(/network mismatch/);
  expect(()=>assertStoredNetwork({network:'mainnet'},'chipnet')).toThrow(/network mismatch/);
  expect(()=>assertStoredNetwork({},'mainnet')).toThrow();expect(()=>assertStoredNetwork({},'chipnet')).not.toThrow();expect(()=>assertStoredNetwork({},'regtest')).not.toThrow();
+});
+
+it('mainnet mounting preserves historical chipnet browser preferences',()=>{
+ localStorage.setItem('arena-chipnet-automatic-settlement','false');const hook=renderHook(()=>useArena());expect(localStorage.getItem('arena-chipnet-automatic-settlement')).toBe('false');expect(hook.result.current.source).toBe('off');hook.unmount();
 });

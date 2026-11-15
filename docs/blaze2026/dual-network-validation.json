@@ -88,5 +88,16 @@
     "mainnetDefault": true,
     "chipnetTransactionsEnabled": false,
     "realWalletVerificationClaimed": false
+  },
+  "storagePreservationFollowUp": {
+    "verifiedAt": "2026-11-15T19:32:02.767496+00:00",
+    "passed": 14,
+    "failed": 0,
+    "files": [
+      "dualNetwork.test.ts",
+      "browserIndexer.test.tsx"
+    ],
+    "change": "Removed obsolete chipnet preference deletion. Mainnet and chipnet mounting now preserve the historical record while still ignoring it as processing authorization.",
+    "newUniqueFrontendTestCount": 140
   }
 }

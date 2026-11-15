@@ -15,6 +15,7 @@ const report={at:new Date().toISOString(),target,walletConnected:false,broadcast
 let browser;
 try{
  browser=await chromium.launch(launchOptions);const context=await browser.newContext();
+ await context.addInitScript(()=>{if(!sessionStorage.getItem('dual-network-preference-seeded')){localStorage.setItem('arena-chipnet-automatic-settlement','false');sessionStorage.setItem('dual-network-preference-seeded','1');}});
  await context.routeWebSocket(/wss:\/\//,ws=>{report.sockets.push(ws.url());const peer=ws.connectToServer();ws.onMessage(data=>{let m;try{m=JSON.parse(data.toString());}catch{}if(m?.method==='blockchain.transaction.broadcast'){report.broadcasts.push(ws.url());throw Error('Read-only test refuses broadcasts');}peer.send(data);});peer.onMessage(data=>ws.send(data));});
  const page=await context.newPage();page.on('worker',w=>{void w.evaluate(()=>{globalThis.__arenaRequests=[];const send=WebSocket.prototype.send;WebSocket.prototype.send=function(data){let m;try{m=JSON.parse(String(data));}catch{}if(m?.method){globalThis.__arenaRequests.push({endpoint:this.url,method:m.method});if(m.method==='blockchain.transaction.broadcast')throw Error('Read-only browser refuses broadcast');}return send.call(this,data);};}).catch(()=>{});});page.on('pageerror',e=>report.errors.push(e.message));page.setDefaultTimeout(20000);
  await page.goto(target+'#/v3',{waitUntil:'domcontentloaded'});
@@ -22,6 +23,7 @@ try{
  await page.getByText(/mainnet providers verified · height/).waitFor({timeout:60000});
  const chipnet=JSON.parse(await readFile('public/v3-vaults.json','utf8'));
  await page.evaluate(async catalog=>{localStorage.setItem('staking-arena-v3-configs-chipnet',JSON.stringify(catalog.vaults));localStorage.setItem('arena-chipnet-recovery-sentinel','retained');const db=await new Promise((resolve,reject)=>{const r=indexedDB.open('staking-arena-wallet-v3-chipnet',1);r.onupgradeneeded=()=>r.result.createObjectStore('operations');r.onsuccess=()=>resolve(r.result);r.onerror=()=>reject(r.error);});await new Promise((resolve,reject)=>{const t=db.transaction('operations','readwrite');t.objectStore('operations').put({id:'chipnet-recovery-sentinel',error:'chipnet-recovery-sentinel',kind:'create',step:'complete',stage:'confirmed',parameters:catalog.vaults[0]},'chipnet-recovery-sentinel');t.oncomplete=resolve;t.onerror=()=>reject(t.error);});db.close();},chipnet);
+ assert.equal(await page.evaluate(()=>localStorage.getItem('arena-chipnet-automatic-settlement')),'false');
  report.networks.mainnet={verified:await page.locator('.v3-arena>.provider-status').innerText(),createRequiresWallet:await page.getByRole('button',{name:'Create Vault',exact:true}).isDisabled()};
  const workerReads=await Promise.all(page.workers().map(w=>w.evaluate(()=>({network:globalThis.name,requests:globalThis.__arenaRequests??[]}))));report.networks.mainnet.workerReads=workerReads;const initialSockets=workerReads.flatMap(w=>w.requests.map(r=>r.endpoint));assert(new Set(initialSockets).size>=2);assert(initialSockets.every(s=>/bch\.(loping\.net|imaginary\.cash)/.test(s)));
  await page.getByRole('link',{name:'Make an Offer',exact:true}).click();await page.getByRole('heading',{name:'Known vaults',exact:true}).waitFor();assert.equal(await page.getByRole('link',{name:/fa5bae/}).count(),0);assert.equal(await page.getByText('chipnet-recovery-sentinel',{exact:false}).count(),0);
@@ -34,6 +36,7 @@ try{
  await page.getByRole('combobox',{name:'Network',exact:true}).selectOption('mainnet');await page.waitForURL(/network=mainnet/);await page.getByRole('heading',{name:'Known vaults',exact:true}).waitFor();
  assert.equal(await page.evaluate(()=>localStorage.getItem('arena-chipnet-recovery-sentinel')),'retained');assert.equal(await page.getByRole('link',{name:/fa5bae/}).count(),0);assert.equal(await page.getByText(/chipnet-recovery-sentinel/).count(),0);
  await page.reload({waitUntil:'domcontentloaded'});await page.getByRole('heading',{name:'Known vaults',exact:true}).waitFor();assert.equal(await page.getByRole('combobox',{name:'Network',exact:true}).inputValue(),'mainnet');
+ assert.equal(await page.evaluate(()=>localStorage.getItem('arena-chipnet-automatic-settlement')),'false');
  assert.equal(report.errors.length,0,JSON.stringify(report.errors));assert.equal(report.broadcasts.length,0);report.roundTripSeparation=true;report.status='passed';
  console.log('PASS dual-network production browser: mainnet identity, chipnet listings/recovery, switching, reload, mobile, zero broadcasts');
 }catch(error){report.status='failed';report.failure=String(error);throw error;}

@@ -86,9 +86,9 @@ it('responds to another tab importing a vault and surfaces structured bootstrap 
  expect(hook.result.current.error).toContain('Module could not load');expect(hook.result.current.error).toContain('indexer.js:9:2');expect(hook.result.current.error).toContain('stack: import crypto.js');hook.unmount();
 });
 
-it('ignores and removes a saved disable preference and provides no opt-out API',()=>{
+it('ignores and preserves a saved disable preference and provides no opt-out API',()=>{
  vi.stubEnv('VITE_INDEXER_MODE','electrum');localStorage.setItem('arena-chipnet-automatic-settlement','false');
  let worker:any;class FakeWorker {onmessage:any;onerror:any;onmessageerror:any;postMessage=vi.fn();terminate=vi.fn();constructor(){worker=this;}}
  vi.stubGlobal('Worker',FakeWorker);const hook=renderHook(()=>useArena());act(()=>worker.onmessage({data:{type:'ready'}}));
- expect(localStorage.getItem('arena-chipnet-automatic-settlement')).toBeNull();expect(hook.result.current.automatic).toBe(true);expect(hook.result.current).not.toHaveProperty('setAutomatic');expect(worker.postMessage.mock.calls[0][0]).not.toHaveProperty('automatic');hook.unmount();
+ expect(localStorage.getItem('arena-chipnet-automatic-settlement')).toBe('false');expect(hook.result.current.automatic).toBe(true);expect(hook.result.current).not.toHaveProperty('setAutomatic');expect(worker.postMessage.mock.calls[0][0]).not.toHaveProperty('automatic');hook.unmount();
 });

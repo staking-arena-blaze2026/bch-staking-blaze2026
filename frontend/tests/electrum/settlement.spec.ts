@@ -37,7 +37,7 @@ test.fixme('mandatory automation ignores saved false, needs no wallet interactio
   chain.mine();
  }
  await expect(page.getByText('Completed — all periods processed on-chain',{exact:true})).toBeVisible({timeout:30000});
- expect(chain.broadcasts.length).toBe(4);expect(await page.evaluate(()=>localStorage.getItem('arena-chipnet-automatic-settlement'))).toBeNull();
+ expect(chain.broadcasts.length).toBe(4);expect(await page.evaluate(()=>localStorage.getItem('arena-chipnet-automatic-settlement'))).toBe('false');
  expect(await page.evaluate(()=>(window as any).walletMethods.some((method:string)=>['authorize','submit','offer'].includes(method)))).toBe(false);
 });
 test.fixme('two independent browsers converge on a single pending canonical transaction',async({browser,page})=>{

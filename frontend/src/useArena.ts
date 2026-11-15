@@ -19,7 +19,7 @@ export function useArena() {
   const [saved] = useState(() => endpoint ? loadSnapshot(endpoint) : undefined);
   const [data,setData] = useState<Envelope | undefined>(saved?.data);
   const [fromSnapshot,setFromSnapshot] = useState(!!saved);
-  useEffect(()=>{try{localStorage.removeItem('arena-chipnet-automatic-settlement');}catch{/* Legacy preferences never control processing. */}},[]);
+  // Historical preferences never authorize processing and remain preserved across network switches.
   const [settlements,setSettlements]=useState<import('zod').z.infer<typeof keeperSchema>['statuses']>({});
   const controls=useRef<(message:unknown)=>void>(()=>{});
   const [providerStatus,setProviderStatus] = useState('Connecting');
