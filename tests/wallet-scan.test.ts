@@ -1,7 +1,9 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {binToHex} from '@bitauth/libauth';
+import {binToHex,encodeTransaction,hexToBin} from '@bitauth/libauth';
 import {SignatureTemplate} from 'cashscript';
+import {decodeRawTransaction} from '../src/electrum-core.js';
+import {walletScript} from '../src/transactions-core.js';
 import {ElectrumCore} from '../src/electrum-core.js';
 import {scanWallet} from '../src/electrum-wallet.js';
 import {WalletFixture} from './fixtures/wallet-chain.js';
@@ -49,6 +51,16 @@ test('wallet scan transient outage automatically recovers and verifies both host
  const inventory=await scanWallet(f.engine.provider,f.keys,{...options,sleep:async()=>{f.chain.fail=false;}});
  assert.equal(inventory.tokens[f.asset],'2500');assert.ok(messages.some(s=>s.includes('attempt 2/3')));
  assert.equal(new Set(f.chain.requestLog.map(r=>r.endpoint)).size,2);
+});
+test('wallet scan reports an unconfirmed change output instead of dropping it',async()=>{
+ const {f,options}=harness(),change=f.keys.find(key=>key.path==='change')!;
+ const raw=binToHex(encodeTransaction({version:2,locktime:0,inputs:[{outpointTransactionHash:new Uint8Array(32).fill(9),outpointIndex:0,sequenceNumber:0xffffffff,unlockingBytecode:new Uint8Array()}],outputs:[{lockingBytecode:hexToBin(walletScript(change.publicKey)),valueSatoshis:42000n}]}));
+ const tx=decodeRawTransaction(raw);
+ f.chain.transactions.set(tx.txid,tx);f.chain.pending.add(tx.txid);
+ const inventory=await scanWallet(f.engine.provider,f.keys,options);
+ const coin=inventory.coins.find(item=>item.path==='change'&&item.utxo.satoshis===42000n);
+ assert.equal(coin?.unconfirmed,true);
+ assert.equal(inventory.bch,'292000');
 });
 test('wallet scan includes funded addresses after an unused gap and links shared proof headers once per provider',async()=>{
  const {f,options}=harness();const funded={...f.keys[1],path:'receive' as const,index:25};

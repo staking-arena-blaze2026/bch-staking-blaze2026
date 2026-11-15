@@ -19,6 +19,19 @@ test('adaptive discovery stops early and cache remains a hint; empty addresses a
 test('discovery withholds contradictory independent provider observations',async()=>{
  const f=fixture();f.disagree();await assert.rejects(()=>discoverFunding(f.provider,keys,coins=>coins.length>0),/providers disagree/);
 });
+test('a coin that exists only on the change chain is scanned and returned',async()=>{
+ const change:WalletKey={path:'change',index:3,publicKey:Buffer.from(new SignatureTemplate(new Uint8Array(32).fill(90)).publicKey).toString('hex')};
+ const mixed=[...keys,change];
+ const f=fixture();
+ const original=f.provider.getUtxosForLockingBytecode.bind(f.provider);
+ f.provider.getUtxosForLockingBytecode=async(script:string)=>{
+  if(script===walletScript(change.publicKey))return [{txid:'cd'.repeat(32),vout:1,satoshis:80000n,lockingBytecode:script}];
+  return original(script);
+ };
+ const found=await discoverFunding(f.provider,mixed,coins=>coins.some(coin=>coin.path==='change'));
+ assert.equal(found.coins.filter(coin=>coin.path==='change').length,1);
+ assert.equal(found.coins.find(coin=>coin.path==='change')?.utxo.vout,1);
+});
 test('full supplied bound is searched without an unused gap assumption',async()=>{
  const f=fixture();f.funded.clear();assert.equal((await discoverFunding(f.provider,keys,()=>false)).addresses,40);assert.equal(f.calls(),80);
 });

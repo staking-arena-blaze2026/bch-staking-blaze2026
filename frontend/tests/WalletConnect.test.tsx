@@ -208,15 +208,30 @@ it('accepts a late wallet handshake passively after the retry deadline on a reac
   expect(initiateDappRelay).toHaveBeenCalledOnce();
 });
 
-it('rejects changed wallet derivation identity and preserves the previously accepted identity',async()=>{
- const encoded=encodeHdPublicKey({node:deriveHdPublicNode(deriveHdPrivateNodeFromSeed(new Uint8Array(32).fill(88))),network:'testnet'});
+function xpub(fill:number){
+ const encoded=encodeHdPublicKey({node:deriveHdPublicNode(deriveHdPrivateNodeFromSeed(new Uint8Array(32).fill(fill))),network:'testnet'});
  if(typeof encoded==='string')throw Error(encoded);
+ return encoded.hdPublicKey;
+}
+
+it('keeps a connected session when Cashonize adds the change chain to the same receive xpub',async()=>{
+ const receive=xpub(88),change=xpub(89);
  render(<WalletConnect/>);
  fireEvent.click(screen.getByRole('button',{name:'Connect Wallet'}));
- await walletReady();
- await walletReady([{name:'receive',xpub:encoded.hdPublicKey}]);
+ await walletReady([{name:'receive',xpub:receive}]);
+ await walletReady([{name:'receive',xpub:receive},{name:'change',xpub:change}]);
+ expect(screen.getByText('Connected to Cashonize')).toBeVisible();
+ expect(JSON.parse(localStorage.getItem(sessionKey)!).paths).toEqual([{name:'receive',xpub:receive},{name:'change',xpub:change}]);
+});
+
+it('rejects changed wallet derivation identity and preserves the previously accepted identity',async()=>{
+ const first=xpub(88),second=xpub(90);
+ render(<WalletConnect/>);
+ fireEvent.click(screen.getByRole('button',{name:'Connect Wallet'}));
+ await walletReady([{name:'receive',xpub:first}]);
+ await walletReady([{name:'receive',xpub:second}]);
  expect(screen.getByRole('button',{name:'Pair Cashonize again'})).toBeVisible();
- expect(JSON.parse(localStorage.getItem(sessionKey)!).paths).toEqual([]);
+ expect(JSON.parse(localStorage.getItem(sessionKey)!).paths).toEqual([{name:'receive',xpub:first}]);
 });
 
 it('retains pairing after an ambiguous Cashonize keepalive disconnect and recovers on the same manager',async()=>{

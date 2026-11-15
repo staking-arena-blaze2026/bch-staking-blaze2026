@@ -68,7 +68,9 @@ export async function scanWallet(p:ElectrumCore,keys:WalletKey[],options:WalletS
       for(const {key,history,coins} of rows)for(const coin of coins){
        const entry=history.find(h=>h.tx_hash===coin.txid);
        if(!entry)throw Error('Electrum wallet history/UTXO disagreement');
-       if(entry.height<=0)continue;
+       // Change from a recent send is often still unconfirmed. Keep it visible;
+       // confirmed-only callers skip WalletCoin.unconfirmed.
+       if(entry.height<=0){found.push({...key,utxo:coin,unconfirmed:true});continue;}
        if(entry.height>tip.height){await unchangedScanTip(p,tip,await p.tip());throw Error('Electrum confirmation ahead of wallet scan tip');}
        const tx=await p.transaction(coin.txid,entry.height);
        if(expected.has(entry.height)&&expected.get(entry.height)!==tx.blockhash)throw Error('Electrum confirmation header disagreement');

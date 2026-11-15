@@ -71,7 +71,7 @@ export class BrowserWallet {
  }
  private async availableCoins(){
   const reserved=new Set((await this.store.list()).filter(o=>o.step!=='complete'&&o.stage!=='cancelled').flatMap(o=>o.coins.map(c=>c.utxo.txid+':'+c.utxo.vout)));
-  return this.inventory!.coins.filter(c=>!reserved.has(c.utxo.txid+':'+c.utxo.vout));
+  return this.inventory!.coins.filter(c=>!c.unconfirmed&&!reserved.has(c.utxo.txid+':'+c.utxo.vout));
  }
  async cancel(id:string){const op=await this.operation(id);if(op.raw||op.txid)throw Error('A signed/submitted transaction cannot be recalled; reconcile it instead');op.stage='cancelled';op.error='Unsigned plan discarded. Prepared funding, if any, remains in the wallet.';return this.save(op);}
  async create(parameters:GenesisParameters,keys:WalletKey[]) {
