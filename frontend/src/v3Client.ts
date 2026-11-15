@@ -9,6 +9,7 @@ function start():Client{
  const fail=(error:Error)=>{clearTimeout(startup);rejectReady(error);for(const task of tasks.values()){clearTimeout(task.timer);task.reject(error);}tasks.clear();worker.terminate();if(client===current)client=undefined;};
  const startup=setTimeout(()=>fail(Error('V3 worker startup timeout; reconnect and reconcile saved operations')),30000);
  worker.onmessage=event=>{
+  if(event.data?.type==='funding-report'){window.dispatchEvent(new CustomEvent('arena-funding-report',{detail:event.data.report}));return;}
   if(event.data?.type==='progress'){window.dispatchEvent(new CustomEvent('arena-wallet-progress',{detail:event.data.message}));return;}
   if(event.data?.type==='ready'){clearTimeout(startup);resolveReady();return;}
   const task=tasks.get(event.data?.id);if(!task)return;tasks.delete(event.data.id);clearTimeout(task.timer);

@@ -65,6 +65,8 @@ Persistent Cashonize connection: unified manager/relay ownership, restoration of
 
 Preparation after the cutoff comprises audit, original publication, baseline evidence/tags, freeze configuration, native fork creation, this documentation, local isolation, and independent deployment setup. The build script accepts a separate Pages project base while preserving the original chipnet build settings; no staking contracts, application behavior or covenant artifacts are changed.
 
+Wallet funding discovery repair: distinguish legacy explicit wallet refusal from uncertain signing, release safe unsigned reservations without deleting journals, validate live session derivation, prioritize known funded children, begin with six addresses, and replace the v3 eight-input cap with a fee/size bound. See [diagnosis, implementation and validation limits](blaze2026/wallet-funding-discovery.md). This is post-baseline work; real Cashonize acceptance remains to be verified by the wallet owner.
+
 ## How judges can compare versions
 
 1. Inspect the original source and website `pre-blaze-2026` tags and exact commit links; annotated tag timestamps are intentionally later than the referenced commits.

@@ -1,3 +1,4 @@
+import {deriveHdPrivateNodeFromSeed,deriveHdPublicNode,deriveHdPublicNodeChild,encodeHdPublicKey} from '@bitauth/libauth';
 import {EventEmitter} from 'node:events';
 import {expect,it,vi} from 'vitest';
 import {browserWalletClient} from '../src/browserWalletClient';
@@ -6,8 +7,8 @@ vi.mock('../src/v3Client',()=>({v3Call:vi.fn()}));
 function setup(reject=false){
  class WorkerMock {onmessage:((event:any)=>void)|null=null;terminate=vi.fn();constructor(){queueMicrotask(()=>this.onmessage?.({data:{type:'ready'}}));}postMessage(m:any){queueMicrotask(()=>this.onmessage?.({data:{id:m.id,result:m.method==='list'?[]:undefined}}));}}
  vi.stubGlobal('Worker',WorkerMock);
- const publicKey=Uint8Array.of(2,...new Uint8Array(32).fill(1)),owner={publicKey:Array.from(publicKey,x=>x.toString(16).padStart(2,'0')).join('')},request={broadcast:false,userPrompt:'Caller fee approval',transaction:{version:2,inputs:[],outputs:[],locktime:0},sourceOutputs:[]},plan={label:'Claim; caller pays 10000 sats',request,inputPaths:[[3,'receive',0]]};
- const manager=Object.assign(new EventEmitter(),{getSessionPaths:()=>[0],hasPath:(p:number)=>p===0,getPubkey:()=>publicKey,signTransaction:vi.fn(async()=>reject?{error:'User rejected'}:{signedTransaction:'signed'})});
+ const node=deriveHdPublicNode(deriveHdPrivateNodeFromSeed(new Uint8Array(32).fill(88))),encoded=encodeHdPublicKey({node,network:'testnet'});if(typeof encoded==='string')throw Error(encoded);const pub=(index:number)=>{const child=deriveHdPublicNodeChild(node,index);if(typeof child==='string')throw Error(child);return child.publicKey;};const publicKey=pub(0),owner={publicKey:Array.from(publicKey,x=>x.toString(16).padStart(2,'0')).join('')},request={broadcast:false,userPrompt:'Caller fee approval',transaction:{version:2,inputs:[],outputs:[],locktime:0},sourceOutputs:[]},plan={label:'Claim; caller pays 10000 sats',request,inputPaths:[[3,'receive',0]]};
+ const manager=Object.assign(new EventEmitter(),{getSessionPaths:()=>[{name:'receive',xpub:encoded.hdPublicKey}],hasPath:(p:number)=>p===0,getPubkey:(_child:number,index:bigint)=>pub(Number(index)),signTransaction:vi.fn(async()=>reject?{error:'User rejected the transaction'}:{signedTransaction:'signed'})});
  vi.mocked(v3Call).mockImplementation(async intent=>{if(intent.operation==='claim'||intent.operation==='resume')return {id:'claim',stage:'review',plan};if(intent.operation==='authorize')return {owner,verifiedAt:Date.now(),plan};if(intent.operation==='submit')return {id:'claim',stage:'pending'};return [];});
  return {wallet:browserWalletClient(manager as any,()=>{}),manager,request};
 }
@@ -15,7 +16,7 @@ it('Cashonize is asked to sign only the fee input with broadcast disabled; worke
  const {wallet,manager,request}=setup();try{const result=await wallet.v3!({operation:'claim',config:{}});expect(manager.signTransaction).toHaveBeenCalledTimes(1);expect(manager.signTransaction).toHaveBeenCalledWith({transaction:request,inputPaths:[[3,'receive',0]]},{signal:expect.any(AbortSignal)});expect(v3Call).toHaveBeenCalledWith({operation:'submit',id:'claim',raw:'signed'},[]);expect(result.stage).toBe('pending');}finally{wallet.close?.();}
 });
 it('wallet rejection persists an unsigned error without submitting or automatically retrying',async()=>{
- const {wallet,manager}=setup(true);try{await expect(wallet.v3!({operation:'claim',config:{}})).rejects.toThrow(/refused/);expect(v3Call).toHaveBeenCalledWith({operation:'signingFailed',id:'claim',error:expect.stringContaining('refused')},[]);expect(vi.mocked(v3Call).mock.calls.some(([i])=>i.operation==='submit')).toBe(false);expect(manager.signTransaction).toHaveBeenCalledTimes(1);}finally{wallet.close?.();}
+ const {wallet,manager}=setup(true);try{await expect(wallet.v3!({operation:'claim',config:{}})).rejects.toThrow(/refused/);expect(v3Call).toHaveBeenCalledWith({operation:'signingFailed',id:'claim',error:expect.stringContaining('refused'),rejected:true},[]);expect(vi.mocked(v3Call).mock.calls.some(([i])=>i.operation==='submit')).toBe(false);expect(manager.signTransaction).toHaveBeenCalledTimes(1);}finally{wallet.close?.();}
 });
 it('reconciling a signed uncertain claim never requests another wallet signature',async()=>{
  const {wallet,manager}=setup();vi.mocked(v3Call).mockResolvedValue({id:'claim',raw:'signed',stage:'prepared'});try{await wallet.v3!({operation:'resume',id:'claim'});expect(manager.signTransaction).not.toHaveBeenCalled();}finally{wallet.close?.();}
@@ -57,7 +58,7 @@ it('covenant-controlled chained creation still requests only one Cashonize appro
  try{await wallet.v3!({operation:'create',parameters:{}});expect(manager.signTransaction).toHaveBeenCalledTimes(1);expect(vi.mocked(v3Call).mock.calls.some(([i])=>i.operation==='resume')).toBe(false);}finally{wallet.close?.();}
 });
 it('expanding discovery does not authorize or broadcast a transaction',async()=>{
- const {wallet,manager}=setup();try{expect(await wallet.v3!({operation:'expandScan'})).toMatch(/200 addresses/);expect(manager.signTransaction).not.toHaveBeenCalled();expect(vi.mocked(v3Call).mock.calls.some(([i])=>i.operation==='create'||i.operation==='submit')).toBe(false);}finally{wallet.close?.();}
+ const {wallet,manager}=setup();try{expect(await wallet.v3!({operation:'expandScan'})).toMatch(/40 addresses/);expect(manager.signTransaction).not.toHaveBeenCalled();expect(vi.mocked(v3Call).mock.calls.some(([i])=>i.operation==='create'||i.operation==='submit')).toBe(false);}finally{wallet.close?.();}
 });
 
 it('invalidates preparation across a transport interruption even when the same identity returns',async()=>{
@@ -69,4 +70,11 @@ it('obsolete workers cannot authorize new transactions after being closed',async
  const {wallet,manager}=setup();wallet.close?.();
  await expect(wallet.v3!({operation:'claim'})).rejects.toThrow(/closed/);
  expect(manager.signTransaction).not.toHaveBeenCalled();
+});
+
+it('adds a previously funded deep journal child without deriving all intermediate wallet addresses',async()=>{
+ const {wallet,manager}=setup(),original=vi.mocked(v3Call).getMockImplementation()!;
+ const hex=(index:number)=>Array.from(manager.getPubkey(0,BigInt(index)),x=>x.toString(16).padStart(2,'0')).join('');
+ vi.mocked(v3Call).mockImplementation(async(...args)=>args[0].operation==='list'?[{owner:{publicKey:hex(0)},plan:{inputPaths:[[0,'receive',39]],signers:{0:hex(39)}}}]:args[0].operation==='create'?original({operation:'claim'}):original(...args));
+ try{await wallet.v3!({operation:'create',parameters:{}});const call=vi.mocked(v3Call).mock.calls.find(([i])=>i.operation==='create')!;expect(call[1]).toHaveLength(3);expect(call[1]).toEqual(expect.arrayContaining([expect.objectContaining({path:'receive',index:39,fundingHint:true})]));expect(manager.signTransaction).toHaveBeenCalledTimes(1);}finally{wallet.close?.();}
 });

@@ -22,3 +22,13 @@ test('discovery withholds contradictory independent provider observations',async
 test('full supplied bound is searched without an unused gap assumption',async()=>{
  const f=fixture();f.funded.clear();assert.equal((await discoverFunding(f.provider,keys,()=>false)).addresses,40);assert.equal(f.calls(),80);
 });
+test('change-path funds and deep indices remain discoverable; a small scan does not pretend to cover them',async()=>{
+ const f=fixture();f.funded.clear();f.funded.add(39);
+ const small=await discoverFunding(f.provider,keys.slice(0,2),coins=>coins.length>0);assert.equal(small.coins.length,0);assert.equal(small.addresses,2);
+ const deep=await discoverFunding(f.provider,keys,coins=>coins.length>0);assert.ok(deep.coins.some(c=>c.index===39));assert.equal(deep.queried.length,40);
+ const change=keys.map(k=>({...k,path:'change' as const}));f.funded.clear();f.funded.add(0);assert.equal((await discoverFunding(f.provider,change,coins=>coins.length>0)).coins[0]!.path,'change');
+});
+test('a journal-funded child beyond the initial bound is queried before unrelated addresses',async()=>{
+ const f=fixture();f.funded.clear();f.funded.add(39);const input=[...keys.slice(0,6),{...keys[39]!,fundingHint:true}];
+ const found=await discoverFunding(f.provider,input,coins=>coins.length>0);assert.equal(found.addresses,6);assert.equal(found.queried[0]!.index,39);assert.equal(found.coins[0]!.index,39);
+});

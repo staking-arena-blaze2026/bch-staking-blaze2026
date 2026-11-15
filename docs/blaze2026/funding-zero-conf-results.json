@@ -1,0 +1,94 @@
+{
+  "node": "/Bitcoin Cash Node:29.2.0/",
+  "verifiedAt": "2026-11-15T09:47:13.388Z",
+  "before": {
+    "addresses": 120,
+    "requests": 531,
+    "milliseconds": 2247.848000000002,
+    "untilSigning": {
+      "requests": 639,
+      "milliseconds": 3384.987799999999
+    },
+    "transactions": 1,
+    "authorizations": 1
+  },
+  "after": {
+    "addresses": 6,
+    "milliseconds": 966.5601999999999,
+    "requests": 90,
+    "untilSigning": {
+      "requests": 144,
+      "milliseconds": 1605.9149999999972
+    },
+    "transactions": 1,
+    "authorizations": 1
+  },
+  "benchmarkTransport": "local Electrum facade over isolated BCHN RPC; no public latency",
+  "localSignatureHarness": true,
+  "realCashonizePromptsTested": false,
+  "confirmedZero": true,
+  "unconfirmedZero": true,
+  "zeroConfCreationOfferClaim": true,
+  "chainedAuthorizations": 1,
+  "chainedTransactions": 2,
+  "fallbackAuthorizations": 2,
+  "packageAuthorizationSupported": false,
+  "combinations": [
+    {
+      "staking": "bch",
+      "reward": "bch",
+      "sameCategory": false,
+      "genesis": "de94ed845d234120d08f2b3cbfd80ef95c866aee48c17fe0a15a2c61253836de",
+      "claim": "bc87a817a0c9fb7dc08a2a38dc143a0c01ea2678645dab8910c33bc96b6b298f",
+      "authorizations": 4,
+      "transactions": 4
+    },
+    {
+      "staking": "bch",
+      "reward": "token",
+      "sameCategory": false,
+      "genesis": "0957c1ad719649257853fb617dae043b0d19d9fb819cfc707a1d4e5ea5c400ef",
+      "claim": "74f5505803e7234683a3b1a5f2c8861a5e1a5a9e065eac6c2beb07ea3336c01f",
+      "authorizations": 4,
+      "transactions": 4
+    },
+    {
+      "staking": "token",
+      "reward": "bch",
+      "sameCategory": false,
+      "genesis": "2849bed526a0d79d6c55bd9107f4f44f370a56ad901cb81c53930e6b0b173bbf",
+      "claim": "f032c24a0972715c843de970bea8e6c4a47205db04f76530e2c0b6448055ec57",
+      "authorizations": 4,
+      "transactions": 4
+    },
+    {
+      "staking": "token",
+      "reward": "token",
+      "sameCategory": false,
+      "genesis": "7c6a46503a657f238a34a1463a78f7a7594ad4be1036d37855657f1854de8113",
+      "claim": "05496fd5e3c792b02926021c7b5d441f1c5417a0abcc1c90f06c179567f546bf",
+      "authorizations": 4,
+      "transactions": 4
+    },
+    {
+      "staking": "token",
+      "reward": "token",
+      "sameCategory": true,
+      "genesis": "a7c425208072f305ea4656eb020619121bf2268dee18eb6acdc50151f151eaae",
+      "claim": "0c68dc5f1ad0ae0e17ac26e158fce3f0cc7118562fdec65dbc8a7c731c528b0c",
+      "authorizations": 4,
+      "transactions": 4
+    }
+  ],
+  "rejection": true,
+  "journalFailure": true,
+  "lostAcknowledgement": true,
+  "missingParent": true,
+  "knownConflict": true,
+  "actualParentEvictionAndIdenticalRecovery": true,
+  "providerDisagreement": true,
+  "reorganization": true,
+  "genesis": "de94ed845d234120d08f2b3cbfd80ef95c866aee48c17fe0a15a2c61253836de",
+  "claim": "bc87a817a0c9fb7dc08a2a38dc143a0c01ea2678645dab8910c33bc96b6b298f",
+  "chainedGenesis": "44c0f81ef4d62f979184a2cf63fef039d41111f2ac60712eea769ae30d0ecd6a"
+}

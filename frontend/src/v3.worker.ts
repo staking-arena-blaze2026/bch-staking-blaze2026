@@ -6,7 +6,7 @@ import {AssetWallet,BrowserAssetStore} from '../../src/v3/wallet';
 import {v3Config} from './v3Config';
 import {walletPeers} from '../../src/electrum-wallet';
 const options=v3Config();
-const provider=new BrowserElectrumProvider(options),wallet=new AssetWallet(provider,new BrowserAssetStore(options.network),message=>self.postMessage({type:'progress',message}));
+const provider=new BrowserElectrumProvider(options),wallet=new AssetWallet(provider,new BrowserAssetStore(options.network),message=>self.postMessage({type:'progress',message}),report=>self.postMessage({type:'funding-report',report}));
 const scope=self as unknown as DedicatedWorkerGlobalScope;
 let queue=Promise.resolve();
 scope.onmessage=event=>{queue=queue.catch(()=>{}).then(async()=>{const {id,intent,keys=[]}=event.data;try{
@@ -23,7 +23,7 @@ scope.onmessage=event=>{queue=queue.catch(()=>{}).then(async()=>{const {id,inten
   if(intent.operation==='action')return wallet.action(intent.config,intent.action,intent.slot,keys);
   if(intent.operation==='withdraw')return wallet.withdraw(intent.config,intent.allocation,keys);
   if(intent.operation==='resume'||intent.operation==='inspect')return wallet.resume(intent.id);
-  if(intent.operation==='signingFailed')return wallet.signingFailed(intent.id,String(intent.error));
+  if(intent.operation==='signingFailed')return wallet.signingFailed(intent.id,String(intent.error),intent.rejected===true);
   if(intent.operation==='authorize')return wallet.authorize(intent.id);
   if(intent.operation==='submit')return wallet.submit(intent.id,intent.raw);
   if(intent.operation==='rebroadcast')return wallet.rebroadcast(intent.id);

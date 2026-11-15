@@ -1,0 +1,63 @@
+{
+  "verifiedAt": "2026-11-15T09:56:43.834Z",
+  "node": "/Bitcoin Cash Node:29.2.0/",
+  "transport": "isolated BCHN RPC Electrum facade; no public latency",
+  "benchmark": [
+    {
+      "label": "normal single coin",
+      "addressesDerived": 6,
+      "addressesQueried": 6,
+      "electrumRequests": 126,
+      "discoveryRequests": 78,
+      "discoveryMs": 9054.97020000001,
+      "preparationMs": 9478.693599999999,
+      "backendPreparationToSigningMs": 16303.506500000003,
+      "inputsSelected": 1,
+      "inputsAvailable": 1,
+      "creationMode": "direct",
+      "serializedBytes": 284,
+      "authorizationsRequested": 0,
+      "realCashonize": false
+    },
+    {
+      "label": "former eight-input selector, same fragmented wallet",
+      "addressesDerived": 120,
+      "addressesQueried": 120,
+      "electrumRequests": 482,
+      "discoveryMs": 57754.1226,
+      "result": "rejects 13 inputs despite 812333 sats"
+    },
+    {
+      "label": "812333 sats; 301 unconfirmed change UTXOs",
+      "addressesDerived": 6,
+      "addressesQueried": 6,
+      "electrumRequests": 122,
+      "discoveryRequests": 74,
+      "discoveryMs": 14901.796200000012,
+      "preparationMs": 15135.566200000001,
+      "backendPreparationToSigningMs": 22941.916399999987,
+      "inputsSelected": 13,
+      "inputsAvailable": 301,
+      "creationMode": "chained",
+      "serializedBytes": 665,
+      "authorizationsRequested": 0,
+      "realCashonize": false
+    },
+    {
+      "label": "fragmented signed chained creation",
+      "localHarnessAuthorizations": 1,
+      "transactions": 2,
+      "inputs": 13,
+      "signedParentBytes": 1965,
+      "requiredConfirmations": 0,
+      "realCashonize": false
+    }
+  ],
+  "fragmentedBefore": {
+    "total": 812333,
+    "required": 33000,
+    "selected": 13,
+    "error": "Former chooseBch rejected >8 and exhausted all supplied addresses"
+  },
+  "liveWalletVerified": false
+}

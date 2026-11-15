@@ -1,3 +1,4 @@
+import {checkFundingInputCount,FundingSelectionError} from './wallet-funding-policy.js';
 import {ancestryVerifier} from './zero-conf.js';
 import {Network,type SpendableUtxo} from 'cashscript';
 import {ElectrumCore,type Header} from './electrum-core.js';
@@ -12,10 +13,11 @@ export async function confirmedWalletTransaction(p:ElectrumCore,id:string){
 }
 /** Verify supplied public source coins against raw transactions, token UTXOs, proofs and linked tip headers. */
 export async function verifyCoins(p:ElectrumCore,coins:SpendableUtxo[],peer:string,allowUnconfirmed=false){
- const tip=await p.tip(),mtp=await p.medianTime(tip.height,tip.hash),transactions=new Map<string,any>(),ancestry=ancestryVerifier(p,{height:tip.height,mtp});
+ const tip=await p.tip(),mtp=await p.medianTime(tip.height,tip.hash),transactions=new Map<string,any>(),scriptCoins=new Map<string,Promise<SpendableUtxo[]>>(),ancestry=ancestryVerifier(p,{height:tip.height,mtp});
  for(const coin of coins){
   if(!coin.lockingBytecode)throw Error('Missing source script');
-  const actual=(await p.getUtxosForLockingBytecode(coin.lockingBytecode)).find(u=>u.txid===coin.txid&&u.vout===coin.vout);
+  if(!scriptCoins.has(coin.lockingBytecode))scriptCoins.set(coin.lockingBytecode,p.getUtxosForLockingBytecode(coin.lockingBytecode));
+  const actual=(await scriptCoins.get(coin.lockingBytecode)!).find(u=>u.txid===coin.txid&&u.vout===coin.vout);
   if(!actual||coinIdentity(actual)!==coinIdentity(coin))throw Error('Input spent, pending, or changed; rebuild and request fresh approval');
   let status=transactions.get(coin.txid);if(!status){status=allowUnconfirmed?await ancestry(coin.txid):await p.transactionStatus(coin.txid);transactions.set(coin.txid,status);}if(!allowUnconfirmed&&status.confirmations<=0)throw Error('Only confirmed wallet/covenant inputs may be spent');
   if(allowUnconfirmed&&status.vin?.length===1&&status.vin[0].vout===0xffffffff&&/^0+$/.test(status.vin[0].txid)&&status.confirmations<100)throw Error('Immature coinbase input');
@@ -105,16 +107,16 @@ export async function scanWallet(p:ElectrumCore,keys:WalletKey[],options:WalletS
 export function chooseBch(coins:WalletCoin[],required:bigint,used:WalletCoin[]=[]) {
  const selected=[...used];let balance=selected.reduce((n,c)=>n+c.utxo.satoshis,0n);
  for(const c of coins.filter(c=>!c.utxo.token).sort((a,b)=>a.utxo.satoshis>b.utxo.satoshis?-1:1)) {if(balance>=required)break;if(selected.some(x=>x.utxo.txid===c.utxo.txid&&x.utxo.vout===c.utxo.vout))continue;selected.push(c);balance+=c.utxo.satoshis;}
- if(balance<required||selected.length>8)throw Error('Insufficient BCH in the bounded wallet scan (maximum eight inputs); consolidate in your wallet or expand the scan');return selected;
+ if(balance<required)throw new FundingSelectionError('balance',`Insufficient BCH on the checked addresses: ${balance} available satoshis; ${required} required. Additional addresses may contain funds.`,required,balance);checkFundingInputCount(selected.length);return selected;
 }
 export function chooseTokens(coins:WalletCoin[],category:string,amount:bigint) {
  const selected:WalletCoin[]=[];let total=0n;
  for(const c of coins.filter(c=>c.utxo.token?.category===category&&!c.utxo.token.nft).sort((a,b)=>a.utxo.token!.amount>b.utxo.token!.amount?-1:1)){if(total>=amount)break;selected.push(c);total+=c.utxo.token!.amount;}
- if(total<amount||selected.length>8)throw Error('Insufficient selected fungible token balance in the scanned wallet addresses');
+ if(total<amount)throw new FundingSelectionError('tokens',`Found ${total} eligible fungible units; ${amount} required on the checked addresses.`);checkFundingInputCount(selected.length);
  try{return chooseBch(coins,13000n,selected);}catch(error){
   for(const coin of coins.filter(c=>c.utxo.token?.category===category&&!c.utxo.token.nft).sort((a,b)=>a.utxo.satoshis>b.utxo.satoshis?-1:1)) {
    if(selected.some(c=>c.utxo.txid===coin.utxo.txid&&c.utxo.vout===coin.utxo.vout))continue;
-   selected.push(coin);if(selected.length>8)break;
+   selected.push(coin);checkFundingInputCount(selected.length);
    try{return chooseBch(coins,13000n,selected);}catch{}
   }throw error;
  }

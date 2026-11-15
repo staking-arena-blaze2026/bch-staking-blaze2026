@@ -169,12 +169,13 @@ export class ElectrumCore implements NetworkProvider {
     if (!/^(?:[a-f0-9]{2})*$/i.test(hex)) throw Error('Invalid locking script');
     const rows = await this.request('blockchain.scripthash.listunspent', scriptHash(hex), 'include_tokens');
     if (!Array.isArray(rows) || rows.length > this.maxHistoryEntries) throw Error('Malformed or oversized Electrum UTXOs');
-    const outputs: SpendableUtxo[] = [];
+    const outputs: SpendableUtxo[] = [], transactions=new Map<string,Promise<any>>();
     for (const row of rows) {
       if (!isHash(row.tx_hash) || !Number.isSafeInteger(row.tx_pos) || row.tx_pos < 0 || !Number.isSafeInteger(row.height)) throw Error('Malformed UTXO outpoint');
-      const tx = await this.transaction(row.tx_hash, row.height), o = tx.vout[row.tx_pos];
+      const identity=row.tx_hash+':'+row.height;if(!transactions.has(identity))transactions.set(identity,this.transaction(row.tx_hash,row.height));
+      const tx = await transactions.get(identity)!, o = tx.vout[row.tx_pos];
       if (!o || o.scriptPubKey.hex !== hex || !Number.isSafeInteger(row.value) || BigInt(row.value) !== BigInt(o.satoshis)) throw Error('Electrum UTXO mismatch');
-      outputs.push({ txid: tx.txid, vout: row.tx_pos, satoshis: BigInt(o.satoshis), lockingBytecode: hex,
+      outputs.push({ txid: tx.txid, vout: row.tx_pos, satoshis: BigInt(o.satoshis), lockingBytecode: hex, ...({height:row.height} as object),
         ...(o.tokenData ? { token: { category: o.tokenData.category, amount: BigInt(o.tokenData.amount), ...(o.tokenData.nft ? { nft: o.tokenData.nft } : {}) } } : {}) });
     }
     return outputs;

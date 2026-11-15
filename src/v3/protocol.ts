@@ -1,3 +1,4 @@
+import {MAX_FUNDING_INPUTS} from '../wallet-funding-policy.js';
 import {ZERO,FEE,CARRIER,assetId,assetBytes,validateParameters,validateTerms,decision,initialState,rewardRemaining,advance,allocationSequence,V3_STATE_SIZE,type Asset,type Parameters,type Terms} from './model.js';
 export * from './model.js';
 import {Buffer} from '../bytes.js';
@@ -77,7 +78,7 @@ export function chainedFundingRecoverBuilder(fundingInput:SpendableUtxo,fee:Spon
  .addOutput({to:ownerAddress(ownerPubkey,provider),...assetOutput(p.rewardAsset,reserve)});
 }
 export function chainedParentBuilder(p:Parameters,coins:import('../transactions-core.js').WalletCoin[],owner:import('../transactions-core.js').WalletKey,provider:NetworkProvider){
- validateParameters(p);if(!coins.length||coins.length>8||new Set(coins.map(c=>c.utxo.txid+':'+c.utxo.vout)).size!==coins.length)throw Error('Invalid chained parent funding');
+ validateParameters(p);if(!coins.length||coins.length>MAX_FUNDING_INPUTS||new Set(coins.map(c=>c.utxo.txid+':'+c.utxo.vout)).size!==coins.length)throw Error('Invalid chained parent funding');
  const prep=chainedPreparation(p,hexToBin(owner.publicKey),provider),reserve=p.cap*BigInt(p.periods),asset=p.rewardAsset;
  let tokens=0n,total=0n;const builder=new TransactionBuilder({provider});
  for(const c of coins){if(c.utxo.token&&(c.utxo.token.nft||asset.kind!=='token'||c.utxo.token.category!==asset.category))throw Error('Unrelated tokens or NFTs cannot fund chained preparation');
@@ -113,7 +114,7 @@ export function validateGenesis(p:Parameters,raw:string,inputs:SpendableUtxo[],p
  return {category,state,cs};
 }
 export function directGenesisBuilder(p:Parameters,coins:import('../transactions-core.js').WalletCoin[],change:import('../transactions-core.js').WalletKey,provider:NetworkProvider){
- validateParameters(p);if(!coins.length||coins.length>8||coins[0]!.utxo.vout!==0||coins[0]!.utxo.token||new Set(coins.map(c=>c.utxo.txid+':'+c.utxo.vout)).size!==coins.length)throw Error('A verified token-free wallet vout=0 is required for direct genesis');
+ validateParameters(p);if(!coins.length||coins.length>MAX_FUNDING_INPUTS||coins[0]!.utxo.vout!==0||coins[0]!.utxo.token||new Set(coins.map(c=>c.utxo.txid+':'+c.utxo.vout)).size!==coins.length)throw Error('A verified token-free wallet vout=0 is required for direct genesis');
  const category=coins[0]!.utxo.txid,cs=family(p,category,provider),state=initialState(p),reserve=p.cap*BigInt(p.periods),asset=p.rewardAsset;
  let tokens=0n,total=0n;const builder=new TransactionBuilder({provider});
  for(const c of coins){if(c.utxo.token&&(c.utxo.token.nft||asset.kind!=='token'||c.utxo.token.category!==asset.category))throw Error('Unrelated tokens or NFTs cannot fund genesis');

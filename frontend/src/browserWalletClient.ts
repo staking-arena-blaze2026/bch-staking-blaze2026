@@ -1,3 +1,5 @@
+import {signWithRefusalEvidence,ExplicitWalletRefusal} from './walletSigning';
+import {checkedWalletKey,walletChains} from './walletDerivation';
 import {walletDiagnostic} from './usePersistentWallet';
 import {v3Call} from './v3Client';
 import type {DappConnectionManager} from '@wizardconnect/dapp';
@@ -12,7 +14,7 @@ import type {Operation as V2Operation} from '../../src/v2/wallet';
 export function browserWalletClient(manager:DappConnectionManager|null,check:()=>void,getRevision:()=>number=()=>0):WalletTransactions {
  walletDiagnostic('Wallet worker started');
  const getManager=()=>{if(!manager)throw Error('Connect a chipnet wallet first');return manager;};
- const worker=new Worker(new URL('./wallet.worker.ts',import.meta.url),{type:'module'}),pending=new Map<number,{resolve:(v:any)=>void;reject:(e:Error)=>void}>();let counter=0,scanLimit=40,closed=false,v2Approval=false,v3Approval=false;let signing=new AbortController();let startupTimer:ReturnType<typeof setTimeout>|undefined,startupReject:(e:Error)=>void=()=>{};let derived:WalletKey[]|undefined,derivationIdentity="";
+ const worker=new Worker(new URL('./wallet.worker.ts',import.meta.url),{type:'module'}),pending=new Map<number,{resolve:(v:any)=>void;reject:(e:Error)=>void}>();let counter=0,scanLimit=40,closed=false,v2Approval=false,v3Approval=false;let signing=new AbortController();let startupTimer:ReturnType<typeof setTimeout>|undefined,startupReject:(e:Error)=>void=()=>{};let derived:WalletKey[]|undefined,derivationIdentity="",v3ScanLimit=2;
  const rpc=(method:string,...args:unknown[])=>new Promise<any>((resolve,reject)=>{if(closed){reject(Error('Wallet session closed; reconnect and resume from the journal'));return;}const id=++counter;pending.set(id,{resolve,reject});worker.postMessage({id,method,args});});
  const startup=new Promise<void>((resolve,reject)=>{startupReject=reject;const timer=startupTimer=setTimeout(()=>reject(Error('Wallet worker startup timeout')),30000);worker.onmessage=event=>{if(event.data?.type==='operation'){window.dispatchEvent(new CustomEvent('arena-wallet-operation',{detail:event.data.operation}));return;}if(event.data?.type==='progress'){window.dispatchEvent(new CustomEvent('arena-wallet-progress',{detail:event.data.message}));return;}if(event.data?.type==='ready'){clearTimeout(timer);try{void rpc('start',browserConfig()).then(()=>rpc('list')).then((list:WalletOperation[])=>{list.forEach(rememberGenesis);resolve();},reject);}catch(error){reject(error);}return;}const task=pending.get(event.data.id);if(!task)return;pending.delete(event.data.id);event.data.error?task.reject(Error(event.data.error)):task.resolve(event.data.result);};});
  void startup.catch(()=>{});
@@ -24,7 +26,9 @@ export function browserWalletClient(manager:DappConnectionManager|null,check:()=
  manager?.on?.('reconnecting',invalidate);
  manager?.on?.('disconnect',invalidate);
  const authorizationCheck=()=>{if(signing.signal.aborted)signing=new AbortController();const revision=authorizationRevision,networkRevision=getRevision();return ()=>{if(closed)throw Error('Wallet session closed');check();if(revision!==authorizationRevision || networkRevision!==getRevision())throw Error('Wallet authorization changed; review and retry from the journal');};};
- const keys=()=>{check();const identity=JSON.stringify(getManager().getSessionPaths())+scanLimit;if(derived&&identity===derivationIdentity)return derived;const result:WalletKey[]=[];for(const [path,child] of [['receive',0],['change',1],['defi',7]] as const){if(!getManager().hasPath(child))continue;for(let index=0;index<scanLimit;index++){const key=getManager().getPubkey(child,BigInt(index));if(!key)throw Error('Wallet public derivation failed');result.push({path,index,publicKey:binToHex(key)});}}derived=result;derivationIdentity=identity;return result;};
+ const keys=(limit=scanLimit)=>{check();const paths=getManager().getSessionPaths(),identity=JSON.stringify(paths);if(identity!==derivationIdentity){derived=[];derivationIdentity=identity;}const result:WalletKey[]=[];let count=0;
+ for(let index=0;index<limit;index++)for(const [path,child] of walletChains){if(!getManager().hasPath(child))continue;let key=derived?.find(k=>k.path===path&&k.index===index);if(!key){key=checkedWalletKey(paths,path,index,(c,i)=>getManager().getPubkey(c,i));(derived??=[]).push(key);count++;}result.push(key);}
+ window.dispatchEvent(new CustomEvent('arena-wallet-derivation',{detail:{derived:count,total:derived?.length??0,first:result.find(k=>k.path==='receive'&&k.index===0),paths:paths.map(p=>p.name)}}));return result;};
  function rememberGenesis(op:WalletOperation){if(op.kind==='create'&&op.genesis&&op.pregenesis)saveLocalVault({...op.parameters,genesis:op.genesis},op.pregenesis);}
  async function finish(op:WalletOperation) {
   rememberGenesis(op);
@@ -59,7 +63,7 @@ export function browserWalletClient(manager:DappConnectionManager|null,check:()=
    }finally{v2Approval=false;}
   },async v3(intent){
    const check=authorizationCheck();
-   if(intent.operation==='expandScan'){check();scanLimit=200;return 'Wallet discovery expanded to 200 addresses per path. Retry Create Vault.';}
+   if(intent.operation==='expandScan'){check();v3ScanLimit=v3ScanLimit<40?40:200;return `Wallet discovery expanded to ${v3ScanLimit} addresses per path. Retry Create Vault. Only needed addresses will be queried.`;}
    if(['list','sync'].includes(String(intent.operation)))return v3Call(intent,[]);
    if(v3Approval)throw Error('A v3 wallet operation is awaiting approval; finish it before continuing');
    if(intent.operation==='inspect')return (await v3Call(intent,[]));
@@ -69,7 +73,22 @@ export function browserWalletClient(manager:DappConnectionManager|null,check:()=
     check();const session=JSON.stringify(getManager().getSessionPaths());
     if(typeof getManager().signTransaction!=='function')throw Error('Wallet does not support transaction signing');
     window.dispatchEvent(new CustomEvent('arena-wallet-progress',{detail:'Preparing vault…'}));
-    const result=(await v3Call(intent,intent.operation==='resume'?[]:keys()));
+    let publicKeys:WalletKey[]=[];
+    if(intent.operation!=='resume'){
+     publicKeys=keys(v3ScanLimit);
+     // Existing public journals point to actual previously funded children. Query these
+     // before expanding unrelated addresses; bind each hint to this exact live owner.
+     let hinted=0;const owner=publicKeys.find(k=>k.path==='receive'&&k.index===0),journal=await v3Call({operation:'list'},[]) as import('../../src/v3/wallet').Operation[];
+     for(const op of journal){if(op.owner?.publicKey!==owner?.publicKey||!op.plan)continue;
+      for(const [input,path,index] of op.plan.inputPaths){if(!Number.isSafeInteger(index)||index<0||index>=200)continue;const pub=op.plan.signers[input];if(!pub)continue;
+       let current=derived?.find(k=>k.path===path&&k.index===index);if(!current){current=checkedWalletKey(getManager().getSessionPaths(),path,index,(c,i)=>getManager().getPubkey(c,i));(derived??=[]).push(current);hinted++;}if(current.publicKey!==pub)continue;
+       const existing=publicKeys.find(k=>k.path===path&&k.index===index);if(existing)existing.fundingHint=true;else publicKeys.push({...current,fundingHint:true});
+      }
+     }
+     window.dispatchEvent(new CustomEvent('arena-wallet-derivation',{detail:{derived:hinted,total:derived?.length??0,first:owner,paths:getManager().getSessionPaths().map(p=>p.name)}}));
+     check();if(JSON.stringify(getManager().getSessionPaths())!==session)throw Error('Wallet changed during funding discovery');
+    }
+    const result=(await v3Call(intent,publicKeys));
     if(!result?.plan||result.stage!=='review')return result;
     const authorization=await v3Call({operation:'authorize',id:result.id},[]);
     if(authorization.plan.request.broadcast!==false)throw Error('V3 wallet broadcasting must remain disabled');
@@ -78,12 +97,12 @@ export function browserWalletClient(manager:DappConnectionManager|null,check:()=
     if(JSON.stringify(getManager().getSessionPaths())!==session)throw Error('Wallet changed before v3 approval');
     window.dispatchEvent(new CustomEvent('arena-wallet-progress',{detail:'Requesting Cashonize approval… '+authorization.plan.label}));
     try{
-    const signed=await getManager().signTransaction({transaction:wizardWireTransaction(authorization.plan.request),inputPaths:authorization.plan.inputPaths},{signal:signing.signal});
+    const signed=await signWithRefusalEvidence(getManager(),{transaction:wizardWireTransaction(authorization.plan.request),inputPaths:authorization.plan.inputPaths},{signal:signing.signal});
     check();if(JSON.stringify(getManager().getSessionPaths())!==session)throw Error('Wallet changed during v3 approval');
-    if(signed.error||!signed.signedTransaction)throw Error('V3 signing refused; operation remains recoverable');
+    if(!signed.signedTransaction)throw Error('V3 signing status unknown; inputs remain reserved');
     window.dispatchEvent(new CustomEvent('arena-wallet-progress',{detail:'Verifying BCH inputs… Checking unconfirmed ancestry…'}));
     return (await v3Call({operation:'submit',id:result.id,raw:signed.signedTransaction},[]));
-    }catch(error){await v3Call({operation:'signingFailed',id:result.id,error:String(error)},[]).catch(()=>{});throw error;}
+    }catch(error){await v3Call({operation:'signingFailed',id:result.id,error:String(error),rejected:error instanceof ExplicitWalletRefusal},[]).catch(()=>{});throw error;}
    }finally{v3Approval=false;}
   },publicKey(){check();const key=getManager().getPubkey(0,0n);if(!key)throw Error('Wallet receive key unavailable');return binToHex(key);},async inventory(limit=40){if(![40,200].includes(limit))throw Error("Unsupported scan bound");scanLimit=limit;await startup;return rpc('scan',keys());},async operations(){await startup;const list=await rpc('list') as WalletOperation[];list.forEach(rememberGenesis);return list;},async inspect(id){await startup;const op=await rpc('get',id) as WalletOperation;if(op.step==='complete')await finish(op);return op;},async importVault(config){await startup;const result=await rpc('importVault',config,true);saveLocalVault(result.config,result.category);return result;},async execute(intent){
   const check=authorizationCheck();
