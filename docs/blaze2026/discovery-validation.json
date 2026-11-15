@@ -1,0 +1,17 @@
+{
+  "testedSourceCommit": "031902dc0da7b12b6ec1723493314d9c4f3408b7",
+  "workflow": "https://github.com/staking-arena-blaze2026/bch-staking-blaze2026/actions/runs/43725079776",
+  "result": "success",
+  "isolatedBchnVersion": "29.2.0",
+  "isolatedBchnSuitesPassed": 4,
+  "providerAndDiscoveryUnitTestsPassed": 19,
+  "frontendTestsPassed": 131,
+  "browserScenariosPassed": 5,
+  "productionBuild": "passed",
+  "browserChain": "synthetic loopback Electrum with compiled covenant VM validation",
+  "multiUserFinancialTest": "isolated real BCHN, separate Alice/Bob signing identities and stores",
+  "browserProfiles": "fresh independent profiles; no connected wallet",
+  "physicalCashonizeApproval": false,
+  "newLiveChipnetAnnouncementVerified": false,
+  "localResourceNote": "A concurrent local Atomic run exceeded 15 minutes; the full hosted isolated run passed. That local timeout is not counted as a pass."
+}

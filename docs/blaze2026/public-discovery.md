@@ -49,3 +49,23 @@ Recovery does not require a transaction: use retained configuration/journal hint
 Provider policy and discovery pagination/malformed-data tests are synthetic unit tests. Browser WSS fixtures use real compiled covenant VM checks and synthetic linked headers: they are not live chipnet evidence. Isolated BCHN 29.2 tests use temporary datadirs, separate RPC ports and distinct Alice/Bob keys; the original running node is not used. Browser profiles are independent and browsing requires no wallet. Physical Cashonize approval remains outside automated coverage.
 
 Live evidence is limited to the timestamped public provider diagnostic replay and the production checks recorded separately. The observed genuine provider branch conflict prevents a safe live signing demonstration. A production marker history with no announcements proves endpoint access, not that a new live vault was created. Public discovery must not be described as live end-to-end verified until an actual announced chipnet vault is independently observed in a fresh profile.
+
+## Recorded regression results
+
+The [hosted verification run](https://github.com/staking-arena-blaze2026/bch-staking-blaze2026/actions/runs/43725079776) passed all four isolated BCHN suites, 19 provider/discovery tests, 131 frontend tests, five browser scenarios and the production build. See [summary](discovery-validation.json), [multi-user BCHN evidence](public-discovery-regtest-results.json), and the refreshed atomic/chained/zero-conf result files. BCHN's official 29.2.0 release binary was checked against its pinned SHA256. A simultaneous local Atomic run exceeded its 15-minute wall-clock limit under memory pressure; it is not counted as passing.
+
+| Requested coverage | Evidence and boundary |
+| --- | --- |
+| Three agreeing providers; ordinary lag; first-two discrepancy with third-source evidence | Provider policy unit tests; each candidate performs its supplied independent read |
+| Real forks, unresolved disagreement and outage after a proved fork | Unit conflict/extension fixtures and durable conflict latch; live diagnostic has a real chipnet branch divergence |
+| Mempool propagation, conflicting ancestry, reorg, confirmation and eviction | Policy tests plus isolated BCHN atomic/chained/zero-conf suites |
+| Known vault remains visible; reload and wallet-independent viewing | V3Arena tests and real Chromium worker/WSS tests |
+| Configuration survives deployment | Stable storage keys; production before/after migration check uses a deliberately seeded public hint, no wallet |
+| Alice creates V3/V4; Bob independently discovers and offers | Real isolated BCHN with separate signing keys and independent journals, without sharing Alice's config/store |
+| Fresh browser profiles discover both versions | Separate Chromium contexts querying the shared loopback Electrum marker index; no seeded local configurations |
+| Malicious entries and duplicate records | Binary parser/catalog tests; wrong immutable parameters rejected by real BCHN-backed replay; canonical txid deduplication |
+| Discovery offline and retained snapshots | Unit and browser failure/reload tests, with current financial actions disabled |
+| Large catalog | 5,000 synthetic announcements; only one bounded page's transactions fetched; 20 rendered/replayed listings per page |
+| Signed journal durability and duplicate-transaction protection | Atomic/chained/zero-conf BCHN recovery suites, including refusal, lost acknowledgement, competing state, eviction, identical-byte retries and reorg |
+
+A browser profile test does not establish a physical Cashonize signing flow. The distinct-identity financial test runs through the real transaction engine and BCHN in a Node harness, separately from browser browsing tests. Live new-vault cross-user discovery remains unverified while the observed chain conflict blocks safe chipnet signing. The index must not be called complete historical discovery or live end-to-end wallet verified.
