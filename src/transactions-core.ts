@@ -9,7 +9,7 @@ import {sourceOutput,validateKeeperTransaction,type KeeperClock} from './keeper-
 import {validateVaultParameters,vaultFunding,validateOfferTerms,type OfferTerms} from './wallet-terms.js';
 export type WalletPath=[number,'receive'|'change'|'defi',number];
 export interface WalletKey {publicKey:string;path:'receive'|'change'|'defi';index:number}
-export interface WalletCoin extends WalletKey {utxo:SpendableUtxo}
+export interface WalletCoin extends WalletKey {utxo:SpendableUtxo;unconfirmed?:boolean}
 export interface WalletPlan {label:string;request:ReturnType<TransactionBuilder['generateWcTransactionObject']>;inputPaths:WalletPath[]}
 export interface BrowserPlan extends WalletPlan {kind:'create'|'prepare-offer'|'offer';signers:Record<number,string>;fee:string}
 export function walletAddress(key:Uint8Array) {

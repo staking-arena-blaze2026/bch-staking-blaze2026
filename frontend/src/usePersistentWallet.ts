@@ -5,6 +5,15 @@ import {DappConnectionManager, loadSession, type SessionStorage} from '@wizardco
 
 export const WALLET_SESSION_KEY = 'staking-arena-wizardconnect-v1';
 const INVALID_SESSION_KEY = `${WALLET_SESSION_KEY}-invalid`;
+/** A later handshake may add change/DeFi. Replacing an xpub the session already accepted is a different wallet. */
+export function sameWalletPaths(previousJson: string, next: {name?: string; xpub?: string}[]) {
+  if (!previousJson) return true;
+  let previous: {name?: string; xpub?: string}[];
+  try { previous = JSON.parse(previousJson); } catch { return false; }
+  if (!Array.isArray(previous)) return false;
+  const nextByName = new Map(next.filter(path => typeof path?.name === 'string').map(path => [path.name, path.xpub]));
+  return previous.every(path => typeof path?.name === 'string' && nextByName.get(path.name) === path.xpub);
+}
 export const RESTORE_WINDOW_MS = 30_000;
 export type ConnectionState = 'idle'|'connecting'|'restoring'|'connected'|'reconnecting'|'offline'|'invalid';
 export const walletDiagnostic = (transition: string) => console.info(`[Arena wallet] ${transition}`);
@@ -32,7 +41,7 @@ class WalletOwner {
     setItem: (key,value) => {
       if (key === WALLET_SESSION_KEY && this.expectedPaths) {
         const next = JSON.parse(value);
-        if (next.paths?.length && JSON.stringify(next.paths) !== this.expectedPaths) return;
+        if (next.paths?.length && !sameWalletPaths(this.expectedPaths, next.paths)) return;
       }
       this.memory.set(key,value); try { localStorage.setItem(key,value); } catch { this.storageUnavailable(); } },
     removeItem: key => { this.memory.delete(key); try { localStorage.removeItem(key); } catch { this.storageUnavailable(); } },
@@ -103,8 +112,8 @@ class WalletOwner {
     walletDiagnostic('Wallet manager created');
     manager.on('walletready', (_message: WalletReadyMessage) => {
       if (this.manager !== manager) return;
-      const identity = JSON.stringify(manager.getSessionPaths());
-      if (this.expectedPaths && identity !== this.expectedPaths) {
+      const paths = manager.getSessionPaths(), identity = JSON.stringify(paths);
+      if (this.expectedPaths && !sameWalletPaths(this.expectedPaths, paths)) {
         walletDiagnostic('Wallet identity changed; connection blocked');
         this.state = 'invalid'; this.storage.setItem(INVALID_SESSION_KEY,'1');
         // SDK persists after this event: defer teardown until that handler finishes.

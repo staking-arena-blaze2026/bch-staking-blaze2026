@@ -7,7 +7,7 @@ function setup(reject=false){
  class WorkerMock {onmessage:((event:any)=>void)|null=null;terminate=vi.fn();constructor(){queueMicrotask(()=>this.onmessage?.({data:{type:'ready'}}));}postMessage(m:any){queueMicrotask(()=>this.onmessage?.({data:{id:m.id,result:m.method==='list'?[]:undefined}}));}}
  vi.stubGlobal('Worker',WorkerMock);
  const publicKey=Uint8Array.of(2,...new Uint8Array(32).fill(1)),owner={publicKey:Array.from(publicKey,x=>x.toString(16).padStart(2,'0')).join('')},request={broadcast:false,userPrompt:'Caller fee approval',transaction:{version:2,inputs:[],outputs:[],locktime:0},sourceOutputs:[]},plan={label:'Claim; caller pays 10000 sats',request,inputPaths:[[3,'receive',0]]};
- const manager=Object.assign(new EventEmitter(),{getSessionPaths:()=>[0],hasPath:(p:number)=>p===0,getPubkey:()=>publicKey,signTransaction:vi.fn(async()=>reject?{error:'User rejected'}:{signedTransaction:'signed'})});
+ const manager=Object.assign(new EventEmitter(),{getSessionPaths:()=>[0,1],hasPath:(p:number)=>p===0||p===1,getPubkey:()=>publicKey,signTransaction:vi.fn(async()=>reject?{error:'User rejected'}:{signedTransaction:'signed'})});
  vi.mocked(v3Call).mockImplementation(async intent=>{if(intent.operation==='claim'||intent.operation==='resume')return {id:'claim',stage:'review',plan};if(intent.operation==='authorize')return {owner,verifiedAt:Date.now(),plan};if(intent.operation==='submit')return {id:'claim',stage:'pending'};return [];});
  return {wallet:browserWalletClient(manager as any,()=>{}),manager,request};
 }
@@ -23,6 +23,19 @@ it('reconciling a signed uncertain claim never requests another wallet signature
 
 it('rejects worker authorization that enables wallet broadcasting before Cashonize is called',async()=>{
  const {wallet,manager}=setup();const previous=vi.mocked(v3Call).getMockImplementation()!;vi.mocked(v3Call).mockImplementation(async (...args)=>{const result=await previous(...args);if(args[0].operation==='authorize')result.plan.request.broadcast=true;return result;});try{await expect(wallet.v3!({operation:'claim',config:{}})).rejects.toThrow(/broadcasting must remain disabled/);expect(manager.signTransaction).not.toHaveBeenCalled();}finally{wallet.close?.();}
+});
+
+it('create vault scans the change chain, and a receive-only session cannot hide those UTXOs',async()=>{
+ const {wallet}=setup();
+ try{
+  await wallet.v3!({operation:'create',parameters:{}});
+  const passed=vi.mocked(v3Call).mock.calls.find(([intent])=>intent.operation==='create')?.[1] as {path:string;index:number}[];
+  expect(passed.filter(key=>key.path==='change').map(key=>key.index)).toEqual([...Array(40).keys()]);
+ }finally{wallet.close?.();}
+ const receiveOnly=Object.assign(new EventEmitter(),{getSessionPaths:()=>[0],hasPath:(p:number)=>p===0,getPubkey:()=>Uint8Array.of(2,...new Uint8Array(32).fill(1)),signTransaction:vi.fn()});
+ const hidden=browserWalletClient(receiveOnly as any,()=>{});
+ await expect(hidden.v3!({operation:'create',parameters:{}})).rejects.toThrow(/change addresses/);
+ hidden.close?.();
 });
 
 it('direct creation requests one Cashonize approval for every selected wallet input',async()=>{
