@@ -1,7 +1,8 @@
 import {checkFundingInputCount,FundingSelectionError} from './wallet-funding-policy.js';
 import {ancestryVerifier} from './zero-conf.js';
 import {Network,type SpendableUtxo} from 'cashscript';
-import {ElectrumCore,type Header} from './electrum-core.js';
+import {ChainExtension,ElectrumCore,BLOCKCHAIN_REFRESH,type Header} from './electrum-core.js';
+export {BLOCKCHAIN_REFRESH,ChainExtension};
 import {json,utxo} from './arena-core.js';
 import {walletScript,type WalletKey,type WalletCoin} from './transactions-core.js';
 export function walletPeers(p:ElectrumCore){if(p.network!==Network.CHIPNET&&p.network!==Network.REGTEST)throw Error('Wallet transactions require chipnet or local regtest');const peers=p.endpoints.filter((v,i,a)=>a.findIndex(x=>new URL(x).hostname===new URL(v).hostname)===i);if(peers.length<2)throw Error('Two different configured WSS hosts are required');return peers.slice(0,2);}
@@ -19,17 +20,52 @@ export async function verifyCoins(p:ElectrumCore,coins:SpendableUtxo[],peer:stri
   if(!scriptCoins.has(coin.lockingBytecode))scriptCoins.set(coin.lockingBytecode,p.getUtxosForLockingBytecode(coin.lockingBytecode));
   const actual=(await scriptCoins.get(coin.lockingBytecode)!).find(u=>u.txid===coin.txid&&u.vout===coin.vout);
   if(!actual||coinIdentity(actual)!==coinIdentity(coin))throw Error('Input spent, pending, or changed; rebuild and request fresh approval');
-  let status=transactions.get(coin.txid);if(!status){status=allowUnconfirmed?await ancestry(coin.txid):await p.transactionStatus(coin.txid);transactions.set(coin.txid,status);}if(!allowUnconfirmed&&status.confirmations<=0)throw Error('Only confirmed wallet/covenant inputs may be spent');
+  let status=transactions.get(coin.txid);if(!status){try{status=allowUnconfirmed?await ancestry(coin.txid):await p.transactionStatus(coin.txid);}catch(error){if(error instanceof Error&&error.message==='Tip changed during transaction lookup'&&await p.classifyTipChange(tip)==='extension')throw new ChainExtension();throw error;}transactions.set(coin.txid,status);}if(!allowUnconfirmed&&status.confirmations<=0)throw Error('Only confirmed wallet/covenant inputs may be spent');
   if(allowUnconfirmed&&status.vin?.length===1&&status.vin[0].vout===0xffffffff&&/^0+$/.test(status.vin[0].txid)&&status.confirmations<100)throw Error('Immature coinbase input');
   if(coinIdentity(utxo(status,coin.vout))!==coinIdentity(coin))throw Error('Source-output proof mismatch');
  }
- if((await p.tip()).hash!==tip.hash)throw Error('Tip changed during input verification');
+ const moved=await p.classifyTipChange(tip);
+ if(moved==='extension')throw new ChainExtension();
+ if(moved==='reorg')throw Error('Tip changed during input verification');
  return {height:tip.height,hash:tip.hash,mtp,peer,...(allowUnconfirmed?{ancestry:[...ancestry.evidence].map(([id,tx])=>[id,tx.hex,tx.height??0,tx.confirmations>0]).sort((a,b)=>String(a[0]).localeCompare(String(b[0])))}:{})};
 }
-export async function verifyCoinsAcrossPeers(p:ElectrumCore,coins:SpendableUtxo[],allowUnconfirmed=false) {
- let first:Awaited<ReturnType<typeof verifyCoins>>|undefined;
- for(const peer of walletPeers(p)){const value=await p.session(()=>verifyCoins(p,coins,peer,allowUnconfirmed),peer);if(first&&(first.hash!==value.hash||first.mtp!==value.mtp||json(first.ancestry)!==json(value.ancestry)))throw Error('Electrum tip/MTP disagreement');first=value;}
- return first!;
+async function laterExtends(p:ElectrumCore,earlier:{height:number;hash:string},later:{height:number;hash:string;peer:string}) {
+ if(later.height<=earlier.height||later.hash===earlier.hash)return false;
+ return p.session(async()=>{
+  const at=await p.header(earlier.height);
+  if(at.hash!==earlier.hash)return false;
+  const tip=await p.header(later.height);
+  if(tip.hash!==later.hash)return false;
+  await p.verifyHeaderChain(earlier.height,tip,new Map([[earlier.height,earlier.hash]]));
+  return true;
+ },later.peer);
+}
+/** Both providers must finish on one fresh tip. A normal extension restarts the whole check; a stale snapshot is never returned. */
+export async function verifyCoinsAcrossPeers(p:ElectrumCore,coins:SpendableUtxo[],allowUnconfirmed=false,progress?:(message:string)=>void) {
+ let last:unknown;
+ for(let attempt=1;attempt<=3;attempt++){
+  try{
+   let first:Awaited<ReturnType<typeof verifyCoins>>|undefined;
+   for(const peer of walletPeers(p)){
+    const value=await p.session(()=>verifyCoins(p,coins,peer,allowUnconfirmed),peer);
+    if(first&&(first.hash!==value.hash||first.mtp!==value.mtp||json(first.ancestry)!==json(value.ancestry))){
+     const [earlier,later]=first.height<=value.height?[first,value]:[value,first];
+     if(await laterExtends(p,earlier,later))throw new ChainExtension();
+     throw Error('Electrum tip/MTP disagreement');
+    }
+    first=value;
+   }
+   const moved=await p.session(()=>p.classifyTipChange(first!),first!.peer);
+   if(moved==='extension')throw new ChainExtension();
+   if(moved==='reorg')throw Error('Tip changed during input verification');
+   return first!;
+  }catch(error){
+   last=error;
+   if(!(error instanceof ChainExtension)||attempt===3)throw error;
+   progress?.(BLOCKCHAIN_REFRESH);
+  }
+ }
+ throw last;
 }
 export interface WalletInventory {coins:WalletCoin[];bch:string;tokens:Record<string,string>;addresses:number;gap:number;limit:number;bounded:true}
 /** A changed tip is never accepted as a snapshot. Prove extension, then restart all reads. */

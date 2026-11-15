@@ -7,6 +7,11 @@ export type ConnectionFactory = (endpoint: string, timeoutMs: number) => Electru
 export const scriptHash = (script: string) => sha256Bytes(Buffer.from(script, 'hex')).reverse().toString('hex');
 export const headerHash = (hex: string) => hash256(Buffer.from(hex, 'hex')).reverse().toString('hex');
 export interface Header { height: number; hex: string; hash: string; parent: string; time: number; merkle: string }
+/** Shown while a normal block arrival is re-read. Not a successful verification by itself. */
+export const BLOCKCHAIN_REFRESH = 'Blockchain updated — refreshing verification…';
+export class ChainExtension extends Error {
+  constructor() { super(BLOCKCHAIN_REFRESH); this.name = 'ChainExtension'; }
+}
 export interface HistoryEntry { tx_hash: string; height: number }
 export interface ElectrumOptions { network?: 'chipnet' | 'regtest' | 'mainnet'; endpoints?: string[]; timeoutMs?: number; maxTipAgeSeconds?: number; maxHistoryEntries?: number; maxTransactions?: number; maxRawBytes?: number; allowBroadcast?: boolean }
 export type ElectrumRequest = (method: string, ...params: (string | number | boolean)[]) => Promise<any>;
@@ -89,6 +94,20 @@ export class ElectrumCore implements NetworkProvider {
     if (header.hex !== result.hex || Date.now()/1000 - header.time > this.maxTipAgeSeconds || header.time > Date.now()/1000 + 7200) throw Error('Stale or inconsistent Electrum tip');
     return header;
   }
+  /** A taller chain that still contains the previous tip is a normal extension. A replaced tip is not. */
+  async classifyTipChange(previous: { height: number; hash: string }): Promise<'same' | 'extension' | 'reorg'> {
+    const current = await this.tip();
+    if (current.hash === previous.hash && current.height === previous.height) return 'same';
+    if (current.height > previous.height) {
+      try {
+        const at = await this.header(previous.height);
+        if (at.hash !== previous.hash) return 'reorg';
+        await this.verifyHeaderChain(previous.height, current, new Map([[previous.height, previous.hash]]));
+        return 'extension';
+      } catch { return 'reorg'; }
+    }
+    return 'reorg';
+  }
   /** Link every relevant proof header to the selected tip, including gaps without vault activity. */
   async verifyHeaderChain(firstHeight: number, tip: Header, expected: Map<number, string>) {
     let previous: string | undefined;
@@ -155,7 +174,8 @@ export class ElectrumCore implements NetworkProvider {
     if (entry.height > tip.height) throw Error('Transaction confirmation ahead of tip');
     const confirmed = await this.transaction(txid, entry.height);
     if (entry.height > 0) await this.verifyHeaderChain(entry.height, tip, new Map([[entry.height, confirmed.blockhash]]));
-    if ((await this.tip()).hash !== tip.hash) throw Error('Tip changed during transaction lookup');
+    const moved = await this.classifyTipChange(tip);
+    if (moved !== 'same') throw Error('Tip changed during transaction lookup');
     return { ...confirmed, confirmations: entry.height > 0 ? tip.height - entry.height + 1 : 0 };
   }
   async getBlockHeight() { return (await this.tip()).height; }
