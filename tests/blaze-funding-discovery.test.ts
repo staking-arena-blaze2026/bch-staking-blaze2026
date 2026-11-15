@@ -6,7 +6,7 @@ import {walletScript,type WalletKey} from '../src/transactions-core.js';
 import type {ElectrumCore} from '../src/electrum-core.js';
 const keys:WalletKey[]=Array.from({length:40},(_,index)=>({path:'receive',index,publicKey:Buffer.from(new SignatureTemplate(new Uint8Array(32).fill(index+1)).publicKey).toString('hex')}));
 function fixture(){let endpoint='',calls=0,disagree=false;const funded=new Set([0]);
- const provider={network:Network.REGTEST,endpoints:['mock://one','mock://two'],async session<T>(work:()=>Promise<T>,peer:string){endpoint=peer;return work();},async tip(){return {hash:'a',height:1};},async getUtxosForLockingBytecode(script:string){calls++;const index=keys.findIndex(k=>walletScript(k.publicKey)===script);return funded.has(index)&&!(disagree&&endpoint.includes('two'))?[{txid:String(index).padStart(64,'0'),vout:0,satoshis:100000n,lockingBytecode:script}]:[];}} as unknown as ElectrumCore;
+ const provider={network:Network.REGTEST,endpoints:['mock://one','mock://two'],async session<T>(work:()=>Promise<T>,peer:string){endpoint=peer;return work();},async tip(){return {hash:'a',height:1};},async classifyTipChange(){return 'same' as const;},async getUtxosForLockingBytecode(script:string){calls++;const index=keys.findIndex(k=>walletScript(k.publicKey)===script);return funded.has(index)&&!(disagree&&endpoint.includes('two'))?[{txid:String(index).padStart(64,'0'),vout:0,satoshis:100000n,lockingBytecode:script}]:[];}} as unknown as ElectrumCore;
  return {provider,funded,calls:()=>calls,disagree:()=>{disagree=true;}};
 }
 test('adaptive discovery stops early and cache remains a hint; empty addresses are revisited',async()=>{

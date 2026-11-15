@@ -4,7 +4,9 @@ This is post-baseline BCH Blaze work. Existing contracts and compiled artifacts 
 
 ## Diagnosis (2026-11-15)
 
-`walletPeers()` previously selected only the first two hosts. Financial checks compared their tip hashes and MTP literally; a normal extension, unavailable peer, mempool propagation difference and genuine branch conflict could all look like persistent disagreement. The third configured host was unused. The indexer erased its snapshot on failure; list refresh replaced rather than retained display snapshots. The shared catalog was empty and creation never published a globally searchable discovery record.
+The earlier native-fork commit `8eed4763dfb5741df1daeb0e098f85ad07d063ae` already added proven-extension classification and bounded retries for the first two providers. That work is preserved as a merge parent and integrated here; it is not claimed as a new contribution. Its BCHN extension/reorganization regressions remain in the verification matrix.
+
+`walletPeers()` previously selected only the first two hosts. Financial checks still required the first two hosts to converge; a normal extension, unavailable peer, mempool propagation difference and genuine branch conflict could all look like persistent disagreement. The third configured host was unused. The indexer erased its snapshot on failure; list refresh replaced rather than retained display snapshots. The shared catalog was empty and creation never published a globally searchable discovery record.
 
 The read-only [provider observations](provider-diagnostics.json) concern the supplied public V3 vault, not a wallet. Each host independently replayed the same genesis and current state transaction `667037e0a4fef18cc36fb5e5acb3ce522e0d6886be52a46440940464f40e0869`, including raw outputs, merkle/header linkage and no unconfirmed ancestry. However, Optnlabs and the other two hosts return **different block hashes at height 332453**. This is an actual chain divergence, not a demonstrated benign lag or stale wallet mempool. It must block signing while unresolved. A matching majority does not resolve that conflict. The diagnostic script can be rerun without wallet access or broadcasting.
 

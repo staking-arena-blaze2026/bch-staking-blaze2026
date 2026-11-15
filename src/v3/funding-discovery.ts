@@ -1,5 +1,5 @@
 import {verifiedProviders} from '../verified-providers.js';
-import type {ElectrumCore} from '../electrum-core.js';
+import {ChainExtension,type ElectrumCore} from '../electrum-core.js';
 import {coinIdentity,walletPeers} from '../electrum-wallet.js';
 import {walletScript,type WalletKey,type WalletCoin} from '../transactions-core.js';
 
@@ -18,10 +18,10 @@ export async function discoverFunding(p:ElectrumCore,keys:WalletKey[],enough:(co
     const tip=await p.tip();
     const settled=await Promise.allSettled(batch.map(async key=>(await p.getUtxosForLockingBytecode(walletScript(key.publicKey))).map(utxo=>({...key,utxo}))));
     const rows:WalletCoin[]=[];for(const result of settled){if(result.status==='rejected')throw result.reason;rows.push(...result.value);}
-    if((await p.tip()).hash!==tip.hash)throw Error('Tip changed during funding discovery; retry');
+    const moved=await p.classifyTipChange(tip);if(moved==='extension')throw new ChainExtension();if(moved==='reorg')throw Error('Reorganization during funding discovery');
     const value=rows.sort((a,b)=>coinIdentity(a.utxo).localeCompare(coinIdentity(b.utxo)));
     return {value,tip,identity:tip.hash+value.map(c=>coinIdentity(c.utxo)+':'+(c.utxo as {height?:number}).height).join('\n')};
-  });
+  },{onProgress:progress});
   for(const key of batch)cache.set(key.publicKey,first!.filter(c=>c.publicKey===key.publicKey));
   coins.push(...first!);addresses+=batch.length;queried.push(...batch);
   progress?.(`Finding wallet funds… ${addresses}/${keys.length} addresses checked on two providers`);
