@@ -161,3 +161,5 @@ Saved-pairing acceptance follow-up: the wallet owner confirmed few-second restor
 Marketplace total rewards: the public preview and marketplace now show “Total max reward”, calculated exactly as reward per period × number of releases, and omit the visible provisional label from that amount. This is post-baseline presentation work; transaction rules and remaining-reserve calculations are unchanged.
 
 Public About page and repository introduction: the supplied Stake Arena document is preserved verbatim in root `ABOUT.md`, rendered on the wallet-independent `#/about` route and used as the primary root README content. The previous technical README is preserved byte-for-byte in `docs/README-legacy-development.md`. Navigation and document styling are post-baseline presentation work; vault, wallet and transaction implementations are unchanged.
+
+Marketplace presentation cleanup: removed the manual vault configuration import/share panel from the V3 offer interface and the “MAINNET — REAL BCH” header/footer text. This is post-baseline presentation work.
