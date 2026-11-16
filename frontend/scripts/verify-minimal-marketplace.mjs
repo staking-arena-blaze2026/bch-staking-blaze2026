@@ -35,7 +35,8 @@ try{
  for(const width of [1360,390]){await page.setViewportSize({width,height:900});assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));await page.screenshot({path:`${output}/marketplace-${width}.png`,fullPage:true});}
  // Click the Offers cell to check the full-row hit area, then use the logo to return.
  const href=await page.locator('.marketplace-table tbody a').first().getAttribute('href');
- await page.locator('.marketplace-table tbody tr td:last-child').first().click();await page.waitForURL(u=>u.hash===href);report.detailRoute=new URL(page.url()).hash;
+ const hit=await page.locator('.marketplace-table tbody tr td:last-child').first().boundingBox();assert(hit);
+ await page.mouse.click(hit.x+hit.width/2,hit.y+hit.height/2);await page.waitForURL(u=>u.hash===href);report.fullRowClick=true;report.detailRoute=new URL(page.url()).hash;
  await page.locator('.brand').click();await page.getByRole('heading',{name:'Known vaults',exact:true}).waitFor();
  const link=page.locator('.marketplace-table tbody a').first();await link.focus();await page.keyboard.press('Enter');await page.waitForURL(u=>u.hash===href);
  await page.getByRole('link',{name:'Create a Vault',exact:true}).click();await page.getByRole('heading',{name:'Create a v3 vault'}).waitFor();
