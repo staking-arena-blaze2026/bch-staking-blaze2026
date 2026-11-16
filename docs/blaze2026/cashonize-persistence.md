@@ -2,6 +2,8 @@
 
 This is post-baseline fork work. No staking contracts or transaction verification rules change.
 
+The finite retry behavior described below is historical and superseded by [automatic restoration repair](cashonize-auto-restoration.md).
+
 ## Diagnosis
 
 Inspected the installed `@wizardconnect/react` 0.2.3, dapp manager and core 0.2.5 source and public declarations. The existing `staking-arena-wizardconnect-v1` record already supports cross-visit pairing. The SDK `loadSession`, manager `attachRelay`, and `existingCredentials` shape preserve the transport identity and wallet public paths.

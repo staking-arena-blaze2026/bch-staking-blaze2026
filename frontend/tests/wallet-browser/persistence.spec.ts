@@ -48,7 +48,7 @@ test('real Chromium process restart with the same disk profile and simulated mac
   } finally {await context.close();await rm(profile,{recursive:true,force:true});}
 });
 
-test('offline startup is bounded; saved retry and later availability recover without QR',async({page})=>{
+test('offline startup keeps automatically retrying and later wallet availability recovers without Retry or QR',async({page})=>{
   await firstPair(page);
   await page.evaluate(()=>localStorage.removeItem('test-wallet-online'));
   await page.clock.install();
@@ -58,9 +58,10 @@ test('offline startup is bounded; saved retry and later availability recover wit
   await expect(page.getByRole('button',{name:'Retry saved connection'})).toBeVisible();
   await expect(page.getByRole('dialog')).toHaveCount(0);
   expect(await page.evaluate(key=>!!localStorage.getItem(key),key)).toBe(true);
-  await page.clock.fastForward(600_000);expect((await stats(page)).attempts).toBe(1);
-  await page.getByRole('button',{name:'Retry saved connection'}).click();
-  await page.evaluate(()=>(window as any).walletTransport.ready());await connected(page);
+  await page.clock.runFor(600_000);expect((await stats(page)).attempts).toBe(1);
+  expect((await stats(page)).handshakes).toBeGreaterThan(4);
+  await page.evaluate(()=>localStorage.setItem('test-wallet-online','yes'));
+  await page.clock.runFor(30_001);await connected(page);
   expect((await stats(page)).pairings).toBe(0);
   // Relay loss and a fresh live handshake use the same manager/transport.
   await page.evaluate(()=>(window as any).walletTransport.interrupt());
@@ -80,10 +81,11 @@ test('disconnect, revocation, cleared storage and a different profile require ex
   await page.evaluate(()=>localStorage.removeItem('test-wallet-online'));
   await page.evaluate(()=>(window as any).walletTransport.revoke());
   await page.clock.runFor(8_001);
-  await expect(page.getByText('Reconnecting to Cashonize…',{exact:true})).toBeVisible();
-  await page.clock.runFor(30_001);
-  await expect(page.getByRole('button',{name:'Retry saved connection'})).toBeVisible();
-  await expect(page.getByRole('button',{name:'Pair wallet again'})).toBeVisible();
+  await expect(page.getByRole('button',{name:'Pair Cashonize again'})).toBeVisible();
+  await page.clock.runFor(60_001);
+  await page.reload();
+  await expect(page.getByRole('button',{name:'Pair Cashonize again'})).toBeVisible();
+  expect((await stats(page)).attempts).toBe(0);
   await expect(page.getByRole('dialog')).toHaveCount(0);
   expect(await page.evaluate(key=>!!localStorage.getItem(key),key)).toBe(true);
   await page.evaluate(()=>localStorage.clear());await page.reload();

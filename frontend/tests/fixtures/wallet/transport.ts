@@ -6,7 +6,7 @@ import {deriveHdPrivateNodeFromSeed,deriveHdPublicNode,encodeHdPublicKey} from '
 const encoded=encodeHdPublicKey({node:deriveHdPublicNode(deriveHdPrivateNodeFromSeed(new Uint8Array(32).fill(88))),network:'testnet'});
 if(typeof encoded==='string')throw Error(encoded);
 const paths=[{name:'receive',xpub:encoded.hdPublicKey}];
-const stats={attempts:0,pairings:0,cleanups:0,signatures:0,restored:[] as string[]};
+const stats={attempts:0,pairings:0,cleanups:0,signatures:0,handshakes:0,restored:[] as string[]};
 let current: {ready:()=>void;interrupt:()=>void;revoke:()=>void}|undefined;
 Object.assign(window,{walletTransport:{stats,ready:()=>current?.ready(),interrupt:()=>current?.interrupt(),revoke:()=>current?.revoke()}});
 export function createWalletRelay(callback:RelayStatusCallback,options:any={}):DappRelayResult {
@@ -17,7 +17,7 @@ export function createWalletRelay(callback:RelayStatusCallback,options:any={}):D
   let closed=false;
   client.isConnected=()=>!closed;
   client.isKeyExchangeComplete=()=>true;
-  client.relay=async(message:any)=>{if(message.action===RelayMsgAction.SignTransactionRequest){stats.signatures++;throw Error('Browser persistence tests prohibit signing');}};
+  client.relay=async(message:any)=>{if(message.action===RelayMsgAction.DappReady){stats.handshakes++;if(saved && localStorage.getItem('test-wallet-online')==='yes')queueMicrotask(ready);}if(message.action===RelayMsgAction.SignTransactionRequest){stats.signatures++;throw Error('Browser persistence tests prohibit signing');}};
   const ready=()=>{
     if(closed)return;
     callback({client,status:RelayStatus.connected()});

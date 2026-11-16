@@ -10,7 +10,8 @@ const response=await fetch(base+'release.json?verification='+Date.now());
 assert.equal(response.status,200);
 const release=await response.json();
 assert.equal(release.sourceCommit,expected);
-assert.equal(release.mainnetEnabled,false);
+assert.equal(release.defaultNetwork,'mainnet');
+assert.equal(release.chipnetTransactionsEnabled,false);
 let assetsVerified=0;
 for(const asset of release.assets){
  const url=new URL(asset.path,base);assert.ok(url.href.startsWith(base));
@@ -39,7 +40,7 @@ try {
  await page.keyboard.press('Escape');
  await page.getByRole('button',{name:'Connect Wallet',exact:true}).waitFor();
  report.navigation=true;report.firstPairingDialog=true;
- const key='staking-arena-wizardconnect-v1';
+ const key='staking-arena-wizardconnect-v1-mainnet';
  // Synthetic transport-only record: exercises compiled restoration/offline UI.
  // It is not a real wallet session or a proof of real Cashonize reconnection.
  await page.evaluate(key=>localStorage.setItem(key,JSON.stringify({privateKey:'01'.repeat(32),secret:'a1'.repeat(8),walletPublicKey:'79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798'})),key);

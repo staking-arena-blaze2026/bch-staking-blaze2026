@@ -156,7 +156,7 @@ it('restores only once under StrictMode and never trusts cached wallet paths bef
   expect(screen.getByText('Connected to Cashonize')).toBeVisible();
 });
 
-it('bounds offline restoration, preserves pairing and journals, retries on availability without QR',async()=>{
+it('continues offline restoration, preserves pairing and journals, recovers on availability without QR',async()=>{
   vi.useFakeTimers();
   client.isConnected.mockReturnValue(false);
   localStorage.setItem(sessionKey,JSON.stringify({privateKey:'saved-key',secret:'saved-secret',walletPublicKey:'0102'}));
@@ -165,12 +165,12 @@ it('bounds offline restoration, preserves pairing and journals, retries on avail
   await act(async()=>{await vi.advanceTimersByTimeAsync(RESTORE_WINDOW_MS);});
   expect(screen.getByText(/Cashonize connection lost/)).toBeVisible();
   expect(screen.getByRole('button',{name:'Retry saved connection'})).toBeVisible();
-  expect(cleanup).toHaveBeenCalledOnce();
+  expect(cleanup).not.toHaveBeenCalled();
   expect(localStorage.getItem(sessionKey)).toContain('saved-key');
   await act(async()=>{await vi.advanceTimersByTimeAsync(600_000);});
   expect(initiateDappRelay).toHaveBeenCalledOnce();
   fireEvent(window,new Event('online'));
-  expect(initiateDappRelay).toHaveBeenCalledTimes(2);
+  expect(initiateDappRelay).toHaveBeenCalledOnce();
   expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
   await walletReady();
   expect(screen.getByText('Connected to Cashonize')).toBeVisible();
@@ -221,10 +221,12 @@ it('rejects changed wallet derivation identity and preserves the previously acce
 });
 
 it('retains pairing after an ambiguous Cashonize keepalive disconnect and recovers on the same manager',async()=>{
+ const invalidated=vi.spyOn((await import('../src/walletNetwork')).WalletNetworkSession.prototype,'invalidate');
  vi.useFakeTimers();render(<WalletConnect/>);
- fireEvent.click(screen.getByRole('button',{name:'Connect Wallet'}));await walletReady();
- await act(async()=>{client.emit('message',{action:RelayMsgAction.Disconnect,reason:'user_disconnect'});await vi.advanceTimersByTimeAsync(8_000);});
+ fireEvent.click(screen.getByRole('button',{name:'Connect Wallet'}));await walletReady();invalidated.mockClear();
+ await act(async()=>{client.emit('message',{action:RelayMsgAction.Disconnect,reason:'user_disconnect'});await vi.advanceTimersByTimeAsync(4_000);});
  expect(screen.getByText('Reconnecting to Cashonize…')).toBeVisible();
+ expect(invalidated).toHaveBeenCalled();
  expect(localStorage.getItem(sessionKey)).not.toBeNull();
  await walletReady();expect(screen.getByText('Connected to Cashonize')).toBeVisible();
  expect(initiateDappRelay).toHaveBeenCalledOnce();
@@ -245,4 +247,77 @@ it('does not resurrect session storage or keepalive when a handshake finishes af
  expect(localStorage.getItem(sessionKey)).toBeNull();
  expect(screen.getByRole('button',{name:'Connect Wallet'})).toBeVisible();
  expect(vi.getTimerCount()).toBe(0);
+});
+
+it('automatically retries a delayed wallet beyond 30s while visible, without Retry',async()=>{
+ vi.useFakeTimers();
+ localStorage.setItem(sessionKey,JSON.stringify({privateKey:'saved-key',secret:'saved-secret',walletPublicKey:'0102'}));
+ render(<StrictMode><WalletConnect/></StrictMode>);
+ const requests: number[]=[];
+ client.relay.mockImplementation(async message=>{
+  if(message.action!==RelayMsgAction.DappReady)return;
+  requests.push(Date.now());
+  if(requests.length===5)queueMicrotask(()=>client.emit('message',{
+   action:RelayMsgAction.WalletReady,wallet_name:'Cashonize',wallet_icon:'',dapp_discovered:true,
+   supported_protocols:[PROTOCOL_NAME],session:{[PROTOCOL_NAME]:{paths:[]}},
+  }));
+ });
+ await act(async()=>{await vi.advanceTimersByTimeAsync(60_000);});
+ expect(requests).toHaveLength(5); // 2s, 6s, 14s, 30s, 60s
+ expect(screen.getByText('Connected to Cashonize')).toBeVisible();
+ expect(initiateDappRelay).toHaveBeenCalledOnce();
+ expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+});
+
+it('connects once, closes the page, then restores automatically against the still-paired wallet',async()=>{
+ vi.useFakeTimers();
+ const first=render(<WalletConnect/>);
+ fireEvent.click(screen.getByRole('button',{name:'Connect Wallet'}));await walletReady();
+ first.unmount();await act(async()=>{});
+ client.removeAllListeners();events.removeAllListeners();
+ render(<StrictMode><WalletConnect/></StrictMode>);
+ client.relay.mockImplementation(async message=>{
+  if(message.action===RelayMsgAction.DappReady)queueMicrotask(()=>client.emit('message',{
+   action:RelayMsgAction.WalletReady,wallet_name:'Cashonize',wallet_icon:'',dapp_discovered:true,
+   supported_protocols:[PROTOCOL_NAME],session:{[PROTOCOL_NAME]:{paths:[]}},
+  }));
+ });
+ await act(async()=>{await vi.advanceTimersByTimeAsync(2_000);});
+ expect(screen.getByText('Connected to Cashonize')).toBeVisible();
+ expect(initiateDappRelay).toHaveBeenCalledTimes(2);
+ expect(vi.mocked(initiateDappRelay).mock.calls[1][1]?.existingCredentials?.walletPublicKey).toBe('0102');
+ expect(client.relay.mock.calls.every(([m])=>m.action!==RelayMsgAction.SignTransactionRequest)).toBe(true);
+});
+
+it('suspends wallet handshakes offline and recovers immediately on internet return',async()=>{
+ vi.useFakeTimers();
+ localStorage.setItem(sessionKey,JSON.stringify({privateKey:'saved-key',secret:'saved-secret',walletPublicKey:'0102'}));
+ const online=vi.spyOn(navigator,'onLine','get').mockReturnValue(false);
+ render(<WalletConnect/>);
+ await act(async()=>{await vi.advanceTimersByTimeAsync(90_000);});
+ expect(client.relay).not.toHaveBeenCalled();
+ online.mockReturnValue(true);fireEvent(window,new Event('online'));
+ expect(client.relay).toHaveBeenCalledWith(expect.objectContaining({action:RelayMsgAction.DappReady}));
+ await walletReady();
+ expect(screen.getByText('Connected to Cashonize')).toBeVisible();
+ fireEvent(window,new Event('offline'));
+ expect(screen.getByText('Reconnecting to Cashonize…')).toBeVisible();
+ await walletReady();expect(screen.getByText('Connected to Cashonize')).toBeVisible();
+});
+
+it('explicit disconnect and wallet revocation stop automatic restoration across reopening',async()=>{
+ vi.useFakeTimers();
+ const view=render(<WalletConnect/>);
+ fireEvent.click(screen.getByRole('button',{name:'Connect Wallet'}));await walletReady();
+ await act(async()=>{client.emit('message',{action:RelayMsgAction.Disconnect,reason:'user_disconnect'});await vi.advanceTimersByTimeAsync(8_000);});
+ expect(screen.getByRole('button',{name:'Pair Cashonize again'})).toBeVisible();
+ view.unmount();await act(async()=>{});
+ const again=render(<WalletConnect/>);
+ fireEvent(window,new Event('online'));await act(async()=>{await vi.advanceTimersByTimeAsync(300_000);});
+ expect(initiateDappRelay).toHaveBeenCalledOnce();
+ fireEvent.click(screen.getByRole('button',{name:'Disconnect'}));
+ again.unmount();await act(async()=>{});
+ render(<WalletConnect/>);fireEvent(window,new Event('focus'));
+ await act(async()=>{await vi.advanceTimersByTimeAsync(300_000);});
+ expect(initiateDappRelay).toHaveBeenCalledOnce();expect(localStorage.getItem(sessionKey)).toBeNull();
 });

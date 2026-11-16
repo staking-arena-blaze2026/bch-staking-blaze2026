@@ -6,6 +6,7 @@ vi.mock('@wizardconnect/core',async importOriginal=>{
  const original=await importOriginal<typeof import('@wizardconnect/core')>();
  return {...original,RelayClient:vi.fn(class extends EventEmitter {
    live=false;
+   relay=vi.fn(async()=>{});
    connect=vi.fn(async()=>{this.live=true;this.emit('connection');});
    disconnect=vi.fn(async()=>{this.live=false;this.emit('disconnect');});
    isConnected=()=>this.live;
@@ -21,9 +22,9 @@ it('serializes failed connection attempts with backoff and permanently stops aft
  await vi.advanceTimersByTimeAsync(0);expect(client.connect).toHaveBeenCalledTimes(1);
  await vi.advanceTimersByTimeAsync(1999);expect(client.connect).toHaveBeenCalledTimes(1);
  await vi.advanceTimersByTimeAsync(1);expect(client.connect).toHaveBeenCalledTimes(2);
- await vi.advanceTimersByTimeAsync(6000);expect(client.connect).toHaveBeenCalledTimes(3);
+ await vi.advanceTimersByTimeAsync(4000);expect(client.connect).toHaveBeenCalledTimes(3);
  relay.cleanup();await vi.advanceTimersByTimeAsync(600_000);
- expect(client.connect).toHaveBeenCalledTimes(3);expect(client.disconnect).toHaveBeenCalledOnce();
+ expect(client.connect).toHaveBeenCalledTimes(3);expect(client.disconnect).toHaveBeenCalledTimes(4);
  expect(client.listenerCount('error')).toBe(0);
 });
 it('reuses exactly the saved peer and session credentials without generating a new pairing',async()=>{
@@ -56,4 +57,66 @@ it('does not overlap a still-pending connection call after its event deadline',a
  expect(relay.client.connect).toHaveBeenCalledOnce();
  relay.cleanup();finish();await vi.advanceTimersByTimeAsync(60_000);
  expect(relay.client.connect).toHaveBeenCalledOnce();
+});
+
+it('keeps trying long outages with capped backoff and recovers on availability',async()=>{
+ vi.useFakeTimers();const relay=createWalletRelay(vi.fn());
+ vi.mocked(relay.client.connect).mockRejectedValue(Error('offline'));
+ await vi.advanceTimersByTimeAsync(300_000);
+ const count=vi.mocked(relay.client.connect).mock.calls.length;
+ expect(count).toBeGreaterThan(4);expect(count).toBeLessThan(16);
+ vi.mocked(relay.client.connect).mockImplementation(async()=>{relay.client.emit('connection');});
+ relay.recover?.();await vi.advanceTimersByTimeAsync(0);
+ expect(relay.transportReachable?.()).toBe(true);
+ relay.cleanup();
+});
+
+it('coalesces overlapping handshake publications but allows a later fresh attempt',async()=>{
+ vi.useFakeTimers();const relay=createWalletRelay(vi.fn());
+ // The wrapper calls the original relay mock; defer it before creation next time.
+ relay.cleanup();
+ const send=vi.fn<(...args:unknown[])=>Promise<void>>();let finish!:()=>void;
+ send.mockImplementation(()=>new Promise<void>(resolve=>{finish=resolve;}));
+ vi.mocked(RelayClient).mockImplementationOnce(class extends EventEmitter {
+  relay=send;connect=vi.fn(async()=>{});disconnect=vi.fn(async()=>{});
+  getPublicKeyHex=()=> '03'.repeat(32);
+ } as unknown as typeof RelayClient);
+ const next=createWalletRelay(vi.fn());
+ const message={action:RelayMsgAction.DappReady,time:1,supported_protocols:[],wallet_discovered:false};
+ const a=next.client.relay(message);
+ const b=next.client.relay(message);
+ expect(a).toBe(b);expect(send).toHaveBeenCalledOnce();finish();await a;await Promise.resolve();
+ void next.client.relay(message);expect(send).toHaveBeenCalledTimes(2);
+ finish();next.cleanup();
+});
+
+it('serializes the reactive protocol confirmation after a pending proactive ready',async()=>{
+ vi.useFakeTimers();let finish!:()=>void;
+ const send=vi.fn(()=>new Promise<void>(resolve=>{finish=resolve;}));
+ vi.mocked(RelayClient).mockImplementationOnce(class extends EventEmitter {
+  relay=send;connect=vi.fn(async()=>{});disconnect=vi.fn(async()=>{});
+  getPublicKeyHex=()=> '03'.repeat(32);
+ } as unknown as typeof RelayClient);
+ const relay=createWalletRelay(vi.fn());
+ const proactive={action:RelayMsgAction.DappReady,time:1,wallet_discovered:false};
+ const reactive={...proactive,wallet_discovered:true,selected_protocol:'hdwalletv1'};
+ const a=relay.client.relay(proactive),b=relay.client.relay(reactive);
+ expect(a).not.toBe(b);expect(send).toHaveBeenCalledOnce();
+ finish();await a;await Promise.resolve();await Promise.resolve();
+ expect(send).toHaveBeenCalledTimes(2);finish();await b;relay.cleanup();
+});
+
+it('requests fresh readiness when the SDK retains discovered state after transport recovery',async()=>{
+ vi.useFakeTimers();const send=vi.fn(async()=>{});
+ vi.mocked(RelayClient).mockImplementationOnce(class extends EventEmitter {
+  relay=send;connect=vi.fn(async()=>{});disconnect=vi.fn(async()=>{});
+  getPublicKeyHex=()=> '03'.repeat(32);
+ } as unknown as typeof RelayClient);
+ const relay=createWalletRelay(vi.fn());
+ relay.prepareHandshake?.();
+ const message={action:RelayMsgAction.DappReady,time:1,wallet_discovered:true,selected_protocol:'hdwalletv1'};
+ await relay.client.relay(message);
+ expect(send).toHaveBeenLastCalledWith({action:RelayMsgAction.DappReady,time:1,wallet_discovered:false});
+ await relay.client.relay(message);
+ expect(send).toHaveBeenLastCalledWith(message);relay.cleanup();
 });

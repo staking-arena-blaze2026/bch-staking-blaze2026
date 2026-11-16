@@ -1,6 +1,6 @@
 import {activeNetwork} from './activeNetwork';
 import {useEffect, useRef, useState} from 'react';
-import {DisconnectReason, RelayStatus, type WalletReadyMessage} from '@wizardconnect/core';
+import {RelayMsgAction, RelayStatus, type WalletReadyMessage} from '@wizardconnect/core';
 import {InvalidWalletSession, createWalletRelay} from './walletRelay';
 import {DappConnectionManager, loadSession, type SessionStorage} from '@wizardconnect/dapp';
 
@@ -8,7 +8,7 @@ export const WALLET_SESSION_KEY = 'staking-arena-wizardconnect-v1'+(activeNetwor
 const INVALID_SESSION_KEY = `${WALLET_SESSION_KEY}-invalid`;
 export const RESTORE_WINDOW_MS = 30_000;
 export type ConnectionState = 'idle'|'connecting'|'restoring'|'connected'|'reconnecting'|'offline'|'invalid';
-export const walletDiagnostic = (transition: string) => console.info(`[Arena wallet] ${transition}`);
+export const walletDiagnostic = (transition: string) => console.info(`[Arena wallet +${Math.round(performance.now())}ms] ${transition}`);
 
 /** Owns exactly one SDK manager/relay. React effect replay is not an ownership change.
  * SDK persistence contains transport credentials, never BCH wallet keys or spending consent.
@@ -23,6 +23,8 @@ class WalletOwner {
   private relay: ReturnType<typeof createWalletRelay>|null = null;
   private timers: ReturnType<typeof setTimeout>[] = [];
   private stopped = false;
+  private recoveryTimer?: ReturnType<typeof setTimeout>;
+  private recoveryAttempt = 0;
   private expectedPaths = '';
   private listeners = new Set<() => void>();
   private memory = new Map<string,string>();
@@ -52,6 +54,7 @@ class WalletOwner {
   }
   private teardown() {
     this.clearTimers();
+    clearTimeout(this.recoveryTimer); this.recoveryTimer = undefined;
     const relay = this.relay; this.relay = null;
     const manager = this.manager; this.manager = null;
     manager?.removeAllListeners();
@@ -63,23 +66,38 @@ class WalletOwner {
     if (manager) walletDiagnostic('Wallet manager destroyed');
   }
   private relayReachable() { return this.relay?.transportReachable?.() ?? this.relay?.client.isConnected() ?? false; }
+  private scheduleRecovery() {
+    if (this.stopped || this.recoveryTimer || !['restoring','reconnecting','offline'].includes(this.state)) return;
+    const delay = Math.min(30_000, 2_000 * 2 ** Math.min(this.recoveryAttempt++, 4));
+    this.recoveryTimer = setTimeout(() => {
+      this.recoveryTimer = undefined;
+      this.handshake();
+      this.scheduleRecovery();
+    }, delay);
+  }
+  private handshake() {
+    if (this.stopped || !['restoring','reconnecting','offline'].includes(this.state) || navigator.onLine === false) return;
+    if (!this.manager || !this.relay) { this.open(true); return; }
+    // Subscription readiness is a transport hint, never wallet authorization.
+    // Do not start the SDK's asynchronous key-exchange wait loop repeatedly.
+    if (this.relayReachable() && this.relay.client.isKeyExchangeComplete()) {
+      this.relay.prepareHandshake?.();
+      walletDiagnostic('Saved-session handshake requested');
+      this.manager.updateConnection(this.relay.client,RelayStatus.connected());
+    }
+  }
   private window(restoring: boolean) {
-    if (this.timers.length) return; // duplicate transport notifications do not extend the deadline
+    if (['restoring','reconnecting','offline'].includes(this.state) && this.recoveryTimer) return;
+    this.clearTimers();
     this.state = restoring ? 'restoring' : 'reconnecting';
-    walletDiagnostic(restoring ? 'Session restoration started' : 'Transport disconnected');
-    for (const delay of [2_000,6_000,14_000]) this.timers.push(setTimeout(() => {
-      const client = this.relay?.client;
-      walletDiagnostic('Automatic reconnection attempted');
-      // Re-send the supported SDK handshake on the SAME client; never pair again.
-      if (client && this.relayReachable()) this.manager?.updateConnection(client,RelayStatus.connected());
-    },delay));
+    this.recoveryAttempt = 0;
+    walletDiagnostic(restoring ? 'Session restoration started' : 'Wallet liveness lost');
+    this.scheduleRecovery();
     this.timers.push(setTimeout(() => {
       this.clearTimers();
-      walletDiagnostic('Session restoration failed: retry window exhausted');
-      this.state = this.saved()?.walletPublicKey ? 'offline' : 'invalid';
-      // A live relay may passively deliver a later wallet handshake. No handshake
-      // retry timers remain active. Close unreachable transports and keep pairing.
-      if (!this.relayReachable()) this.teardown();
+      if (!['restoring','reconnecting'].includes(this.state)) return;
+      this.state = 'offline';
+      walletDiagnostic('Recovery delayed; automatic retries continue (maximum 30s interval)');
       this.emit();
     },RESTORE_WINDOW_MS));
     this.emit();
@@ -114,28 +132,39 @@ class WalletOwner {
       }
       this.extensions = (_message.session.hdwalletv1 as {extensions?:unknown})?.extensions;
       this.expectedPaths = identity;
-      this.clearTimers(); this.uri = this.qrUri = null;
+      this.clearTimers(); clearTimeout(this.recoveryTimer); this.recoveryTimer=undefined; this.recoveryAttempt=0; this.uri = this.qrUri = null;
       this.state = 'connected'; walletDiagnostic('Session restoration succeeded (live handshake)'); this.emit();
     });
     manager.on('reconnecting', () => { if (this.state === 'connected') this.window(false); });
-    manager.on('disconnect', reason => {
-      if (reason === DisconnectReason.ProtocolMismatch || this.state === 'connecting') {
-        walletDiagnostic('Session invalidated by remote wallet');
-        this.state = 'invalid'; this.storage.setItem(INVALID_SESSION_KEY,'1'); this.teardown(); this.emit();
-      } else {
-        // Cashonize also uses user_disconnect for keepalive recovery. It cannot
-        // prove revocation. Retain pairing and let a bounded live handshake decide.
-        walletDiagnostic('Remote disconnect received; saved pairing retained');
+    // Revoke financial liveness immediately; the SDK gives Cashonize an 8s
+    // grace period for watchdog reconnects before reporting remote disconnect.
+    manager.on('messagereceived', message => {
+      if (message.action === RelayMsgAction.Disconnect) {
         if (this.state === 'connected') this.window(false);
+        // Invalidate transaction authorization/abort pending approvals now, not
+        // eight seconds later when the SDK's remote-disconnect grace expires.
+        manager.updateConnection(this.relay?.client,RelayStatus.reconnecting('Remote wallet disconnected'));
       }
+    });
+    manager.on('disconnect', () => {
+      if (this.manager !== manager) return;
+      walletDiagnostic('Remote disconnect/revocation confirmed after SDK grace');
+      this.state = 'invalid'; this.storage.setItem(INVALID_SESSION_KEY,'1'); this.teardown(); this.emit();
     });
     try {
       const relay = createWalletRelay(payload => {
         if (this.manager !== manager) return;
         if (payload.status.status === 'session_deleted') { this.state='invalid'; this.storage.setItem(INVALID_SESSION_KEY,'1'); this.teardown(); this.emit(); return; }
         if (['disconnected','reconnecting'].includes(payload.status.status) && this.state === 'connected') this.window(false);
-        manager.updateConnection(payload.client,payload.status);
-      },{existingCredentials:saved?.walletPublicKey ? {privateKey:saved.privateKey,secret:saved.secret,walletPublicKey:saved.walletPublicKey} : undefined,maxReconnectAttempts:3,reconnectInterval:2_000});
+        if (payload.status.status === 'connected') {
+          if (this.state === 'connected') return;
+          walletDiagnostic('Transport subscription ready (wallet handshake unconfirmed)');
+          // Attach once without launching an uncontrolled SDK handshake loop.
+          manager.updateConnection(payload.client,RelayStatus.disconnected());
+          if (restore || this.state !== 'connecting') this.handshake();
+          else manager.updateConnection(payload.client,payload.status);
+        } else manager.updateConnection(payload.client,payload.status);
+      },{existingCredentials:saved?.walletPublicKey ? {privateKey:saved.privateKey,secret:saved.secret,walletPublicKey:saved.walletPublicKey} : undefined});
       this.relay = relay;
       manager.attachRelay(relay);
       if (!restore) { this.uri=relay.uri; this.qrUri=relay.qrUri; }
@@ -147,15 +176,20 @@ class WalletOwner {
       if (this.state === 'invalid') this.storage.setItem(INVALID_SESSION_KEY,'1');
       this.error = 'Wallet connection failed. Try again.';
       this.teardown();
+      if (restore && this.state === 'offline') this.scheduleRecovery();
     }
     this.emit();
   }
   connect = () => { if (this.saved()?.walletPublicKey) this.retry(); else this.open(false); };
   retry = () => {
-    if (this.state !== 'offline') return;
-    if (this.manager && this.relay && this.relayReachable()) {
-      this.window(true); this.manager.updateConnection(this.relay.client,RelayStatus.connected());
-    } else this.open(true);
+    if (!['offline','restoring','reconnecting'].includes(this.state)) return;
+    this.relay?.recover?.();
+    this.handshake();
+    this.scheduleRecovery();
+  };
+  offline = () => {
+    if (this.state === 'connected') this.window(false);
+    if (this.manager && this.relay) this.manager.updateConnection(this.relay.client,RelayStatus.reconnecting('Browser offline'));
   };
   replace = () => { this.teardown(); this.storage.removeItem(WALLET_SESSION_KEY); this.storage.removeItem(INVALID_SESSION_KEY); this.state='idle'; this.open(false); };
   disconnect = async () => {
@@ -181,11 +215,13 @@ export function usePersistentWallet() {
     if (fresh) owner.start();
     const recover = () => { if (document.visibilityState !== 'hidden') owner.retry(); };
     window.addEventListener('online',recover);
+    window.addEventListener('offline',owner.offline);
     window.addEventListener('focus',recover);
     document.addEventListener('visibilitychange',recover);
     render(value=>value+1);
     return () => {
       unsubscribe();
+      window.removeEventListener('offline',owner.offline);
       window.removeEventListener('online',recover); window.removeEventListener('focus',recover); document.removeEventListener('visibilitychange',recover);
       // StrictMode replays setup synchronously. A real unmount releases ownership.
       queueMicrotask(() => { if (lease.current === token) { owner.stop(); ownerRef.current=null; } });
