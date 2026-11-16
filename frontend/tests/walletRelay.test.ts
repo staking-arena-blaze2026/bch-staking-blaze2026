@@ -120,3 +120,28 @@ it('requests fresh readiness when the SDK retains discovered state after transpo
  await relay.client.relay(message);
  expect(send).toHaveBeenLastCalledWith(message);relay.cleanup();
 });
+
+it('refreshes a ready-but-silent subscription with bounded timing and stops on a wallet reply',async()=>{
+ vi.useFakeTimers();const relay=createWalletRelay(vi.fn());
+ await vi.advanceTimersByTimeAsync(0);
+ relay.prepareHandshake?.();
+ await vi.advanceTimersByTimeAsync(14_999);expect(relay.client.connect).toHaveBeenCalledOnce();
+ await vi.advanceTimersByTimeAsync(1);expect(relay.client.connect).toHaveBeenCalledTimes(2);
+ relay.prepareHandshake?.();
+ await vi.advanceTimersByTimeAsync(29_999);expect(relay.client.connect).toHaveBeenCalledTimes(2);
+ await vi.advanceTimersByTimeAsync(1);expect(relay.client.connect).toHaveBeenCalledTimes(3);
+ relay.prepareHandshake?.();
+ relay.client.emit('message',{action:RelayMsgAction.WalletReady,secret:relay.credentials.secret,public_key:'02'.repeat(32)});
+ await vi.advanceTimersByTimeAsync(120_000);expect(relay.client.connect).toHaveBeenCalledTimes(3);
+ relay.cleanup();
+});
+
+it('manual recovery refreshes even a nominally ready subscription and coalesces repeated clicks',async()=>{
+ vi.useFakeTimers();const relay=createWalletRelay(vi.fn());await vi.advanceTimersByTimeAsync(0);
+ relay.recover?.();await vi.advanceTimersByTimeAsync(0);expect(relay.client.connect).toHaveBeenCalledOnce();
+ relay.recover?.(true);relay.recover?.(true);await vi.advanceTimersByTimeAsync(0);
+ expect(relay.client.connect).toHaveBeenCalledTimes(2);
+ relay.recover?.(true);await vi.advanceTimersByTimeAsync(0);expect(relay.client.connect).toHaveBeenCalledTimes(2);
+ relay.prepareHandshake?.();relay.cleanup();
+ await vi.advanceTimersByTimeAsync(120_000);expect(relay.client.connect).toHaveBeenCalledTimes(2);
+});

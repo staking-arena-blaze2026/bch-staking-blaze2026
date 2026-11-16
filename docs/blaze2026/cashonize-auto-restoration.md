@@ -36,3 +36,17 @@ Real mainnet Cashonize acceptance and live reconnect timings require the owner's
 - Persistent-browser suite: **4/4 tests** (1.7 minutes), including prolonged outage recovery without manual Retry. The browser clock uses `runFor` to execute each retry rather than skipping intermediate timer firings.
 - Final production `npm run blaze:build`: passed, including TypeScript. `git diff --check`: passed.
 - No BCHN/regtest node was used or mutated. No real wallet signature or broadcast was requested. Real Cashonize acceptance and live timings remain unverified pending the owner's existing-profile check.
+
+## Follow-up: silent subscription and ineffective manual Retry (2026-11-16)
+
+The owner's initial success report was subsequently withdrawn: restoration and manual saved Retry still failed. Production acceptance is therefore **not established** by the earlier report.
+
+A missing recovery path is now reproduced against deployed-source parent `c1db2c2`: a Nostr subscription can report EOSE/readiness while no longer delivering wallet replies. `recover()` returned immediately whenever `reachable` was true, so manual Retry only published another handshake on that same ineffective subscription. The previous test pool always delivered messages after readiness and did not exercise this failure. Both automatic and manual silent-subscription cases fail against the unmodified parent in an isolated worktree with distinct test transport keys.
+
+The relay now starts a wallet-reply watchdog only for requested recovery probes. No authenticated wallet reply within 15 seconds causes a serialized subscription refresh; subsequent unanswered cycles use 30 seconds. A valid wallet reply clears the watchdog and resets that delay. Refresh reuses the same relay client, credentials, peer and SDK manager, clears the previous subscription/queue through SDK disconnect, and retains the SDK replay cutoff. Explicit disconnect/cleanup cancels the watchdog. Manual saved Retry requests a refresh even when EOSE claimed readiness; online/focus events remain passive hints. Repeated refresh notifications are coalesced with the existing connection guard and a two-second minimum interval. No signing, chain-validation or journal behavior changes.
+
+Privacy-safe diagnostics now distinguish requesting a handshake from successful publication, and report when an unanswered wallet probe triggers a subscription refresh. Errors, identifiers and message contents are not logged.
+
+The expanded real-SDK encrypted round-trip tests cover a silently lost initial subscription and a second silent loss immediately before manual Retry. Unit regressions verify 15/30-second refresh timing, stopping on wallet replies, manual refresh while nominally connected, click coalescing and permanent cleanup. A separate read-only public relay probe with synthetic peers exchanged four encrypted ready handshakes successfully; it establishes public relay reachability at that time, **not** Cashonize acceptance or the owner's particular failure cause. Live Cashonize confirmation remains required.
+
+Follow-up validation: full frontend suite **172/172 tests in 32 files** (117.25 seconds); focused relay/encrypted SDK regressions **14/14**; frontend TypeScript and `npm run blaze:build` passed. Neither automated success nor synthetic public-relay round trips substitutes for a repeated real Cashonize close/reopen check.

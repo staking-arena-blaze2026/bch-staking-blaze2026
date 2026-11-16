@@ -7,7 +7,7 @@ export class InvalidWalletSession extends Error {}
  * a paused retry loop alive after cleanup. Owning the loop avoids both behaviors.
  * DappConnectionManager still owns protocol, persistence, derivation and signing.
  */
-export function createWalletRelay(callback: RelayStatusCallback, options: DappRelayOptions = {}): DappRelayResult & {transportReachable?:()=>boolean;recover?:()=>void;prepareHandshake?:()=>void} {
+export function createWalletRelay(callback: RelayStatusCallback, options: DappRelayOptions = {}): DappRelayResult & {transportReachable?:()=>boolean;recover?:(refreshSubscription?:boolean)=>void;prepareHandshake?:()=>void} {
   const saved = options.existingCredentials;
   if (saved && (!/^[a-f0-9]{64}$/i.test(saved.privateKey) || !/^[a-f0-9]{64}$/i.test(saved.walletPublicKey) || !/^[a-f0-9]{16}$/i.test(saved.secret))) throw new InvalidWalletSession('Invalid saved transport credentials');
   const generated = saved ? null : generateKeyExchangeCredentials();
@@ -21,6 +21,19 @@ export function createWalletRelay(callback: RelayStatusCallback, options: DappRe
   let readySend: ReturnType<typeof client.relay>|undefined;
   let readyDescription = '';
   let requestFreshWalletReady = false;
+  let walletReplyDeadline: ReturnType<typeof setTimeout>|undefined;
+  let silentRefreshes = 0;
+  let lastRefresh = -Infinity;
+  const clearWalletDeadline = () => { clearTimeout(walletReplyDeadline); walletReplyDeadline=undefined; };
+  const prepareHandshake = () => {
+    requestFreshWalletReady=true;
+    if (stopped || walletReplyDeadline) return;
+    walletReplyDeadline=setTimeout(()=>{
+      walletReplyDeadline=undefined;
+      console.info(`[Arena wallet +${Math.round(performance.now())}ms] Wallet reply absent; refreshing relay subscription`);
+      recover(true);
+    },Math.min(30_000,15_000 * 2 ** Math.min(silentRefreshes++,1)));
+  };
   client.relay = message => {
     if (message.action !== RelayMsgAction.DappReady) return send(message);
     if (requestFreshWalletReady) {
@@ -50,7 +63,9 @@ export function createWalletRelay(callback: RelayStatusCallback, options: DappRe
   const connect = async () => {
     if (stopped || connecting || callInFlight) return;
     if (navigator.onLine === false) { schedule(); return; }
-    connecting=true; callInFlight=true;
+    connecting=true; callInFlight=true; reachable=false;
+    clearWalletDeadline();
+    status(RelayStatus.reconnecting('Refreshing transport'));
     // RelayClient.connect returns after subscribing, before EOSE/connection.
     // Keep the single-flight guard until its event or this bounded deadline.
     attemptDeadline=setTimeout(interrupted,7_000);
@@ -73,6 +88,7 @@ export function createWalletRelay(callback: RelayStatusCallback, options: DappRe
     } else if (message.public_key && message.public_key.toLowerCase() !== pairedKey) {
       status(RelayStatus.sessionDeleted()); return;
     }
+    clearWalletDeadline(); silentRefreshes=0;
     attempt=0; // Only a wallet handshake resets outage backoff.
   };
   client.on('connection',connected);
@@ -82,12 +98,16 @@ export function createWalletRelay(callback: RelayStatusCallback, options: DappRe
   const uri=encodeKeyExchangeURI(credentials.publicKey,credentials.secret);
   status(RelayStatus.reconnecting('Opening transport'));
   schedule();
-  return {client,credentials,prepareHandshake:()=>{requestFreshWalletReady=true;},transportReachable:()=>reachable,recover:()=>{
-    if (stopped || reachable || connecting || callInFlight || navigator.onLine === false) return;
+  const recover = (refreshSubscription = false) => {
+    if (stopped || (reachable && !refreshSubscription) || connecting || callInFlight || navigator.onLine === false) return;
+    // Coalesce manual/focus/watchdog notifications without trusting a stale EOSE.
+    if (Date.now()-lastRefresh < 2_000) return;
+    lastRefresh=Date.now();
     clearTimeout(retry); retry=undefined; void connect();
-  },events:client as unknown as DappRelayResult['events'],...uri,cleanup(){
+  };
+  return {client,credentials,prepareHandshake,transportReachable:()=>reachable,recover,events:client as unknown as DappRelayResult['events'],...uri,cleanup(){
     if (stopped) return;
-    stopped=true;reachable=false;clearTimeout(retry);clearTimeout(attemptDeadline);
+    stopped=true;reachable=false;clearWalletDeadline();clearTimeout(retry);clearTimeout(attemptDeadline);
     client.removeAllListeners();
     void client.disconnect().catch(()=>{});
   }};

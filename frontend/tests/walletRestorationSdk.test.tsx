@@ -1,20 +1,22 @@
-import {act,render,screen} from '@testing-library/react';
+import {act,fireEvent,render,screen} from '@testing-library/react';
 import {StrictMode} from 'react';
 import {expect,it,vi} from 'vitest';
 import {RelayClient,RelayMsgAction,PROTOCOL_NAME,hexToBin,type DappReadyMessage} from '@wizardconnect/core';
 import {WALLET_SESSION_KEY,usePersistentWallet} from '../src/usePersistentWallet';
 
-const service=vi.hoisted(()=>({interrupt:(_recipient:string)=>{}}));
+const service=vi.hoisted(()=>({interrupt:(_recipient:string)=>{},loseNextSubscription:()=>{},silence:(_recipient:string)=>{}}));
 
 // Replace only the remote Nostr service. Real SDK readiness, encryption, peer
 // authentication, timestamp filtering, handshake manager and persistence run.
 vi.mock('nostr-tools/pool',()=>{
  type Subscription={recipient:string;onevent:(event:unknown)=>void;oneose:()=>void;onclose:(reasons:string[])=>void};
  const subscriptions=new Set<Subscription>();
+ service.silence=recipient=>{for(const sub of subscriptions)if(sub.recipient===recipient)subscriptions.delete(sub);};
+ let loseNext=false;service.loseNextSubscription=()=>{loseNext=true;};
  service.interrupt=recipient=>{for(const sub of subscriptions)if(sub.recipient===recipient)sub.onclose(['temporary outage']);};
  return {useWebSocketImplementation:()=>{},SimplePool:class {
   subscribeMany(_urls:unknown,filter:{'#p':string[]},callbacks:Omit<Subscription,'recipient'>){
-   const sub={recipient:filter['#p'][0],...callbacks};subscriptions.add(sub);
+   const sub={recipient:filter['#p'][0],...callbacks};if(loseNext)loseNext=false;else subscriptions.add(sub);
    const timer=setTimeout(()=>sub.oneose(),20);
    return {close:()=>{clearTimeout(timer);subscriptions.delete(sub);}};
   }
@@ -26,13 +28,14 @@ vi.mock('nostr-tools/pool',()=>{
  }};
 });
 
-function Status(){const wallet=usePersistentWallet();return <span>{wallet.state}</span>;}
+function Status(){const wallet=usePersistentWallet();return <><span>{wallet.state}</span><button onClick={wallet.retry}>Retry</button></>;}
 
-it('restores the same encrypted SDK pairing automatically when the wallet starts after the old deadline, then reopens again',async()=>{
+it.each(['normal','silent-auto','silent-manual'])('restores the same encrypted SDK pairing with %s subscription recovery, late wallet and reopening',async scenario=>{
  vi.useFakeTimers();
- const wallet=new RelayClient({signerPrivateKey:hexToBin('02'.repeat(32)),pairedPublicKey:new Uint8Array(33),explicitRelayUrls:['wss://test'],logNetworkActivity:false});
- const saved={privateKey:'01'.repeat(32),secret:'ab'.repeat(8),walletPublicKey:wallet.getPublicKeyHex()};
+ const wallet=new RelayClient({signerPrivateKey:hexToBin((scenario==='normal'?'02':scenario==='silent-auto'?'03':'04').repeat(32)),pairedPublicKey:new Uint8Array(33),explicitRelayUrls:['wss://test'],logNetworkActivity:false});
+ const saved={privateKey:(scenario==='normal'?'01':scenario==='silent-auto'?'05':'06').repeat(32),secret:'ab'.repeat(8),walletPublicKey:wallet.getPublicKeyHex()};
  localStorage.setItem(WALLET_SESSION_KEY,JSON.stringify(saved));
+ if(scenario!=='normal')service.loseNextSubscription();
  const first=render(<StrictMode><Status/></StrictMode>);
  try {
   await act(async()=>{await vi.advanceTimersByTimeAsync(65_000);});
@@ -51,7 +54,8 @@ it('restores the same encrypted SDK pairing automatically when the wallet starts
    } as Parameters<typeof wallet.relay>[0]);
   });
   await wallet.connect();
-  await act(async()=>{await vi.advanceTimersByTimeAsync(25_000);});
+  if(scenario==='silent-manual'){service.silence(temporary.getPublicKeyHex());fireEvent.click(screen.getByRole('button',{name:'Retry'}));}
+  await act(async()=>{await vi.advanceTimersByTimeAsync(scenario==='silent-manual'?1_000:25_000);});
   expect(screen.getByText('connected')).toBeVisible();
   await act(async()=>{service.interrupt(temporary.getPublicKeyHex());await vi.advanceTimersByTimeAsync(20_000);});
   expect(screen.getByText('connected')).toBeVisible();

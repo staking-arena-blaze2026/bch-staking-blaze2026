@@ -120,6 +120,9 @@ class WalletOwner {
     manager = new DappConnectionManager('Staking Arena',new URL('./arena.svg',window.location.href).href,{session:{key:WALLET_SESSION_KEY,storage}});
     this.manager = manager;
     walletDiagnostic('Wallet manager created');
+    manager.on('messagesent', message => {
+      if (message.action === RelayMsgAction.DappReady) walletDiagnostic('Wallet handshake published');
+    });
     manager.on('walletready', (_message: WalletReadyMessage) => {
       if (this.manager !== manager) return;
       const identity = JSON.stringify(manager.getSessionPaths());
@@ -181,9 +184,9 @@ class WalletOwner {
     this.emit();
   }
   connect = () => { if (this.saved()?.walletPublicKey) this.retry(); else this.open(false); };
-  retry = () => {
+  retry = (refreshSubscription = true) => {
     if (!['offline','restoring','reconnecting'].includes(this.state)) return;
-    this.relay?.recover?.();
+    this.relay?.recover?.(refreshSubscription);
     this.handshake();
     this.scheduleRecovery();
   };
@@ -213,7 +216,7 @@ export function usePersistentWallet() {
     const owner = ownerRef.current ??= new WalletOwner();
     const unsubscribe = owner.subscribe(() => render(value=>value+1));
     if (fresh) owner.start();
-    const recover = () => { if (document.visibilityState !== 'hidden') owner.retry(); };
+    const recover = () => { if (document.visibilityState !== 'hidden') owner.retry(false); };
     window.addEventListener('online',recover);
     window.addEventListener('offline',owner.offline);
     window.addEventListener('focus',recover);
