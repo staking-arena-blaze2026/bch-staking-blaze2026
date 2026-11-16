@@ -137,7 +137,7 @@ it('switches tabs without losing creation inputs and follows browser history has
 it('verifies shared configurations before showing figures and links to their dedicated page',async()=>{
  stub();window.location.hash='/v3/offers';stubCatalog();
  render(<V3Arena/>);await waitFor(()=>expect(screen.getByRole('cell',{name:'1'})).toBeInTheDocument());
- const card=screen.getByRole('link',{name:'Vault 1'});expect(card).toHaveAttribute('href','#/v3/vault/'+config.genesis);expect(card.closest('tr')).toHaveTextContent('0.00002000 BCH');expect(card.closest('tr')).not.toHaveTextContent('Remaining reward reserve');
+ const card=screen.getByRole('link',{name:'Vault 1'});expect(card).toHaveAttribute('href','#/v3/vault/'+config.genesis);expect(card.closest('tr')).toHaveTextContent('0.00008000 BCH');expect(card.closest('tr')).not.toHaveTextContent('Remaining reward reserve');
  expect(v3Call).toHaveBeenCalledWith({operation:'sync',config});
 });
 it('withholds shared financial figures if chain verification fails',async()=>{
@@ -182,16 +182,16 @@ it('discovers a public vault in a fresh browser without a connected wallet or lo
  stub();window.location.hash='/v3/offers';const previous=vi.mocked(v3Call).getMockImplementation()!;
  stubCatalog();
  expect(localStorage.length).toBe(0);render(<WalletTransactionsContext.Provider value={null}><V3Arena/></WalletTransactionsContext.Provider>);
- await waitFor(()=>expect(screen.getByRole('link',{name:'Vault 1'}).closest('tr')).toHaveTextContent('0.00002000 BCH'));
+ await waitFor(()=>expect(screen.getByRole('link',{name:'Vault 1'}).closest('tr')).toHaveTextContent('0.00008000 BCH'));
  expect(vi.mocked(v3Call).mock.calls.some(([i])=>i.operation==='discover')).toBe(false);
 });
-it('retains configuration through failure and reload while retaining provisional immutable hints and withholding stale counts',async()=>{
+it('retains configuration through failure and reload while retaining immutable reward totals and withholding stale counts',async()=>{
  stub();window.location.hash='/v3/offers';const previous=vi.mocked(v3Call).getMockImplementation()!;
  stubCatalog();
- const first=render(<V3Arena/>);await waitFor(()=>expect(screen.getByRole('link',{name:'Vault 1'}).closest('tr')).toHaveTextContent('0.00002000 BCH'));await waitFor(()=>expect(JSON.parse(localStorage.getItem('staking-arena-v3-configs-mainnet-snapshots')??'{}')[config.genesis]?.snapshot).toBeDefined());first.unmount();
+ const first=render(<V3Arena/>);await waitFor(()=>expect(screen.getByRole('link',{name:'Vault 1'}).closest('tr')).toHaveTextContent('0.00008000 BCH'));await waitFor(()=>expect(JSON.parse(localStorage.getItem('staking-arena-v3-configs-mainnet-snapshots')??'{}')[config.genesis]?.snapshot).toBeDefined());first.unmount();
  vi.mocked(v3Call).mockImplementation(async intent=>{if(intent.operation==='sync'||intent.operation==='discover')throw Error('Public provider offline');return [];});
  render(<V3Arena/>);await waitFor(()=>expect(screen.getByText('Unavailable')).toBeInTheDocument());
- expect(screen.getByRole('link',{name:'Vault 1'}).closest('tr')).toHaveTextContent('0.00002000 BCH · provisionalBCHUnavailable');
+ expect(screen.getByRole('link',{name:'Vault 1'}).closest('tr')).toHaveTextContent('0.00008000 BCHBCHUnavailable');
  expect(JSON.parse(localStorage.getItem('arena-public-index-v1-mainnet')!)[0].config.genesis).toBe(config.genesis);
 });
 
@@ -233,8 +233,8 @@ it('shows a submitted offer before slow refresh and automatically promotes it af
 
 it('shows only four marketplace columns, offers first, and places refresh directly after the heading',async()=>{
  stub();stubCatalog();window.location.hash='/v3/offers';render(<V3Arena/>);
- await waitFor(()=>expect(screen.getByText('0.00002000 BCH')).toBeVisible());
- expect(screen.getAllByRole('columnheader').map(h=>h.textContent)).toEqual(['Vault','Max reward / period','Staking asset','Offers']);
+ await waitFor(()=>expect(screen.getByText('0.00008000 BCH')).toBeVisible());
+ expect(screen.getAllByRole('columnheader').map(h=>h.textContent)).toEqual(['Vault','Total max reward','Staking asset','Offers']);
  expect(screen.getByRole('navigation',{name:'V3 actions'}).firstElementChild).toHaveTextContent('Make an Offer');
  expect(screen.getByRole('heading',{name:'Known vaults'}).nextElementSibling).toBe(screen.getByRole('button',{name:'Refresh public discovery'}));
  expect(screen.queryByText(/Public staking marketplace:/)).toBeNull();
@@ -257,15 +257,15 @@ it('withholds counts while replay is pending, then counts only active verified o
  await waitFor(()=>expect(resolve).toBeDefined());expect(screen.getAllByRole('row')[1]!.lastElementChild).toHaveTextContent('Verifying…');expect(screen.queryByRole('cell',{name:'0'})).toBeNull();
  await act(async()=>resolve());await waitFor(()=>expect(screen.getAllByRole('row')[1]!.lastElementChild).toHaveTextContent('1'));expect(screen.getAllByRole('row')[1]!.lastElementChild).toHaveTextContent('0-conf · provisional');
 });
-it('renders verified token assets and immutable cap with a verified empty queue',async()=>{
+it('renders verified token assets and immutable total reward with a verified empty queue',async()=>{
  stub();window.location.hash='/v3/offers';
  const tokenConfig:typeof config={...config,stakingAsset:{kind:'token',category:'12'.repeat(32)},rewardAsset:{kind:'token',category:'34'.repeat(32)},cap:1000n};
  vi.stubGlobal('fetch',vi.fn(async()=>new Response(JSON.stringify({schema:1,network:'mainnet',vaults:[{config:tokenConfig,announcement:config.genesis,height:1,status:'observed-confirmed'}],pages:[]},(_,v)=>typeof v==='bigint'?String(v):v))));
  const previous=vi.mocked(v3Call).getMockImplementation()!;
  vi.mocked(v3Call).mockImplementation(async(...args)=>{const result=await previous(...args);if(args[0].operation==='sync'){result.snapshot.config=tokenConfig;result.snapshot.instance.state=initialState(tokenConfig);}return result;});
- render(<V3Arena/>);await waitFor(()=>expect(screen.getByText('1000 CashToken 34343434…34343434')).toBeVisible());
+ render(<V3Arena/>);await waitFor(()=>expect(screen.getByText('4000 CashToken 34343434…34343434')).toBeVisible());
  expect(screen.getByText('CashToken 12121212…12121212')).toBeVisible();await waitFor(()=>expect(screen.getAllByRole('row')[1]!.lastElementChild).toHaveTextContent(/^0$/));
- expect(screen.queryByText('4000 CashToken 34343434…34343434')).toBeNull();
+ expect(screen.queryByText('1000 CashToken 34343434…34343434')).toBeNull();
 });
 
 it('renders index parameter hints while all Electrum reads are pending, with no fabricated offer count',async()=>{
@@ -273,9 +273,9 @@ it('renders index parameter hints while all Electrum reads are pending, with no 
  const previous=vi.mocked(v3Call).getMockImplementation()!;
  vi.mocked(v3Call).mockImplementation((...args)=>args[0].operation==='sync'?new Promise(()=>{}):previous(...args));
  render(<V3Arena/>);
- await waitFor(()=>expect(screen.getByRole('link',{name:'Vault 1'}).closest('tr')).toHaveTextContent('0.00002000 BCH'));
+ await waitFor(()=>expect(screen.getByRole('link',{name:'Vault 1'}).closest('tr')).toHaveTextContent('0.00008000 BCH'));
  const row=screen.getByRole('link',{name:'Vault 1'}).closest('tr')!;
- expect(row).toHaveTextContent('provisional');expect(row.lastElementChild).toHaveTextContent('Verifying…');
+ expect(row.children[1]).not.toHaveTextContent('provisional');expect(row.lastElementChild).toHaveTextContent('Verifying…');
  expect(wallet.v3).not.toHaveBeenCalled();
 });
 

@@ -25,13 +25,13 @@ export function startPublicPreview(){
   root.replaceChildren(el('h1','Stake Arena'),el('h2','Known vaults'));
   const refresh=el('button','Refresh public discovery') as HTMLButtonElement;refresh.disabled=true;root.append(refresh);
   const table=document.createElement('table');table.className='marketplace-table';
-  const head=table.createTHead().insertRow();for(const label of ['Vault','Max reward / period','Staking asset','Offers']){const th=el('th',label);th.setAttribute('scope','col');head.append(th);}
+  const head=table.createTHead().insertRow();for(const label of ['Vault','Total max reward','Staking asset','Offers']){const th=el('th',label);th.setAttribute('scope','col');head.append(th);}
   const body=table.createTBody();let number=0;
   for(const [id,{config:c}]of rows){if(conflicts.has(id)||number>=20)continue;const row=body.insertRow(),link=el('a',String(++number)) as HTMLAnchorElement;link.className='marketplace-link';link.href=`#/v3/vault/${id}`;link.setAttribute('aria-label',`Vault ${number}`);row.insertCell().append(link);
    const asset=(a:any)=>a.kind==='bch'?'BCH':`CashToken ${a.category.slice(0,8)}…${a.category.slice(-8)}`;
-   const units=String(c.cap).padStart(9,'0');
-   const reward=`${c.rewardAsset.kind==='bch'?units.slice(0,-8)+'.'+units.slice(-8):c.cap} ${asset(c.rewardAsset)}`;
-   for(const [label,text] of [['Max reward / period',reward+' · provisional'],['Staking asset',asset(c.stakingAsset)],['Offers','Verifying…']]){const cell=row.insertCell();cell.dataset.label=label;cell.textContent=text;}
+   const total=BigInt(c.cap)*BigInt(c.periods),units=String(total).padStart(9,'0');
+   const reward=`${c.rewardAsset.kind==='bch'?units.slice(0,-8)+'.'+units.slice(-8):total.toString()} ${asset(c.rewardAsset)}`;
+   for(const [label,text] of [['Total max reward',reward],['Staking asset',asset(c.stakingAsset)],['Offers','Verifying…']]){const cell=row.insertCell();cell.dataset.label=label;cell.textContent=text;}
 
   }
   root.append(table);

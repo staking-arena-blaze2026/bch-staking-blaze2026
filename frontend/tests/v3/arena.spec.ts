@@ -69,7 +69,7 @@ test('tabs preserve form values, verified rows open vault routes, and desktop/mo
  await page.goBack();await expect(page.getByLabel('Interval (seconds)',{exact:true})).toHaveValue('7200');await page.goForward();
  await page.getByText('Import or share a vault configuration',{exact:true}).click();await page.getByLabel('Public v3 configuration').fill(JSON.stringify(fixture.config,(_,v)=>typeof v==='bigint'?v.toString():v));await refresh(page);
  await page.getByRole('link',{name:'← Known vaults',exact:true}).click();
- const card=page.getByRole('link',{name:'Vault 1',exact:true});await expect(card.locator('xpath=ancestor::tr')).toContainText('0.00002000 BCH');await card.click();
+ const card=page.getByRole('link',{name:'Vault 1',exact:true});await expect(card.locator('xpath=ancestor::tr')).toContainText('0.00008000 BCH');await card.click();
  await expect(page).toHaveURL(new RegExp('#/v3/vault/'+fixture.config.genesis+'$'));await expect(page.locator('.v3-summary')).toBeVisible();
  const queue=await page.locator('.v3-queue').boundingBox(),form=await page.locator('.v3-offer').boundingBox();expect(queue!.x).toBeLessThan(form!.x);expect(form!.y).toBeLessThan(queue!.y);expect(await page.locator('.v3-queue .table-scroll').evaluate(el=>el.scrollWidth<=el.clientWidth)).toBe(true);
  await page.screenshot({path:'test-results/v3-redesign-desktop.png',fullPage:true});
@@ -165,7 +165,7 @@ test('fresh homepage is the four-column marketplace with accessible rows on desk
  await expect(page.locator('.v3-tabs a').first()).toHaveText('Make an Offer');await expect(page.locator('.v3-tabs a').first()).toHaveAttribute('aria-current','page');
  await expect(page.getByRole('link',{name:'Stake Arena home'})).toHaveAttribute('href','#/v3/offers');
  await expect(page.locator('.wallet-network-note')).toHaveCount(0);await expect(page.getByText(/Mainnet uses real BCH\. Review exact amounts/)).toHaveCount(0);
- await expect(page.getByRole('columnheader')).toHaveText(['Vault','Max reward / period','Staking asset','Offers']);
+ await expect(page.getByRole('columnheader')).toHaveText(['Vault','Total max reward','Staking asset','Offers']);
  expect(await page.getByRole('heading',{name:'Known vaults'}).evaluate(el=>el.nextElementSibling?.textContent)).toBe('Refresh public discovery');
  const row=page.locator('.marketplace-table tbody tr');await expect(row.locator('td').last()).toHaveText('1',{timeout:60000});
  for(const width of [1360,390]){await page.setViewportSize({width,height:900});expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);await page.screenshot({path:`test-results/marketplace-${width}.png`,fullPage:true});}

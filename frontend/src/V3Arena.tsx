@@ -167,10 +167,10 @@ export default function V3Arena(){
  {!creating&&!selectedId&&<section className="v3-known"><h2>Known vaults</h2><button disabled={discovering} onClick={()=>void discover()}>Refresh public discovery</button>
  {discoveryError&&<p role="status">{discoveryError}</p>}
  {!known.length&&<p>{indexReady?'No known vaults yet.':'Loading vaults…'}</p>}
- <table className="marketplace-table"><caption className="sr-only">Vault marketplace. Numbers indicate list positions, not on-chain identifiers.</caption><thead><tr>{['Vault','Max reward / period','Staking asset','Offers'].map(label=><th scope="col" key={label}>{label}</th>)}</tr></thead><tbody>
+ <table className="marketplace-table"><caption className="sr-only">Vault marketplace. Numbers indicate list positions, not on-chain identifiers.</caption><thead><tr>{['Vault','Total max reward','Staking asset','Offers'].map(label=><th scope="col" key={label}>{label}</th>)}</tr></thead><tbody>
  {visibleKnown.map((c,i)=>{const listing=listings[c.genesis],view=listing?.snapshot,current=view&&!listing.error&&now-listing.at<=120000,number=page*20+i+1;return <tr key={c.genesis}>
  <td data-label="Vault"><a className="marketplace-link" href={`#/v3/vault/${c.genesis}`} aria-label={`Vault ${number}`}>{number}</a></td>
- <td data-label="Max reward / period">{marketReward(c.rewardAsset,c.cap)}{!current&&<small title="Public index parameter hint; blockchain verification pending"> · provisional</small>}</td>
+ <td data-label="Total max reward" title="Maximum scheduled rewards across all releases; public vault parameters.">{marketReward(c.rewardAsset,c.cap*BigInt(c.periods))}</td>
  <td data-label="Staking asset">{marketAsset(c.stakingAsset)}</td>
  <td data-label="Offers" title={listing?.error?'Current blockchain verification unavailable. Open vault to retry.':listing?'Last independently verified '+new Date(listing.at).toISOString():undefined}>{current?<>{rankings(view.instance.state,false).length}{view.provisional&&<small>0-conf · provisional</small>}</>:<>{listing?.error?'Unavailable':'Verifying…'}</>}</td>
  </tr>;})}</tbody></table>
