@@ -30,3 +30,20 @@ test('parallel verification uses independent transports and still waits for a sl
   assert.equal(source,sources.get(peer));if(peer===peers[2]){await new Promise(r=>setTimeout(r,10));return result(100,'fork','fork-100');}return result();
  },{parallel:true}),/Conflicting/);assert.equal(started.length,3);
 });
+
+test('single-provider display arrives while an independent conflicting read is pending and never authorizes',async()=>{
+ const f=fixture();Object.assign(f.p,{requestCounts:{}});
+ let release!:()=>void;const slow=new Promise<void>(resolve=>{release=resolve;});
+ const sources=new Map(peers.map(peer=>[peer,{requestCounts:{},tip:async()=>header(100),session:async(work:()=>Promise<unknown>)=>work()}]));
+ f.p.independentReader=peer=>sources.get(peer) as ElectrumCore;
+ const displayed:unknown[]=[];
+ const job=verifiedProviders(f.p,peers,async peer=>{if(peer===peers[2]){await slow;return result(100,'fork','fork-100');}return result();},{parallel:true,onCandidate:value=>displayed.push(value)});
+ const rejected=assert.rejects(job,/Conflicting/);
+ await new Promise(resolve=>setTimeout(resolve,0));assert.equal(displayed.length,2);
+ release();await rejected;
+});
+
+test('display observers cannot mutate verified evidence or override authorization by throwing',async()=>{
+ const f=fixture();const value=await verifiedProviders(f.p,peers,async()=>result(),{onCandidate:display=>{display.identity='tampered';throw Error('UI failed');}});
+ assert.equal(value.identity,'same');
+});

@@ -5,7 +5,11 @@ import {AssetIndexer,type Config,type Snapshot} from './indexer.js';
 import {FEE,CARRIER,covenant,family,decision,sponsorAmount,transitionBuilder,validateBuilt} from './protocol.js';
 /** Public inspection is read-only. The connected caller pays through AssetWallet.claim. */
 export async function inspectClaim(index:AssetIndexer){
- const snapshot=await index.sync(),next=decision(snapshot.instance,snapshot.clock),required=sponsorAmount(snapshot.instance,3);
+ return describeSnapshot(await index.sync());
+}
+/** Pure display calculations provide no spend authorization. */
+export function describeSnapshot(snapshot:Snapshot){
+ const next=decision(snapshot.instance,snapshot.clock),required=sponsorAmount(snapshot.instance,3);
  return {snapshot,next,required,minerFee:FEE,carriers:required-FEE,carrierPerTokenOutput:CARRIER};
 }
 

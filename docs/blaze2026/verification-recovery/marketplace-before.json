@@ -1,0 +1,32 @@
+{
+  "indexFixture": "24c24395a6ad86038a2d11ebf3f480e21f8063917dce221f060d24f581afc292",
+  "at": "2026-11-16T15:20:58.352Z",
+  "target": "https://staking-arena-blaze2026.github.io/staking-arena-blaze-site/",
+  "wallet": "disconnected",
+  "broadcasts": 0,
+  "rpc": {},
+  "errors": [],
+  "runs": [
+    {
+      "run": 0,
+      "firstRowMs": 2856.226928000001,
+      "fullParametersMs": 26526.606507,
+      "rowCount": 3,
+      "marketText": "1\t0.00001000 BCH\tBCH\t0\n2\t0.00001500 BCH\tBCH\t2\n3\t0.00001000 BCH\tBCH\t0",
+      "detailDisplayMs": 33056.300000000745,
+      "singleProviderMs": null,
+      "independentlyVerifiedMs": 33303
+    },
+    {
+      "run": 1,
+      "firstRowMs": 1466.3104569999996,
+      "fullParametersMs": 19515.394537,
+      "rowCount": 3,
+      "marketText": "1\t0.00001000 BCH\tBCH\t0\n2\t0.00001500 BCH\tBCH\t2\n3\t0.00001000 BCH\tBCH\t0",
+      "detailDisplayMs": 25904.900000002235,
+      "singleProviderMs": null,
+      "independentlyVerifiedMs": 26093.60000000149
+    }
+  ],
+  "rpcCoverage": "Page-level interception only; worker RPCs are not counted. Financial RPC profiling uses the separate transaction reports."
+}

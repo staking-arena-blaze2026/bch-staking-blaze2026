@@ -10,7 +10,7 @@ export interface VerifiedRead<T>{value:T;tip:Header;identity:string}
 /** Each candidate must perform its own complete cryptographic verification. A quorum
  * only establishes agreement; it never substitutes for verification. Parallel reads require separate ElectrumCore instances; a shared mutable
  * transport always stays sequential. All configured sources are checked. */
-export async function verifiedProviders<T>(p:ElectrumCore,peers:string[],read:(peer:string,source:ElectrumCore)=>Promise<VerifiedRead<T>>,options:{parallel?:boolean;attempts?:number;sleep?:(ms:number)=>Promise<void>;onProgress?:(message:string)=>void}={}):Promise<T>{
+export async function verifiedProviders<T>(p:ElectrumCore,peers:string[],read:(peer:string,source:ElectrumCore)=>Promise<VerifiedRead<T>>,options:{parallel?:boolean;attempts?:number;sleep?:(ms:number)=>Promise<void>;onProgress?:(message:string)=>void;onCandidate?:(value:T)=>void}={}):Promise<T>{
  return timed(p,'independent-provider-verification',async()=>{
  let category:'synchronizing'|'unavailable'='unavailable';
  const unresolved=p.unresolvedChainPeers??=new Set<string>();
@@ -19,7 +19,10 @@ export async function verifiedProviders<T>(p:ElectrumCore,peers:string[],read:(p
   const good:{peer:string;result:VerifiedRead<T>}[]=[],tips=new Map<string,Header>(),observations:{peer:string;result:{tip:Header}}[]=[];let movement=false;
   const readPeer=async(peer:string)=>{
    const source=options.parallel?p.independentReader?.(peer)??p:p,before={...source.requestCounts};
-   try{return await source.session(async()=>{const tip=await source.tip();tips.set(peer,tip);observations.push({peer,result:{tip}});return read(peer,source);},peer);}
+   try{return await source.session(async()=>{const tip=await source.tip();tips.set(peer,tip);observations.push({peer,result:{tip}});const result=await read(peer,source);
+    // Display-only progress. Quorum/conflict checks below still gate return.
+    try{if(options.onCandidate)options.onCandidate(structuredClone(result.value));}catch{/* Display observers cannot change authorization. */}
+    return result;},peer);}
    finally{if(source!==p)for(const [method,count]of Object.entries(source.requestCounts))p.requestCounts[method]=(p.requestCounts[method]??0)+count-(before[method]??0);}
   };
   const parallel=options.parallel&&peers.every(peer=>p.independentReader?.(peer));

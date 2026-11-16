@@ -20,3 +20,15 @@ test('linked headers reused only for an exact endpoint/tip and a covered range',
 test('failed header verification never establishes reusable evidence',async()=>{
  const f=fixture();for(let i=0;i<2;i++)await assert.rejects(f.p.verifyHeaderChain(3,f.tip(14),new Map([[9,'00'.repeat(32)]])),/mismatch/);assert.equal(f.calls(),2);
 });
+
+test('MTP evidence is bound to the exact validated tip, endpoint and network; failed windows never cache',async()=>{
+ const f=fixture();let reads=0;
+ f.p.header=async height=>{reads++;const hex=f.rows[height]!;return {height,hex,hash:headerHash(hex),parent:height?headerHash(f.rows[height-1]!):'00'.repeat(32),time:height} as Header;};
+ assert.equal(await f.p.medianTime(14,f.tip(14).hash),9);assert.equal(reads,11);
+ assert.equal(await f.p.medianTime(14,f.tip(14).hash),9);assert.equal(reads,11);
+ await assert.rejects(f.p.medianTime(14,'00'.repeat(32)),/MTP tip mismatch/);assert.equal(reads,22);
+ await assert.rejects(f.p.medianTime(14,'00'.repeat(32)),/MTP tip mismatch/);assert.equal(reads,33);
+ f.p.endpoint='wss://b.test';await f.p.medianTime(14,f.tip(14).hash);assert.equal(reads,44);
+ await f.p.medianTime(13,f.tip(13).hash);assert.equal(reads,55);
+ await f.p.medianTime(14);await f.p.medianTime(14);assert.equal(reads,77);
+});

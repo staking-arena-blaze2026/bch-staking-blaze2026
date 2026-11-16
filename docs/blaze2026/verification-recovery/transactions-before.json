@@ -1,0 +1,35 @@
+{
+  "at": "2026-11-16T15:14:19.907Z",
+  "network": "isolated-regtest",
+  "latencyPerRequestMs": 30,
+  "cashonize": false,
+  "operations": [
+    {
+      "operation": "create",
+      "creationMode": "direct",
+      "untilApprovalMs": 4243.388451999999,
+      "signatureToPendingMs": 2153.1720540000024,
+      "requests": {
+        "blockchain.headers.subscribe": 33,
+        "blockchain.block.header": 159,
+        "blockchain.scripthash.listunspent": 9,
+        "blockchain.transaction.get": 3,
+        "blockchain.transaction.get_merkle": 16
+      }
+    },
+    {
+      "operation": "offer",
+      "untilApprovalMs": 3426.2704300000005,
+      "signatureToPendingMs": 3211.7958230000004,
+      "requests": {
+        "blockchain.headers.subscribe": 43,
+        "blockchain.block.header": 252,
+        "blockchain.scripthash.listunspent": 40,
+        "blockchain.transaction.get": 4,
+        "blockchain.transaction.get_merkle": 45,
+        "blockchain.scripthash.get_history": 18,
+        "blockchain.block.headers": 0
+      }
+    }
+  ]
+}

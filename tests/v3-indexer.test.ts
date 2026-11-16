@@ -1,4 +1,5 @@
 import test from 'node:test';
+import {ProviderVerificationError} from '../src/verified-providers.js';
 import {writeFile} from 'node:fs/promises';
 import assert from 'node:assert/strict';
 import {MockNetworkProvider,Network,SignatureTemplate,TransactionBuilder,type SpendableUtxo} from 'cashscript';
@@ -32,10 +33,10 @@ test('v3 portable Electrum replay: confirmed/pending, competing spends, provider
  heights.set(settled.txid,0);const pending=await index.sync();assert.deepEqual(pending.instance.state,full.instance.state);assert.equal(pending.allocations.length,1);assert.equal(pending.allocations[0]!.mature,false);assert.deepEqual(pending.pendingHistory,[settled.txid]);assert.ok(!pending.history.includes(settled.txid));
  heights.set(settled.txid,2);assert.equal((await index.sync()).allocations.length,1);
  txs.delete(settled.txid);const reorg=await index.sync();assert.equal(reorg.allocations.length,0);assert.equal(reorg.instance.state[4],0);
- failed=true;await assert.rejects(()=>index.sync(),/offline/);assert.equal(index.snapshot,undefined);failed=false;
- disagree=true;await assert.rejects(()=>index.sync(),/disagree/);assert.equal(index.snapshot,undefined);disagree=false;
+ failed=true;await assert.rejects(()=>index.sync(),e=>e instanceof ProviderVerificationError&&e.category==='unavailable');assert.equal(index.snapshot,reorg);assert.ok(index.error);failed=false;
+ disagree=true;await assert.rejects(()=>index.sync(),e=>e instanceof ProviderVerificationError&&e.category==='conflict');assert.equal(index.snapshot,reorg);disagree=false;
  // A second confirmed spend of the canonical activation must never be selected arbitrarily.
- txs.set(settled.txid,settled);const conflicting=structuredClone(settled);conflicting.txid='ff'.repeat(32);txs.set(conflicting.txid,conflicting);heights.set(conflicting.txid,2);await assert.rejects(()=>index.sync(),/Competing v3/);
+ txs.set(settled.txid,settled);const conflicting=structuredClone(settled);conflicting.txid='ff'.repeat(32);txs.set(conflicting.txid,conflicting);heights.set(conflicting.txid,2);await assert.rejects(()=>index.sync(),e=>e instanceof ProviderVerificationError&&e.category==='conflict');assert.equal(index.snapshot,reorg);
  }
 });
 

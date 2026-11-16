@@ -185,13 +185,13 @@ it('discovers a public vault in a fresh browser without a connected wallet or lo
  await waitFor(()=>expect(screen.getByRole('link',{name:'Vault 1'}).closest('tr')).toHaveTextContent('0.00002000 BCH'));
  expect(vi.mocked(v3Call).mock.calls.some(([i])=>i.operation==='discover')).toBe(false);
 });
-it('retains configuration through failure and reload while withholding stale marketplace figures',async()=>{
+it('retains configuration through failure and reload while retaining provisional immutable hints and withholding stale counts',async()=>{
  stub();window.location.hash='/v3/offers';const previous=vi.mocked(v3Call).getMockImplementation()!;
  stubCatalog();
  const first=render(<V3Arena/>);await waitFor(()=>expect(screen.getByRole('link',{name:'Vault 1'}).closest('tr')).toHaveTextContent('0.00002000 BCH'));await waitFor(()=>expect(JSON.parse(localStorage.getItem('staking-arena-v3-configs-mainnet-snapshots')??'{}')[config.genesis]?.snapshot).toBeDefined());first.unmount();
  vi.mocked(v3Call).mockImplementation(async intent=>{if(intent.operation==='sync'||intent.operation==='discover')throw Error('Public provider offline');return [];});
  render(<V3Arena/>);await waitFor(()=>expect(screen.getByText('Unavailable')).toBeInTheDocument());
- expect(screen.getByRole('link',{name:'Vault 1'}).closest('tr')).not.toHaveTextContent('0.00002000 BCH');
+ expect(screen.getByRole('link',{name:'Vault 1'}).closest('tr')).toHaveTextContent('0.00002000 BCH · provisionalBCHUnavailable');
  expect(JSON.parse(localStorage.getItem('arena-public-index-v1-mainnet')!)[0].config.genesis).toBe(config.genesis);
 });
 
@@ -264,6 +264,36 @@ it('renders verified token assets and immutable cap with a verified empty queue'
  const previous=vi.mocked(v3Call).getMockImplementation()!;
  vi.mocked(v3Call).mockImplementation(async(...args)=>{const result=await previous(...args);if(args[0].operation==='sync'){result.snapshot.config=tokenConfig;result.snapshot.instance.state=initialState(tokenConfig);}return result;});
  render(<V3Arena/>);await waitFor(()=>expect(screen.getByText('1000 CashToken 34343434…34343434')).toBeVisible());
- expect(screen.getByText('CashToken 12121212…12121212')).toBeVisible();expect(screen.getAllByRole('row')[1]!.lastElementChild).toHaveTextContent(/^0$/);
+ expect(screen.getByText('CashToken 12121212…12121212')).toBeVisible();await waitFor(()=>expect(screen.getAllByRole('row')[1]!.lastElementChild).toHaveTextContent(/^0$/));
  expect(screen.queryByText('4000 CashToken 34343434…34343434')).toBeNull();
+});
+
+it('renders index parameter hints while all Electrum reads are pending, with no fabricated offer count',async()=>{
+ stub();stubCatalog();window.location.hash='/v3/offers';
+ const previous=vi.mocked(v3Call).getMockImplementation()!;
+ vi.mocked(v3Call).mockImplementation((...args)=>args[0].operation==='sync'?new Promise(()=>{}):previous(...args));
+ render(<V3Arena/>);
+ await waitFor(()=>expect(screen.getByRole('link',{name:'Vault 1'}).closest('tr')).toHaveTextContent('0.00002000 BCH'));
+ const row=screen.getByRole('link',{name:'Vault 1'}).closest('tr')!;
+ expect(row).toHaveTextContent('provisional');expect(row.lastElementChild).toHaveTextContent('Verifying…');
+ expect(wallet.v3).not.toHaveBeenCalled();
+});
+
+it('displays single-provider state before independent verification and blocks every financial control after conflict',async()=>{
+ stub();stubCatalog();window.location.hash='/v3/vault/'+config.genesis;
+ const previous=vi.mocked(v3Call).getMockImplementation()!;
+ const candidate=await previous({operation:'sync',config});
+ let fail!:(error:Error)=>void;
+ vi.mocked(v3Call).mockImplementation((...args)=>args[0].operation==='sync'?new Promise((_resolve,reject)=>{fail=reject;}):previous(...args));
+ render(<WalletTransactionsContext.Provider value={wallet}><V3Arena/></WalletTransactionsContext.Provider>);
+ await waitFor(()=>expect(fail).toBeDefined());
+ act(()=>window.dispatchEvent(new CustomEvent('arena-vault-display',{detail:candidate})));
+ expect(screen.getByRole('heading',{name:'Live ranked queue'})).toBeVisible();
+ expect(screen.getByText(/Single-provider \/ retained display only/)).toBeVisible();
+ expect(screen.getByRole('button',{name:'Make an Offer'})).toBeDisabled();
+ expect(screen.getByRole('button',{name:'Review and pay fee in wallet'})).toBeDisabled();
+ await act(async()=>fail(Error('Conflicting blockchain evidence — transaction blocked.')));
+ expect(screen.getByText(/Providers disagree/)).toBeVisible();
+ expect(screen.getByRole('heading',{name:'Live ranked queue'})).toBeVisible();
+ expect(wallet.v3).not.toHaveBeenCalled();
 });

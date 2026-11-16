@@ -8,7 +8,7 @@ it('renders unverified hints without loading a wallet or chain libraries, then h
  window.location.hash='/v3/offers';document.body.innerHTML='<main id="arena-public-preview" hidden></main><div id="root"></div>';
  const fetcher=vi.fn(async()=>new Response(JSON.stringify({schema:1,network:'mainnet',vaults:[{config,announcement:genesis,height:0,status:'provisional'}],pages:[]})));vi.stubGlobal('fetch',fetcher);
  await act(async()=>{startPublicPreview();await new Promise(r=>setTimeout(r,10));});
- const preview=document.getElementById('arena-public-preview')!;expect(preview.hidden).toBe(false);expect(preview.textContent).toContain('Verifying…');expect(preview.textContent).not.toContain('Genesis transaction');expect(preview.querySelector('button')).toBeDisabled();expect(preview.querySelector('a')).toHaveAttribute('href','#/v3/vault/'+genesis);
+ const preview=document.getElementById('arena-public-preview')!;expect(preview.hidden).toBe(false);expect(preview.textContent).toContain('Verifying…');expect(preview.textContent).toContain('0.00001000 BCH · provisional');expect(preview.textContent).not.toContain('Genesis transaction');expect(preview.querySelector('button')).toBeDisabled();expect(preview.querySelector('a')).toHaveAttribute('href','#/v3/vault/'+genesis);
  await fetchPublicIndex('mainnet');expect(fetcher).toHaveBeenCalledTimes(1);
  window.location.hash='/v3/vault/'+genesis;window.dispatchEvent(new HashChangeEvent('hashchange'));expect(document.getElementById('arena-public-preview')).toBeNull();document.body.replaceChildren();
 });

@@ -63,6 +63,7 @@ export function createWalletRelay(callback: RelayStatusCallback, options: DappRe
   const connect = async () => {
     if (stopped || connecting || callInFlight) return;
     if (navigator.onLine === false) { schedule(); return; }
+    console.info(`[Arena wallet ${new Date().toISOString()}] Recovery attempt triggered; relay transport connecting`);
     connecting=true; callInFlight=true; reachable=false;
     clearWalletDeadline();
     status(RelayStatus.reconnecting('Refreshing transport'));
@@ -70,16 +71,19 @@ export function createWalletRelay(callback: RelayStatusCallback, options: DappRe
     // Keep the single-flight guard until its event or this bounded deadline.
     attemptDeadline=setTimeout(interrupted,7_000);
     try { await client.disconnect(); if (!stopped) await client.connect(); } catch { interrupted(); }
-    finally { callInFlight=false; if (!connecting && !reachable) schedule(); }
+    finally { callInFlight=false; if(stopped)void client.disconnect().catch(()=>{}); else if (!connecting && !reachable) schedule(); }
   };
-  const connected=()=>{clearTimeout(retry);retry=undefined;clearTimeout(attemptDeadline);connecting=false;reachable=true;status(RelayStatus.connected());};
+  const connected=()=>{if(stopped)return;console.info(`[Arena wallet ${new Date().toISOString()}] Relay subscription ready (SDK EOSE or readiness timeout; unauthenticated)`);clearTimeout(retry);retry=undefined;clearTimeout(attemptDeadline);connecting=false;reachable=true;status(RelayStatus.connected());};
   const interrupted=()=>{
+    if(stopped)return;
+    console.info(`[Arena wallet ${new Date().toISOString()}] Transport lost or attempt failed`);
     clearTimeout(attemptDeadline);connecting=false;reachable=false;
     status(RelayStatus.reconnecting('Transport interrupted'));
     schedule();
   };
   const message=(message: WalletReadyMessage)=>{
     if (message.action !== RelayMsgAction.WalletReady || stopped) return;
+    console.info(`[Arena wallet ${new Date().toISOString()}] WalletReady received; relay subscription delivery verified`);
     if (!pairedKey) {
       if (message.secret !== credentials.secret || !/^[a-f0-9]{64}$/i.test(message.public_key)) { status(RelayStatus.sessionDeleted()); return; }
       pairedKey=message.public_key.toLowerCase();

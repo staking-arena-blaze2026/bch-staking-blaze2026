@@ -37,3 +37,12 @@ it('network departure cancels every transport and rejects all pending requests',
  const {v3Call,verifyMarketplace}=await setup();const jobs=[v3Call({operation:'create'}),v3Call({operation:'sync'}),v3Call({operation:'list'}),verifyMarketplace({},1)];const results=Promise.allSettled(jobs);await flush();window.dispatchEvent(new Event('arena-network-leaving'));
  expect((await results).every(r=>r.status==='rejected')).toBe(true);expect(WorkerMock.all.every(w=>w.terminate.mock.calls.length===1)).toBe(true);
 });
+it('provider status cannot delay the first vault snapshot and changing vault cancels a stuck read',async()=>{
+ const {v3Call}=await setup();
+ const status=v3Call({operation:'connect'}),first=v3Call({operation:'sync',config:{genesis:'a'}});const rejected=expect(first).rejects.toThrow(/Selected vault changed/);
+ await flush();expect(WorkerMock.all).toHaveLength(2);
+ const second=v3Call({operation:'sync',config:{genesis:'b'}});await flush();await rejected;
+ expect(WorkerMock.all[1].terminate).toHaveBeenCalledOnce();
+ WorkerMock.all[2].finish({snapshot:'b'});await expect(second).resolves.toEqual({snapshot:'b'});
+ WorkerMock.all[0].finish({network:'mainnet'});await status;
+});

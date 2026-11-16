@@ -166,12 +166,12 @@ it('continues offline restoration, preserves pairing and journals, recovers on a
   await act(async()=>{await vi.advanceTimersByTimeAsync(RESTORE_WINDOW_MS);});
   expect(screen.getByText(/Cashonize connection lost/)).toBeVisible();
   expect(screen.getByRole('button',{name:'Retry saved connection'})).toBeVisible();
-  expect(cleanup).not.toHaveBeenCalled();
+  expect(cleanup).toHaveBeenCalledTimes(2);
   expect(localStorage.getItem(sessionKey)).toContain('saved-key');
   await act(async()=>{await vi.advanceTimersByTimeAsync(600_000);});
-  expect(initiateDappRelay).toHaveBeenCalledOnce();
+  expect(vi.mocked(initiateDappRelay).mock.calls.length).toBeGreaterThan(2);
   fireEvent(window,new Event('online'));
-  expect(initiateDappRelay).toHaveBeenCalledOnce();
+  expect(vi.mocked(initiateDappRelay).mock.calls.length).toBeGreaterThan(2);
   expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
   await walletReady();
   expect(screen.getByText('Connected to Cashonize')).toBeVisible();
@@ -204,10 +204,10 @@ it('accepts a late wallet handshake passively after the retry deadline on a reac
   render(<WalletConnect/>);
   await act(async()=>{await vi.advanceTimersByTimeAsync(RESTORE_WINDOW_MS);});
   expect(screen.getByRole('button',{name:'Retry saved connection'})).toBeVisible();
-  expect(cleanup).not.toHaveBeenCalled();
+  expect(cleanup).toHaveBeenCalledTimes(2);
   await walletReady();
   expect(screen.getByText('Connected to Cashonize')).toBeVisible();
-  expect(initiateDappRelay).toHaveBeenCalledOnce();
+  expect(initiateDappRelay).toHaveBeenCalledTimes(3);
 });
 
 it('rejects changed wallet derivation identity and preserves the previously accepted identity',async()=>{
@@ -264,9 +264,9 @@ it('automatically retries a delayed wallet beyond 30s while visible, without Ret
   }));
  });
  await act(async()=>{await vi.advanceTimersByTimeAsync(60_000);});
- expect(requests).toHaveLength(5); // 2s, 6s, 14s, 30s, 60s
+ expect(requests).toHaveLength(5); // Bounded fresh manager recovery also restarts proactive probes.
  expect(screen.getByText('Connected to Cashonize')).toBeVisible();
- expect(initiateDappRelay).toHaveBeenCalledOnce();
+ expect(initiateDappRelay).toHaveBeenCalledTimes(2);
  expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
 });
 
@@ -321,4 +321,15 @@ it('explicit disconnect and wallet revocation stop automatic restoration across 
  render(<WalletConnect/>);fireEvent(window,new Event('focus'));
  await act(async()=>{await vi.advanceTimersByTimeAsync(300_000);});
  expect(initiateDappRelay).toHaveBeenCalledOnce();expect(localStorage.getItem(sessionKey)).toBeNull();
+});
+
+it('does not let recovery replacement erase an authenticated revocation grace timer',async()=>{
+ vi.useFakeTimers();render(<WalletConnect/>);
+ fireEvent.click(screen.getByRole('button',{name:'Connect Wallet'}));await walletReady();
+ await act(async()=>{client.emit('reconnecting');});
+ // Use the manager's actual event via the existing transport status callback.
+ await act(async()=>{const callback=vi.mocked(initiateDappRelay).mock.calls.at(-1)![0];callback({client,status:{status:'reconnecting'}} as unknown as Parameters<typeof callback>[0]);await vi.advanceTimersByTimeAsync(7_000);});
+ await act(async()=>{client.emit('message',{action:RelayMsgAction.Disconnect,reason:'user_disconnect'});await vi.advanceTimersByTimeAsync(8_000);});
+ expect(screen.getByRole('button',{name:'Pair Cashonize again'})).toBeVisible();
+ expect(initiateDappRelay).toHaveBeenCalledOnce();
 });

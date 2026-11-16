@@ -1,0 +1,11 @@
+{
+  "environment": "Local Nostr service over real WebSockets; actual WizardConnect encryption and manager; synthetic paired wallet, not Cashonize",
+  "at": "2026-11-16",
+  "measurementsMs": {
+    "manual": 1565.2,
+    "automatic": 12215.1
+  },
+  "failure": "EOSE accepted but recipient subscription delivers no messages",
+  "manualEvidence": "REQ count increases after click; same saved credentials retained; live WalletReady validates before connected",
+  "liveCashonizeAcceptance": "pending user validation; existing browser pairing not accessed"
+}

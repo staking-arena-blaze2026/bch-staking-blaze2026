@@ -5,7 +5,7 @@ import {verifiedProviders} from '../../src/verified-providers';
 /// <reference lib="webworker" />
 import {BrowserElectrumProvider} from '../../src/electrum-wss';
 import {AssetIndexer} from '../../src/v3/indexer';
-import {inspectClaim,RewardClaimer,BrowserClaimStore} from '../../src/v3/claim';
+import {describeSnapshot,RewardClaimer,BrowserClaimStore} from '../../src/v3/claim';
 import {AssetWallet,BrowserAssetStore} from '../../src/v3/wallet';
 import {v3Config} from './v3Config';
 import {walletPeers} from '../../src/electrum-wallet';
@@ -45,7 +45,10 @@ scope.onmessage=event=>{queue=queue.catch(()=>{}).then(async()=>{const {id,inten
    return current;
   }
   if(intent.operation==='sync'){
-   const result=await inspectClaim(new AssetIndexer(provider,intent.config));
+   let displayed=false;
+   const index=new AssetIndexer(provider,intent.config);
+   const snapshot=await index.sync(readOnly ? snapshot=>{if(!displayed){displayed=true;scope.postMessage({type:'display-snapshot',id,result:describeSnapshot(snapshot)});}} : undefined);
+   const result=describeSnapshot(snapshot);
    const originals=(await wallet.store.list()).filter(op=>op.registrationMode==='atomic'&&op.raw&&op.txid&&op.config?.genesis===intent.config.genesis);
    return {...result,inspections:originals.map(original=>({original,result:reconcileAtomicOffer(original,result.snapshot)}))};
   }

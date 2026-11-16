@@ -170,7 +170,12 @@ export class ElectrumCore implements NetworkProvider {
       this.linkedRanges.set(context,{first:firstHeight,hashes});
     }
   }
+  // A validated MTP window is immutable for its exact terminal hash. Keep this
+  // separate from live tips/UTXOs/history; it provides no input availability evidence.
+  private mtpEvidence=new Map<string,number>();
   async medianTime(height: number, expectedTipHash?: string) {
+    const context=expectedTipHash ? `${this.network}:${this.endpoint}:${height}:${expectedTipHash}` : undefined;
+    if(context&&this.mtpEvidence.has(context))return this.mtpEvidence.get(context)!;
     const headers: Header[] = [];
     const fetched=await Promise.all(Array.from({length:Math.min(11,height+1)},(_,i)=>this.header(Math.max(0,height-10)+i)));
     for (const h of fetched) {
@@ -178,7 +183,9 @@ export class ElectrumCore implements NetworkProvider {
       headers.push(h);
     }
     if (expectedTipHash && headers.at(-1)!.hash !== expectedTipHash) throw Error('MTP tip mismatch');
-    return headers.map(h => h.time).sort((a,b) => a-b)[Math.floor(headers.length/2)]!;
+    const mtp=headers.map(h => h.time).sort((a,b) => a-b)[Math.floor(headers.length/2)]!;
+    if(context){if(this.mtpEvidence.size>=32)this.mtpEvidence.delete(this.mtpEvidence.keys().next().value!);this.mtpEvidence.set(context,mtp);}
+    return mtp;
   }
   async history(script: string): Promise<HistoryEntry[]> {
     if (!/^(?:[a-f0-9]{2})*$/i.test(script)) throw Error('Invalid locking script');

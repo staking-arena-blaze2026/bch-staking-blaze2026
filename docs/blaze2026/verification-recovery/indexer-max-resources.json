@@ -1,0 +1,60 @@
+{
+  "roster": 16,
+  "registryBytes": 2958,
+  "genesisBytes": 4307,
+  "transactionBytes": 4590,
+  "vm": [
+    {
+      "arithmeticCost": 3706,
+      "definedFunctions": 0,
+      "densityControlLength": 3868,
+      "evaluatedInstructionCount": 7615,
+      "hashDigestIterations": 91,
+      "maximumHashDigestIterations": 1934,
+      "maximumOperationCost": 3094400,
+      "maximumSignatureCheckCount": 90,
+      "operationCost": 1149570,
+      "signatureCheckCount": 0,
+      "stackPushedBytes": 366892
+    },
+    {
+      "arithmeticCost": 0,
+      "definedFunctions": 0,
+      "densityControlLength": 146,
+      "evaluatedInstructionCount": 38,
+      "hashDigestIterations": 3,
+      "maximumHashDigestIterations": 73,
+      "maximumOperationCost": 116800,
+      "maximumSignatureCheckCount": 3,
+      "operationCost": 5213,
+      "signatureCheckCount": 0,
+      "stackPushedBytes": 837
+    },
+    {
+      "arithmeticCost": 0,
+      "definedFunctions": 0,
+      "densityControlLength": 146,
+      "evaluatedInstructionCount": 38,
+      "hashDigestIterations": 3,
+      "maximumHashDigestIterations": 73,
+      "maximumOperationCost": 116800,
+      "maximumSignatureCheckCount": 3,
+      "operationCost": 5213,
+      "signatureCheckCount": 0,
+      "stackPushedBytes": 837
+    },
+    {
+      "arithmeticCost": 0,
+      "definedFunctions": 0,
+      "densityControlLength": 141,
+      "evaluatedInstructionCount": 7,
+      "hashDigestIterations": 7,
+      "maximumHashDigestIterations": 70,
+      "maximumOperationCost": 112800,
+      "maximumSignatureCheckCount": 3,
+      "operationCost": 28217,
+      "signatureCheckCount": 1,
+      "stackPushedBytes": 173
+    }
+  ]
+}

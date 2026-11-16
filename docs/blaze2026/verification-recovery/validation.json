@@ -1,0 +1,43 @@
+{
+  "at": "2026-11-16T15:36:42.302989+00:00",
+  "frontend": {
+    "command": "npm --prefix frontend test -- --reporter=dot --testTimeout=15000",
+    "filesPassed": 34,
+    "testsPassed": 185,
+    "testsFailed": 0
+  },
+  "protocolRegression": {
+    "cases": 25,
+    "initialPassed": 23,
+    "rerunResolved": [
+      "RPC-dependent transport test rerun inside disposable BCHN: passed",
+      "Portable replay assertions updated to structured provider categories and retained non-authoritative snapshots: passed"
+    ],
+    "isolatedBchn": [
+      "Atomic V4 all asset pairings, refusal, race, eviction, uncertain broadcast and reorg",
+      "Chained genesis all asset pairings",
+      "Zero-conf dependent genesis/offers/claims",
+      "Changing tips, source conflict, coinbase maturity and funding discovery"
+    ]
+  },
+  "verificationEvidence": {
+    "testsPassed": 17,
+    "testsFailed": 0,
+    "checks": [
+      "MTP exact-tip cache identity and failure invalidation",
+      "Single-provider display cannot authorize conflicting evidence",
+      "Display callback mutation and exceptions cannot alter verified evidence",
+      "Independent provider agreement, forks, propagation and persisted conflicts"
+    ]
+  },
+  "otherPassed": [
+    "Root TypeScript",
+    "Frontend TypeScript",
+    "Blaze production build",
+    "V3 contract compiler artifact check",
+    "Two generalized asset unit tests",
+    "Isolated transaction performance benchmark"
+  ],
+  "realCashonize": "Pending user normal-profile validation; no wallet credentials accessed",
+  "realBchTransactionsInitiated": false
+}

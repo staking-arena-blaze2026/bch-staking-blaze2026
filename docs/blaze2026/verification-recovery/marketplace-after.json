@@ -1,0 +1,32 @@
+{
+  "indexFixture": "24c24395a6ad86038a2d11ebf3f480e21f8063917dce221f060d24f581afc292",
+  "at": "2026-11-16T15:22:57.097Z",
+  "target": "http://127.0.0.1:4186/staking-arena-blaze-site/",
+  "wallet": "disconnected",
+  "broadcasts": 0,
+  "rpc": {},
+  "errors": [],
+  "runs": [
+    {
+      "run": 0,
+      "firstRowMs": 1899.6178529999997,
+      "fullParametersMs": 2616.770171,
+      "rowCount": 3,
+      "marketText": "1\t0.00001000 BCH \u00b7 provisional\tBCH\tVerifying\u2026\n2\t0.00001500 BCH \u00b7 provisional\tBCH\tVerifying\u2026\n3\t0.00001000 BCH \u00b7 provisional\tBCH\tVerifying\u2026",
+      "detailDisplayMs": 13273.89999999851,
+      "singleProviderMs": 12710,
+      "independentlyVerifiedMs": 13373.699999999255
+    },
+    {
+      "run": 1,
+      "firstRowMs": 900.5085679999975,
+      "fullParametersMs": 3004.237106999997,
+      "rowCount": 3,
+      "marketText": "1\t0.00001000 BCH \u00b7 provisional\tBCH\tVerifying\u2026\n2\t0.00001500 BCH \u00b7 provisional\tBCH\tVerifying\u2026\n3\t0.00001000 BCH \u00b7 provisional\tBCH\tVerifying\u2026",
+      "detailDisplayMs": 12017.800000000745,
+      "singleProviderMs": 11724.5,
+      "independentlyVerifiedMs": 13367.10000000149
+    }
+  ],
+  "rpcCoverage": "Page-level interception only; worker RPCs are not counted. Financial RPC profiling uses the separate transaction reports."
+}

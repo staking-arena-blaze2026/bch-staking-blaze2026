@@ -25,10 +25,10 @@ const historyIdentity=(rows:HistoryEntry[])=>JSON.stringify([...rows].sort((a,b)
 export class AssetIndexer {
  snapshot?:Snapshot;error?:string;private busy=false;
  constructor(readonly electrum:ElectrumCore,readonly config:Config,readonly onProfile?:(phase:string,ms:number)=>void){v3Network(electrum);}
- async sync(){if(this.busy)throw Error('V3 synchronization already running');this.busy=true;try{
+ async sync(onDisplay?:(snapshot:Snapshot)=>void){if(this.busy)throw Error('V3 synchronization already running');this.busy=true;try{
   const result=await verifiedProviders(this.electrum,walletPeers(this.electrum),async(_peer,source)=>{
    const value=await timed(source,'vault-state-replay',()=>this.replay(source));return {value,tip:value.tip,identity:identity(value)};
-  },{parallel:true});this.snapshot=result;this.error=undefined;return result;
+  },{parallel:true,onCandidate:onDisplay?value=>onDisplay(cloneSnapshot(value)):undefined});this.snapshot=result;this.error=undefined;return result;
  }catch(e){this.error=String(e);throw e;}finally{this.busy=false;}}
  private async replay(source=this.electrum):Promise<Snapshot>{
   const started=performance.now();
