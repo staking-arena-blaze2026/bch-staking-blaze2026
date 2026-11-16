@@ -74,7 +74,7 @@ p, li, dd, td { overflow-wrap: anywhere; }
 .wallet-error { color: #ffb4a2; }
 
 main { max-width: var(--content); margin: 0 auto; padding: 28px 0 56px; }
-.network-banner, .warning, .preview-note { border-radius: 2px; padding: 14px 16px; margin: 0 0 16px; font-size: 14px; background: #1a0d08; border: 1px solid #e85d04; border-left: 6px solid #ff7a22; color: #ffd7b0; }
+.network-banner, main > p[role="status"], .warning, .preview-note { border-radius: 2px; padding: 14px 16px; margin: 0 0 16px; font-size: 14px; background: #1a0d08; border: 1px solid #e85d04; border-left: 6px solid #ff7a22; color: #ffd7b0; }
 .warning p, .preview-note p { margin-top: 6px; }
 .provider-status, .data-status, .snapshot-time { color: var(--muted); font-size: 13px; }
 .data-status { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 12px; }
