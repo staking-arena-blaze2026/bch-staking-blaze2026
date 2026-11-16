@@ -1,33 +1,35 @@
-✔ wire decoding preserves exact CashToken amounts, NFT category/commitment, and satoshis (13.4574ms)
-✔ captured real chipnet vault: lineage, immutable snapshot, allocations, withdrawal, restart and API routes without BCHN (9564.7884ms)
-✔ reorganizations roll back confirmed lineage and withdrawals; recovery replays the canonical branch (8678.4477ms)
-✔ disconnects, stale tips, invalid proofs and changed ancestry fail closed, preserving last committed state (3190.8613ms)
-✔ protocol negotiation, chipnet identity, timeout, reconnect and server failover use the real socket transport (634.922ms)
-✔ canonical public announcement roundtrips both registry versions and modes (73.8709ms)
-✔ malformed announcements rejected (22.0227ms)
-✔ discovery unions endpoints, deduplicates and bounds transaction loading; malformed hints rejected (1545.3195ms)
-✔ all discovery endpoints offline gives recovery message (25.1088ms)
-✔ legacy catch-up is bounded, persistent across restart, and ignores thousands of unrelated transactions (5811.3072ms)
-✔ new users automatically appear, 0-conf confirmation/reorg/eviction remains a hint, outage retains listings and recovery catches up (462.9972ms)
-✔ dedicated markers are unique per chain, same size and different from OP_TRUE legacy; namespace is recognizable (6.0384ms)
-✔ malicious/conflicting entries cannot provide state, parameters or cross-network redirects; other valid rows survive (9.5715ms)
-✔ network mixing is rejected (224.6698ms)
-✔ all three sources independently checked; two matching verified reads authorize (7.0317ms)
-✔ first two differ, third verifies current chain; lag is proved by linked headers (1.1484ms)
-✔ offline first provider permits two independently checked sources (1.5435ms)
-✔ same height fork and linked-header fork block even with matching majority (2.5517ms)
-✔ verified double-spend cannot be masked by other providers (1.5194ms)
-✔ propagation delay retries full reads; unresolved disagreement is bounded (83.8999ms)
-✔ one verified provider never authorizes (8.6368ms)
-✔ two lagging providers cannot overrule a newer verified snapshot (5.2026ms)
-✔ a verified pending transition cannot be voted away by two empty mempools (16.8809ms)
-✔ a proved fork remains blocked through provider outage and clears only after compatible evidence (29.1433ms)
-✔ a provider retreating to an earlier tip inside a read is a reorganization (0.9743ms)
-ℹ tests 25
+✔ wire decoding preserves exact CashToken amounts, NFT category/commitment, and satoshis (9.845831ms)
+✔ captured real chipnet vault: lineage, immutable snapshot, allocations, withdrawal, restart and API routes without BCHN (1107.843723ms)
+✔ reorganizations roll back confirmed lineage and withdrawals; recovery replays the canonical branch (1133.876477ms)
+✔ disconnects, stale tips, invalid proofs and changed ancestry fail closed, preserving last committed state (393.481539ms)
+✔ protocol negotiation, chipnet identity, timeout, reconnect and server failover use the real socket transport (243.493503ms)
+✔ canonical public announcement roundtrips both registry versions and modes (4.20841ms)
+✔ malformed announcements rejected (0.987781ms)
+✔ discovery unions endpoints, deduplicates and bounds transaction loading; malformed hints rejected (90.872635ms)
+✔ all discovery endpoints offline gives recovery message (1.248497ms)
+✔ legacy catch-up is bounded, persistent across restart, and ignores thousands of unrelated transactions (179.457723ms)
+✔ new users automatically appear, 0-conf confirmation/reorg/eviction remains a hint, outage retains listings and recovery catches up (7.527807ms)
+✔ dedicated markers are unique per chain, same size and different from OP_TRUE legacy; namespace is recognizable (0.793418ms)
+✔ malicious/conflicting entries cannot provide state, parameters or cross-network redirects; other valid rows survive (6.86595ms)
+✔ network mixing is rejected (3.705546ms)
+✔ dedicated pending announcements take priority over legacy catch-up and are retrieved from a provider that observed them (44.747776ms)
+✔ parent retries union child observations and require all providers before marking a retained child absent (174.521283ms)
+✔ all three sources independently checked; two matching verified reads authorize (8.640737ms)
+✔ first two differ, third verifies current chain; lag is proved by linked headers (0.715557ms)
+✔ offline first provider permits two independently checked sources (3.080477ms)
+✔ same height fork and linked-header fork block even with matching majority (1.551195ms)
+✔ verified double-spend cannot be masked by other providers (8.503176ms)
+✔ propagation delay retries full reads; unresolved disagreement is bounded (2.697013ms)
+✔ one verified provider never authorizes (2.253805ms)
+✔ two lagging providers cannot overrule a newer verified snapshot (1.14519ms)
+✔ a verified pending transition cannot be voted away by two empty mempools (1.034987ms)
+✔ a proved fork remains blocked through provider outage and clears only after compatible evidence (7.052002ms)
+✔ a provider retreating to an earlier tip inside a read is a reorganization (0.596494ms)
+ℹ tests 27
 ℹ suites 0
-ℹ pass 25
+ℹ pass 27
 ℹ fail 0
 ℹ cancelled 0
 ℹ skipped 0
 ℹ todo 0
-ℹ duration_ms 94331.227
+ℹ duration_ms 9253.881965

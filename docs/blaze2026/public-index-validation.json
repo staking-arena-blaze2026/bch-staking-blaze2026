@@ -1,0 +1,54 @@
+{
+  "checkedAt": "2026-11-16T08:28:54.227255+00:00",
+  "implementationCommit": "3f7ea79f7183bcb0a97385af3cce4d7110829349",
+  "frontend": {
+    "tests": 146,
+    "files": 29,
+    "passed": true,
+    "log": "public-index-frontend-tests.log"
+  },
+  "electrumIndexProviderUnit": {
+    "tests": 27,
+    "passed": true,
+    "log": "public-index-unit-tests.log"
+  },
+  "browser": {
+    "scenarios": 7,
+    "passed": true,
+    "log": "public-index-browser-tests.log"
+  },
+  "isolatedBCHN": {
+    "version": "29.2.0",
+    "suites": [
+      "blaze-atomic-offer",
+      "blaze-chained-genesis",
+      "blaze-public-discovery",
+      "blaze-tip-verification",
+      "blaze-zero-conf"
+    ],
+    "cases": 10,
+    "passed": true,
+    "zeroConfRerunAfterInterruption": true,
+    "originalNodeUsed": false
+  },
+  "typecheck": {
+    "root": true,
+    "frontend": true
+  },
+  "productionBuild": true,
+  "compiledArtifactsCheck": true,
+  "localChrome": {
+    "version": "157.0.8103.78",
+    "freshListMs": 715.8484629999998,
+    "reloadListMs": 431.9218460000011,
+    "realMainnetVaultVerified": true,
+    "networkSeparation": true,
+    "broadcasts": []
+  },
+  "productionAcceptance": "Not deployed: both Git pushes failed because the GitHub CLI login keyring is locked",
+  "followupChecks": [
+    "Dedicated pending announcements outrank legacy catch-up",
+    "Raw announcements come from observing providers",
+    "Parent child observations are unioned and retained through provider outage"
+  ]
+}
