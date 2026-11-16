@@ -9,8 +9,8 @@
   --card: #120f0c;
   --line: #3a2d1c;
   --line-strong: #c6a15b;
-  --steel: #e85d04;
-  --steel-mid: #ff8a3d;
+  --steel: #c43212;
+  --steel-mid: #ff5a1f;
   --wood: #e6c36a;
   --wood-deep: #f0d48a;
   --header: #070605;
@@ -59,10 +59,10 @@ p, li, dd, td { overflow-wrap: anywhere; }
   position: sticky; top: 0; z-index: 30; max-width: none; width: 100%; margin: 0;
   display: flex; align-items: center; justify-content: space-between; gap: 18px;
   padding: 10px max(16px, calc((100% - var(--content)) / 2));
-  background: var(--header); color: var(--header-ink); border-bottom: 3px solid #c6a15b; box-shadow: 0 10px 30px rgba(0,0,0,.45);
+  background: #000; color: var(--header-ink); border-bottom: 4px solid #c43212; box-shadow: inset 0 -3px 0 #c6a15b;
 }
 .brand { display: flex; align-items: center; gap: 0; text-decoration: none; color: var(--header-ink); font-size: 0; line-height: 0; }
-.brand img { height: 86px; width: auto; max-width: min(460px, 58vw); display: block; }
+.brand img { height: 132px; width: auto; max-width: min(560px, 70vw); display: block; background: #000; }
 .header nav { display: flex; align-items: center; justify-content: flex-end; flex-wrap: wrap; gap: 10px; font-size: 13px; }
 .header nav > a { text-decoration: none; }
 .header nav > label { display: flex; align-items: center; gap: 8px; color: #e6c36a; font-weight: 700; }
@@ -87,8 +87,8 @@ button, .button {
   text-decoration: none; white-space: nowrap;
 }
 button:hover:not(:disabled), .button:hover:not([aria-disabled="true"]) { background: #2a1c10; }
-.button, .v3-primary { background: #e85d04; border-color: #ff8a3d; color: #1a0c06; box-shadow: inset 0 1px 0 #ffb27a; }
-.button:hover:not(:disabled):not([aria-disabled="true"]), .v3-primary:hover:not(:disabled) { background: #ff6a1a; }
+.button, .v3-primary { background: #c43212; border-color: #ff5a1f; color: #fff4e8; box-shadow: inset 0 1px 0 #ff8a3d; }
+.button:hover:not(:disabled):not([aria-disabled="true"]), .v3-primary:hover:not(:disabled) { background: #e23b0c; }
 .refresh { background: transparent; color: #f0d48a; }
 .v3-primary { width: 100%; min-height: 48px; margin-right: 0; }
 
@@ -258,7 +258,7 @@ footer { border-top: 2px solid var(--line-strong); margin-top: 48px; padding-top
 }
 @media (max-width: 720px) {
   .header { flex-wrap: wrap; gap: 12px; padding: 10px 14px 12px; }
-  .brand img { height: 68px; }
+  .brand img { height: 96px; }
   .header nav { width: 100%; justify-content: flex-start; }
   .wallet-control, .wallet-control:has(.wallet-network-note) { max-width: 100%; flex: 1 1 180px; }
   main { margin: 0 16px; padding-top: 20px; }
