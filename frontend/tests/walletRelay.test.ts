@@ -145,3 +145,8 @@ it('manual recovery refreshes even a nominally ready subscription and coalesces 
  relay.prepareHandshake?.();relay.cleanup();
  await vi.advanceTimersByTimeAsync(120_000);expect(relay.client.connect).toHaveBeenCalledTimes(2);
 });
+
+it('rejects every outbound message on an abandoned relay, including stale SDK signing replays',async()=>{
+ vi.useFakeTimers();const relay=createWalletRelay(vi.fn());await vi.advanceTimersByTimeAsync(0);relay.cleanup();
+ await expect(relay.client.relay({action:RelayMsgAction.SignTransactionRequest,time:0} as Parameters<typeof relay.client.relay>[0])).rejects.toThrow('Wallet relay closed');
+});

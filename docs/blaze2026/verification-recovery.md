@@ -66,3 +66,5 @@ Isolated BCHN checks cover all asset pairings for atomic offers, chained genesis
 The first broad run exposed a legacy RPC-dependent transport test without a configured disposable node; `scripts/test-isolated-protocol.ts` now runs it in an isolated node, where it passes. No original service was used. The first full frontend run also encountered two 5-second test timeouts during concurrent verification on a memory-constrained machine; the final suite uses a 15-second test-runner timeout, without changing application deadlines.
 
 Final frontend run: **185 passed in 34 files**, with zero failures. All 25 selected protocol cases passed after the documented reruns; 17 verification-evidence checks, root/frontend TypeScript, contract artifact checking and the production build passed. See [validation record](verification-recovery/validation.json).
+
+A final shutdown guard rejects every outbound message on a cleaned-up relay, including an SDK attempt to replay a stale signing request. The 12 relay lifecycle tests and a fresh production build pass after this guard; it adds one regression beyond the 185-test full-suite run.

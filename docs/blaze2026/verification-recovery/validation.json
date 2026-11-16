@@ -39,5 +39,13 @@
     "Isolated transaction performance benchmark"
   ],
   "realCashonize": "Pending user normal-profile validation; no wallet credentials accessed",
-  "realBchTransactionsInitiated": false
+  "realBchTransactionsInitiated": false,
+  "finalShutdownGuard": {
+    "relayTestsPassed": 12,
+    "testsFailed": 0,
+    "regression": "No outgoing message, including stale signing replay, is accepted by a cleaned-up relay",
+    "fullSuitePreviouslyPassed": 185,
+    "newRegressionTests": 1,
+    "productionBuild": "passed"
+  }
 }

@@ -35,6 +35,7 @@ export function createWalletRelay(callback: RelayStatusCallback, options: DappRe
     },Math.min(30_000,15_000 * 2 ** Math.min(silentRefreshes++,1)));
   };
   client.relay = message => {
+    if (stopped) return Promise.reject(Error('Wallet relay closed'));
     if (message.action !== RelayMsgAction.DappReady) return send(message);
     if (requestFreshWalletReady) {
       requestFreshWalletReady=false;
