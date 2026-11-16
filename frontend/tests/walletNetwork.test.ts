@@ -12,7 +12,7 @@ it('rejects mainnet and cached or disconnected paths before chipnet signing',()=
   const session=new WalletNetworkSession(()=>current);
   session.accept();expect(()=>assertChipnetTransactionSession(session,CHIPNET_NETWORK)).toThrow(/Mainnet/);
   current=paths('testnet');expect(()=>assertChipnetTransactionSession(session,CHIPNET_NETWORK)).toThrow(/live/);
-  session.accept();expect(()=>assertChipnetTransactionSession(session,CHIPNET_NETWORK)).toThrow(/temporarily unavailable/);
+  session.accept();expect(()=>assertChipnetTransactionSession(session,CHIPNET_NETWORK)).not.toThrow();
   expect(()=>assertChipnetTransactionSession(session,REGTEST_NETWORK)).toThrow();
   expect(()=>assertChipnetTransactionSession(session,{network:'chipnet',genesisHash:'00'.repeat(32)})).toThrow();
   session.invalidate();expect(()=>assertChipnetTransactionSession(session,CHIPNET_NETWORK)).toThrow(/live/);

@@ -50,7 +50,7 @@ export default function V3Arena(){
  useEffect(()=>{const report=(event:Event)=>setFunding((event as CustomEvent).detail);window.addEventListener('arena-funding-report',report);return()=>window.removeEventListener('arena-funding-report',report);},[]);
  const [s,setS]=useState('0.00003000'),[t,setT]=useState('3600'),[r,setR]=useState('0.00001000');
  const [networkStatus,setNetworkStatus]=useState('Verifying '+v3Chain+' providers…');
- const walletAvailability=wallet?.v3Availability?.(),walletReady=v3Chain!=='chipnet'&&!!wallet?.v3&&(walletAvailability?.available??true);
+ const walletAvailability=wallet?.v3Availability?.(),walletReady=!!wallet?.v3&&(walletAvailability?.available??true);
  const requestedVault=useRef<string|undefined>(undefined),running=useRef(false),[actionMessage,setActionMessage]=useState<{key:string;text:string;txid?:string}>();
  const [display,setDisplay]=useState<any>();
  useEffect(()=>{

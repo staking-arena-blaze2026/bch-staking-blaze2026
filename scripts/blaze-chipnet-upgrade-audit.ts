@@ -3,7 +3,7 @@ import {writeFile} from 'node:fs/promises';
 import {Buffer} from '../src/bytes.js';
 import {BrowserElectrumProvider} from '../src/electrum-wss.js';
 import {headerHash,type Header} from '../src/electrum-core.js';
-const endpoints=['wss://chipnet.imaginary.cash:50004','wss://electrum-chipnet.optnlabs.com','wss://chipnet.bch.ninja:50004'];
+const endpoints=process.env.CHIPNET_RESTORE_AUDIT?['wss://chipnet.imaginary.cash:50004','wss://chipnet.bch.ninja:50004']:['wss://chipnet.imaginary.cash:50004','wss://electrum-chipnet.optnlabs.com','wss://chipnet.bch.ninja:50004'];
 const activationMtp=1794744000,startHeight=332300,limit=8192,powLimit=BigInt('0x00000000'+'ff'.repeat(28));
 function decode(height:number,hex:string){const b=Buffer.from(hex,'hex'),bits=b.readUInt32LE(72),exponent=bits>>>24,mantissa=bits&0x7fffff;
  const target=exponent<=3?BigInt(mantissa)>>BigInt(8*(3-exponent)):BigInt(mantissa)<<BigInt(8*(exponent-3));
@@ -30,5 +30,5 @@ if(good.length>=2){for(let height=startHeight;height<=Math.min(...good.map(o=>o.
 const common=commonHeaders.at(-1);
 for(const o of good)if(common){const tail=o.headers.filter((h:Header)=>h.height>common.height);o.workAfterCommon=tail.reduce((n:bigint,h:any)=>n+BigInt(h.work),0n).toString();o.commonAncestor={height:common.height,hash:common.hash};}
 const report={at:new Date().toISOString(),activationMtp,startHeight,commonAncestor:common?{height:common.height,hash:common.hash}:null,warning:'Header hashes, linkage and PoW only: chainwork is not a substitute for contextual difficulty and full upgraded-node block validation.',observations};
-await writeFile('docs/blaze2026/chipnet-upgrade/electrum-live.json',JSON.stringify(report,null,2)+'\n');
+await writeFile(process.env.CHIPNET_RESTORE_AUDIT?'docs/blaze2026/chipnet-upgrade/restoration-live.json':'docs/blaze2026/chipnet-upgrade/electrum-live.json',JSON.stringify(report,null,2)+'\n');
 console.log(JSON.stringify({at:report.at,commonAncestor:report.commonAncestor,providers:observations.map(({headers,...o})=>o)},null,2));

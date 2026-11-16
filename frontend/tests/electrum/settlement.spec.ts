@@ -55,9 +55,9 @@ test.fixme('provider contradiction prevents all automatic broadcasts and recover
  await expect.poll(()=>chain.pending.size,{timeout:30000}).toBe(1);
 });
 
-// Frozen consensus policy supersedes the historical automatic-spending expectations above.
-test('chipnet period processing stays read-only even when the synthetic providers agree',async({page})=>{
- await open(page);await expect(page.getByText(/Chipnet temporarily unavailable for transactions:/)).toBeVisible();
- await expect(status(page)).toContainText('Chipnet temporarily unavailable',{timeout:60000});expect(chain.broadcasts).toHaveLength(0);expect(chain.pending.size).toBe(0);
- await expect(page.getByRole('button',{name:'Process Period',exact:true})).toBeDisabled();
+// The captured pre-upgrade fixture cannot establish upgraded-chain broadcast context.
+test('period processing fails closed without upgraded-chain context',async({page})=>{
+ await open(page);
+ await expect(status(page)).toContainText(/activation unverified|Stale|Header|header/,{timeout:60000});expect(chain.broadcasts).toHaveLength(0);expect(chain.pending.size).toBe(0);
+
 });

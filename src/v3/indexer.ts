@@ -1,3 +1,4 @@
+import {tickContext} from '../consensus-clock.js';
 import {timed} from '../operation-timing.js';
 import {verifiedProviders} from '../verified-providers.js';
 import {ancestryVerifier} from '../zero-conf.js';
@@ -11,7 +12,7 @@ import {hashState} from '../registry.js';
 import {validateGenesis,advance,covenant,family,initialState,validateInstance,validateBuilt,termsFor,V3_STATE_SIZE,type Parameters,type Instance} from './protocol.js';
 export interface Config extends Parameters {genesis:string}
 export interface Allocation {id:string;terms:Buffer;input:ReturnType<typeof utxo>;withdrawal?:string;pending?:string;mature:boolean;sourceMtp:number}
-export interface Snapshot {version:3;config:Config;instance:Instance;tip:Header;clock:{height:number;mtp:number};pending:string[];provisional?:boolean;pendingHistory?:string[];ancestry?:string[];allocations:Allocation[];history:string[];endpoint:string}
+export interface Snapshot {version:3;config:Config;instance:Instance;tip:Header;clock:{height:number;mtp:number;nextBlockTicks?:number};pending:string[];provisional?:boolean;pendingHistory?:string[];ancestry?:string[];allocations:Allocation[];history:string[];endpoint:string}
 function witness(hex:string){const pushes=decodeAuthenticationInstructions(Buffer.from(hex,'hex')).map(i=>{if('data'in i&&i.data)return Buffer.from(i.data);if(i.opcode===0)return Buffer.alloc(0);if(i.opcode>=81&&i.opcode<=96)return Buffer.from([i.opcode-80]);throw Error('Malformed v3 witness');});if(pushes.length!==6||pushes[4]!.length!==V3_STATE_SIZE)throw Error('Invalid v3 witness layout');const num=(b:Buffer)=>{if(b.length>1||(b[0]??0)>127)throw Error('Invalid v3 action/slot');return b[0]??0;};return {state:pushes[4]!,action:num(pushes[3]!),slot:num(pushes[2]!),record:pushes[1]!};}
 const identity=(s:Snapshot)=>JSON.stringify({tip:s.tip.hash,state:s.instance.inputs[0].txid,witness:hashState(s.instance.state),pending:[...s.pending].sort(),pendingHistory:[...(s.pendingHistory??[])].sort(),provisional:s.provisional,ancestry:s.ancestry,allocations:s.allocations.map(a=>[a.id,a.withdrawal,a.pending])});
 /** Replay evidence is reusable only with unchanged peer, tip, histories and live outputs.
@@ -32,7 +33,7 @@ export class AssetIndexer {
  }catch(e){this.error=String(e);throw e;}finally{this.busy=false;}}
  private async replay(source=this.electrum):Promise<Snapshot>{
   const started=performance.now();
-  const e=source,c=this.config,tip=await e.tip(),clock={height:tip.height,mtp:await e.medianTime(tip.height,tip.hash)},proofs=new Map<number,string>(),pending=new Set<string>(),allocations:Allocation[]=[],cache=new Map<string,any>(),pendingHistory:string[]=[];
+  const e=source,c=this.config,tip=await e.tip(),clock={height:tip.height,mtp:await e.medianTime(tip.height,tip.hash),...await tickContext(e,tip)},proofs=new Map<number,string>(),pending=new Set<string>(),allocations:Allocation[]=[],cache=new Map<string,any>(),pendingHistory:string[]=[];
   const configKey=JSON.stringify(c,(_,v)=>typeof v==='bigint'?v.toString():v),entries=replayEvidence.get(e)??new Map<string,{snapshot:Snapshot;histories:Map<string,string>}>();replayEvidence.set(e,entries);
   const saved=entries.get(configKey),histories=new Map<string,Promise<HistoryEntry[]>>();
   const historyRead=(script:string)=>{let read=histories.get(script);if(!read){read=e.history(script);histories.set(script,read);}return read;};

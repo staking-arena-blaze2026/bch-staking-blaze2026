@@ -1,3 +1,4 @@
+import {tickContext} from '../consensus-clock.js';
 import {Buffer} from '../bytes.js';
 import {decodeAuthenticationInstructions,binToHex} from '@bitauth/libauth';
 import type {ElectrumCore,Header,HistoryEntry} from '../electrum-core.js';
@@ -7,7 +8,7 @@ import {hashState} from '../registry.js';
 import {advance,covenant,family,initialState,parameterArgs,validateInstance,validateBuilt,termsFor,V2_STATE_SIZE,type Parameters,type Instance} from './protocol.js';
 export interface Config extends Parameters {genesis:string}
 export interface Allocation {id:string;terms:Buffer;input:ReturnType<typeof utxo>;withdrawal?:string;pending?:string;mature:boolean}
-export interface Snapshot {version:2;config:Config;instance:Instance;tip:Header;clock:{height:number;mtp:number};pending:string[];allocations:Allocation[];history:string[];endpoint:string}
+export interface Snapshot {version:2;config:Config;instance:Instance;tip:Header;clock:{height:number;mtp:number;nextBlockTicks?:number};pending:string[];allocations:Allocation[];history:string[];endpoint:string}
 function witness(hex:string){const pushes=decodeAuthenticationInstructions(Buffer.from(hex,'hex')).map(i=>{if('data'in i&&i.data)return Buffer.from(i.data);if(i.opcode===0)return Buffer.alloc(0);if(i.opcode>=81&&i.opcode<=96)return Buffer.from([i.opcode-80]);throw Error('Malformed v2 witness');});if(pushes.length!==6||pushes[4]!.length!==V2_STATE_SIZE)throw Error('Invalid v2 witness layout');const num=(b:Buffer)=>{if(b.length>1||(b[0]??0)>127)throw Error('Invalid v2 action/slot');return b[0]??0;};return {state:pushes[4]!,action:num(pushes[3]!),slot:num(pushes[2]!),record:pushes[1]!};}
 const identity=(s:Snapshot)=>JSON.stringify({tip:s.tip.hash,state:s.instance.inputs[0].txid,witness:hashState(s.instance.state),pending:[...s.pending].sort(),allocations:s.allocations.map(a=>[a.id,a.withdrawal,a.pending])});
 /** Full replay per synchronization: a removed block never leaves a trusted cached state.
@@ -24,7 +25,7 @@ export class AssetIndexer {
   if(identity(one)!==identity(two))throw Error('V2 providers disagree');this.snapshot=two;this.error=undefined;return two;
  }catch(e){this.snapshot=undefined;this.error=String(e);throw e;}finally{this.busy=false;}}
  private async replay():Promise<Snapshot>{
-  const e=this.electrum,c=this.config,tip=await e.tip(),clock={height:tip.height,mtp:await e.medianTime(tip.height,tip.hash)},proofs=new Map<number,string>(),pending=new Set<string>(),allocations:Allocation[]=[],cache=new Map<string,any>();
+  const e=this.electrum,c=this.config,tip=await e.tip(),clock={height:tip.height,mtp:await e.medianTime(tip.height,tip.hash),...await tickContext(e,tip)},proofs=new Map<number,string>(),pending=new Set<string>(),allocations:Allocation[]=[],cache=new Map<string,any>();
   const rawRead=async(id:string)=>{if(!cache.has(id))cache.set(id,await e.transaction(id));return cache.get(id);};
   const confirm=async(id:string,history:HistoryEntry[])=>{const entry=history.find(h=>h.tx_hash===id);if(!entry||entry.height<=0)throw Error('V2 requires confirmed canonical genesis/history');const tx=await e.transaction(id,entry.height);if(proofs.has(entry.height)&&proofs.get(entry.height)!==tx.blockhash)throw Error('Inconsistent proof header');proofs.set(entry.height,tx.blockhash);cache.set(id,tx);return tx;};
   const verify=async(tx:any)=>{const inputs=[];for(const i of tx.vin)inputs.push(utxo(await rawRead(i.txid),i.vout));validateBuilt(tx.hex,inputs,clock);};

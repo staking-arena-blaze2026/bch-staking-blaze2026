@@ -1,3 +1,4 @@
+import {finalityLimit} from './consensus-clock.js';
 import { createVirtualMachineBch2026, decodeTransaction, hexToBin, type Output } from '@bitauth/libauth';
 import { ElectrumCore } from './electrum-core.js';
 import { json, type VaultConfig } from './arena-core.js';
@@ -52,7 +53,7 @@ export async function mempoolProjection(p: ElectrumCore, configs: VaultConfig[],
       sources.push(source.outputs[input.vout]!);
     }
     if (decoded.locktime && decoded.inputs.some(i => i.sequenceNumber !== 0xffffffff)
-      && decoded.locktime >= (decoded.locktime < 500000000 ? tip.height + 1 : tip.mtp)) throw Error('Non-final mempool transaction');
+      && decoded.locktime >= (decoded.locktime < 500000000 ? finalityLimit(tip) : tip.mtp)) throw Error('Non-final mempool transaction');
     const valid = mempoolVm.verify({ transaction: decoded, sourceOutputs: sources });
     if (valid !== true) throw Error(`Mempool covenant validation failed: ${String(valid)}`);
     visiting.delete(id); pending.set(id, tx); ordered.push(tx); return tx;

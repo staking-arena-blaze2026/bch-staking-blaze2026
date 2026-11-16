@@ -48,7 +48,7 @@ export class BrowserKeeper {
   private async step(vault:VaultState,allowed:boolean) {
     const p=this.index.electrum!,tip=this.index.tip;
     if(p.network!==Network.CHIPNET || !this.index.health.connected || this.index.health.stale || !tip || this.now()-Date.parse(this.index.health.updatedAt)>60000)throw Error('A fresh verified chipnet snapshot is required');
-    const clock={height:tip.height,mtp:tip.mtp},decision=keeperDecision(vault,clock),parent=`${vault.transaction.txid}:0`;
+    const clock={height:tip.height,mtp:tip.mtp,nextBlockTicks:tip.nextBlockTicks},decision=keeperDecision(vault,clock),parent=`${vault.transaction.txid}:0`;
     let intent=await this.intents.load(vault.category);
     if(intent && (intent.version!==1 || intent.network!=='chipnet' || intent.category!==vault.category || !/^[0-9a-f]{64}$/.test(intent.txid) || !Number.isSafeInteger(intent.nextRetryAt) || intent.nextRetryAt<0 || !Number.isSafeInteger(intent.attempts) || intent.attempts<1 || !['prepared','submitted','uncertain','confirmed','superseded'].includes(intent.phase) || ![2,3,5].includes(intent.action) || !Number.isInteger(intent.slot) || intent.slot<0 || intent.slot>15 || !Number.isInteger(intent.period) || intent.period<0 || intent.period>=vault.config.periods || !/^[0-9a-f]{64}:0$/.test(intent.parent) || typeof intent.raw!=='string'))throw Error('Invalid settlement journal; no transaction sent');
     if(intent && vault.history.some(h=>h.txid===intent!.txid)) {

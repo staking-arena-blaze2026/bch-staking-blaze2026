@@ -1,3 +1,4 @@
+import {finalityLimit} from '../consensus-clock.js';
 import {reconcileAtomicOffer} from './offer-status.js';
 import {timed} from '../operation-timing.js';
 import {ProviderVerificationError} from '../verified-providers.js';
@@ -455,7 +456,7 @@ export class BrowserAssetStore implements Store {
 
 function v3WalletValidation(raw:string,sources:import('@bitauth/libauth').Output[],clock:import('../keeper-core.js').KeeperClock,fee?:bigint){
  const tx=decodeTransaction(hexToBin(raw));if(typeof tx==='string')throw Error('Malformed transaction');
- if(tx.version!==2||tx.locktime>=(tx.locktime<500000000?clock.height+1:clock.mtp))throw Error('Non-final transaction');
+ if(tx.version!==2||tx.locktime>=(tx.locktime<500000000?finalityLimit(clock):clock.mtp))throw Error('Non-final transaction');
  if(sources.reduce((n,o)=>n+o.valueSatoshis,0n)-tx.outputs.reduce((n,o)=>n+o.valueSatoshis,0n)!==fee)throw Error('Fee mismatch');
  const valid=createVirtualMachineBch2026().verify({transaction:tx,sourceOutputs:sources});if(valid!==true)throw Error('Signed v3 covenant invalid: '+valid);
  return {txid:hashTransaction(hexToBin(raw)),transaction:tx,fee:fee!};

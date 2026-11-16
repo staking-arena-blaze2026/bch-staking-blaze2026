@@ -1,3 +1,4 @@
+import {tickContext} from './consensus-clock.js';
 import { mempoolProjection } from './mempool.js';
 import { Buffer } from './bytes.js';
 import type { NetworkProvider } from 'cashscript';
@@ -7,7 +8,7 @@ import { type VaultConfig, contracts, contract, transitionWitness, termsFor, jso
 import { hashState, nextState, remainingCommitment, STATE_SIZE } from './registry.js';
 export interface Allocation { id: string; terms: string; output: any; withdrawal?: string }
 export interface VaultState { config: VaultConfig; category: string; witness: string; transaction: any; history: { txid: string; height: number; action: number; slot: number; period: number; witness: string }[]; allocations: Allocation[] }
-export interface Block { height: number; hash: string; parent?: string; mtp: number; transactions: any[] }
+export interface Block { height: number; hash: string; parent?: string; mtp: number; nextBlockTicks?:number; transactions: any[] }
 export interface Checkpoint { network?: string; version: number; configs: VaultConfig[]; blocks: Block[]; vaults?: VaultState[]; updatedAt?: string }
 export async function projectVaults(configs: VaultConfig[], blocks: Block[], read: (id: string) => Promise<any>, provider: NetworkProvider, allowUnconfirmed = false) {
     const vaults: VaultState[] = [];
@@ -216,10 +217,10 @@ export class ElectrumIndexer {
     for (const [script, history] of histories) if (json(await p.history(script)) !== json(history)) throw Error('History changed during indexing');
     for (const block of candidate) if ((await p.header(block.height)).hash !== block.hash) throw Error('Chain changed during indexing');
     await p.verifyHeaderChain(candidate[0]?.height ?? tip.height, tip, new Map(candidate.map(b => [b.height, b.hash])));
-    const mtp = await p.medianTime(tip.height, tip.hash);
+    const mtp = await p.medianTime(tip.height, tip.hash),ticks=await tickContext(p,tip);
     if ((await p.tip()).hash !== tip.hash) throw Error('Tip changed during indexing');
-    if (candidate.at(-1)?.height === tip.height) candidate.at(-1)!.mtp = mtp;
-    else candidate.push({ height: tip.height, hash: tip.hash, parent: tip.parent, mtp, transactions: [] });
+    if (candidate.at(-1)?.height === tip.height) Object.assign(candidate.at(-1)!,{mtp,...ticks});
+    else candidate.push({ height: tip.height, hash: tip.hash, parent: tip.parent, mtp,...ticks, transactions: [] });
     const updatedAt = new Date().toISOString();
     await this.store?.save({ version: 2, network: 'chipnet', configs: this.configs, blocks: candidate, vaults, updatedAt });
     this.blocks = candidate; this.vaults = vaults; this.histories = histories;

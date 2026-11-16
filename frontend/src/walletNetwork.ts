@@ -114,12 +114,11 @@ export function assertChipnetTransactionSession(session: WalletNetworkSession, t
   const n = current.network;
   if (!['testnet', 'chipnet'].includes(n.network) || n.source === 'invalid') throw Error('Mainnet, unknown and incompatible wallets cannot sign chipnet transactions');
   if (n.source === 'declaration' && (n.network !== 'chipnet' || n.genesisHash !== CHIPNET_NETWORK.genesisHash)) throw Error('Wallet declares a different chain');
-  throw Error('Chipnet temporarily unavailable for transactions: consensus/provider conflict');
 }
 
 /** Exact live identity plus freshly proved inputs authorize the selected network only. */
 export function assertTransactionSession(session:WalletNetworkSession,target:NetworkRequirement|null) {
- if(target?.network==='chipnet')throw Error('Chipnet temporarily unavailable for transactions: consensus/provider conflict');
+ if(target?.network==='chipnet')return assertChipnetTransactionSession(session,target);
  const current=session.read(),n=current.network;
  if(!current.connected||target?.network!=='mainnet'||target.genesisHash!==MAINNET_NETWORK.genesisHash)throw Error('A live mainnet wallet session is required');
  if(n.network!=='mainnet'||n.source==='invalid')throw Error('A compatible mainnet wallet is required');

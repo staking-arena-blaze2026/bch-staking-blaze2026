@@ -1,0 +1,49 @@
+{
+  "at": "2026-11-16T23:05:33.819586+00:00",
+  "checks": {
+    "nativeUpgradedConsensus": {
+      "passed": true,
+      "probes": 22,
+      "report": "consensus-compatibility.json"
+    },
+    "currentSelectedProviderHeaders": {
+      "passed": true,
+      "providers": 2,
+      "height": 334513,
+      "report": "restoration-native-headers.json"
+    },
+    "currentPublicVaultAllStateReserveInputs": {
+      "passed": true,
+      "report": "restoration-inputs.json"
+    },
+    "providerPolicyAndBroadcastGuards": {
+      "passed": true,
+      "tests": 3
+    },
+    "coinbaseFundingScope": {
+      "passed": true,
+      "tests": 1
+    },
+    "chipnetV3ModelWorkflows": {
+      "passed": true,
+      "tests": 6
+    },
+    "frontendNetworkAndConfiguration": {
+      "passed": true,
+      "tests": 14
+    },
+    "rootTypeScript": {
+      "passed": true
+    },
+    "productionBuild": {
+      "passed": true
+    },
+    "diffWhitespace": {
+      "passed": true
+    }
+  },
+  "publicBroadcasts": 0,
+  "walletConnected": false,
+  "deploymentPublished": false,
+  "limits": "Focused checks only. No full-block chipnet IBD, full browser regression suite, physical Cashonize acceptance or public spending. Original services and unrelated existing workspace edits preserved."
+}

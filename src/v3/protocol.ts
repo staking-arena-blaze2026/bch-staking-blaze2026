@@ -1,3 +1,4 @@
+import {finalityLimit} from '../consensus-clock.js';
 import {v3Network} from './network.js';
 import {addAnnouncement,announcementScript,discoveryScripts,DISCOVERY_CARRIER} from './discovery.js';
 import {MAX_FUNDING_INPUTS} from '../wallet-funding-policy.js';
@@ -175,7 +176,7 @@ export function withdrawalBuilder(input:SpendableUtxo,terms:Buffer,owner:Signatu
 export function validateBuilt(raw:string,inputs:SpendableUtxo[],clock:KeeperClock,sourceMtp?:number){
  const tx=decodeTransaction(hexToBin(raw));if(typeof tx==='string')throw Error('Malformed v3 transaction');
  if(tx.version!==2||tx.inputs.length!==inputs.length)throw Error('Invalid version or source count');
- if(tx.locktime>=(tx.locktime<500000000?clock.height+1:clock.mtp))throw Error('Transaction is not final');
+ if(tx.locktime>=(tx.locktime<500000000?finalityLimit(clock):clock.mtp))throw Error('Transaction is not final');
  for(const [i,input] of tx.inputs.entries())if(input.sequenceNumber<0x80000000){
   if(i!==0||(input.sequenceNumber&0x400000)===0||sourceMtp===undefined)throw Error('Relative maturity requires verified source MTP');
   if(clock.mtp<sourceMtp+(input.sequenceNumber&65535)*512)throw Error('Allocation is not mature');

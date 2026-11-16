@@ -1,0 +1,26 @@
+{
+  "at": "2026-11-16T22:58:19Z",
+  "node": "/Bitcoin Cash Node:29.2.1/",
+  "networkactive": false,
+  "results": [
+    {
+      "endpoint": "wss://chipnet.imaginary.cash:50004",
+      "height": 334513,
+      "hash": "000000000000d82ea9fe62dfcd2084606e683c76566f6002da5838f2930614ea",
+      "ticks": 199593780,
+      "next_target_time": 60,
+      "chainwork": "000000000000000000000000000000000000000000000001007657d07365d0c2",
+      "allContextualHeadersAccepted": true
+    },
+    {
+      "endpoint": "wss://chipnet.bch.ninja:50004",
+      "height": 334513,
+      "hash": "000000000000d82ea9fe62dfcd2084606e683c76566f6002da5838f2930614ea",
+      "ticks": 199593780,
+      "next_target_time": 60,
+      "chainwork": "000000000000000000000000000000000000000000000001007657d07365d0c2",
+      "allContextualHeadersAccepted": true
+    }
+  ],
+  "scope": "Native contextual header validation through each current provider tip. Not full-block synchronization or script/subsidy verification."
+}

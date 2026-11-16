@@ -1,0 +1,128 @@
+{
+  "at": "2026-11-16T22:57:56.042Z",
+  "node": "/Bitcoin Cash Node:29.2.1/",
+  "activationHeight": 108,
+  "scope": "Fresh isolated regtest, real upgraded BCHN testmempoolaccept; no public transactions or original node changes",
+  "rows": [
+    {
+      "name": "legacy coinbase maturity at 100 blocks",
+      "expected": true,
+      "allowed": true
+    },
+    {
+      "name": "legacy immature coinbase",
+      "expected": false,
+      "allowed": false,
+      "reason": "16: bad-txns-premature-spend-of-coinbase"
+    },
+    {
+      "name": "boundary-spanning coinbase still immature",
+      "expected": false,
+      "allowed": false,
+      "reason": "16: bad-txns-premature-spend-of-coinbase"
+    },
+    {
+      "name": "BIP68 across activation 1",
+      "expected": true,
+      "allowed": true
+    },
+    {
+      "name": "BIP68 across activation 2",
+      "expected": true,
+      "allowed": true
+    },
+    {
+      "name": "BIP68 across activation 10",
+      "expected": false,
+      "allowed": false,
+      "reason": "64: non-BIP68-final"
+    },
+    {
+      "name": "height nLockTime 107",
+      "expected": true,
+      "allowed": true
+    },
+    {
+      "name": "height nLockTime 109",
+      "expected": false,
+      "allowed": false,
+      "reason": "64: bad-txns-nonfinal"
+    },
+    {
+      "name": "all-final sequences bypass nLockTime",
+      "expected": true,
+      "allowed": true
+    },
+    {
+      "name": "time nLockTime strict cutoff",
+      "expected": false,
+      "allowed": false,
+      "reason": "64: bad-txns-nonfinal"
+    },
+    {
+      "name": "time nLockTime before cutoff",
+      "expected": true,
+      "allowed": true
+    },
+    {
+      "name": "time CSV remains 512 seconds",
+      "expected": true,
+      "allowed": true
+    },
+    {
+      "name": "zero-conf sequence zero",
+      "expected": true,
+      "allowed": true
+    },
+    {
+      "name": "zero-conf positive sequence",
+      "expected": false,
+      "allowed": false,
+      "reason": "64: non-BIP68-final"
+    },
+    {
+      "name": "post-upgrade BIP68 before ten blocks",
+      "expected": false,
+      "allowed": false,
+      "reason": "64: non-BIP68-final"
+    },
+    {
+      "name": "post-upgrade time CSV before 512 seconds",
+      "expected": false,
+      "allowed": false,
+      "reason": "64: non-BIP68-final"
+    },
+    {
+      "name": "post-upgrade BIP68 at nine blocks",
+      "expected": false,
+      "allowed": false,
+      "reason": "64: non-BIP68-final"
+    },
+    {
+      "name": "post-upgrade BIP68 at ten blocks",
+      "expected": true,
+      "allowed": true
+    },
+    {
+      "name": "post-upgrade time CSV after 512 seconds",
+      "expected": true,
+      "allowed": true
+    },
+    {
+      "name": "post-upgrade coinbase at 999 blocks",
+      "expected": false,
+      "allowed": false,
+      "reason": "16: bad-txns-premature-spend-of-coinbase"
+    },
+    {
+      "name": "post-upgrade coinbase at 1000 blocks",
+      "expected": true,
+      "allowed": true
+    },
+    {
+      "name": "boundary-spanning coinbase now mature",
+      "expected": true,
+      "allowed": true
+    }
+  ]
+}

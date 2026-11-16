@@ -1,3 +1,4 @@
+import {finalityLimit} from './consensus-clock.js';
 import { TransactionBuilder, Network, type NetworkProvider, type SpendableUtxo, type Unlocker } from 'cashscript';
 import { binToHex, createVirtualMachineBch2026, decodeTransaction, encodeCashAddress, hash160, hexToBin, hashTransaction, type Output } from '@bitauth/libauth';
 import { Buffer } from './bytes.js';
@@ -7,7 +8,7 @@ import { hashState, nextState, remainingCommitment, periodBoundary } from './reg
 
 export interface Sponsor { input: SpendableUtxo; unlocker: Unlocker }
 export type Sponsorship = (vault: VaultState, action: number) => Promise<Sponsor | undefined>;
-export interface KeeperClock { height: number; mtp: number }
+export interface KeeperClock { height: number; mtp: number; nextBlockTicks?:number }
 export class FeeFundingUnavailable extends Error { constructor() { super('Fee sponsorship required to preserve reward reserve: safe fee funding unavailable without an external BCH sponsor'); } }
 export type KeeperDecision = {phase:'waiting'|'complete';period:number} | {phase:'activation-required'|'settlement-required';period:number;action:2|3|5;slot:number};
 export function keeperDecision(vault: VaultState, clock: KeeperClock): KeeperDecision {
@@ -27,7 +28,7 @@ export function sourceOutput(input: SpendableUtxo): Output {
 export function validateKeeperTransaction(raw: string, sources: Output[], clock: KeeperClock, expectedFee?: bigint) {
   const tx=decodeTransaction(hexToBin(raw));if(typeof tx==='string')throw Error('Malformed keeper transaction');
   if(tx.version!==2 || tx.inputs.length!==sources.length || tx.inputs.some(i=>i.sequenceNumber===0xffffffff || i.sequenceNumber<0x80000000)) throw Error('Keeper sequence/version mismatch');
-  const finalAt=tx.locktime<500000000?clock.height+1:clock.mtp;
+  const finalAt=tx.locktime<500000000?finalityLimit(clock):clock.mtp;
   if(tx.locktime>=finalAt)throw Error('Keeper transaction is not final at the verified height/MTP');
   const fee=sources.reduce((n,o)=>n+o.valueSatoshis,0n)-tx.outputs.reduce((n,o)=>n+o.valueSatoshis,0n);
   if(fee<=0n || (expectedFee!==undefined && fee!==expectedFee))throw Error('Keeper fee mismatch');

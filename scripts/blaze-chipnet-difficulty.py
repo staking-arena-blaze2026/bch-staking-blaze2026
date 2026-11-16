@@ -2,10 +2,11 @@
 """Read-only ASERT cross-check against the pinned BCHN preview and v29.2 source.
 Not full block validation; never used to authorize a transaction or choose a peer.
 """
+import os
 import json
 from pathlib import Path
 root=Path(__file__).resolve().parents[1]
-data=json.loads((root/'docs/blaze2026/chipnet-upgrade/electrum-live.json').read_text())
+data=json.loads((root/('docs/blaze2026/chipnet-upgrade/restoration-live.json' if os.environ.get('CHIPNET_RESTORE_AUDIT') else 'docs/blaze2026/chipnet-upgrade/electrum-live.json')).read_text())
 POW_LIMIT=int('00000000'+'ff'*28,16)
 def target(bits):
     n=int(bits,16); size=n>>24; word=n&0x7fffff
@@ -39,5 +40,5 @@ for source in data['observations']:
     before=[c for c in checks if c['height']<=activation]; after=[c for c in checks if c['height']>activation]
     results.append({'endpoint':source['endpoint'],'activationParentHeight':activation,'preActivationChecks':len(before),'preActivationOldMatches':all(c['actualBits']==c['old600SecondBits'] for c in before),'preActivationPreviewMatches':all(c['actualBits']==c['previewBits'] for c in before),'postActivationChecks':len(after),'postActivationOldMatches':all(c['actualBits']==c['old600SecondBits'] for c in after),'postActivationPreviewMatches':all(c['actualBits']==c['previewBits'] for c in after),'firstPreviewMismatch':next((c for c in after if c['actualBits']!=c['previewBits']),None),'checks':checks})
 report={'at':data['at'],'sourceCommit':'3e6827e95c7a17497e09ac15556debd116dea1d0','anchor':{'height':16844,'bits':'1d00ffff','parentTime':1605451779,'legacyInterval':600,'newInterval':60,'halfLife':3600},'scope':'Contextual header difficulty only. Independent native preview validation is recorded separately; this does not verify transaction scripts, subsidies or full blocks.','results':results}
-(root/'docs/blaze2026/chipnet-upgrade/difficulty-rules-comparison.json').write_text(json.dumps(report,indent=2)+'\n')
+(root/('docs/blaze2026/chipnet-upgrade/restoration-difficulty.json' if os.environ.get('CHIPNET_RESTORE_AUDIT') else 'docs/blaze2026/chipnet-upgrade/difficulty-rules-comparison.json')).write_text(json.dumps(report,indent=2)+'\n')
 print(json.dumps([{k:v for k,v in r.items() if k!='checks'} for r in results],indent=2))

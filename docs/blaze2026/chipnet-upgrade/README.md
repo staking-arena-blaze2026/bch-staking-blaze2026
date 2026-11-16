@@ -1,5 +1,7 @@
 # November 2026 chipnet upgrade investigation
 
+**Historical investigation:** the original findings and freeze below are retained. The [transaction restoration follow-up](restoration.md) records the explicit OptnLabs exclusion, fresh Imaginary/Ninja chain verification and completed tick-aware compatibility tests.
+
 The observed fork is a **2027-preview consensus-rule split**, not ordinary Electrum lag or mempool propagation. The last common block, **332450**, has MTP **1794744504**, crossing the scheduled **1794744000** activation. The branches diverge at **332451**, the first block using the new rules. Optnlabs' subsequent header **332454** matches the old difficulty calculation and is rejected by the official preview with **bad-diffbits**.
 
 **Not resolved. No live Atomic V4 creation is approved or claimed safe by this investigation.** No real transaction was signed or broadcast. No provider was removed, no known conflict was cleared, and no financial transaction rules or production deployment were changed.

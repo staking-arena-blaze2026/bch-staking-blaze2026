@@ -10,4 +10,6 @@ it('generic testnet, duplicate providers, credentials and remote regtest are rej
  const c=v3Config({VITE_V3_NETWORK:'regtest'});expect(c.network).toBe('regtest');expect(c.endpoints).toEqual(['wss://127.0.0.1:4177','wss://localhost:4177']);
 });
 
-it('chipnet remains configured with broadcasting disabled and preserved journal names',()=>{const c=v3Config({VITE_V3_NETWORK:'chipnet'});expect(c.allowBroadcast).toBe(false);expect(v3Storage('configs','chipnet')).toBe('staking-arena-v3-configs-chipnet');expect(v3Storage('wallet','mainnet')).not.toBe(v3Storage('wallet','chipnet'));});
+it('chipnet remains configured with upgraded providers enabled and preserved journal names',()=>{const c=v3Config({VITE_V3_NETWORK:'chipnet'});expect(c.allowBroadcast).toBe(true);expect(c.endpoints).toEqual(['wss://chipnet.imaginary.cash:50004','wss://chipnet.bch.ninja:50004']);expect(v3Storage('configs','chipnet')).toBe('staking-arena-v3-configs-chipnet');expect(v3Storage('wallet','mainnet')).not.toBe(v3Storage('wallet','chipnet'));});
+
+it('rejects an explicit excluded chipnet provider override',()=>{expect(()=>v3Config({VITE_V3_NETWORK:'chipnet',VITE_CHIPNET_ELECTRUM_ENDPOINTS:'wss://chipnet.imaginary.cash:50004,wss://electrum-chipnet.optnlabs.com'})).toThrow(/OptnLabs excluded/);});

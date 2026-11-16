@@ -17,13 +17,13 @@ it('keeps all old storage names and gives mainnet separate journals, claims and 
  for(const kind of ['wallet','claims','configs'] as const)expect(new Set(['mainnet','chipnet','regtest'].map(n=>v3Storage(kind,n as any))).size).toBe(3);
  expect(v3Storage('wallet','chipnet')).toBe('staking-arena-wallet-v3-chipnet');expect(v3Storage('wallet','regtest')).toBe('staking-arena-wallet-v3');
 });
-it('requires a live matching mainnet wallet and always blocks chipnet transactions',()=>{
+it('requires a live matching mainnet wallet and requires a matching chipnet wallet',()=>{
  const node=deriveHdPublicNode(deriveHdPrivateNodeFromSeed(new Uint8Array(32).fill(9)));
  const paths=(network:'mainnet'|'testnet')=>{const key=encodeHdPublicKey({node,network});if(typeof key==='string')throw Error(key);return [{name:'receive',xpub:key.hdPublicKey}];};
  let current=paths('mainnet');const session=new WalletNetworkSession(()=>current);
  expect(()=>assertTransactionSession(session,MAINNET_NETWORK)).toThrow();session.accept();expect(()=>assertTransactionSession(session,MAINNET_NETWORK)).not.toThrow();
- expect(()=>assertTransactionSession(session,CHIPNET_NETWORK)).toThrow(/temporarily unavailable/);
- current=paths('testnet');session.accept();expect(()=>assertTransactionSession(session,MAINNET_NETWORK)).toThrow();
+ expect(()=>assertTransactionSession(session,CHIPNET_NETWORK)).toThrow(/Mainnet/);
+ current=paths('testnet');session.accept();expect(()=>assertTransactionSession(session,MAINNET_NETWORK)).toThrow();expect(()=>assertTransactionSession(session,CHIPNET_NETWORK)).not.toThrow();
  current=paths('mainnet');session.accept({[NETWORK_EXTENSION]:{network:'mainnet',genesisHash:'11'.repeat(32)}});expect(()=>assertTransactionSession(session,MAINNET_NETWORK)).toThrow(/different chain/);
  session.invalidate();expect(()=>assertTransactionSession(session,MAINNET_NETWORK)).toThrow();
 });
@@ -40,11 +40,11 @@ it('pins mainnet genesis and a BCH-specific post-fork checkpoint before running 
  header.mockImplementation(async height=>({height,hash:height===0?MAINNET_NETWORK.genesisHash:'000000000000000002fc0cdadaef1857bbd2936d37ea94f80ba3db4a5e8353e8'} as any));
  await expect(p.session(work)).resolves.toBe(true);expect(header).toHaveBeenCalledWith(792773);
 });
-it('rejects cross-network addresses and blocks every chipnet broadcast even with allowBroadcast',async()=>{
+it('rejects cross-network addresses and requires a verified active session before chipnet broadcast',async()=>{
  const key=hexToBin('0279be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798');
  const p=new ElectrumCore(()=>{throw Error('No transport expected')},{network:'mainnet'});vi.spyOn(p,'getUtxosForLockingBytecode').mockResolvedValue([]);
  await expect(p.getUtxos(walletAddress(key,'chipnet'))).rejects.toThrow(/network mismatch/);await expect(p.getUtxos(walletAddress(key,'mainnet'))).resolves.toEqual([]);
- const chipnet=new ElectrumCore(()=>{throw Error('No transport expected')},{network:'chipnet',allowBroadcast:true});await expect(chipnet.sendRawTransaction('00')).rejects.toThrow(/temporarily unavailable/);
+ const chipnet=new ElectrumCore(()=>{throw Error('No transport expected')},{network:'chipnet',allowBroadcast:true});await expect(chipnet.sendRawTransaction('00')).rejects.toThrow(/verified active/);
  await expect(p.sendRawTransaction('00')).rejects.toThrow(/disabled/);
 });
 

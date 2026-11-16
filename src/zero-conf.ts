@@ -1,3 +1,4 @@
+import {tickContext,matureCoinbase,matureSequence,transactionFinal} from './consensus-clock.js';
 import {createVirtualMachineBch2026,decodeTransaction,hexToBin} from '@bitauth/libauth';
 import type {ElectrumCore} from './electrum-core.js';
 import {utxo} from './arena-core.js';
@@ -11,6 +12,8 @@ export function ancestryVerifier(p:ElectrumCore,clock:KeeperClock){
  const histories=new Map<string,Promise<import('./electrum-core.js').HistoryEntry[]>>(),raws=new Map<string,Promise<any>>();
  const historyFor=(script:string)=>{if(!histories.has(script))histories.set(script,p.history(script));return histories.get(script)!;};
  const rawFor=(id:string)=>{if(!raws.has(id))raws.set(id,p.transaction(id));return raws.get(id)!;};
+ let context:Promise<import('./consensus-clock.js').TickContext>|undefined;
+ const getContext=()=>context??=p.network==='chipnet'?p.tip().then(t=>{if(t.height!==clock.height)throw Error('Tip changed during ancestry verification');return tickContext(p,t);}):Promise.resolve({nextBlockTicks:(clock.height+1)*600});
  const checked=new Map<string,any>(),visiting=new Set<string>(),spends=new Map<string,string>();
  let count=0,bytes=0;
  const load=async(id:string,observed?:import('./electrum-core.js').HistoryEntry):Promise<any>=>{
@@ -19,26 +22,27 @@ export function ancestryVerifier(p:ElectrumCore,clock:KeeperClock){
   if(visiting.has(id))throw Error('Cyclic unconfirmed ancestry');
   if(visiting.size>=256)throw Error('Unconfirmed ancestry exceeds application depth limit (256)');
   visiting.add(id);
+  const ticks=await getContext();
   const tx=await p.transactionStatus(id,observed);
   if(tx.confirmations>0){checked.set(id,tx);visiting.delete(id);return tx;}
   if(++count>256||(bytes+=tx.hex.length/2)>4_000_000)throw Error('Unconfirmed ancestry exceeds application validation budget');
   const decoded=decodeTransaction(hexToBin(tx.hex));if(typeof decoded==='string')throw Error(decoded);
-  if((decoded.version!==1&&decoded.version!==2)||decoded.locktime>=(decoded.locktime<500000000?clock.height+1:clock.mtp))throw Error('Non-final unconfirmed ancestor');
+  if((decoded.version!==1&&decoded.version!==2)||!transactionFinal(decoded,{...clock,...ticks}))throw Error('Non-final unconfirmed ancestor');
   const sources=[];
   for(const [n,input]of tx.vin.entries()){
    const outpoint=input.txid+':'+input.vout;
    if(spends.has(outpoint)&&spends.get(outpoint)!==id)throw Error('Conflicting unconfirmed ancestry');
    spends.set(outpoint,id);
    const parent=await load(input.txid),source=utxo(parent,input.vout);
-   if(parent.vin.length===1&&parent.vin[0].vout===0xffffffff&&/^0+$/.test(parent.vin[0].txid)&&parent.confirmations<100)throw Error('Immature coinbase ancestor');
+   if(parent.vin.length===1&&parent.vin[0].vout===0xffffffff&&/^0+$/.test(parent.vin[0].txid)&&!matureCoinbase(parent.height,ticks))throw Error('Immature coinbase ancestor');
    // Relative locks against unconfirmed outputs cannot have matured. Absolute time/height
    // locks and confirmed relative locks remain subject to node policy at broadcast.
    const sequence=decoded.inputs[n]!.sequenceNumber;
-   if(!(sequence&0x80000000)&&(sequence&0xffff)>0){
+   if(decoded.version>=2&&!(sequence&0x80000000)&&(sequence&0xffff)>0){
     if(parent.confirmations<=0)throw Error('Unconfirmed relative-lock ancestor');
     const units=sequence&0xffff;
     if(sequence&0x400000){const anchor=await p.header(Math.max(0,parent.height-1));if(clock.mtp<await p.medianTime(anchor.height,anchor.hash)+units*512)throw Error('Immature ancestor time lock');}
-    else if(clock.height+1<parent.height+units)throw Error('Immature ancestor height lock');
+    else if(!matureSequence(parent.height,units,ticks))throw Error('Immature ancestor height lock');
    }
    // An ancestor's input is already spent by it: inspect histories rather than listunspent.
    const history=await historyFor(source.lockingBytecode!);

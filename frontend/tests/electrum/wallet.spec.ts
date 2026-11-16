@@ -78,9 +78,9 @@ for(const minimum of [0,1])test(`mock Electrum browser: pending genesis visibili
  await page.reload();await expect(listing).toHaveCount(1,{timeout:60000});await expect(listing).toContainText('Confirmed');
 });
 
-// Public chipnet is frozen. Historical success cases above remain for the consensus upgrade.
-test('chipnet freeze prevents native-worker broadcast and retains signed recovery bytes',async({page})=>{
+// This captured pre-upgrade fixture cannot authorize production upgraded-chain broadcasting.
+test('unverified upgrade context prevents native-worker broadcast and retains signed recovery bytes',async({page})=>{
  await start(page);await call(page,'scan',fixture.keys);const op=await call(page,'create',fixture.parameters(),fixture.keys),signed=fixture.sign(op.plan);
- const result=await call(page,'submit',op.id,signed,fixture.keys);expect(result.error).toContain('Chipnet temporarily unavailable');expect(fixture.chain.broadcasts).toHaveLength(0);
+ const result=await call(page,'submit',op.id,signed,fixture.keys);expect(result.error).toMatch(/activation unverified|Stale|Header|header/);expect(fixture.chain.broadcasts).toHaveLength(0);
  await page.reload();await start(page);expect((await call(page,'list')).find((o:any)=>o.id===op.id).raw).toBe(signed);expect(fixture.chain.broadcasts).toHaveLength(0);
 });

@@ -1,3 +1,5 @@
+import {tickContext,transactionFinal} from './consensus-clock.js';
+import {excludedChipnetProvider} from './chipnet-policy.js';
 import { Buffer, hash256, sha256Bytes } from './bytes.js';
 export { hash256 } from './bytes.js';
 import { binToHex, cashAddressToLockingBytecode, decodeTransaction, hashTransaction, hexToBin } from '@bitauth/libauth';
@@ -45,7 +47,7 @@ export class ElectrumCore implements NetworkProvider {
     if (!['mainnet','chipnet','regtest'].includes(options.network??'chipnet')) throw Error('Unsupported Electrum network');
     if(options.network==='regtest')this.network=Network.REGTEST;
     if(options.network==='mainnet')this.network=Network.MAINNET;
-    this.endpoints = options.endpoints ?? (this.network===Network.MAINNET?['wss://bch.loping.net:50004','wss://bch.imaginary.cash:50004']:['wss://chipnet.imaginary.cash:50004', 'wss://electrum-chipnet.optnlabs.com', 'wss://chipnet.bch.ninja:50004']);
+    this.endpoints = options.endpoints ?? (this.network===Network.MAINNET?['wss://bch.loping.net:50004','wss://bch.imaginary.cash:50004']:['wss://chipnet.imaginary.cash:50004', 'wss://chipnet.bch.ninja:50004']);
     if(this.network===Network.REGTEST&&this.endpoints.some(e=>!['localhost','127.0.0.1','[::1]'].includes(new URL(e).hostname)))throw Error('Regtest Electrum requires local endpoints');
     this.timeoutMs = options.timeoutMs ?? 10000;
     this.maxTipAgeSeconds = options.maxTipAgeSeconds ?? 21600;
@@ -262,10 +264,17 @@ export class ElectrumCore implements NetworkProvider {
     return outputs;
   }
   async sendRawTransaction(raw: string): Promise<string> {
-    if(this.network===Network.CHIPNET)throw Error('Chipnet temporarily unavailable for transactions: consensus upgrade verification required');
     if(!this.allowBroadcast)throw Error('Electrum broadcasting disabled');
-    if(!this.activeChainSession || (this.network!==Network.MAINNET&&this.network!==Network.REGTEST))throw Error('Broadcast requires a verified active '+(this.network===Network.REGTEST?'regtest':'mainnet')+' session');
-    const tx=decodeRawTransaction(raw),result=await this.request('blockchain.transaction.broadcast',raw);
+    if(!this.activeChainSession || (this.network!==Network.MAINNET&&this.network!==Network.REGTEST&&this.network!==Network.CHIPNET))throw Error('Broadcast requires a verified active '+this.network+' session');
+    const tx=decodeRawTransaction(raw);
+    if(this.network===Network.CHIPNET){
+      if(this.endpoints.some(excludedChipnetProvider))throw Error('OptnLabs excluded: incompatible chipnet consensus branch');
+      const tip=await this.tip(),context=await tickContext(this,tip),mtp=await this.medianTime(tip.height,tip.hash);
+      if(context.activationHeight===undefined)throw Error('Chipnet upgrade activation unverified');
+      const decoded=decodeTransaction(hexToBin(raw));if(typeof decoded==='string'||!transactionFinal(decoded,{height:tip.height,mtp,...context}))throw Error('Non-final chipnet transaction');
+      if(await this.classifyTipChange(tip)!=='same')throw new ChainExtension();
+    }
+    const result=await this.request('blockchain.transaction.broadcast',raw);
     if(result!==tx.txid)throw Error('Electrum broadcast response does not match transaction ID; acceptance is uncertain');
     return result;
   }

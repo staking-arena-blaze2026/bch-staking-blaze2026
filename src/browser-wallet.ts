@@ -1,3 +1,4 @@
+import {finalityLimit} from './consensus-clock.js';
 import {assertOfferCutoff} from './offer-policy.js';
 import {binToHex,hexToBin,type Transaction} from '@bitauth/libauth';
 import {ElectrumCore,decodeRawTransaction} from './electrum-core.js';
@@ -54,7 +55,7 @@ export class BrowserWallet {
   if(walletPlanIdentity(canonical)!==walletPlanIdentity(op.plan))throw Error('Canonical plan changed; rebuild before wallet approval');
   const clock=await verifyCoinsAcrossPeers(this.provider,op.coins.map(c=>c.utxo));
   const transaction=canonical.request.transaction as Transaction;
-  if(transaction.locktime>=(transaction.locktime<500000000?clock.height+1:clock.mtp))throw Error('Wallet plan is not final at the freshly verified chain clock; rebuild before signing');
+  if(transaction.locktime>=(transaction.locktime<500000000?finalityLimit(clock):clock.mtp))throw Error('Wallet plan is not final at the freshly verified chain clock; rebuild before signing');
   const deadline=op.kind==='offer'?this.offerCutoff(op.config!,clock):undefined;
   return {deadline,verifiedAt:this.now()};
  }
