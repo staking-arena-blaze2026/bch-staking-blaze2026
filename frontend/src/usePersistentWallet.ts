@@ -116,6 +116,7 @@ class WalletOwner {
   private window(restoring: boolean) {
     if (['restoring','reconnecting','offline'].includes(this.state) && this.recoveryTimer) return;
     this.clearTimers();
+    this.relay?.prepareHandshake?.();
     this.recoveryStartedAt ??= Date.now();
     this.state = Date.now()-this.recoveryStartedAt>=RESTORE_WINDOW_MS ? 'offline' : restoring ? 'restoring' : 'reconnecting';
     this.recoveryAttempt = 0;
@@ -178,6 +179,7 @@ class WalletOwner {
     manager.on('messagereceived', message => {
       if (message.action === RelayMsgAction.Disconnect) {
         this.remoteDisconnectPending=true;
+        this.relay?.prepareHandshake?.(true);
         if (this.state === 'connected') this.window(false);
         // Invalidate transaction authorization/abort pending approvals now, not
         // eight seconds later when the SDK's remote-disconnect grace expires.

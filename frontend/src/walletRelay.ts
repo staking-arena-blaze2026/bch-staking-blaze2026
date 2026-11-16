@@ -7,7 +7,7 @@ export class InvalidWalletSession extends Error {}
  * a paused retry loop alive after cleanup. Owning the loop avoids both behaviors.
  * DappConnectionManager still owns protocol, persistence, derivation and signing.
  */
-export function createWalletRelay(callback: RelayStatusCallback, options: DappRelayOptions = {}): DappRelayResult & {transportReachable?:()=>boolean;recover?:(refreshSubscription?:boolean)=>void;prepareHandshake?:()=>void} {
+export function createWalletRelay(callback: RelayStatusCallback, options: DappRelayOptions = {}): DappRelayResult & {transportReachable?:()=>boolean;recover?:(refreshSubscription?:boolean)=>void;prepareHandshake?:(restart?:boolean)=>void} {
   const saved = options.existingCredentials;
   if (saved && (!/^[a-f0-9]{64}$/i.test(saved.privateKey) || !/^[a-f0-9]{64}$/i.test(saved.walletPublicKey) || !/^[a-f0-9]{16}$/i.test(saved.secret))) throw new InvalidWalletSession('Invalid saved transport credentials');
   const generated = saved ? null : generateKeyExchangeCredentials();
@@ -47,8 +47,8 @@ export function createWalletRelay(callback: RelayStatusCallback, options: DappRe
   let silentRefreshes = 0;
   let lastRefresh = -Infinity;
   const clearWalletDeadline = () => { clearTimeout(walletReplyDeadline); walletReplyDeadline=undefined; };
-  const prepareHandshake = () => {
-    if(saved&&walletAuthenticated){minimumReadyTime=Math.floor(Date.now()/1000)+1;probePublished=false;walletAuthenticated=false;ignoredReady=false;}
+  const prepareHandshake = (restart = false) => {
+    if(saved&&(walletAuthenticated||restart)){minimumReadyTime=Math.floor(Date.now()/1000)+1;probePublished=false;walletAuthenticated=false;ignoredReady=false;}
     requestFreshWalletReady=true;
     if (stopped || walletReplyDeadline) return;
     walletReplyDeadline=setTimeout(()=>{

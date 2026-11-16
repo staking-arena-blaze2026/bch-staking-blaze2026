@@ -89,3 +89,5 @@ BLAZE_LIVE_RELAY=1 npm --prefix frontend test -- tests/walletManagerLiveRelay.te
 ```
 
 Latest complete frontend run after the retained-message guard: **187 passed, one opt-in public-relay test skipped**. That public-relay test was run separately with `BLAZE_LIVE_RELAY=1` and passed. Nine browser/WSS tests, the fresh production build and frontend type checking pass. The forced lost-subscription test with real local sockets now measures manual recovery at **2,268 ms** and automatic replacement at **14,050 ms**, including the 12-second replacement deadline and the freshness probe. Earlier timings above record the earlier iteration, before this additional freshness check.
+
+Readiness freshness is invalidated immediately on liveness loss and authenticated remote disconnect, before the SDK's revocation grace can be cancelled by a retained event. An unseen readiness message from the same second as the disconnect is rejected. All 40 affected lifecycle/SDK/WebSocket tests and another production build pass after this refinement.

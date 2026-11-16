@@ -160,5 +160,11 @@ it('does not authenticate retained same-second WalletReady or a message replayed
  relay.client.emit('message',ready);expect(receive).not.toHaveBeenCalled();
  await vi.advanceTimersByTimeAsync(1000);const fresh={...ready,time:Math.floor(Date.now()/1000)};
  relay.client.emit('message',fresh);expect(receive).toHaveBeenCalledOnce();
- relay.client.emit('message',fresh);expect(receive).toHaveBeenCalledOnce();relay.cleanup();
+ relay.client.emit('message',fresh);expect(receive).toHaveBeenCalledOnce();
+ // Even an unseen retained readiness message cannot cancel a disconnect grace.
+ relay.prepareHandshake?.(true);
+ relay.client.emit('message',{...fresh,dapp_discovered:true});expect(receive).toHaveBeenCalledOnce();
+ await vi.advanceTimersByTimeAsync(1000);
+ await relay.client.relay({action:RelayMsgAction.DappReady,time:Math.floor(Date.now()/1000),wallet_discovered:false} as Parameters<typeof relay.client.relay>[0]);
+ relay.client.emit('message',{...fresh,time:Math.floor(Date.now()/1000)});expect(receive).toHaveBeenCalledTimes(2);relay.cleanup();
 });
