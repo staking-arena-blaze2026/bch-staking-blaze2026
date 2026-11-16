@@ -7,5 +7,9 @@
   },
   "failure": "EOSE accepted but recipient subscription delivers no messages",
   "manualEvidence": "REQ count increases after click; same saved credentials retained; live WalletReady validates before connected",
-  "liveCashonizeAcceptance": "pending user validation; existing browser pairing not accessed"
+  "liveCashonizeAcceptance": "Owner confirmed few-second restoration for new pairing with visible Cashonize; exact old pairing not testable after re-pairing.",
+  "afterFreshnessGuardMs": {
+    "manual": 2267.9,
+    "automatic": 14050.4
+  }
 }

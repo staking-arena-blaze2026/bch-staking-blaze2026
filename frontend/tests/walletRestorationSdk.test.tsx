@@ -58,13 +58,13 @@ it.each(['normal','silent-auto','silent-manual'])('restores the same encrypted S
   });
   await wallet.connect();
   if(scenario==='silent-manual'){service.silence(temporary.getPublicKeyHex());fireEvent.click(screen.getByRole('button',{name:'Retry'}));}
-  await act(async()=>{await vi.advanceTimersByTimeAsync(scenario==='silent-manual'?1_000:25_000);});
+  await act(async()=>{await vi.advanceTimersByTimeAsync(scenario==='silent-manual'?3_000:25_000);});
   expect(screen.getByText('connected')).toBeVisible();
   await act(async()=>{service.interrupt(temporary.getPublicKeyHex());await vi.advanceTimersByTimeAsync(20_000);});
   expect(screen.getByText('connected')).toBeVisible();
   first.unmount();await act(async()=>{});
   const reopened=render(<StrictMode><Status/></StrictMode>);
-  await act(async()=>{await vi.advanceTimersByTimeAsync(1_000);});
+  await act(async()=>{await vi.advanceTimersByTimeAsync(3_000);});
   expect(screen.getByText('connected')).toBeVisible();
   expect(JSON.parse(localStorage.getItem(WALLET_SESSION_KEY)!)).toMatchObject(saved);
   expect(received).not.toContain(RelayMsgAction.SignTransactionRequest);
@@ -94,7 +94,7 @@ it.each(['automatic','manual'])('replaces a genuinely stuck SDK publication duri
   await wallet.connect();
   const before=service.subscriptions;
   if(mode==='manual')fireEvent.click(screen.getByRole('button',{name:'Retry'}));
-  await act(async()=>{await vi.advanceTimersByTimeAsync(mode==='manual'?200:12_100);});
+  await act(async()=>{await vi.advanceTimersByTimeAsync(mode==='manual'?2_500:14_500);});
   expect(service.subscriptions).toBeGreaterThan(before);
   expect(screen.getByText('connected')).toBeVisible();
   expect(JSON.parse(localStorage.getItem(WALLET_SESSION_KEY)!)).toMatchObject(saved);

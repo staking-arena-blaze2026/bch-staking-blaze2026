@@ -140,7 +140,7 @@ export default function WalletConnect({ browser=false, getRequiredNetwork = defa
       <span className="wallet-status" role="status">{wallet.state === 'connected' ? 'Connected to Cashonize' : wallet.state === 'restoring' ? 'Restoring Cashonize connection…' : wallet.state === 'reconnecting' ? 'Reconnecting to Cashonize…' : 'Waiting for Cashonize approval…'}</span>
       <button type="button" className="refresh" disabled={closing} onClick={() => { void disconnect(); }}>{closing ? 'Disconnecting…' : wallet.state === 'connecting' ? 'Cancel connection' : 'Disconnect'}</button>
     </> : wallet.state === 'offline' ? <>
-      <span role="status">Cashonize connection lost. Retrying automatically while online; open Cashonize if it is unavailable.</span>
+      <span role="status">Cashonize connection lost. Retrying automatically; keep Cashonize open in a separate visible browser window. Your pairing is saved.</span>
       <button type="button" className="refresh" onClick={wallet.retry}>Retry saved connection</button>
       <button type="button" className="refresh" onClick={wallet.replace}>Pair wallet again</button>
       <button type="button" className="refresh" onClick={() => { void disconnect(); }}>Disconnect</button>

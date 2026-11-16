@@ -3,8 +3,11 @@
   "frontend": {
     "command": "npm --prefix frontend test -- --reporter=dot --testTimeout=15000",
     "filesPassed": 34,
-    "testsPassed": 185,
-    "testsFailed": 0
+    "filesSkipped": 1,
+    "testsPassed": 187,
+    "testsSkipped": 1,
+    "testsFailed": 0,
+    "skipReason": "Public-relay interoperability test is opt-in; separately executed and passed."
   },
   "protocolRegression": {
     "cases": 25,
@@ -38,7 +41,7 @@
     "Two generalized asset unit tests",
     "Isolated transaction performance benchmark"
   ],
-  "realCashonize": "Pending user normal-profile validation; no wallet credentials accessed",
+  "realCashonize": "Owner confirmed newly paired session restores within a few seconds with wallet visible; previous session was re-paired before diagnostics. Hidden wallet tab deliberately suspends relay.",
   "realBchTransactionsInitiated": false,
   "finalShutdownGuard": {
     "relayTestsPassed": 12,
@@ -47,5 +50,16 @@
     "fullSuitePreviouslyPassed": 185,
     "newRegressionTests": 1,
     "productionBuild": "passed"
+  },
+  "browserWss": {
+    "command": "npm --prefix frontend run test:v3:browser",
+    "testsPassed": 9,
+    "testsFailed": 0
+  },
+  "actualWalletSdkPublicRelay": {
+    "testsPassed": 1,
+    "initialRestorationMs": 2533.9173009999995,
+    "visibleWalletRestorationMs": 828.3546870000009,
+    "signingRequests": 0
   }
 }

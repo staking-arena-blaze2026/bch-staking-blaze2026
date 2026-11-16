@@ -17,7 +17,29 @@ export function createWalletRelay(callback: RelayStatusCallback, options: DappRe
   // SDK updateConnection starts an unawaitable asynchronous send. Coalesce
   // identical ready sends until publication settles. A reactive protocol-confirming
   // ready must follow a proactive ready, never be discarded. Never coalesce signs.
+  // Nostr replays retained events before EOSE. A saved identity is not live
+  // merely because a same-second WalletReady passes the SDK's inclusive cutoff.
+  let probePublished=!saved,minimumReadyTime=0,walletAuthenticated=false,ignoredReady=false;
+  const readyReceipts=new Set<string>();
+  const forwardEmit=client.emit.bind(client);
+  client.emit=((event:string|symbol,...args:unknown[])=>{
+    const ready=args[0] as WalletReadyMessage|undefined;
+    if(saved&&event==='message'&&ready?.action===RelayMsgAction.WalletReady&&ready.public_key?.toLowerCase()===pairedKey){
+      const description=JSON.stringify(ready);
+      if(!probePublished||!Number.isSafeInteger(ready.time)||ready.time<minimumReadyTime||readyReceipts.has(description)){
+        if(!ignoredReady){ignoredReady=true;console.info(`[Arena wallet ${new Date().toISOString()}] Retained WalletReady ignored; fresh recovery response required`);}
+        return false;
+      }
+      if(readyReceipts.size>=32)readyReceipts.delete(readyReceipts.values().next().value!);
+      readyReceipts.add(description);
+    }
+    return forwardEmit(event,...args);
+  }) as typeof client.emit;
   const send = client.relay.bind(client);
+  const publishReady=(message:Parameters<typeof client.relay>[0])=>{
+    if((message as DappReadyMessage).wallet_discovered===false)probePublished=true;
+    return send(message);
+  };
   let readySend: ReturnType<typeof client.relay>|undefined;
   let readyDescription = '';
   let requestFreshWalletReady = false;
@@ -26,6 +48,7 @@ export function createWalletRelay(callback: RelayStatusCallback, options: DappRe
   let lastRefresh = -Infinity;
   const clearWalletDeadline = () => { clearTimeout(walletReplyDeadline); walletReplyDeadline=undefined; };
   const prepareHandshake = () => {
+    if(saved&&walletAuthenticated){minimumReadyTime=Math.floor(Date.now()/1000)+1;probePublished=false;walletAuthenticated=false;ignoredReady=false;}
     requestFreshWalletReady=true;
     if (stopped || walletReplyDeadline) return;
     walletReplyDeadline=setTimeout(()=>{
@@ -45,8 +68,8 @@ export function createWalletRelay(callback: RelayStatusCallback, options: DappRe
     const description = JSON.stringify({...message,time:undefined});
     if (readySend && readyDescription === description) return readySend;
     const pending = readySend
-      ? readySend.catch(()=>{}).then(()=>stopped ? undefined : send(message))
-      : stopped ? Promise.resolve() : send(message);
+      ? readySend.catch(()=>{}).then(()=>stopped ? undefined : publishReady(message))
+      : stopped ? Promise.resolve() : publishReady(message);
     readyDescription = description;
     readySend = pending;
     void pending.finally(() => { if (readySend === pending) readySend=undefined; }).catch(()=>{});
@@ -66,6 +89,7 @@ export function createWalletRelay(callback: RelayStatusCallback, options: DappRe
     if (navigator.onLine === false) { schedule(); return; }
     console.info(`[Arena wallet ${new Date().toISOString()}] Recovery attempt triggered; relay transport connecting`);
     connecting=true; callInFlight=true; reachable=false;
+    if(saved){minimumReadyTime=Math.floor(Date.now()/1000)+1;probePublished=false;walletAuthenticated=false;ignoredReady=false;}
     clearWalletDeadline();
     status(RelayStatus.reconnecting('Refreshing transport'));
     // RelayClient.connect returns after subscribing, before EOSE/connection.
@@ -93,7 +117,7 @@ export function createWalletRelay(callback: RelayStatusCallback, options: DappRe
     } else if (message.public_key && message.public_key.toLowerCase() !== pairedKey) {
       status(RelayStatus.sessionDeleted()); return;
     }
-    clearWalletDeadline(); silentRefreshes=0;
+    walletAuthenticated=true;clearWalletDeadline(); silentRefreshes=0;
     attempt=0; // Only a wallet handshake resets outage backoff.
   };
   client.on('connection',connected);

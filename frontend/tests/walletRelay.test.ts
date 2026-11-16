@@ -150,3 +150,15 @@ it('rejects every outbound message on an abandoned relay, including stale SDK si
  vi.useFakeTimers();const relay=createWalletRelay(vi.fn());await vi.advanceTimersByTimeAsync(0);relay.cleanup();
  await expect(relay.client.relay({action:RelayMsgAction.SignTransactionRequest,time:0} as Parameters<typeof relay.client.relay>[0])).rejects.toThrow('Wallet relay closed');
 });
+
+it('does not authenticate retained same-second WalletReady or a message replayed before a restoration probe',async()=>{
+ vi.useFakeTimers();const saved={privateKey:'01'.repeat(32),secret:'ab'.repeat(8),walletPublicKey:'02'.repeat(32)},relay=createWalletRelay(vi.fn(),{existingCredentials:saved});
+ const receive=vi.fn();relay.client.on('message',receive);await vi.advanceTimersByTimeAsync(0);
+ const ready={action:RelayMsgAction.WalletReady,time:Math.floor(Date.now()/1000),public_key:saved.walletPublicKey};
+ relay.client.emit('message',ready);expect(receive).not.toHaveBeenCalled();
+ await relay.client.relay({action:RelayMsgAction.DappReady,time:ready.time,wallet_discovered:false} as Parameters<typeof relay.client.relay>[0]);
+ relay.client.emit('message',ready);expect(receive).not.toHaveBeenCalled();
+ await vi.advanceTimersByTimeAsync(1000);const fresh={...ready,time:Math.floor(Date.now()/1000)};
+ relay.client.emit('message',fresh);expect(receive).toHaveBeenCalledOnce();
+ relay.client.emit('message',fresh);expect(receive).toHaveBeenCalledOnce();relay.cleanup();
+});

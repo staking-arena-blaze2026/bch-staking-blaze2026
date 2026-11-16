@@ -1,6 +1,6 @@
 # Verification levels and Cashonize recovery — 2026-11-16
 
-This is post-baseline BCH Blaze fork work. No original repository, website, wallet or running node was modified. No mainnet/chipnet transactions were initiated. Normal-profile Cashonize acceptance remains pending with the wallet owner; the implementation is a tested release candidate, not a claim of a permanent real-wallet fix.
+This is post-baseline BCH Blaze fork work. No original repository, website, wallet or running node was modified. No mainnet/chipnet transactions were initiated. The wallet owner confirmed automatic restoration within a few seconds with Cashonize visible in a separate window. The original session was re-paired before diagnostics were captured, so recovery of that exact old session remains unestablished. Hidden browser tabs remain subject to Cashonize’s own relay suspension.
 
 ## Confirmed recovery failure mechanisms
 
@@ -57,7 +57,7 @@ Live tip subscription, UTXO, history and Merkle-proof request counts remain unch
 
 ## Acceptance still required
 
-The user will test the published release with their existing normal-browser Cashonize pairing. Do not clear localStorage or re-pair as a shortcut. Repeat refresh and tab close/reopen, wallet close/reopen, network interruption/restoration and background/focus. If restoration stalls, click Retry and check for immediate “Manual Retry triggered; replacing transport and manager with saved pairing”, a new transport/subscription attempt, WalletReady and identity validation before “Connected to Cashonize”. Do not sign any transactions during this check. Record real reconnect times and privacy-safe diagnostics. Permanent-fix acceptance stays open until this succeeds.
+The user will test the published release with their existing normal-browser Cashonize pairing. Do not clear localStorage or re-pair as a shortcut. Repeat refresh and tab close/reopen, wallet close/reopen, network interruption/restoration and background/focus. If restoration stalls, click Retry and check for immediate “Manual Retry triggered; replacing transport and manager with saved pairing”, a new transport/subscription attempt, WalletReady and identity validation before “Connected to Cashonize”. Do not sign any transactions during this check. Record real reconnect times and privacy-safe diagnostics. The owner subsequently reported successful restoration within a few seconds with a newly paired session and Cashonize visible in a separate window. This does not establish recovery of the earlier session or availability while the wallet deliberately suspends its relay.
 
 ## Regression notes
 
@@ -68,3 +68,24 @@ The first broad run exposed a legacy RPC-dependent transport test without a conf
 Final frontend run: **185 passed in 34 files**, with zero failures. All 25 selected protocol cases passed after the documented reruns; 17 verification-evidence checks, root/frontend TypeScript, contract artifact checking and the production build passed. See [validation record](verification-recovery/validation.json).
 
 A final shutdown guard rejects every outbound message on a cleaned-up relay, including an SDK attempt to replay a stale signing request. The 12 relay lifecycle tests and a fresh production build pass after this guard; it adds one regression beyond the 185-test full-suite run.
+
+
+## Actual Cashonize SDK interoperability and browser-tab diagnosis
+
+After the first deployment the user reported both recovery paths failing, then explained that Cashonize was open in another browser tab. Inspection of Cashonize's [current integration](https://github.com/cashonize/cashonize-wallet/blob/main/src/stores/wizardconnectStore.ts) and its pinned dependencies established that it uses `@wizardconnect/wallet` 0.2.3 and core 0.2.5. Its wallet manager uses `initiateRelay`, whose default visibility handler explicitly disconnects and pauses the wallet relay when `document.visibilityState` becomes hidden. It retains the authorized pairing. A dApp cannot make that unrelated background tab resume its socket. Keeping Cashonize in a separate **visible** window makes the wallet available without a new pairing.
+
+The user re-paired their unavailable session before diagnostics were captured, then confirmed that the new pairing restores automatically within a few seconds with Cashonize visible. We therefore distinguish confirmed visible-wallet recovery from the still-unestablished cause/recovery of the exact old session. No claim of unattended recovery from a wallet's deliberately suspended relay is made.
+
+Added the exact wallet SDK as a pinned **development-only** dependency. The opt-in `walletManagerLiveRelay.test.tsx` runs the actual wallet manager, actual dApp owner and actual SDK encryption over both public Nostr relays, using synthetic HD/relay identities and a signer that always throws. It reproduces the wallet retaining its pairing while hidden, verifies that dApp Retry cannot authenticate an unavailable wallet, then makes the wallet visible and requires automatic restoration without QR or signing. With the final freshness guard, initial restoration measured **2,534 ms** and visibility-to-restoration **828 ms**. Evidence: [actual wallet SDK/public relay report](verification-recovery/actual-wallet-sdk-public-relay.json). This is stronger interoperability evidence than the earlier simple wallet responder, but is still separate from the user's real wallet profile.
+
+This test also reproduced a separate authentication-status defect: Nostr replays retained WalletReady events before EOSE, and the SDK's inclusive second-resolution replay cutoff can accept a recent old message immediately after a reload. Restoration now requires an outgoing recovery probe and a WalletReady timestamp from a later second than transport recovery began. Identical WalletReady receipts are deduplicated. A retained message cannot prematurely mark the wallet live; ordinary recovery typically waits for the next two-second probe. Incoming readiness is filtered before the SDK manager consumes it; identity/network validation and transaction checks still run afterward. Other protocol messages, including signed responses, retain their existing verification path.
+
+The disconnected UI now explains the visible-window requirement. This is an external wallet availability limitation, not pairing revocation. Ordinary transport failures continue to retain the saved pairing. The nine WSS/browser marketplace and recovery tests pass with their status assertions updated for the new provisional display.
+
+Opt-in reproduction (no real wallet or BCH):
+
+```sh
+BLAZE_LIVE_RELAY=1 npm --prefix frontend test -- tests/walletManagerLiveRelay.test.tsx
+```
+
+Latest complete frontend run after the retained-message guard: **187 passed, one opt-in public-relay test skipped**. That public-relay test was run separately with `BLAZE_LIVE_RELAY=1` and passed. Nine browser/WSS tests, the fresh production build and frontend type checking pass. The forced lost-subscription test with real local sockets now measures manual recovery at **2,268 ms** and automatic replacement at **14,050 ms**, including the 12-second replacement deadline and the freshness probe. Earlier timings above record the earlier iteration, before this additional freshness check.

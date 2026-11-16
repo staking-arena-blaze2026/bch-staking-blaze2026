@@ -39,7 +39,7 @@ test('provider failure disables v3 actions and a reorganization restores the que
  await open(page);const claim=await fixture.claim();fixture.chain.mine();await refresh(page);await expect(page.getByText(/effective lock 1024s/)).toBeVisible();
  fixture.chain.reorgLastBlock();fixture.chain.pending.add(claim);await refresh(page);await expect(page.getByRole('cell',{name:'Pending (0-conf) · provisional · #0 · Legacy offer: 1 reward payment remaining'})).toBeVisible();await expect(page.getByText(/effective lock 1024s/)).toBeVisible();await expect(page.getByText(/Pending \(0-conf\) state verified/)).toBeVisible();await expect(page.getByRole('button',{name:'Review and pay fee in wallet',exact:true})).toBeDisabled();
  fixture.chain.mine();await refresh(page);await expect(page.getByRole('cell',{name:'Active · #0 · Legacy offer: 1 reward payment remaining'})).toBeVisible();
- fixture.chain.fail=true;await page.getByRole('button',{name:'Refresh vault state'}).click();await expect(page.getByRole('status')).toContainText('Waiting for a second verified provider',{timeout:60000});await expect(page.getByRole('heading',{name:'Live ranked queue'})).toBeVisible();await expect(page.getByText(/Displayed state may be outdated/)).toBeVisible();
+ fixture.chain.fail=true;await page.getByRole('button',{name:'Refresh vault state'}).click();await expect(page.getByRole('status').filter({hasText:'Waiting for a second verified provider'})).toContainText('Waiting for a second verified provider',{timeout:60000});await expect(page.getByRole('heading',{name:'Live ranked queue'})).toBeVisible();await expect(page.getByText(/independent state verification incomplete/)).toBeVisible();
  fixture.chain.fail=false;await refresh(page);await expect(page.getByRole('cell',{name:'Active · #0 · Legacy offer: 1 reward payment remaining'})).toBeVisible();
 });
 
@@ -98,7 +98,7 @@ test('fresh independent profiles automatically discover V3 and Atomic V4 announc
   await page.locator(`a[href="#/v3/vault/${announced[1]}"]`).click();await expect(page.getByRole('button',{name:'Make an Offer',exact:true})).toBeDisabled();
   await expect(page.getByText(/Make an Offer unavailable: connect a compatible/)).toBeVisible();
   await page.reload();await expect(page.getByRole('heading',{name:'Live ranked queue'})).toBeVisible({timeout:60000});
-  fixture.chain.fail=true;await page.getByRole('button',{name:'Refresh vault state'}).click();await expect(page.getByRole('status')).toContainText('Waiting for a second verified provider',{timeout:60000});
+  fixture.chain.fail=true;await page.getByRole('button',{name:'Refresh vault state'}).click();await expect(page.getByRole('status').filter({hasText:'Waiting for a second verified provider'})).toContainText('Waiting for a second verified provider',{timeout:60000});
   await page.goto('http://127.0.0.1:4176/v3/#/v3/offers');await expect(page.locator(`a[href="#/v3/vault/${announced[1]}"]`).locator('xpath=ancestor::tr')).toContainText('Unavailable');
   await page.reload();await expect(page.locator(`a[href="#/v3/vault/${announced[1]}"]`)).toBeVisible();
   fixture.chain.fail=false;await profile.close();
