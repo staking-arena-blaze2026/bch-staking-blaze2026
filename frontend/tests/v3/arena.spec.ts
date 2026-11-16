@@ -22,7 +22,7 @@ test.beforeAll(async()=>{sockets.on('connection',(socket,req)=>{hosts.push(req.h
 test.afterAll(async()=>{for(const s of sockets.clients)s.terminate();sockets.close();server.close();await once(server,'close');rmSync(certificate,{recursive:true,force:true});});
 test.beforeEach(async({context})=>{fixture=v3BrowserChain();hiddenOffer=undefined;hideHosts=[];hosts=[];methods=[];discoveryReads=[];await context.routeWebSocket(/^wss:\/\/relay\./,s=>{s.onMessage(()=>{});});});
 async function refresh(page:Page){const input=page.getByLabel('Public v3 configuration');if(!await input.isVisible())await page.getByText('Import or share a vault configuration',{exact:true}).click();if(!await input.inputValue())await input.fill(JSON.stringify(fixture.config,(_,v)=>typeof v==='bigint'?v.toString():v));const button=page.getByRole('button',{name:'Verify and refresh chain state'});await expect(button).toBeEnabled({timeout:60000});await button.click();await expect(page.getByRole('button',{name:'Refresh vault state',exact:true})).toBeEnabled({timeout:60000});await expect(page.getByRole('heading',{name:'Live ranked queue'})).toBeVisible({timeout:60000});}
-async function open(page:Page){await page.goto('./#/v3/offers');await page.getByLabel('Public v3 configuration').fill(JSON.stringify(fixture.config,(_,v)=>typeof v==='bigint'?v.toString():v));await refresh(page);}
+async function open(page:Page){await page.goto('./#/v3/offers');await page.getByText('Import or share a vault configuration',{exact:true}).click();await page.getByLabel('Public v3 configuration').fill(JSON.stringify(fixture.config,(_,v)=>typeof v==='bigint'?v.toString():v));await refresh(page);}
 test('real browser worker verifies wallet-funded claims over WSS and requires a connected caller wallet',async({page})=>{
  const errors:string[]=[];page.on('pageerror',e=>errors.push(e.message));await open(page);
  await expect(page.getByRole('group',{name:'New v3 offer'}).getByRole('textbox')).toHaveCount(3);await expect(page.getByLabel('Maximum wins W')).toHaveCount(0);
@@ -56,20 +56,20 @@ test('direct genesis journal survives browser reload and automatically confirms 
  const op=JSON.parse(encoded,(_,v)=>v?.bigint!==undefined?BigInt(v.bigint):v?.bytes?Uint8Array.from(v.bytes):v);
  await new Promise<void>((resolve,reject)=>{const r=indexedDB.open('staking-arena-wallet-v3',1);r.onupgradeneeded=()=>r.result.createObjectStore('operations');r.onerror=()=>reject(r.error);r.onsuccess=()=>{const db=r.result,t=db.transaction('operations','readwrite');t.objectStore('operations').put(op,op.id);t.oncomplete=()=>{db.close();resolve();};t.onerror=()=>reject(t.error);};});
  },encoded);
- await page.goto('./#/v3/offers');await page.reload();await expect(page.getByText('Genesis transaction: '+genesis.txid,{exact:false})).toContainText('Pending (0-conf)');
+ await page.goto('./#/v3/offers');await page.reload();await expect(page.locator('.marketplace-table tbody tr')).toContainText('0-conf · provisional');
  await expect(page.getByRole('heading',{name:'Live ranked queue'})).toHaveCount(0);
- fixture.chain.mine();await expect(page.getByText('Genesis transaction: '+genesis.txid,{exact:false})).toContainText('Confirmed (1 canonical confirmation)',{timeout:35000});
- await page.reload();await expect(page.getByText('Genesis transaction: '+genesis.txid,{exact:false})).toContainText('Confirmed',{timeout:60000});
+ fixture.chain.mine();await expect(page.locator('.marketplace-table tbody tr')).not.toContainText('0-conf',{timeout:35000});await expect(page.locator('.marketplace-table tbody tr td').last()).toHaveText('0');
+ await page.reload();await expect(page.locator('.marketplace-table tbody tr td').last()).toHaveText('0',{timeout:60000});
 });
 
-test('tabs preserve form values, verified cards open vault routes, and desktop/mobile layouts follow task order',async({page})=>{
+test('tabs preserve form values, verified rows open vault routes, and desktop/mobile layouts follow task order',async({page})=>{
  await page.setViewportSize({width:1360,height:1000});await page.goto('./#/v3');
  await page.getByLabel('Interval (seconds)',{exact:true}).waitFor({timeout:60000});await page.getByLabel('Interval (seconds)',{exact:true}).fill('7200');
  await page.getByRole('link',{name:'Make an Offer',exact:true}).click();await expect(page.getByRole('heading',{name:'Known vaults'})).toBeVisible();
  await page.goBack();await expect(page.getByLabel('Interval (seconds)',{exact:true})).toHaveValue('7200');await page.goForward();
- await page.getByLabel('Public v3 configuration').fill(JSON.stringify(fixture.config,(_,v)=>typeof v==='bigint'?v.toString():v));await refresh(page);
+ await page.getByText('Import or share a vault configuration',{exact:true}).click();await page.getByLabel('Public v3 configuration').fill(JSON.stringify(fixture.config,(_,v)=>typeof v==='bigint'?v.toString():v));await refresh(page);
  await page.getByRole('link',{name:'← Known vaults',exact:true}).click();
- const card=page.getByRole('link',{name:/V3 vault/});await expect(card).toContainText('Active offers');await expect(card).toContainText('Confirmed · chain verified');await card.click();
+ const card=page.getByRole('link',{name:'Vault 1',exact:true});await expect(card.locator('xpath=ancestor::tr')).toContainText('0.00002000 BCH');await card.click();
  await expect(page).toHaveURL(new RegExp('#/v3/vault/'+fixture.config.genesis+'$'));await expect(page.locator('.v3-summary')).toBeVisible();
  const queue=await page.locator('.v3-queue').boundingBox(),form=await page.locator('.v3-offer').boundingBox();expect(queue!.x).toBeLessThan(form!.x);expect(form!.y).toBeLessThan(queue!.y);expect(await page.locator('.v3-queue .table-scroll').evaluate(el=>el.scrollWidth<=el.clientWidth)).toBe(true);
  await page.screenshot({path:'test-results/v3-redesign-desktop.png',fullPage:true});
@@ -94,13 +94,12 @@ test('fresh independent profiles automatically discover V3 and Atomic V4 announc
   const profile=await browser.newContext({ignoreHTTPSErrors:true});await profile.routeWebSocket(/^wss:\/\/relay\./,socket=>socket.onMessage(()=>{}));
   await profile.route('**/public-index/regtest/index.json',route=>route.fulfill({contentType:'application/json',body:stringify({schema:1,network:'regtest',vaults:Object.values(index.candidates),total:announced.length,pages:[]})}));
   const page=await profile.newPage();await page.goto('http://127.0.0.1:4176/v3/#/v3/offers');
-  for(const id of announced){const card=page.locator(`a[href="#/v3/vault/${id}"]`);await expect(card,identity+' sees public genesis').toBeVisible({timeout:60000});await expect(card).toContainText('Confirmed · chain verified',{timeout:60000});}
-  await expect(page.locator(`a[href="#/v3/vault/${announced[1]}"]`)).toContainText('Atomic V4');
+  for(const id of announced){const card=page.locator(`a[href="#/v3/vault/${id}"]`);await expect(card,identity+' sees public genesis').toBeVisible({timeout:60000});await expect(card.locator('xpath=ancestor::tr').locator('td').last()).toHaveText('0',{timeout:60000});}
   await page.locator(`a[href="#/v3/vault/${announced[1]}"]`).click();await expect(page.getByRole('button',{name:'Make an Offer',exact:true})).toBeDisabled();
   await expect(page.getByText(/Make an Offer unavailable: connect a compatible/)).toBeVisible();
   await page.reload();await expect(page.getByRole('heading',{name:'Live ranked queue'})).toBeVisible({timeout:60000});
   fixture.chain.fail=true;await page.getByRole('button',{name:'Refresh vault state'}).click();await expect(page.getByRole('status')).toContainText('Waiting for a second verified provider',{timeout:60000});
-  await page.goto('http://127.0.0.1:4176/v3/#/v3/offers');await expect(page.locator(`a[href="#/v3/vault/${announced[1]}"]`)).toContainText('stale, non-authoritative');
+  await page.goto('http://127.0.0.1:4176/v3/#/v3/offers');await expect(page.locator(`a[href="#/v3/vault/${announced[1]}"]`).locator('xpath=ancestor::tr')).toContainText('Unavailable');
   await page.reload();await expect(page.locator(`a[href="#/v3/vault/${announced[1]}"]`)).toBeVisible();
   fixture.chain.fail=false;await profile.close();
  }
@@ -113,14 +112,14 @@ test('a thousand indexed candidates render bounded pages without a visitor histo
  const second=stringify({schema:1,network:'regtest',vaults:candidates.slice(20,40)}),path='pages/'+createHash('sha256').update(second).digest('hex')+'.json';
  await page.route('**/public-index/regtest/index.json',route=>route.fulfill({contentType:'application/json',body:stringify({schema:1,network:'regtest',vaults:candidates.slice(0,20),total:1000,pages:[path]})}));
  await page.route('**/public-index/regtest/'+path,route=>route.fulfill({contentType:'application/json',body:second}));
- await page.goto('./#/v3/offers');await expect(page.locator('.v3-vault-card')).toHaveCount(20);await expect(page.locator('.v3-vault-card').first()).toContainText('provisional');
- await page.getByRole('button',{name:'Load more public vaults'}).click();await page.getByRole('button',{name:'Next vaults'}).click();await expect(page.locator('.v3-vault-card')).toHaveCount(20);await expect(page.locator('.v3-vault-card').first()).toContainText(candidates[20].config.genesis);
+ await page.goto('./#/v3/offers');await expect(page.locator('.marketplace-table tbody tr')).toHaveCount(20);await expect(page.locator('.marketplace-table tbody tr').first()).toContainText('Verifying…');
+ await page.getByRole('button',{name:'Load more public vaults'}).click();await page.getByRole('button',{name:'Next vaults'}).click();await expect(page.locator('.marketplace-table tbody tr')).toHaveCount(20);await expect(page.locator('.marketplace-table tbody tr').first().getByRole('link',{name:'Vault 21',exact:true})).toHaveAttribute('href','#/v3/vault/'+candidates[20].config.genesis);
  await expect(page.getByRole('button',{name:'Make an Offer',exact:true})).toHaveCount(0);expect(methods).not.toContain('blockchain.scripthash.get_history');expect(methods).not.toContain('blockchain.transaction.broadcast');
 });
 
 test('simultaneous fresh visitors load the same public index without wallet identity or discovery-history reads',async({browser})=>{
  const contexts=await Promise.all([browser.newContext({ignoreHTTPSErrors:true}),browser.newContext({ignoreHTTPSErrors:true})]);let downloads=0;
- try{await Promise.all(contexts.map(async context=>{await context.routeWebSocket(/^wss:\/\/relay\./,s=>s.onMessage(()=>{}));await context.route('**/public-index/regtest/index.json',route=>{downloads++;return route.fulfill({contentType:'application/json',body:stringify({schema:1,network:'regtest',vaults:[{config:fixture.config,announcement:fixture.config.genesis,height:1,status:'observed-confirmed'}],total:1,pages:[]})});});const page=await context.newPage();await page.goto('http://127.0.0.1:4176/v3/#/v3/offers');await expect(page.locator('.v3-vault-card')).toHaveCount(1);expect(await page.evaluate(()=>localStorage.getItem('staking-arena-v3-configs'))).toBeNull();}));expect(downloads).toBe(2);expect(discoveryReads).toEqual([]);expect(methods).not.toContain('blockchain.transaction.broadcast');}finally{await Promise.all(contexts.map(c=>c.close()));}
+ try{await Promise.all(contexts.map(async context=>{await context.routeWebSocket(/^wss:\/\/relay\./,s=>s.onMessage(()=>{}));await context.route('**/public-index/regtest/index.json',route=>{downloads++;return route.fulfill({contentType:'application/json',body:stringify({schema:1,network:'regtest',vaults:[{config:fixture.config,announcement:fixture.config.genesis,height:1,status:'observed-confirmed'}],total:1,pages:[]})});});const page=await context.newPage();await page.goto('http://127.0.0.1:4176/v3/#/v3/offers');await expect(page.locator('.marketplace-table tbody tr')).toHaveCount(1);expect(await page.evaluate(()=>localStorage.getItem('staking-arena-v3-configs'))).toBeNull();}));expect(downloads).toBe(2);expect(discoveryReads).toEqual([]);expect(methods).not.toContain('blockchain.transaction.broadcast');}finally{await Promise.all(contexts.map(c=>c.close()));}
 });
 
 test('accepted atomic offer is visible unranked through reload and asymmetric propagation, then automatically ranks and confirms',async({page})=>{
@@ -157,5 +156,19 @@ test('accepted atomic offer is visible unranked through reload and asymmetric pr
  const timing={fixture:'synthetic loopback WSS, real covenant/transaction verification; no BCH spent',acceptedToVisibleMs:visibleAt-acceptedAt,propagationToRankedMs:rankedAt-propagatedAt,acceptedToRankedMs:rankedAt-acceptedAt};
  console.log('SUBMITTED_OFFER_TIMING',JSON.stringify(timing));
  await page.screenshot({path:'test-results/submitted-offer-confirmed.png',fullPage:true});
+ expect(methods).not.toContain('blockchain.transaction.broadcast');
+});
+
+test('fresh homepage is the four-column marketplace with accessible rows on desktop and mobile',async({page})=>{
+ await page.route('**/public-index/regtest/index.json',route=>route.fulfill({contentType:'application/json',body:stringify({schema:1,network:'regtest',vaults:[{config:fixture.config,announcement:fixture.config.genesis,height:1,status:'observed-confirmed'}],pages:[]})}));
+ await page.goto('./');await expect(page).toHaveURL(/#\/v3\/offers$/);await expect(page.getByRole('heading',{name:'Known vaults'})).toBeVisible();
+ await expect(page.locator('.v3-tabs a').first()).toHaveText('Make an Offer');await expect(page.locator('.v3-tabs a').first()).toHaveAttribute('aria-current','page');
+ await expect(page.getByRole('link',{name:'Staking Arena home'})).toHaveAttribute('href','#/v3/offers');
+ await expect(page.locator('.wallet-network-note')).toHaveCount(0);await expect(page.getByText(/Mainnet uses real BCH\. Review exact amounts/)).toHaveCount(0);
+ await expect(page.getByRole('columnheader')).toHaveText(['Vault','Max reward / period','Staking asset','Offers']);
+ expect(await page.getByRole('heading',{name:'Known vaults'}).evaluate(el=>el.nextElementSibling?.textContent)).toBe('Refresh public discovery');
+ const row=page.locator('.marketplace-table tbody tr');await expect(row.locator('td').last()).toHaveText('1',{timeout:60000});
+ for(const width of [1360,390]){await page.setViewportSize({width,height:900});expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);await page.screenshot({path:`test-results/marketplace-${width}.png`,fullPage:true});}
+ const link=page.getByRole('link',{name:'Vault 1',exact:true});await link.focus();await page.keyboard.press('Enter');await expect(page).toHaveURL(new RegExp('#/v3/vault/'+fixture.config.genesis+'$'));await expect(page.getByRole('heading',{name:'Live ranked queue'})).toBeVisible();
  expect(methods).not.toContain('blockchain.transaction.broadcast');
 });

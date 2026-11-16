@@ -3,7 +3,7 @@ import { ranked, type Envelope, type Vault } from './model';
 export type Route = { page:'home'|'create'|'v2'|'v3'|'missing' } | {page:'v2vault';id:string} | { page:'vault'|'offer'; id:string };
 export function routeFromHash(hash:string):Route {
   const path=hash.replace(/^#/, '').split('?')[0] || '/';
-  if(path==='/') return {page:'home'};
+  if(path==='/'||path==='/v1') return {page:'home'};
   const v2=path.match(/^\/v2\/vault\/([a-f0-9]{64})$/i);
   if(v2)return {page:'v2vault',id:v2[1].toLowerCase()};
   if(/^\/v3(?:\/(?:offers|vault\/[a-f0-9]{64}))?$/i.test(path)) return {page:'v3'};

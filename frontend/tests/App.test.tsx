@@ -17,7 +17,7 @@ it('shows indexed vault terms with a v3 home link and no legacy navigation',asyn
  expect(screen.getByText('Every minute')).toBeInTheDocument();
  expect(fetcher.mock.calls[0]).toBeDefined();
  expect(within(screen.getByRole('navigation')).queryAllByRole('link')).toHaveLength(0);
- expect(screen.getByRole('link',{name:'Staking Arena home'})).toHaveAttribute('href','#/v3');
+ expect(screen.getByRole('link',{name:'Staking Arena home'})).toHaveAttribute('href','#/v3/offers');
  expect(screen.queryByText('Native BCH reserves')).not.toBeInTheDocument();
 });
 it('opens a dedicated hash detail route and ranks offers by exact priority',async()=>{

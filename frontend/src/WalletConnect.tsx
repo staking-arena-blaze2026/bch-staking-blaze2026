@@ -6,7 +6,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { AlphanumericQRCode } from '@wizardconnect/react';
 import { usePersistentWallet } from './usePersistentWallet';
 import type { WalletReadyMessage } from '@wizardconnect/core';
-import { assertTransactionSession, createStakingTransactionBoundary, NETWORK_NAMES, CHIPNET_NETWORK, WalletNetworkSession, type NetworkRequirement } from './walletNetwork';
+import { assertTransactionSession, createStakingTransactionBoundary, CHIPNET_NETWORK, WalletNetworkSession, type NetworkRequirement } from './walletNetwork';
 
 function PairingDialog({ uri, qrUri, onClose }: { uri: string; qrUri: string; onClose: () => void }) {
   const dialog = useRef<HTMLDialogElement>(null);
@@ -39,7 +39,7 @@ function PairingDialog({ uri, qrUri, onClose }: { uri: string; qrUri: string; on
 
 const defaultRequirement = () => CHIPNET_NETWORK;
 
-export default function WalletConnect({ browser=false, getRequiredNetwork = defaultRequirement, targetLabel = 'Application', onTransactions }: { browser?:boolean; getRequiredNetwork?: () => NetworkRequirement | null; targetLabel?: string; onTransactions?: (client: WalletTransactions | null) => void }) {
+export default function WalletConnect({ browser=false, getRequiredNetwork = defaultRequirement, onTransactions }: { browser?:boolean; getRequiredNetwork?: () => NetworkRequirement | null; targetLabel?: string; onTransactions?: (client: WalletTransactions | null) => void }) {
   const control = useRef<HTMLDivElement>(null);
   const wasActive = useRef(false);
   const wallet = usePersistentWallet();
@@ -117,9 +117,7 @@ export default function WalletConnect({ browser=false, getRequiredNetwork = defa
     }});
     return () => {lifetime.abort();onTransactions(null);};
   }, [wallet.manager, networkSession, onTransactions,browser]);
-  const network = networkSession.read().network;
   const compatibility = transactions.check();
-  const required = getRequiredNetwork();
   const [closing, setClosing] = useState(false);
   const [error, setError] = useState('');
   const active = wallet.state === 'connected' || wallet.state === 'connecting' || wallet.state === 'reconnecting' || wallet.state === 'restoring';
@@ -152,11 +150,7 @@ export default function WalletConnect({ browser=false, getRequiredNetwork = defa
       <button type="button" className="refresh" onClick={() => { void disconnect(); }}>Disconnect</button>
     </> : <button type="button" className="refresh" onClick={() => { setError(''); wallet.connect(); }}>Connect Wallet</button>}
     {!active && <small>Pairing is saved in this browser profile. Clearing or blocking browser storage requires pairing again.</small>}
-    {active && <section className="wallet-network-note" role="status" aria-label="Wallet network compatibility">
-      <strong>Wallet network: {network.label}</strong>
-      <span>{targetLabel} requires: {required ? NETWORK_NAMES[required.network] : 'Unknown'}</span>
-      <p>{networkSession.read().connected && network.network === 'testnet' && required?.network === 'chipnet' ? 'Testnet key family. Before each signing request, the application verifies transaction inputs on synchronized chipnet. The wallet protocol does not attest its exact test network.' : compatibility.reason}</p>
-    </section>}
+    {wallet.state === 'connected' && !compatibility.matches && <small className="wallet-error" role="alert">{compatibility.reason.split('. ')[0]}.</small>}
     {(error || wallet.error) && <small className="wallet-error" role="alert">{error || wallet.error}</small>}
     {wallet.state === 'connecting' && wallet.uri && wallet.qrUri && <PairingDialog uri={wallet.uri} qrUri={wallet.qrUri} onClose={() => { void disconnect(); }}/>}
   </div>;

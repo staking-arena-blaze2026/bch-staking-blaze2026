@@ -4,7 +4,7 @@ const id='a'.repeat(64);
 test.beforeEach(async({page,context})=>{await context.routeWebSocket(/^wss:\/\/relay\./,socket=>{socket.onMessage(()=>{});});await page.clock.setFixedTime(browserTime);});
 test('marketplace uses indexed terms and detail links survive reload',async({page})=>{
  await page.route('**/api/vaults',route=>route.fulfill({json:fixture()}));
- await page.goto('/',{waitUntil:'domcontentloaded'});await expect(page.getByRole('heading',{name:'Staking Arena'})).toBeVisible();
+ await page.goto('/#/v1',{waitUntil:'domcontentloaded'});await expect(page.getByRole('heading',{name:'Staking Arena'})).toBeVisible();
  await page.getByRole('link',{name:/Vault aaaaaa/}).click();await expect(page.getByRole('heading',{name:/Vault aaaaaa/})).toBeVisible();
  await page.reload({waitUntil:'domcontentloaded'});await expect(page.getByText('Maximum reward per period',{exact:true})).toBeVisible();
  await expect(page.getByRole('table')).toBeVisible();
@@ -36,7 +36,7 @@ test('retains snapshot labels across outage, reload and navigation, then recover
 });
 test('empty, malformed and stale API data never invent available vaults',async({page})=>{
  let state='empty';await page.route('**/api/vaults',route=>{const data=fixture();if(state==='empty')data.vaults=[];if(state==='stale')data.health.connected=false;return route.fulfill({json:state==='invalid'?{chain:'main'}:data});});
- await page.goto('/',{waitUntil:'domcontentloaded'});await expect(page.getByText('No vaults listed',{exact:true})).toBeVisible();
+ await page.goto('/#/v1',{waitUntil:'domcontentloaded'});await expect(page.getByText('No vaults listed',{exact:true})).toBeVisible();
  state='invalid';await page.getByRole('button',{name:'Refresh data'}).click();await expect(page.getByRole('alert')).toContainText('incompatible or malformed');
  state='stale';await page.getByRole('button',{name:'Refresh data'}).click();await expect(page.getByText('Open for offers · at snapshot',{exact:true})).toBeVisible();
 });
@@ -48,7 +48,7 @@ test('WizardConnect pairs on demand and Escape cancels the accessible mobile dia
  // Keep public relays out of the smoke test; pairing URI generation is local.
  let sockets=0;
  await page.routeWebSocket(/^wss:\/\//,()=>{sockets++;});
- await page.goto('/',{waitUntil:'domcontentloaded'});
+ await page.goto('/#/v1',{waitUntil:'domcontentloaded'});
  const connect=page.getByRole('button',{name:'Connect Wallet'});
  await expect(connect).toBeVisible();expect(sockets).toBe(0);
  // Native WebSocket silently discards sends after close; Playwright's mock

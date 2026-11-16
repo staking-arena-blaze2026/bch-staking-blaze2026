@@ -73,6 +73,7 @@ it('handles a real SDK wallet-ready handshake, persists the session and disconne
   fireEvent.click(screen.getByRole('button', { name: 'Connect Wallet' }));
   await walletReady();
   expect(screen.getByText('Connected to Cashonize')).toBeInTheDocument();
+  expect(document.querySelector('.wallet-network-note')).toBeNull();
   expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
   expect(JSON.parse(localStorage.getItem(sessionKey)!)).toMatchObject({ walletName: 'Test BCH Wallet', walletPublicKey: '0102' });
   fireEvent.click(screen.getByRole('button', { name: 'Disconnect' }));

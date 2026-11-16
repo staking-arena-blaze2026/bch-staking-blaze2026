@@ -22,13 +22,15 @@ export function startPublicPreview(){
    if(rows.has(c.genesis)&&JSON.stringify(rows.get(c.genesis).config)!==JSON.stringify(c))conflicts.add(c.genesis);else rows.set(c.genesis,row);
   }
   if(!rows.size)return;
-  root.replaceChildren(el('h1','Staking Arena'),el('h2','Known vaults'),el('p',`${network} · Public candidates. Immutable parameters are unverified hints. Financial state requires independent blockchain verification.`));
-  for(const [id,row]of rows){if(conflicts.has(id))continue;const c=row.config,card=document.createElement('a');card.className='v3-vault-card';card.href=`#/v3/vault/${id}`;card.style.cssText='display:block;color:inherit;text-decoration:none;border:1px solid #b9cec5;border-radius:12px;padding:16px;margin:12px 0;background:#fff';
-   card.append(el('h3',`${c.registryVersion===4?'Atomic V4':'V3'} vault ${id.slice(0,16)} → Make an Offer`),el('p',`Genesis transaction: ${id} · Unverified candidate${row.status==='provisional'?' · Pending (0-conf), provisional':row.status==='not-observed'?' · Retained, not currently observed':''}`));
-   const asset=(a:any)=>a.kind==='bch'?'BCH':`CashToken ${a.category}`;
-   card.append(el('p',`Staking: ${asset(c.stakingAsset)} · Rewards: ${asset(c.rewardAsset)} · Maximum reward per period: ${c.cap} ${c.rewardAsset.kind==='bch'?'BCH satoshis':'raw token units'} · Interval: ${c.periodSeconds}s · Releases: ${c.periods} · Schedule epoch: ${c.epoch}. Unverified configuration hints.`),el('p','Financial state unavailable until blockchain verification succeeds.'));
-   root.append(card);
+  root.replaceChildren(el('h1','Staking Arena'),el('h2','Known vaults'));
+  const refresh=el('button','Refresh public discovery') as HTMLButtonElement;refresh.disabled=true;root.append(refresh);
+  const table=document.createElement('table');table.className='marketplace-table';
+  const head=table.createTHead().insertRow();for(const label of ['Vault','Max reward / period','Staking asset','Offers']){const th=el('th',label);th.setAttribute('scope','col');head.append(th);}
+  const body=table.createTBody();let number=0;
+  for(const [id]of rows){if(conflicts.has(id)||number>=20)continue;const row=body.insertRow(),link=el('a',String(++number)) as HTMLAnchorElement;link.className='marketplace-link';link.href=`#/v3/vault/${id}`;link.setAttribute('aria-label',`Vault ${number}`);row.insertCell().append(link);
+   for(const label of ['Max reward / period','Staking asset','Offers']){const cell=row.insertCell();cell.dataset.label=label;cell.textContent='Verifying…';}
   }
+  root.append(table);
   root.hidden=false;
  }).catch(()=>remove());
 }

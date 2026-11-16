@@ -67,7 +67,7 @@ for(const minimum of [0,1])test(`mock Electrum browser: pending genesis visibili
    return original.call(this,message?.type==='start'?{...message,config:{...message.config,minDisplayConfirmations:minimum}}:message,...rest as []);
   };
  },{config,category,minimum});
- await page.goto('/settlement/');
+ await page.goto('/settlement/#/v1');
  await expect(page.getByTestId('electrum-status')).toContainText('Synchronized',{timeout:60000});
  const listing=page.locator(`a.vault-row[href="#/vault/${category}"]`);
  if(minimum===0){await expect(listing).toContainText('Unconfirmed (0-conf)');}else await expect(listing).toHaveCount(0);

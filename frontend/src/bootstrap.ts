@@ -1,4 +1,5 @@
 import {startPublicPreview} from './publicIndexPreview';
+if(!location.hash || location.hash==='#/' || location.hash==='#')history.replaceState(null,'',location.pathname+location.search+'#/v3/offers');
 startPublicPreview();
 // Load the UI explicitly so a failed module request cannot leave an empty page.
 function showStartupError(error: unknown) {
