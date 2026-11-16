@@ -12,7 +12,7 @@ contract RegistryAtomicV4(bytes32 category, bytes64 assets, int epoch, int perio
         require(tx.inputs[1].outpointTransactionHash == tx.inputs[0].outpointTransactionHash && tx.inputs[1].outpointIndex == 1);
         require(tx.inputs[2].outpointTransactionHash == tx.inputs[0].outpointTransactionHash && tx.inputs[2].outpointIndex == 2);
         require(epoch >= 500000000 && periodSeconds > 0 && periodSeconds <= 2147483647);
-        require(periods > 0 && periods <= 16 && cap >= 1 && cap <= 1000000);
+        require(periods > 0 && periods <= 1000 && cap >= 1 && cap <= 1000000);
         // Four-byte positive schedule boundaries. Allocations use relative CSV time.
         require(epoch + periods * periodSeconds <= 2147483647);
         require(state.length == 794);

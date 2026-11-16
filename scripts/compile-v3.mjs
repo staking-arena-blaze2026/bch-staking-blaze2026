@@ -1,4 +1,4 @@
-import {readFile,writeFile} from 'node:fs/promises';
+import {readFile,writeFile,mkdir} from 'node:fs/promises';
 import {compileFile,compileString,utils} from 'cashc';
 const bodies={};
 for(const name of ['FeeSponsorV3','AssetRoleV3','StakeAllocationV3','RewardFundingV3','RegistryV3','RegistryGenesisV3','RegistryGenesisV4','RegistryAtomicV4','RegistryAtomicGenesisV4','RegistryAtomicLinkedGenesisV4']) {
@@ -11,7 +11,10 @@ for(const name of ['FeeSponsorV3','AssetRoleV3','StakeAllocationV3','RewardFundi
  }
  const artifact=source?compileString(source):compileFile(`contracts/v3/${name}.cash`);
  bodies[name]=Buffer.from(utils.asmToBytecode(artifact.bytecode)).toString('hex');
- const path=`artifacts/${name}.json`;
+ // Original artifacts remain immutable for existing <=16-release vaults.
+ const directory=name.startsWith('Registry')?'artifacts/releases1000':'artifacts';
+ if(!process.argv.includes('--check'))await mkdir(directory,{recursive:true});
+ const path=`${directory}/${name}.json`;
  const existing=JSON.parse(await readFile(path,'utf8').catch(()=>'{"updatedAt":null}'));
  const stable=value=>{const copy={...value};delete copy.updatedAt;return JSON.stringify(copy);};
  if(process.argv.includes('--check')){if(stable(existing)!==stable(artifact))throw Error(`Contract artifact mismatch: ${name}`);}

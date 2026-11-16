@@ -10,9 +10,10 @@ export function validateParameters(p:Parameters){
  if(p.discovery!==undefined&&p.discovery!==1)throw Error('Unsupported discovery version');
  if(p.registryVersion!==undefined&&p.registryVersion!==4)throw Error('Unsupported registry covenant version');
  if(p.version!==3)throw Error('Unsupported covenant version');assetId(p.stakingAsset);assetId(p.rewardAsset);
- if(typeof p.cap!=='bigint'||p.cap<(p.rewardAsset.kind==='bch'?1000n:1n)||p.cap>1000000n||!Number.isInteger(p.periods)||p.periods<1||p.periods>16)throw Error('Invalid release count or amount');
- if(!Number.isSafeInteger(p.periodSeconds)||p.periodSeconds>2147483647)throw Error('Invalid release interval');
- periodBoundary(p,p.periods);return p;
+ if(typeof p.cap!=='bigint'||p.cap<(p.rewardAsset.kind==='bch'?1000n:1n)||p.cap>1000000n)throw Error('Release amount must be between '+(p.rewardAsset.kind==='bch'?'1000':'1')+' and 1000000 raw units');
+ if(!Number.isInteger(p.periods)||p.periods<1||p.periods>1000)throw Error('Number of releases must be a whole number from 1 to 1000');
+ if(!Number.isSafeInteger(p.periodSeconds)||p.periodSeconds<1||p.periodSeconds>2147483647)throw Error('Release interval must be a whole number from 1 to 2147483647 seconds');
+ try{periodBoundary(p,p.periods);}catch{throw Error('Invalid schedule timestamp boundary: use a valid UTC start; final release must be on or before 2038-01-19 03:14:07 UTC');}return p;
 }
 export function validateTerms(p:Parameters,t:Terms,remaining=p.cap*BigInt(p.periods)){
  validateParameters(p);

@@ -20,7 +20,7 @@ export async function discoverPublicVaults(p:ElectrumCore,cursor?:string,limit=2
    const tx=await p.transaction(id),marker=tx.vout.findIndex((o:any)=>discoveryScripts(v3Network(p)).includes(o.scriptPubKey.hex));
    if(marker<0||tx.vout[marker].value!==0.00001)throw Error('Missing discovery carrier');
    const script=tx.vout[marker+1]?.scriptPubKey.hex;
-   if(typeof script!=='string'||!script.startsWith('6a4c5a')||script.length!==186)throw Error('Missing discovery payload');
+   if(typeof script!=='string'||!/^6a4c(?:5a[0-9a-f]{180}|5b[0-9a-f]{182})$/.test(script))throw Error('Missing discovery payload');
    const {parameters,mode}=parseAnnouncement(script.slice(6));
    if(mode==='direct')return [{...parameters,genesis:id}];
    const registry=family(parameters,id,p).registry.lockingBytecode,history=await p.history(registry),found:Config[]=[];

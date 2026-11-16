@@ -17,3 +17,8 @@ it('does not render malformed or conflicting hints or HTML from index entries',a
  vi.stubGlobal('fetch',vi.fn(async()=>new Response(JSON.stringify({schema:1,network:'mainnet',vaults:[{config,announcement:genesis,height:0,status:'provisional'},{config:{...config,cap:'2000'},announcement:genesis,height:0,status:'provisional'},{config:{...config,genesis:'<img src=x onerror=alert(1)>'}}],pages:[]}))));
  await act(async()=>{startPublicPreview();await new Promise(r=>setTimeout(r,10));});expect(document.querySelectorAll('.marketplace-table tbody tr')).toHaveLength(0);expect(document.querySelectorAll('img')).toHaveLength(0);window.location.hash='/v3';window.dispatchEvent(new HashChangeEvent('hashchange'));document.body.replaceChildren();
 });
+it('renders a 1000-release hint and rejects 1001 releases',async()=>{
+ window.location.hash='/v3/offers';document.body.innerHTML='<main id="arena-public-preview" hidden></main>';
+ vi.stubGlobal('fetch',vi.fn(async()=>new Response(JSON.stringify({schema:1,network:'mainnet',vaults:[{config:{...config,periods:1000},announcement:genesis,height:0,status:'provisional'},{config:{...config,genesis:'aa'.repeat(32),periods:1001},announcement:'aa'.repeat(32),height:0,status:'provisional'}],pages:[]}))));
+ await act(async()=>{startPublicPreview();await new Promise(r=>setTimeout(r,10));});expect(document.querySelectorAll('.marketplace-table tbody tr')).toHaveLength(1);expect(document.getElementById('arena-public-preview')!.textContent).toContain('0.01000000 BCH');window.location.hash='/v3';window.dispatchEvent(new HashChangeEvent('hashchange'));document.body.replaceChildren();
+});

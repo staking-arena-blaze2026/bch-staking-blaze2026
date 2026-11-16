@@ -8,7 +8,7 @@ import type { Plugin } from 'vite';
 function compiledArtifactsOnly(): Plugin {
   return { name:'arena-compiled-contract-artifacts', apply:'build', enforce:'pre',
     transform(code,id) {
-      if (!/\/artifacts\/[^/]+\.json$/.test(id)) return;
+      if (!/\/artifacts\/(?:[^/]+\/)*[^/]+\.json$/.test(id)) return;
       const artifact=JSON.parse(code);
       delete artifact.debug;
       artifact.source='';

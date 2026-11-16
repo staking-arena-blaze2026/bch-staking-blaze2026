@@ -1,0 +1,46 @@
+{
+  "at": "2026-11-16T23:35:22.290Z",
+  "target": "http://127.0.0.1:5184/staking-arena-blaze-site/",
+  "local": true,
+  "walletConnected": false,
+  "transactionsSigned": 0,
+  "broadcasts": [],
+  "errors": [],
+  "counts": [
+    {
+      "count": 1,
+      "reserve": "Deposit the entire reserve upfront: 0.00002000 BCH (2000 satoshis). Parameters are immutable. Exact fees and change appear before approval.",
+      "duration": "Vault duration: 86400 seconds (1.00 days). Estimated end date: 2027-01-02T00:00:00.000Z. Reward availability depends on blockchain Median Time Past (MTP)."
+    },
+    {
+      "count": 16,
+      "reserve": "Deposit the entire reserve upfront: 0.00032000 BCH (32000 satoshis). Parameters are immutable. Exact fees and change appear before approval.",
+      "duration": "Vault duration: 1382400 seconds (16.00 days). Estimated end date: 2027-01-17T00:00:00.000Z. Reward availability depends on blockchain Median Time Past (MTP)."
+    },
+    {
+      "count": 17,
+      "reserve": "Deposit the entire reserve upfront: 0.00034000 BCH (34000 satoshis). Parameters are immutable. Exact fees and change appear before approval.",
+      "duration": "Vault duration: 1468800 seconds (17.00 days). Estimated end date: 2027-01-18T00:00:00.000Z. Reward availability depends on blockchain Median Time Past (MTP)."
+    },
+    {
+      "count": 100,
+      "reserve": "Deposit the entire reserve upfront: 0.00200000 BCH (200000 satoshis). Parameters are immutable. Exact fees and change appear before approval.",
+      "duration": "Vault duration: 8640000 seconds (100.00 days). Estimated end date: 2027-04-11T00:00:00.000Z. Reward availability depends on blockchain Median Time Past (MTP)."
+    },
+    {
+      "count": 365,
+      "reserve": "Deposit the entire reserve upfront: 0.00730000 BCH (730000 satoshis). Parameters are immutable. Exact fees and change appear before approval.",
+      "duration": "Vault duration: 31536000 seconds (365.00 days). Estimated end date: 2028-01-01T00:00:00.000Z. Reward availability depends on blockchain Median Time Past (MTP)."
+    },
+    {
+      "count": 1000,
+      "reserve": "Deposit the entire reserve upfront: 0.02000000 BCH (2000000 satoshis). Parameters are immutable. Exact fees and change appear before approval.",
+      "duration": "Vault duration: 86400000 seconds (1000.00 days). Estimated end date: 2029-09-27T00:00:00.000Z. Reward availability depends on blockchain Median Time Past (MTP)."
+    }
+  ],
+  "rejects1001": true,
+  "walletPairingDialog": true,
+  "discoveredRows": 1,
+  "confirmedLegacyVault": "c14b3170fd156ee0b5cdefba0241981407a481caa08d7169b2e07ea5caccb2e5",
+  "legacySummary": "Vault summary\n\nRegistryAtomicV4 · direct atomic offer registration\n\nRefresh vault state\nStaking asset\nBCH\nReward asset\nBCH\n\nConfirmed state verified. Chain MTP 2026-11-16T23:02:23.000Z.\n\nRemaining reward reserve: 0.00004000 BCH (4000 satoshis). Available buffer: 0.00004000 BCH (4000 satoshis). Release amount: 0.00001000 BCH (1000 satoshis) every 360s.\n\nNext scheduled release: All rewards released. Rewards become usable after MTP exceeds the boundary."
+}

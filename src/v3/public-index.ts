@@ -35,7 +35,7 @@ export async function updatePublicIndex(state:IndexState,providers:ElectrumCore[
  let read=0;const claimed=new Set<string>(),parentChecks=new Map<string,Set<ElectrumCore>>(),parentResults=new Map<string,Candidate>();
  await Promise.all(providers.map(async p=>{const local=work.filter(([,entry])=>entry.providers.includes(p));let at=0;await p.session(async()=>{await Promise.all(Array.from({length:4},async()=>{for(;;){const item=local[at++];if(!item)return;const [id,entry]=item;if(claimed.has(id)&&state.processed[id]!=='parent')continue;claimed.add(id);
  try{const tx=await p.transaction(id);read++;const marker=tx.vout.findIndex((o:any)=>discoveryScripts(state.network).includes(o.scriptPubKey.hex)&&o.value===0.00001&&!o.tokenData),script=tx.vout[marker+1]?.scriptPubKey.hex;
- if(marker<0||typeof script!=='string'||!/^6a4c5a[0-9a-f]{180}$/.test(script)){state.processed[id]='irrelevant';continue;}
+ if(marker<0||typeof script!=='string'||!/^6a4c(?:5a[0-9a-f]{180}|5b[0-9a-f]{182})$/.test(script)){state.processed[id]='irrelevant';continue;}
  let parsed;try{parsed=parseAnnouncement(script.slice(6));}catch{state.processed[id]='irrelevant';continue;}
  const configs:Array<{config:Config;height:number}>=[];
  if(parsed.mode==='direct')configs.push({config:{...parsed.parameters,genesis:id},height:entry.height});

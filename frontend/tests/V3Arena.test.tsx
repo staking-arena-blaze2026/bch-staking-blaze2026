@@ -298,3 +298,13 @@ it('displays single-provider state before independent verification and blocks ev
  expect(screen.getByRole('heading',{name:'Live ranked queue'})).toBeVisible();
  expect(wallet.v3).not.toHaveBeenCalled();
 });
+
+it('accepts 1–1000 releases, shows exact reserve and duration, and rejects invalid schedules',async()=>{
+ stub();window.location.hash='/v3';render(<WalletTransactionsContext.Provider value={wallet}><V3Arena/></WalletTransactionsContext.Provider>);
+ fireEvent.change(screen.getByLabelText('Schedule starts (UTC)'),{target:{value:'2027-01-01T00:00:00'}});
+ fireEvent.change(screen.getByLabelText('Interval (seconds)'),{target:{value:'86400'}});
+ const count=screen.getByLabelText('Number of releases (1–1000)');
+ for(const n of [1,16,17,100,365,1000]){fireEvent.change(count,{target:{value:String(n)}});expect(screen.getByText(/Deposit the entire reserve upfront:/)).toHaveTextContent((n*0.00002).toFixed(8)+' BCH');expect(screen.getByText(/Vault duration:/)).toHaveTextContent(`${n.toFixed(2)} days`);expect(screen.getByText(/Vault duration:/)).toHaveTextContent(new Date(Date.UTC(2027,0,1)+n*86400000).toISOString());}
+ for(const n of ['1001','0','1.5','']){fireEvent.change(count,{target:{value:n}});expect(screen.getByRole('alert')).toHaveTextContent('whole number from 1 to 1000');expect(screen.getByRole('button',{name:/^Create Vault$/})).toBeDisabled();}
+ fireEvent.change(count,{target:{value:'1000'}});fireEvent.change(screen.getByLabelText('Schedule starts (UTC)'),{target:{value:'2038-01-01T00:00:00'}});expect(screen.getByRole('alert')).toHaveTextContent('boundary');
+});

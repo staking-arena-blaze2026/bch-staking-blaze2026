@@ -14,7 +14,7 @@ contract RegistryAtomicLinkedGenesisV4(bytes64 assets, int epoch, int periodSeco
         require(tx.inputs[1].outpointTransactionHash == tx.inputs[0].outpointTransactionHash);
         require(tx.inputs[1].outpointIndex == 1);
         require(epoch >= 500000000 && periodSeconds > 0 && periodSeconds <= 2147483647);
-        require(periods > 0 && periods <= 16 && cap >= 1 && cap <= 1000000);
+        require(periods > 0 && periods <= 1000 && cap >= 1 && cap <= 1000000);
         require(epoch + periods * periodSeconds <= 2147483647);
         bytes32 category = tx.inputs[0].outpointTransactionHash;
         bytes32 stake = unsafe_bytes32(assets.slice(0,32));
@@ -26,7 +26,9 @@ contract RegistryAtomicLinkedGenesisV4(bytes64 assets, int epoch, int periodSeco
         if (cap <= 16) { capPush = toPaddedBytes(80 + cap,1); }
         bytes lengthPush = toPaddedBytes(bytes(periodSeconds).length,1) + bytes(periodSeconds);
         if (periodSeconds <= 16) { lengthPush = toPaddedBytes(80 + periodSeconds,1); }
-        bytes prefix = capPush + toPaddedBytes(80 + periods,1) + lengthPush + 0x04 + bytes(epoch) + 0x40 + assets + 0x20 + category;
+        bytes periodsPush = toPaddedBytes(bytes(periods).length,1) + bytes(periods);
+        if (periods <= 16) { periodsPush = toPaddedBytes(80 + periods,1); }
+        bytes prefix = capPush + periodsPush + lengthPush + 0x04 + bytes(epoch) + 0x40 + assets + 0x20 + category;
         require(tx.outputs[0].lockingBytecode == new LockingBytecodeP2SH32(hash256(prefix + 0x__REGISTRYATOMICV4_BODY__)));
         require(tx.outputs[0].value == 1000 && tx.outputs[0].tokenCategory == category + 0x01 && tx.outputs[0].tokenAmount == 0);
         bytes empty = 0x__EMPTY_STATE__ + toPaddedBytes(cap * periods,4);

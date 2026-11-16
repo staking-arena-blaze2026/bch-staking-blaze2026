@@ -23,9 +23,10 @@ test('isolated BCHN: independent Alice/Bob discover V3 and V4 and Bob registers 
  for(const user of [alice,bob])await rpc('sendtoaddress',[user.address,0.1]);await mine();
  async function approve(user:ReturnType<typeof person>,op:Operation){const auth=await user.wallet.authorize(op.id),sent=await user.wallet.submit(op.id,sign(auth.plan!,user.key));assert.equal(sent.stage,'pending',sent.error);return sent;}
  const clock=(await rpc('getblockchaininfo')).mediantime;
- for(const registryVersion of [undefined,4] as const){
-  const created=await approve(alice,await alice.wallet.create({version:3,...(registryVersion?{registryVersion}:{}),stakingAsset:{kind:'bch'},rewardAsset:{kind:'bch'},epoch:clock-1000,periodSeconds:100,periods:4,cap:2000n},[alice.keyInfo]));
-  const fresh=await discoverPublicVaults(p);const config=fresh.vaults.find(c=>c.genesis===created.txid);assert.ok(config,'fresh client discovers without Alice journal/config');assert.equal(config.registryVersion,registryVersion);assert.equal(bob.journal.size,registryVersion===undefined?0:1);
+ for(const periods of [4,1000])for(const registryVersion of [undefined,4] as const){
+  const priorBobOperations=bob.journal.size;
+  const created=await approve(alice,await alice.wallet.create({version:3,...(registryVersion?{registryVersion}:{}),stakingAsset:{kind:'bch'},rewardAsset:{kind:'bch'},epoch:clock-1000,periodSeconds:100,periods,cap:2000n},[alice.keyInfo]));
+  const fresh=await discoverPublicVaults(p);const config=fresh.vaults.find(c=>c.genesis===created.txid);assert.ok(config,'fresh client discovers without Alice journal/config');assert.equal(config.registryVersion,registryVersion);assert.equal(bob.journal.size,priorBobOperations);
   assert.equal((await new AssetIndexer(p,config).sync()).provisional,true);
   await updatePublicIndex(publicIndex,[p]);assert.equal(publicIndex.candidates[created.txid!]?.status,'provisional','automatic static-index updater finds new 0-conf vault');
   await assert.rejects(()=>new AssetIndexer(p,{...config,cap:config.cap+1000n}).sync());
@@ -36,5 +37,5 @@ test('isolated BCHN: independent Alice/Bob discover V3 and V4 and Bob registers 
   await updatePublicIndex(publicIndex,[p]);assert.equal(publicIndex.candidates[created.txid!]?.status,'observed-confirmed');
   const again=await discoverPublicVaults(p);assert.equal(again.vaults.filter(c=>c.genesis===created.txid).length,1);
  }
- await writeFile('docs/blaze2026/public-discovery-regtest-results.json',JSON.stringify({at:new Date().toISOString(),node:(await rpc('getnetworkinfo')).subversion,transport:'local Electrum protocol facade over isolated BCHN; not public chipnet',distinctAliceBobKeys:true,creatorJournalsNotUsedForDiscovery:true,v3AndAtomicV4:true,zeroConfAndConfirmation:true,bobRegistersBoth:true,maliciousParametersRejected:true,deduplicated:true,physicalCashonize:false},null,2)+'\n');
+ await writeFile('docs/blaze2026/release-limit/discovery-regtest.json',JSON.stringify({at:new Date().toISOString(),node:(await rpc('getnetworkinfo')).subversion,transport:'local Electrum protocol facade over isolated BCHN; not public chipnet',distinctAliceBobKeys:true,creatorJournalsNotUsedForDiscovery:true,v3AndAtomicV4:true,releaseCounts:[4,1000],zeroConfAndConfirmation:true,bobRegistersBoth:true,maliciousParametersRejected:true,deduplicated:true,physicalCashonize:false},null,2)+'\n');
 }));

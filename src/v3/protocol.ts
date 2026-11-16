@@ -8,11 +8,17 @@ import {Buffer} from '../bytes.js';
 import {Contract,Network,TransactionBuilder,placeholderP2PKHUnlocker,type NetworkProvider,type SpendableUtxo,type SignatureTemplate,type Unlocker} from 'cashscript';
 import {binToHex,encodeCashAddress,hash160,decodeTransaction,hexToBin,createVirtualMachineBch2026,hashTransaction} from '@bitauth/libauth';
 import FeeSponsorV3 from '../../artifacts/FeeSponsorV3.json' with {type:'json'};
+import RegistryV3Extended from '../../artifacts/releases1000/RegistryV3.json' with {type:'json'};
 import RegistryV3 from '../../artifacts/RegistryV3.json' with {type:'json'};
+import RegistryGenesisV3Extended from '../../artifacts/releases1000/RegistryGenesisV3.json' with {type:'json'};
 import RegistryGenesisV3 from '../../artifacts/RegistryGenesisV3.json' with {type:'json'};
+import RegistryGenesisV4Extended from '../../artifacts/releases1000/RegistryGenesisV4.json' with {type:'json'};
 import RegistryGenesisV4 from '../../artifacts/RegistryGenesisV4.json' with {type:'json'};
+import RegistryAtomicV4Extended from '../../artifacts/releases1000/RegistryAtomicV4.json' with {type:'json'};
 import RegistryAtomicV4 from '../../artifacts/RegistryAtomicV4.json' with {type:'json'};
+import RegistryAtomicGenesisV4Extended from '../../artifacts/releases1000/RegistryAtomicGenesisV4.json' with {type:'json'};
 import RegistryAtomicGenesisV4 from '../../artifacts/RegistryAtomicGenesisV4.json' with {type:'json'};
+import RegistryAtomicLinkedGenesisV4Extended from '../../artifacts/releases1000/RegistryAtomicLinkedGenesisV4.json' with {type:'json'};
 import RegistryAtomicLinkedGenesisV4 from '../../artifacts/RegistryAtomicLinkedGenesisV4.json' with {type:'json'};
 import RewardFundingV3 from '../../artifacts/RewardFundingV3.json' with {type:'json'};
 import AssetRoleV3 from '../../artifacts/AssetRoleV3.json' with {type:'json'};
@@ -23,7 +29,11 @@ import {sourceOutput,type KeeperClock,type Sponsor} from '../keeper-core.js';
 export interface Instance {parameters:Parameters;category:string;state:Buffer;inputs:[SpendableUtxo,SpendableUtxo,SpendableUtxo]}
 import {v3Network as network} from './network.js';
 const artifacts={RegistryAtomicV4,RegistryAtomicGenesisV4,RegistryAtomicLinkedGenesisV4,FeeSponsorV3,RegistryV3,RegistryGenesisV3,RegistryGenesisV4,RewardFundingV3,AssetRoleV3,StakeAllocationV3};
-export function covenant(name:keyof typeof artifacts,args:(bigint|Uint8Array)[],provider:NetworkProvider){network(provider);return new Contract(artifacts[name],args,{provider,contractType:'p2sh32'});}
+const extendedArtifacts={RegistryV3:RegistryV3Extended,RegistryGenesisV3:RegistryGenesisV3Extended,RegistryGenesisV4:RegistryGenesisV4Extended,RegistryAtomicV4:RegistryAtomicV4Extended,RegistryAtomicGenesisV4:RegistryAtomicGenesisV4Extended,RegistryAtomicLinkedGenesisV4:RegistryAtomicLinkedGenesisV4Extended};
+export function covenant(name:keyof typeof artifacts,args:(bigint|Uint8Array)[],provider:NetworkProvider){network(provider);// The immutable count selects the exact historic or extended contract identity.
+ const periods=args[name==='RegistryV3'||name==='RegistryAtomicV4'?4:3];
+ const artifact=name in extendedArtifacts&&typeof periods==='bigint'&&periods>16n?extendedArtifacts[name as keyof typeof extendedArtifacts]:artifacts[name];
+ return new Contract(artifact,args,{provider,contractType:'p2sh32'});}
 export function parameterArgs(p:Parameters){validateParameters(p);return [Buffer.concat([assetBytes(p.stakingAsset),assetBytes(p.rewardAsset)]),BigInt(p.epoch),BigInt(p.periodSeconds),BigInt(p.periods),p.cap];}
 export function family(p:Parameters,category:string,provider:NetworkProvider){
  if(!/^[a-f0-9]{64}$/.test(category)||[assetId(p.stakingAsset),assetId(p.rewardAsset)].includes(category))throw Error('State/asset category collision');

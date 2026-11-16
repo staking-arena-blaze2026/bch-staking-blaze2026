@@ -17,7 +17,7 @@ export function startPublicPreview(){
   const rows=new Map<string,any>(),conflicts=new Set<string>();
   for(const row of data.vaults){const c=row?.config;
    if(!/^[a-f0-9]{64}$/.test(row?.announcement??'')||!Number.isSafeInteger(row?.height)||row.height< -1||!['observed-confirmed','provisional','not-observed'].includes(row?.status))continue;
-   if(!c||c.version!==3||!(/^[a-f0-9]{64}$/.test(c.genesis))||c.registryVersion!==undefined&&c.registryVersion!==4||!/^\d{1,7}$/.test(String(c.cap))||Number(c.cap)<1||Number(c.cap)>1000000||![c.epoch,c.periodSeconds,c.periods].every(Number.isSafeInteger)||c.epoch<500000000||c.periodSeconds<1||c.periods<1||c.periods>16||c.epoch+c.periodSeconds*c.periods>2147483647||c.discovery!==undefined&&c.discovery!==1)continue;
+   if(!c||c.version!==3||!(/^[a-f0-9]{64}$/.test(c.genesis))||c.registryVersion!==undefined&&c.registryVersion!==4||!/^\d{1,7}$/.test(String(c.cap))||Number(c.cap)<1||Number(c.cap)>1000000||![c.epoch,c.periodSeconds,c.periods].every(Number.isSafeInteger)||c.epoch<500000000||c.periodSeconds<1||c.periods<1||c.periods>1000||c.epoch+c.periodSeconds*c.periods>2147483647||c.discovery!==undefined&&c.discovery!==1)continue;
    const validAsset=(a:any)=>a?.kind==='bch'||a?.kind==='token'&&/^[a-f0-9]{64}$/.test(a.category);if(!validAsset(c.stakingAsset)||!validAsset(c.rewardAsset)||c.rewardAsset.kind==='bch'&&Number(c.cap)<1000)continue;
    if(rows.has(c.genesis)&&JSON.stringify(rows.get(c.genesis).config)!==JSON.stringify(c))conflicts.add(c.genesis);else rows.set(c.genesis,row);
   }
