@@ -1,0 +1,1633 @@
+{
+  "at": "2026-11-16T07:58:56.775Z",
+  "target": "http://127.0.0.1:4184/staking-arena-blaze-site/",
+  "freshContext": true,
+  "walletConnected": false,
+  "storagePrepopulated": false,
+  "errors": [],
+  "reads": [
+    {
+      "network": "",
+      "reads": []
+    },
+    {
+      "network": "mainnet",
+      "reads": [
+        {
+          "method": "server.version",
+          "params": [
+            "Staking Arena",
+            "1.5.0"
+          ]
+        },
+        {
+          "method": "blockchain.block.header",
+          "params": [
+            0
+          ]
+        },
+        {
+          "method": "blockchain.block.header",
+          "params": [
+            792773
+          ]
+        },
+        {
+          "method": "blockchain.headers.subscribe",
+          "params": []
+        },
+        {
+          "method": "blockchain.block.header",
+          "params": [
+            977585
+          ]
+        },
+        {
+          "method": "blockchain.headers.subscribe",
+          "params": []
+        },
+        {
+          "method": "blockchain.block.header",
+          "params": [
+            977585
+          ]
+        },
+        {
+          "method": "server.version",
+          "params": [
+            "Staking Arena",
+            "1.5.0"
+          ]
+        },
+        {
+          "method": "blockchain.block.header",
+          "params": [
+            0
+          ]
+        },
+        {
+          "method": "blockchain.block.header",
+          "params": [
+            792773
+          ]
+        },
+        {
+          "method": "blockchain.headers.subscribe",
+          "params": []
+        },
+        {
+          "method": "blockchain.block.header",
+          "params": [
+            977585
+          ]
+        },
+        {
+          "method": "blockchain.headers.subscribe",
+          "params": []
+        },
+        {
+          "method": "blockchain.block.header",
+          "params": [
+            977585
+          ]
+        }
+      ]
+    },
+    {
+      "network": "mainnet",
+      "reads": [
+        {
+          "method": "server.version",
+          "params": [
+            "Staking Arena",
+            "1.5.0"
+          ]
+        },
+        {
+          "method": "blockchain.block.header",
+          "params": [
+            0
+          ]
+        },
+        {
+          "method": "blockchain.block.header",
+          "params": [
+            792773
+          ]
+        },
+        {
+          "method": "blockchain.headers.subscribe",
+          "params": []
+        },
+        {
+          "method": "blockchain.block.header",
+          "params": [
+            977585
+          ]
+        },
+        {
+          "method": "blockchain.headers.subscribe",
+          "params": []
+        },
+        {
+          "method": "blockchain.block.header",
+          "params": [
+            977585
+          ]
+        },
+        {
+          "method": "blockchain.block.header",
+          "params": [
+            977575
+          ]
+        },
+        {
+          "method": "blockchain.block.header",
+          "params": [
+            977576
+          ]
+        },
+        {
+          "method": "blockchain.block.header",
+          "params": [
+            977577
+          ]
+        },
+        {
+          "method": "blockchain.block.header",
+          "params": [
+            977578
+          ]
+        },
+        {
+          "method": "blockchain.block.header",
+          "params": [
+            977579
+          ]
+        },
+        {
+          "method": "blockchain.block.header",
+          "params": [
+            977580
+          ]
+        },
+        {
+          "method": "blockchain.block.header",
+          "params": [
+            977581
+          ]
+        },
+        {
+          "method": "blockchain.block.header",
+          "params": [
+            977582
+          ]
+        },
+        {
+          "method": "blockchain.block.header",
+          "params": [
+            977583
+          ]
+        },
+        {
+          "method": "blockchain.block.header",
+          "params": [
+            977584
+          ]
+        },
+        {
+          "method": "blockchain.block.header",
+          "params": [
+            977585
+          ]
+        },
+        {
+          "method": "blockchain.transaction.get",
+          "params": [
+            "c14b3170fd156ee0b5cdefba0241981407a481caa08d7169b2e07ea5caccb2e5",
+            false
+          ]
+        },
+        {
+          "method": "blockchain.scripthash.get_history",
+          "params": [
+            "f12a9931c6867e7e179c3eb64bb7c6fdeac3fe7e916eb9da0bb06328a3695a2d"
+          ]
+        },
+        {
+          "method": "blockchain.transaction.get_merkle",
+          "params": [
+            "c14b3170fd156ee0b5cdefba0241981407a481caa08d7169b2e07ea5caccb2e5",
+            977515
+          ]
+        },
+        {
+          "method": "blockchain.block.header",
+          "params": [
+            977515
+          ]
+        },
+        {
+          "method": "blockchain.transaction.get",
+          "params": [
+            "678fd6de1bfd459530073aee1fbfbe2b3992378b18295811316c2590fadc7e03",
+            false
+          ]
+        },
+        {
+          "method": "blockchain.transaction.get",
+          "params": [
+            "b49bc92dfdf4af5a0eff0c292a848f9cb61bccc3fe1a6f552a3f19509ae6af00",
+            false
+          ]
+        },
+        {
+          "method": "blockchain.transaction.get_merkle",
+          "params": [
+            "b49bc92dfdf4af5a0eff0c292a848f9cb61bccc3fe1a6f552a3f19509ae6af00",
+            977531
+          ]
+        },
+        {
+          "method": "blockchain.block.header",
+          "params": [
+            977531
+          ]
+        },
+        {
+          "method": "blockchain.transaction.get",
+          "params": [
+            "f47e3109234404d006ebb299384b63e38822f393645e37b86698d54d944935cf",
+            false
+          ]
+        },
+        {
+          "method": "blockchain.transaction.get_merkle",
+          "params": [
+            "f47e3109234404d006ebb299384b63e38822f393645e37b86698d54d944935cf",
+            977532
+          ]
+        },
+        {
+          "method": "blockchain.block.header",
+          "params": [
+            977532
+          ]
+        },
+        {
+          "method": "blockchain.block.header",
+          "params": [
+            977531
+          ]
+        },
+        {
+          "method": "blockchain.block.header",
+          "params": [
+            977521
+          ]
+        },
+        {
+          "method": "blockchain.block.header",
+          "params": [
+            977522
+          ]
+        },
+        {
+          "method": "blockchain.block.header",
+          "params": [
+            977523
+          ]
+        },
+        {
+          "method": "blockchain.block.header",
+          "params": [
+            977524
+          ]
+        },
+        {
+          "method": "blockchain.block.header",
+          "params": [
+            977525
+          ]
+        },
+        {
+          "method": "blockchain.block.header",
+          "params": [
+            977526
+          ]
+        },
+        {
+          "method": "blockchain.block.header",
+          "params": [
+            977527
+          ]
+        },
+        {
+          "method": "blockchain.block.header",
+          "params": [
+            977528
+          ]
+        },
+        {
+          "method": "blockchain.block.header",
+          "params": [
+            977529
+          ]
+        },
+        {
+          "method": "blockchain.block.header",
+          "params": [
+            977530
+          ]
+        },
+        {
+          "method": "blockchain.block.header",
+          "params": [
+            977531
+          ]
+        },
+        {
+          "method": "blockchain.scripthash.get_history",
+          "params": [
+            "f12a9931c6867e7e179c3eb64bb7c6fdeac3fe7e916eb9da0bb06328a3695a2d"
+          ]
+        },
+        {
+          "method": "blockchain.scripthash.get_history",
+          "params": [
+            "fb5f3f7f0963714ee98aa7fa68720efa05532f70b4987ae234a8b1de9da17694"
+          ]
+        },
+        {
+          "method": "blockchain.scripthash.get_history",
+          "params": [
+            "d451c588ed9841c7979a9192ab517a2d76b91bb13b35db972557e38684d4d457"
+          ]
+        },
+        {
+          "method": "blockchain.scripthash.get_history",
+          "params": [
+            "20573517d07ae5d0df66411a94089a2975be7981aefa03672ab7a19944a1e2cf"
+          ]
+        },
+        {
+          "method": "blockchain.block.headers",
+          "params": [
+            977515,
+            71
+          ]
+        },
+        {
+          "method": "blockchain.scripthash.listunspent",
+          "params": [
+            "f12a9931c6867e7e179c3eb64bb7c6fdeac3fe7e916eb9da0bb06328a3695a2d",
+            "include_tokens"
+          ]
+        },
+        {
+          "method": "blockchain.transaction.get_merkle",
+          "params": [
+            "f47e3109234404d006ebb299384b63e38822f393645e37b86698d54d944935cf",
+            977532
+          ]
+        },
+        {
+          "method": "blockchain.block.header",
+          "params": [
+            977532
+          ]
+        },
+        {
+          "method": "blockchain.scripthash.listunspent",
+          "params": [
+            "fb5f3f7f0963714ee98aa7fa68720efa05532f70b4987ae234a8b1de9da17694",
+            "include_tokens"
+          ]
+        },
+        {
+          "method": "blockchain.transaction.get_merkle",
+          "params": [
+            "f47e3109234404d006ebb299384b63e38822f393645e37b86698d54d944935cf",
+            977532
+          ]
+        },
+        {
+          "method": "blockchain.block.header",
+          "params": [
+            977532
+          ]
+        },
+        {
+          "method": "blockchain.scripthash.listunspent",
+          "params": [
+            "d451c588ed9841c7979a9192ab517a2d76b91bb13b35db972557e38684d4d457",
+            "include_tokens"
+          ]
+        },
+        {
+          "method": "blockchain.transaction.get_merkle",
+          "params": [
+            "f47e3109234404d006ebb299384b63e38822f393645e37b86698d54d944935cf",
+            977532
+          ]
+        },
+        {
+          "method": "blockchain.block.header",
+          "params": [
+            977532
+          ]
+        },
+        {
+          "method": "blockchain.headers.subscribe",
+          "params": []
+        },
+        {
+          "method": "blockchain.block.header",
+          "params": [
+            977585
+          ]
+        },
+        {
+          "method": "server.version",
+          "params": [
+            "Staking Arena",
+            "1.5.0"
+          ]
+        },
+        {
+          "method": "blockchain.block.header",
+          "params": [
+            0
+          ]
+        },
+        {
+          "method": "blockchain.block.header",
+          "params": [
+            792773
+          ]
+        },
+        {
+          "method": "blockchain.headers.subscribe",
+          "params": []
+        },
+        {
+          "method": "blockchain.block.header",
+          "params": [
+            977585
+          ]
+        },
+        {
+          "method": "blockchain.headers.subscribe",
+          "params": []
+        },
+        {
+          "method": "blockchain.block.header",
+          "params": [
+            977585
+          ]
+        },
+        {
+          "method": "blockchain.block.header",
+          "params": [
+            977575
+          ]
+        },
+        {
+          "method": "blockchain.block.header",
+          "params": [
+            977576
+          ]
+        },
+        {
+          "method": "blockchain.block.header",
+          "params": [
+            977577
+          ]
+        },
+        {
+          "method": "blockchain.block.header",
+          "params": [
+            977578
+          ]
+        },
+        {
+          "method": "blockchain.block.header",
+          "params": [
+            977579
+          ]
+        },
+        {
+          "method": "blockchain.block.header",
+          "params": [
+            977580
+          ]
+        },
+        {
+          "method": "blockchain.block.header",
+          "params": [
+            977581
+          ]
+        },
+        {
+          "method": "blockchain.block.header",
+          "params": [
+            977582
+          ]
+        },
+        {
+          "method": "blockchain.block.header",
+          "params": [
+            977583
+          ]
+        },
+        {
+          "method": "blockchain.block.header",
+          "params": [
+            977584
+          ]
+        },
+        {
+          "method": "blockchain.block.header",
+          "params": [
+            977585
+          ]
+        },
+        {
+          "method": "blockchain.transaction.get",
+          "params": [
+            "c14b3170fd156ee0b5cdefba0241981407a481caa08d7169b2e07ea5caccb2e5",
+            false
+          ]
+        },
+        {
+          "method": "blockchain.scripthash.get_history",
+          "params": [
+            "f12a9931c6867e7e179c3eb64bb7c6fdeac3fe7e916eb9da0bb06328a3695a2d"
+          ]
+        },
+        {
+          "method": "blockchain.transaction.get_merkle",
+          "params": [
+            "c14b3170fd156ee0b5cdefba0241981407a481caa08d7169b2e07ea5caccb2e5",
+            977515
+          ]
+        },
+        {
+          "method": "blockchain.block.header",
+          "params": [
+            977515
+          ]
+        },
+        {
+          "method": "blockchain.transaction.get",
+          "params": [
+            "678fd6de1bfd459530073aee1fbfbe2b3992378b18295811316c2590fadc7e03",
+            false
+          ]
+        },
+        {
+          "method": "blockchain.transaction.get",
+          "params": [
+            "b49bc92dfdf4af5a0eff0c292a848f9cb61bccc3fe1a6f552a3f19509ae6af00",
+            false
+          ]
+        },
+        {
+          "method": "blockchain.transaction.get_merkle",
+          "params": [
+            "b49bc92dfdf4af5a0eff0c292a848f9cb61bccc3fe1a6f552a3f19509ae6af00",
+            977531
+          ]
+        },
+        {
+          "method": "blockchain.block.header",
+          "params": [
+            977531
+          ]
+        },
+        {
+          "method": "blockchain.transaction.get",
+          "params": [
+            "f47e3109234404d006ebb299384b63e38822f393645e37b86698d54d944935cf",
+            false
+          ]
+        },
+        {
+          "method": "blockchain.transaction.get_merkle",
+          "params": [
+            "f47e3109234404d006ebb299384b63e38822f393645e37b86698d54d944935cf",
+            977532
+          ]
+        },
+        {
+          "method": "blockchain.block.header",
+          "params": [
+            977532
+          ]
+        },
+        {
+          "method": "blockchain.block.header",
+          "params": [
+            977531
+          ]
+        },
+        {
+          "method": "blockchain.block.header",
+          "params": [
+            977521
+          ]
+        },
+        {
+          "method": "blockchain.block.header",
+          "params": [
+            977522
+          ]
+        },
+        {
+          "method": "blockchain.block.header",
+          "params": [
+            977523
+          ]
+        },
+        {
+          "method": "blockchain.block.header",
+          "params": [
+            977524
+          ]
+        },
+        {
+          "method": "blockchain.block.header",
+          "params": [
+            977525
+          ]
+        },
+        {
+          "method": "blockchain.block.header",
+          "params": [
+            977526
+          ]
+        },
+        {
+          "method": "blockchain.block.header",
+          "params": [
+            977527
+          ]
+        },
+        {
+          "method": "blockchain.block.header",
+          "params": [
+            977528
+          ]
+        },
+        {
+          "method": "blockchain.block.header",
+          "params": [
+            977529
+          ]
+        },
+        {
+          "method": "blockchain.block.header",
+          "params": [
+            977530
+          ]
+        },
+        {
+          "method": "blockchain.block.header",
+          "params": [
+            977531
+          ]
+        },
+        {
+          "method": "blockchain.scripthash.get_history",
+          "params": [
+            "f12a9931c6867e7e179c3eb64bb7c6fdeac3fe7e916eb9da0bb06328a3695a2d"
+          ]
+        },
+        {
+          "method": "blockchain.scripthash.get_history",
+          "params": [
+            "fb5f3f7f0963714ee98aa7fa68720efa05532f70b4987ae234a8b1de9da17694"
+          ]
+        },
+        {
+          "method": "blockchain.scripthash.get_history",
+          "params": [
+            "d451c588ed9841c7979a9192ab517a2d76b91bb13b35db972557e38684d4d457"
+          ]
+        },
+        {
+          "method": "blockchain.scripthash.get_history",
+          "params": [
+            "20573517d07ae5d0df66411a94089a2975be7981aefa03672ab7a19944a1e2cf"
+          ]
+        },
+        {
+          "method": "blockchain.block.headers",
+          "params": [
+            977515,
+            71
+          ]
+        },
+        {
+          "method": "blockchain.scripthash.listunspent",
+          "params": [
+            "f12a9931c6867e7e179c3eb64bb7c6fdeac3fe7e916eb9da0bb06328a3695a2d",
+            "include_tokens"
+          ]
+        },
+        {
+          "method": "blockchain.transaction.get_merkle",
+          "params": [
+            "f47e3109234404d006ebb299384b63e38822f393645e37b86698d54d944935cf",
+            977532
+          ]
+        },
+        {
+          "method": "blockchain.block.header",
+          "params": [
+            977532
+          ]
+        },
+        {
+          "method": "blockchain.scripthash.listunspent",
+          "params": [
+            "fb5f3f7f0963714ee98aa7fa68720efa05532f70b4987ae234a8b1de9da17694",
+            "include_tokens"
+          ]
+        },
+        {
+          "method": "blockchain.transaction.get_merkle",
+          "params": [
+            "f47e3109234404d006ebb299384b63e38822f393645e37b86698d54d944935cf",
+            977532
+          ]
+        },
+        {
+          "method": "blockchain.block.header",
+          "params": [
+            977532
+          ]
+        },
+        {
+          "method": "blockchain.scripthash.listunspent",
+          "params": [
+            "d451c588ed9841c7979a9192ab517a2d76b91bb13b35db972557e38684d4d457",
+            "include_tokens"
+          ]
+        },
+        {
+          "method": "blockchain.transaction.get_merkle",
+          "params": [
+            "f47e3109234404d006ebb299384b63e38822f393645e37b86698d54d944935cf",
+            977532
+          ]
+        },
+        {
+          "method": "blockchain.block.header",
+          "params": [
+            977532
+          ]
+        },
+        {
+          "method": "blockchain.headers.subscribe",
+          "params": []
+        },
+        {
+          "method": "blockchain.block.header",
+          "params": [
+            977585
+          ]
+        }
+      ]
+    },
+    {
+      "network": "",
+      "reads": []
+    },
+    {
+      "network": "mainnet",
+      "reads": [
+        {
+          "method": "server.version",
+          "params": [
+            "Staking Arena",
+            "1.5.0"
+          ]
+        },
+        {
+          "method": "blockchain.block.header",
+          "params": [
+            0
+          ]
+        },
+        {
+          "method": "blockchain.block.header",
+          "params": [
+            792773
+          ]
+        },
+        {
+          "method": "blockchain.headers.subscribe",
+          "params": []
+        },
+        {
+          "method": "blockchain.block.header",
+          "params": [
+            977585
+          ]
+        },
+        {
+          "method": "blockchain.headers.subscribe",
+          "params": []
+        },
+        {
+          "method": "blockchain.block.header",
+          "params": [
+            977585
+          ]
+        },
+        {
+          "method": "server.version",
+          "params": [
+            "Staking Arena",
+            "1.5.0"
+          ]
+        },
+        {
+          "method": "blockchain.block.header",
+          "params": [
+            0
+          ]
+        },
+        {
+          "method": "blockchain.block.header",
+          "params": [
+            792773
+          ]
+        },
+        {
+          "method": "blockchain.headers.subscribe",
+          "params": []
+        },
+        {
+          "method": "blockchain.block.header",
+          "params": [
+            977585
+          ]
+        },
+        {
+          "method": "blockchain.headers.subscribe",
+          "params": []
+        },
+        {
+          "method": "blockchain.block.header",
+          "params": [
+            977585
+          ]
+        }
+      ]
+    },
+    {
+      "network": "mainnet",
+      "reads": [
+        {
+          "method": "server.version",
+          "params": [
+            "Staking Arena",
+            "1.5.0"
+          ]
+        },
+        {
+          "method": "blockchain.block.header",
+          "params": [
+            0
+          ]
+        },
+        {
+          "method": "blockchain.block.header",
+          "params": [
+            792773
+          ]
+        },
+        {
+          "method": "blockchain.headers.subscribe",
+          "params": []
+        },
+        {
+          "method": "blockchain.block.header",
+          "params": [
+            977585
+          ]
+        },
+        {
+          "method": "blockchain.headers.subscribe",
+          "params": []
+        },
+        {
+          "method": "blockchain.block.header",
+          "params": [
+            977585
+          ]
+        },
+        {
+          "method": "blockchain.block.header",
+          "params": [
+            977575
+          ]
+        },
+        {
+          "method": "blockchain.block.header",
+          "params": [
+            977576
+          ]
+        },
+        {
+          "method": "blockchain.block.header",
+          "params": [
+            977577
+          ]
+        },
+        {
+          "method": "blockchain.block.header",
+          "params": [
+            977578
+          ]
+        },
+        {
+          "method": "blockchain.block.header",
+          "params": [
+            977579
+          ]
+        },
+        {
+          "method": "blockchain.block.header",
+          "params": [
+            977580
+          ]
+        },
+        {
+          "method": "blockchain.block.header",
+          "params": [
+            977581
+          ]
+        },
+        {
+          "method": "blockchain.block.header",
+          "params": [
+            977582
+          ]
+        },
+        {
+          "method": "blockchain.block.header",
+          "params": [
+            977583
+          ]
+        },
+        {
+          "method": "blockchain.block.header",
+          "params": [
+            977584
+          ]
+        },
+        {
+          "method": "blockchain.block.header",
+          "params": [
+            977585
+          ]
+        },
+        {
+          "method": "blockchain.transaction.get",
+          "params": [
+            "c14b3170fd156ee0b5cdefba0241981407a481caa08d7169b2e07ea5caccb2e5",
+            false
+          ]
+        },
+        {
+          "method": "blockchain.scripthash.get_history",
+          "params": [
+            "f12a9931c6867e7e179c3eb64bb7c6fdeac3fe7e916eb9da0bb06328a3695a2d"
+          ]
+        },
+        {
+          "method": "blockchain.transaction.get_merkle",
+          "params": [
+            "c14b3170fd156ee0b5cdefba0241981407a481caa08d7169b2e07ea5caccb2e5",
+            977515
+          ]
+        },
+        {
+          "method": "blockchain.block.header",
+          "params": [
+            977515
+          ]
+        },
+        {
+          "method": "blockchain.transaction.get",
+          "params": [
+            "678fd6de1bfd459530073aee1fbfbe2b3992378b18295811316c2590fadc7e03",
+            false
+          ]
+        },
+        {
+          "method": "blockchain.transaction.get",
+          "params": [
+            "b49bc92dfdf4af5a0eff0c292a848f9cb61bccc3fe1a6f552a3f19509ae6af00",
+            false
+          ]
+        },
+        {
+          "method": "blockchain.transaction.get_merkle",
+          "params": [
+            "b49bc92dfdf4af5a0eff0c292a848f9cb61bccc3fe1a6f552a3f19509ae6af00",
+            977531
+          ]
+        },
+        {
+          "method": "blockchain.block.header",
+          "params": [
+            977531
+          ]
+        },
+        {
+          "method": "blockchain.transaction.get",
+          "params": [
+            "f47e3109234404d006ebb299384b63e38822f393645e37b86698d54d944935cf",
+            false
+          ]
+        },
+        {
+          "method": "blockchain.transaction.get_merkle",
+          "params": [
+            "f47e3109234404d006ebb299384b63e38822f393645e37b86698d54d944935cf",
+            977532
+          ]
+        },
+        {
+          "method": "blockchain.block.header",
+          "params": [
+            977532
+          ]
+        },
+        {
+          "method": "blockchain.block.header",
+          "params": [
+            977531
+          ]
+        },
+        {
+          "method": "blockchain.block.header",
+          "params": [
+            977521
+          ]
+        },
+        {
+          "method": "blockchain.block.header",
+          "params": [
+            977522
+          ]
+        },
+        {
+          "method": "blockchain.block.header",
+          "params": [
+            977523
+          ]
+        },
+        {
+          "method": "blockchain.block.header",
+          "params": [
+            977524
+          ]
+        },
+        {
+          "method": "blockchain.block.header",
+          "params": [
+            977525
+          ]
+        },
+        {
+          "method": "blockchain.block.header",
+          "params": [
+            977526
+          ]
+        },
+        {
+          "method": "blockchain.block.header",
+          "params": [
+            977527
+          ]
+        },
+        {
+          "method": "blockchain.block.header",
+          "params": [
+            977528
+          ]
+        },
+        {
+          "method": "blockchain.block.header",
+          "params": [
+            977529
+          ]
+        },
+        {
+          "method": "blockchain.block.header",
+          "params": [
+            977530
+          ]
+        },
+        {
+          "method": "blockchain.block.header",
+          "params": [
+            977531
+          ]
+        },
+        {
+          "method": "blockchain.scripthash.get_history",
+          "params": [
+            "f12a9931c6867e7e179c3eb64bb7c6fdeac3fe7e916eb9da0bb06328a3695a2d"
+          ]
+        },
+        {
+          "method": "blockchain.scripthash.get_history",
+          "params": [
+            "fb5f3f7f0963714ee98aa7fa68720efa05532f70b4987ae234a8b1de9da17694"
+          ]
+        },
+        {
+          "method": "blockchain.scripthash.get_history",
+          "params": [
+            "d451c588ed9841c7979a9192ab517a2d76b91bb13b35db972557e38684d4d457"
+          ]
+        },
+        {
+          "method": "blockchain.scripthash.get_history",
+          "params": [
+            "20573517d07ae5d0df66411a94089a2975be7981aefa03672ab7a19944a1e2cf"
+          ]
+        },
+        {
+          "method": "blockchain.block.headers",
+          "params": [
+            977515,
+            71
+          ]
+        },
+        {
+          "method": "blockchain.scripthash.listunspent",
+          "params": [
+            "f12a9931c6867e7e179c3eb64bb7c6fdeac3fe7e916eb9da0bb06328a3695a2d",
+            "include_tokens"
+          ]
+        },
+        {
+          "method": "blockchain.transaction.get_merkle",
+          "params": [
+            "f47e3109234404d006ebb299384b63e38822f393645e37b86698d54d944935cf",
+            977532
+          ]
+        },
+        {
+          "method": "blockchain.block.header",
+          "params": [
+            977532
+          ]
+        },
+        {
+          "method": "blockchain.scripthash.listunspent",
+          "params": [
+            "fb5f3f7f0963714ee98aa7fa68720efa05532f70b4987ae234a8b1de9da17694",
+            "include_tokens"
+          ]
+        },
+        {
+          "method": "blockchain.transaction.get_merkle",
+          "params": [
+            "f47e3109234404d006ebb299384b63e38822f393645e37b86698d54d944935cf",
+            977532
+          ]
+        },
+        {
+          "method": "blockchain.block.header",
+          "params": [
+            977532
+          ]
+        },
+        {
+          "method": "blockchain.scripthash.listunspent",
+          "params": [
+            "d451c588ed9841c7979a9192ab517a2d76b91bb13b35db972557e38684d4d457",
+            "include_tokens"
+          ]
+        },
+        {
+          "method": "blockchain.transaction.get_merkle",
+          "params": [
+            "f47e3109234404d006ebb299384b63e38822f393645e37b86698d54d944935cf",
+            977532
+          ]
+        },
+        {
+          "method": "blockchain.block.header",
+          "params": [
+            977532
+          ]
+        },
+        {
+          "method": "blockchain.headers.subscribe",
+          "params": []
+        },
+        {
+          "method": "blockchain.block.header",
+          "params": [
+            977585
+          ]
+        },
+        {
+          "method": "server.version",
+          "params": [
+            "Staking Arena",
+            "1.5.0"
+          ]
+        },
+        {
+          "method": "blockchain.block.header",
+          "params": [
+            0
+          ]
+        },
+        {
+          "method": "blockchain.block.header",
+          "params": [
+            792773
+          ]
+        },
+        {
+          "method": "blockchain.headers.subscribe",
+          "params": []
+        },
+        {
+          "method": "blockchain.block.header",
+          "params": [
+            977585
+          ]
+        },
+        {
+          "method": "blockchain.headers.subscribe",
+          "params": []
+        },
+        {
+          "method": "blockchain.block.header",
+          "params": [
+            977585
+          ]
+        },
+        {
+          "method": "blockchain.block.header",
+          "params": [
+            977575
+          ]
+        },
+        {
+          "method": "blockchain.block.header",
+          "params": [
+            977576
+          ]
+        },
+        {
+          "method": "blockchain.block.header",
+          "params": [
+            977577
+          ]
+        },
+        {
+          "method": "blockchain.block.header",
+          "params": [
+            977578
+          ]
+        },
+        {
+          "method": "blockchain.block.header",
+          "params": [
+            977579
+          ]
+        },
+        {
+          "method": "blockchain.block.header",
+          "params": [
+            977580
+          ]
+        },
+        {
+          "method": "blockchain.block.header",
+          "params": [
+            977581
+          ]
+        },
+        {
+          "method": "blockchain.block.header",
+          "params": [
+            977582
+          ]
+        },
+        {
+          "method": "blockchain.block.header",
+          "params": [
+            977583
+          ]
+        },
+        {
+          "method": "blockchain.block.header",
+          "params": [
+            977584
+          ]
+        },
+        {
+          "method": "blockchain.block.header",
+          "params": [
+            977585
+          ]
+        },
+        {
+          "method": "blockchain.transaction.get",
+          "params": [
+            "c14b3170fd156ee0b5cdefba0241981407a481caa08d7169b2e07ea5caccb2e5",
+            false
+          ]
+        },
+        {
+          "method": "blockchain.scripthash.get_history",
+          "params": [
+            "f12a9931c6867e7e179c3eb64bb7c6fdeac3fe7e916eb9da0bb06328a3695a2d"
+          ]
+        },
+        {
+          "method": "blockchain.transaction.get_merkle",
+          "params": [
+            "c14b3170fd156ee0b5cdefba0241981407a481caa08d7169b2e07ea5caccb2e5",
+            977515
+          ]
+        },
+        {
+          "method": "blockchain.block.header",
+          "params": [
+            977515
+          ]
+        },
+        {
+          "method": "blockchain.transaction.get",
+          "params": [
+            "678fd6de1bfd459530073aee1fbfbe2b3992378b18295811316c2590fadc7e03",
+            false
+          ]
+        },
+        {
+          "method": "blockchain.transaction.get",
+          "params": [
+            "b49bc92dfdf4af5a0eff0c292a848f9cb61bccc3fe1a6f552a3f19509ae6af00",
+            false
+          ]
+        },
+        {
+          "method": "blockchain.transaction.get_merkle",
+          "params": [
+            "b49bc92dfdf4af5a0eff0c292a848f9cb61bccc3fe1a6f552a3f19509ae6af00",
+            977531
+          ]
+        },
+        {
+          "method": "blockchain.block.header",
+          "params": [
+            977531
+          ]
+        },
+        {
+          "method": "blockchain.transaction.get",
+          "params": [
+            "f47e3109234404d006ebb299384b63e38822f393645e37b86698d54d944935cf",
+            false
+          ]
+        },
+        {
+          "method": "blockchain.transaction.get_merkle",
+          "params": [
+            "f47e3109234404d006ebb299384b63e38822f393645e37b86698d54d944935cf",
+            977532
+          ]
+        },
+        {
+          "method": "blockchain.block.header",
+          "params": [
+            977532
+          ]
+        },
+        {
+          "method": "blockchain.block.header",
+          "params": [
+            977531
+          ]
+        },
+        {
+          "method": "blockchain.block.header",
+          "params": [
+            977521
+          ]
+        },
+        {
+          "method": "blockchain.block.header",
+          "params": [
+            977522
+          ]
+        },
+        {
+          "method": "blockchain.block.header",
+          "params": [
+            977523
+          ]
+        },
+        {
+          "method": "blockchain.block.header",
+          "params": [
+            977524
+          ]
+        },
+        {
+          "method": "blockchain.block.header",
+          "params": [
+            977525
+          ]
+        },
+        {
+          "method": "blockchain.block.header",
+          "params": [
+            977526
+          ]
+        },
+        {
+          "method": "blockchain.block.header",
+          "params": [
+            977527
+          ]
+        },
+        {
+          "method": "blockchain.block.header",
+          "params": [
+            977528
+          ]
+        },
+        {
+          "method": "blockchain.block.header",
+          "params": [
+            977529
+          ]
+        },
+        {
+          "method": "blockchain.block.header",
+          "params": [
+            977530
+          ]
+        },
+        {
+          "method": "blockchain.block.header",
+          "params": [
+            977531
+          ]
+        },
+        {
+          "method": "blockchain.scripthash.get_history",
+          "params": [
+            "f12a9931c6867e7e179c3eb64bb7c6fdeac3fe7e916eb9da0bb06328a3695a2d"
+          ]
+        },
+        {
+          "method": "blockchain.scripthash.get_history",
+          "params": [
+            "fb5f3f7f0963714ee98aa7fa68720efa05532f70b4987ae234a8b1de9da17694"
+          ]
+        },
+        {
+          "method": "blockchain.scripthash.get_history",
+          "params": [
+            "d451c588ed9841c7979a9192ab517a2d76b91bb13b35db972557e38684d4d457"
+          ]
+        },
+        {
+          "method": "blockchain.scripthash.get_history",
+          "params": [
+            "20573517d07ae5d0df66411a94089a2975be7981aefa03672ab7a19944a1e2cf"
+          ]
+        },
+        {
+          "method": "blockchain.block.headers",
+          "params": [
+            977515,
+            71
+          ]
+        },
+        {
+          "method": "blockchain.scripthash.listunspent",
+          "params": [
+            "f12a9931c6867e7e179c3eb64bb7c6fdeac3fe7e916eb9da0bb06328a3695a2d",
+            "include_tokens"
+          ]
+        },
+        {
+          "method": "blockchain.transaction.get_merkle",
+          "params": [
+            "f47e3109234404d006ebb299384b63e38822f393645e37b86698d54d944935cf",
+            977532
+          ]
+        },
+        {
+          "method": "blockchain.block.header",
+          "params": [
+            977532
+          ]
+        },
+        {
+          "method": "blockchain.scripthash.listunspent",
+          "params": [
+            "fb5f3f7f0963714ee98aa7fa68720efa05532f70b4987ae234a8b1de9da17694",
+            "include_tokens"
+          ]
+        },
+        {
+          "method": "blockchain.transaction.get_merkle",
+          "params": [
+            "f47e3109234404d006ebb299384b63e38822f393645e37b86698d54d944935cf",
+            977532
+          ]
+        },
+        {
+          "method": "blockchain.block.header",
+          "params": [
+            977532
+          ]
+        },
+        {
+          "method": "blockchain.scripthash.listunspent",
+          "params": [
+            "d451c588ed9841c7979a9192ab517a2d76b91bb13b35db972557e38684d4d457",
+            "include_tokens"
+          ]
+        },
+        {
+          "method": "blockchain.transaction.get_merkle",
+          "params": [
+            "f47e3109234404d006ebb299384b63e38822f393645e37b86698d54d944935cf",
+            977532
+          ]
+        },
+        {
+          "method": "blockchain.block.header",
+          "params": [
+            977532
+          ]
+        },
+        {
+          "method": "blockchain.headers.subscribe",
+          "params": []
+        },
+        {
+          "method": "blockchain.block.header",
+          "params": [
+            977585
+          ]
+        }
+      ]
+    }
+  ],
+  "rpc": [],
+  "broadcasts": [],
+  "runs": [
+    {
+      "run": 0,
+      "listMs": 3523.670811,
+      "candidateText": "Atomic V4 vault c14b3170fd156ee0 → Make an Offer\n\nGenesis transaction: c14b3170fd156ee0b5cdefba0241981407a481caa08d7169b2e07ea5caccb2e5 · Unverified configuration\n\nVerifying genesis and current state… Financial state unavailable. Staking: BCH · Rewards: BCH · Maximum reward per period: 0.00001000 BCH (1000 satoshis) · Interval: 360s · Releases: 5 · Schedule epoch: 1794771663 (unverified configuration hints). Remaining reward reserve: unverified. Active offer count: unverified. Current top-ranked offer: unverified.",
+      "verifiedMs": 22976.39656,
+      "verifiedText": "Atomic V4 vault c14b3170fd156ee0 → Make an Offer\n\nGenesis transaction: c14b3170fd156ee0b5cdefba0241981407a481caa08d7169b2e07ea5caccb2e5 · Confirmed · chain verified\n\nStaking asset\nBCH\nReward asset\nBCH\nMaximum reward per period\n0.00001000 BCH (1000 satoshis)\nRelease interval\n360s\nSchedule\n5 releases · epoch 1794771663\nRemaining reward reserve\n0.00004000 BCH (4000 satoshis)\nActive offers\n0\nTop-ranked offer\nnone\nStatus\nactive\nVerified snapshot · 2026-11-16T07:59:24.823Z"
+    },
+    {
+      "run": 1,
+      "listMs": 1105.233712000001,
+      "candidateText": "Atomic V4 vault c14b3170fd156ee0 → Make an Offer\n\nGenesis transaction: c14b3170fd156ee0b5cdefba0241981407a481caa08d7169b2e07ea5caccb2e5 · Unverified configuration\n\nVerifying genesis and current state… Financial state unavailable. Staking: BCH · Rewards: BCH · Maximum reward per period: 0.00001000 BCH (1000 satoshis) · Interval: 360s · Releases: 5 · Schedule epoch: 1794771663 (unverified configuration hints). Remaining reward reserve: unverified. Active offer count: unverified. Current top-ranked offer: unverified.",
+      "verifiedMs": 20454.276943999997,
+      "verifiedText": "Atomic V4 vault c14b3170fd156ee0 → Make an Offer\n\nGenesis transaction: c14b3170fd156ee0b5cdefba0241981407a481caa08d7169b2e07ea5caccb2e5 · Confirmed · chain verified\n\nStaking asset\nBCH\nReward asset\nBCH\nMaximum reward per period\n0.00001000 BCH (1000 satoshis)\nRelease interval\n360s\nSchedule\n5 releases · epoch 1794771663\nRemaining reward reserve\n0.00004000 BCH (4000 satoshis)\nActive offers\n0\nTop-ranked offer\nnone\nStatus\nactive\nVerified snapshot · 2026-11-16T07:59:45.354Z"
+    }
+  ],
+  "browser": "157.0.8103.78",
+  "userAgent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/157.0.0.0 Safari/537.36",
+  "chipnetSeparated": true,
+  "mainnetSeparated": true,
+  "resources": [
+    {
+      "url": "http://127.0.0.1:4184/staking-arena-blaze-site/public-index/mainnet/index.json",
+      "ms": 12.900000000023283,
+      "bytes": 1003
+    }
+  ],
+  "storage": [
+    "staking-arena-v3-configs-chipnet-snapshots",
+    "arena-public-index-v1-mainnet",
+    "staking-arena-v3-configs-mainnet-snapshots",
+    "arena-public-index-v1-chipnet"
+  ]
+}

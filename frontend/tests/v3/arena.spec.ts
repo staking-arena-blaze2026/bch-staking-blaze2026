@@ -1,3 +1,6 @@
+import {DISCOVERY_SCRIPT,discoveryScript} from '../../../src/v3/discovery';
+import {ElectrumCore,scriptHash} from '../../../src/electrum-core';
+import {emptyIndex,updatePublicIndex,stringify} from '../../../src/v3/public-index';
 import {test,expect,type Page} from '@playwright/test';
 import {v3BrowserChain} from '../../../tests/fixtures/v3-browser-chain';
 import {createServer} from 'node:https';
@@ -8,13 +11,13 @@ import {execFileSync} from 'node:child_process';
 import {once} from 'node:events';
 import {directGenesisBuilder} from '../../../src/v3/protocol';
 import {binToHex,encodeTransaction,generateSigningSerializationBch,hash256,encodeDataPush,type Transaction} from '@bitauth/libauth';
-let fixture:ReturnType<typeof v3BrowserChain>,hosts:string[]=[],methods:string[]=[];
+let fixture:ReturnType<typeof v3BrowserChain>,hosts:string[]=[],methods:string[]=[],discoveryReads:string[]=[];
 const certificate=mkdtempSync(tmpdir()+'/arena-v3-wss-');
 execFileSync('openssl',['req','-x509','-newkey','rsa:2048','-nodes','-keyout',certificate+'/key','-out',certificate+'/cert','-days','1','-subj','/CN=localhost','-addext','subjectAltName=IP:127.0.0.1,DNS:localhost'],{stdio:'ignore'});
 const server=createServer({key:readFileSync(certificate+'/key'),cert:readFileSync(certificate+'/cert')}),sockets=new WebSocketServer({server});
-test.beforeAll(async()=>{sockets.on('connection',(socket,req)=>{hosts.push(req.headers.host??'');socket.on('message',async data=>{const m=JSON.parse(data.toString());methods.push(m.method);try{const result=await fixture.chain.request(m.method,...m.params);socket.send(JSON.stringify({id:m.id,result}));}catch(e){socket.send(JSON.stringify({id:m.id,error:{code:-1,message:String(e)}}));}});});server.listen(4177,'0.0.0.0');await once(server,'listening');});
+test.beforeAll(async()=>{sockets.on('connection',(socket,req)=>{hosts.push(req.headers.host??'');socket.on('message',async data=>{const m=JSON.parse(data.toString());methods.push(m.method);if(m.method==='blockchain.scripthash.get_history'&&[DISCOVERY_SCRIPT,discoveryScript('regtest')].map(scriptHash).includes(m.params[0]))discoveryReads.push(m.params[0]);try{const result=await fixture.chain.request(m.method,...m.params);socket.send(JSON.stringify({id:m.id,result}));}catch(e){socket.send(JSON.stringify({id:m.id,error:{code:-1,message:String(e)}}));}});});server.listen(4177,'0.0.0.0');await once(server,'listening');});
 test.afterAll(async()=>{for(const s of sockets.clients)s.terminate();sockets.close();server.close();await once(server,'close');rmSync(certificate,{recursive:true,force:true});});
-test.beforeEach(async({context})=>{fixture=v3BrowserChain();hosts=[];methods=[];await context.routeWebSocket(/^wss:\/\/relay\./,s=>{s.onMessage(()=>{});});});
+test.beforeEach(async({context})=>{fixture=v3BrowserChain();hosts=[];methods=[];discoveryReads=[];await context.routeWebSocket(/^wss:\/\/relay\./,s=>{s.onMessage(()=>{});});});
 async function refresh(page:Page){const input=page.getByLabel('Public v3 configuration');if(!await input.isVisible())await page.getByText('Import or share a vault configuration',{exact:true}).click();if(!await input.inputValue())await input.fill(JSON.stringify(fixture.config,(_,v)=>typeof v==='bigint'?v.toString():v));const button=page.getByRole('button',{name:'Verify and refresh chain state'});await expect(button).toBeEnabled({timeout:60000});await button.click();await expect(page.getByRole('button',{name:'Refresh vault state',exact:true})).toBeEnabled({timeout:60000});await expect(page.getByRole('heading',{name:'Live ranked queue'})).toBeVisible({timeout:60000});}
 async function open(page:Page){await page.goto('./#/v3/offers');await page.getByLabel('Public v3 configuration').fill(JSON.stringify(fixture.config,(_,v)=>typeof v==='bigint'?v.toString():v));await refresh(page);}
 test('real browser worker verifies wallet-funded claims over WSS and requires a connected caller wallet',async({page})=>{
@@ -83,8 +86,10 @@ test('fresh independent profiles automatically discover V3 and Atomic V4 announc
   tx.inputs[0]!.unlockingBytecode=new Uint8Array([...encodeDataPush(signature),...encodeDataPush(fixture.key.publicKey)]);
   announced.push(fixture.add(binToHex(encodeTransaction(tx)),true).txid);
  }
+ const index=emptyIndex('regtest');await updatePublicIndex(index,[new ElectrumCore(()=>({connect:async()=>{},close:()=>{},request:fixture.chain.request}),{network:'regtest',endpoints:['wss://127.0.0.1']})]);
  for(const identity of ['Alice','Bob']){
   const profile=await browser.newContext({ignoreHTTPSErrors:true});await profile.routeWebSocket(/^wss:\/\/relay\./,socket=>socket.onMessage(()=>{}));
+  await profile.route('**/public-index/regtest/index.json',route=>route.fulfill({contentType:'application/json',body:stringify({schema:1,network:'regtest',vaults:Object.values(index.candidates),total:announced.length,pages:[]})}));
   const page=await profile.newPage();await page.goto('http://127.0.0.1:4176/v3/#/v3/offers');
   for(const id of announced){const card=page.locator(`a[href="#/v3/vault/${id}"]`);await expect(card,identity+' sees public genesis').toBeVisible({timeout:60000});await expect(card).toContainText('Confirmed · chain verified',{timeout:60000});}
   await expect(page.locator(`a[href="#/v3/vault/${announced[1]}"]`)).toContainText('Atomic V4');
@@ -96,5 +101,21 @@ test('fresh independent profiles automatically discover V3 and Atomic V4 announc
   await page.reload();await expect(page.locator(`a[href="#/v3/vault/${announced[1]}"]`)).toBeVisible();
   fixture.chain.fail=false;await profile.close();
  }
- expect(methods).not.toContain('blockchain.transaction.broadcast');
+ expect(methods).not.toContain('blockchain.transaction.broadcast');expect(discoveryReads).toEqual([]);
+});
+
+test('a thousand indexed candidates render bounded pages without a visitor history scan; malformed rows cannot authorize actions',async({page})=>{
+ const {createHash}=await import('node:crypto');
+ const candidates=Array.from({length:1000},(_,i)=>({config:{...fixture.config,genesis:(i+1).toString(16).padStart(64,'0')},announcement:(i+1).toString(16).padStart(64,'0'),height:0,status:'provisional'}));
+ const second=stringify({schema:1,network:'regtest',vaults:candidates.slice(20,40)}),path='pages/'+createHash('sha256').update(second).digest('hex')+'.json';
+ await page.route('**/public-index/regtest/index.json',route=>route.fulfill({contentType:'application/json',body:stringify({schema:1,network:'regtest',vaults:candidates.slice(0,20),total:1000,pages:[path]})}));
+ await page.route('**/public-index/regtest/'+path,route=>route.fulfill({contentType:'application/json',body:second}));
+ await page.goto('./#/v3/offers');await expect(page.locator('.v3-vault-card')).toHaveCount(20);await expect(page.locator('.v3-vault-card').first()).toContainText('provisional');
+ await page.getByRole('button',{name:'Load more public vaults'}).click();await page.getByRole('button',{name:'Next vaults'}).click();await expect(page.locator('.v3-vault-card')).toHaveCount(20);await expect(page.locator('.v3-vault-card').first()).toContainText(candidates[20].config.genesis);
+ await expect(page.getByRole('button',{name:'Make an Offer',exact:true})).toHaveCount(0);expect(methods).not.toContain('blockchain.scripthash.get_history');expect(methods).not.toContain('blockchain.transaction.broadcast');
+});
+
+test('simultaneous fresh visitors load the same public index without wallet identity or discovery-history reads',async({browser})=>{
+ const contexts=await Promise.all([browser.newContext({ignoreHTTPSErrors:true}),browser.newContext({ignoreHTTPSErrors:true})]);let downloads=0;
+ try{await Promise.all(contexts.map(async context=>{await context.routeWebSocket(/^wss:\/\/relay\./,s=>s.onMessage(()=>{}));await context.route('**/public-index/regtest/index.json',route=>{downloads++;return route.fulfill({contentType:'application/json',body:stringify({schema:1,network:'regtest',vaults:[{config:fixture.config,announcement:fixture.config.genesis,height:1,status:'observed-confirmed'}],total:1,pages:[]})});});const page=await context.newPage();await page.goto('http://127.0.0.1:4176/v3/#/v3/offers');await expect(page.locator('.v3-vault-card')).toHaveCount(1);expect(await page.evaluate(()=>localStorage.getItem('staking-arena-v3-configs'))).toBeNull();}));expect(downloads).toBe(2);expect(discoveryReads).toEqual([]);expect(methods).not.toContain('blockchain.transaction.broadcast');}finally{await Promise.all(contexts.map(c=>c.close()));}
 });

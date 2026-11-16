@@ -1,6 +1,7 @@
+import {v3Network} from './network.js';
 import type {ElectrumCore} from '../electrum-core.js';
 import {walletPeers} from '../electrum-wallet.js';
-import {DISCOVERY_SCRIPT,parseAnnouncement} from './discovery.js';
+import {discoveryScripts,parseAnnouncement} from './discovery.js';
 import {family} from './protocol.js';
 import type {Config} from './indexer.js';
 /** Public Electrum history is the continuously maintained discovery index. Union
@@ -9,14 +10,14 @@ import type {Config} from './indexer.js';
 export async function discoverPublicVaults(p:ElectrumCore,cursor?:string,limit=20){
  if(!Number.isInteger(limit)||limit<1||limit>50||cursor&&!/^[0-9a-f]{64}$/.test(cursor))throw Error('Invalid discovery page');
  const entries=new Map<string,{height:number;peers:string[]}>();let online=0;
- for(const peer of walletPeers(p))try{const history=await p.session(()=>p.history(DISCOVERY_SCRIPT),peer);online++;for(const row of history){const previous=entries.get(row.tx_hash);if(previous)previous.peers.push(peer);else entries.set(row.tx_hash,{height:row.height,peers:[peer]});}}catch{/* The public catalog and saved hints remain usable during outages. */}
+ for(const peer of walletPeers(p))try{const history=await p.session(async()=>{const rows=await Promise.all(discoveryScripts(v3Network(p)).map(s=>p.history(s)));return [...new Map(rows.flat().map(h=>[h.tx_hash,h])).values()];},peer);online++;for(const row of history){const previous=entries.get(row.tx_hash);if(previous)previous.peers.push(peer);else entries.set(row.tx_hash,{height:row.height,peers:[peer]});}}catch{/* The public catalog and saved hints remain usable during outages. */}
  if(!online)throw Error('Public discovery unavailable; retained catalog and saved vaults remain available.');
  const ordered=[...entries].sort((a,b)=>(b[1].height<=0?Number.MAX_SAFE_INTEGER:b[1].height)-(a[1].height<=0?Number.MAX_SAFE_INTEGER:a[1].height)||a[0].localeCompare(b[0]));
  const at=cursor?ordered.findIndex(([id])=>id===cursor)+1:0;if(cursor&&!at)throw Error('Discovery cursor expired; restart from the first page.');
  const page=ordered.slice(at,at+limit),vaults=new Map<string,Config>();let rejected=0;
  for(const [id,entry]of page){let loaded=false;for(const peer of entry.peers)try{
   const configs=await p.session(async()=>{
-   const tx=await p.transaction(id),marker=tx.vout.findIndex((o:any)=>o.scriptPubKey.hex===DISCOVERY_SCRIPT);
+   const tx=await p.transaction(id),marker=tx.vout.findIndex((o:any)=>discoveryScripts(v3Network(p)).includes(o.scriptPubKey.hex));
    if(marker<0||tx.vout[marker].value!==0.00001)throw Error('Missing discovery carrier');
    const script=tx.vout[marker+1]?.scriptPubKey.hex;
    if(typeof script!=='string'||!script.startsWith('6a4c5a')||script.length!==186)throw Error('Missing discovery payload');

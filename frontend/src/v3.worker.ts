@@ -1,6 +1,5 @@
 import {providerConflictStore} from './providerConflictStore';
 import {verifiedProviders} from '../../src/verified-providers';
-import {discoverPublicVaults} from '../../src/v3/public-discovery';
 /// <reference lib="webworker" />
 import {BrowserElectrumProvider} from '../../src/electrum-wss';
 import {AssetIndexer} from '../../src/v3/indexer';
@@ -22,7 +21,7 @@ scope.onmessage=event=>{queue=queue.catch(()=>{}).then(async()=>{const {id,inten
   if(options.network==='chipnet'&&!['connect','discover','list','claims','sync'].includes(intent.operation))throw Error('Chipnet temporarily unavailable for transactions: consensus/provider conflict; journals retained');
   if(storageFailure&&!['list','claims','discover'].includes(intent.operation))throw Error('Provider conflict evidence unavailable; verification and transactions blocked.');
   if(intent.operation==='connect'){const tip=await verifiedProviders(provider,walletPeers(provider),async()=>{const tip=await provider.tip();return {tip,value:{hash:tip.hash,height:tip.height,endpoint:provider.endpoint},identity:tip.hash};});return {network:options.network,tips:[tip]};}
-  if(intent.operation==='discover')return discoverPublicVaults(provider,intent.cursor,intent.limit??20);
+  if(intent.operation==='discover')throw Error('Public discovery uses the static public index');
   if(intent.operation==='list')return wallet.store.list();
   if(intent.operation==='sync')return inspectClaim(new AssetIndexer(provider,intent.config));
   if(intent.operation==='claim')return wallet.claim(intent.config,keys);
@@ -44,6 +43,8 @@ scope.onmessage=event=>{queue=queue.catch(()=>{}).then(async()=>{const {id,inten
   throw Error('Unknown v3 operation');
  };
  if(!scope.navigator.locks)throw Error('V3 requires Web Locks');
+ if(intent.operation==='sync'){const store=await conflicts;for(const host of await store.read())provider.unresolvedChainPeers.add(host);const result=await run();scope.postMessage({id,result});return;}
+ const store=await conflicts;for(const host of await store.read())provider.unresolvedChainPeers.add(host);
  const result=await scope.navigator.locks.request(`arena-${options.network}-v3`,{ifAvailable:true},async lock=>{if(!lock)throw Error('Another tab is updating v3');return run();});scope.postMessage({id,result});
  }catch(e){scope.postMessage({id,error:String(e)});}});};
 scope.postMessage({type:'ready'});

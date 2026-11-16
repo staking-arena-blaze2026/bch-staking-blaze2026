@@ -1,14 +1,14 @@
 {
-  "verifiedAt": "2026-11-15T14:34:57.206Z",
+  "verifiedAt": "2026-11-15T22:39:32.916Z",
   "node": "/Bitcoin Cash Node:29.2.0/",
   "realCashonizeApproval": false,
   "before": {
     "approvals": 2,
     "transactions": 2,
     "fees": 20000,
-    "preparationMilliseconds": 628.951387000001,
-    "totalMilliseconds": 2063.3083399999996,
-    "electrumRequests": 2147
+    "preparationMilliseconds": 8108.07640000002,
+    "totalMilliseconds": 22357.947800000024,
+    "electrumRequests": 1189
   },
   "attacks": [
     "reserve diversion",
@@ -32,20 +32,20 @@
       "reward": {
         "kind": "bch"
       },
-      "txid": "4715d1296c1dbf8cd347302290adae5c044401be99b58eb0a977c0c0413b0dc2",
-      "claim": "9b1d04a93902a004b8362139a1175429c107a356496bcf29e623978301dddab4",
+      "txid": "3f83a3ef4322c83e8e48d8d9cf0bc5be19643b05e6019f84e0384458ea97681c",
+      "claim": "0e5100e3a64294d3880da99c750cfd7190a215204464b08a5ec3f1db74ab49d3",
       "approvals": 1,
       "transactions": 1,
       "fee": "10000",
-      "milliseconds": 459.80888099999993,
-      "electrumRequests": 442,
+      "milliseconds": 6274.839600000007,
+      "electrumRequests": 378,
       "inputConfirmations": [
         1
       ],
       "discovery": {
         "addresses": 6,
-        "milliseconds": 36.42627300000004,
-        "requests": 54
+        "milliseconds": 593.2820999999967,
+        "requests": 46
       },
       "bytes": 4777
     },
@@ -55,102 +55,102 @@
       },
       "reward": {
         "kind": "token",
-        "category": "b0e27d5fe910d1e87ab439ae607ffa0564bb571cca1ed4d3bb7e85f1193db8e4"
+        "category": "9e30d61d7b3b180a8e455cd1f20721eeefaee3ee655cca3a3a5f1c6cc2978b24"
       },
-      "txid": "96c1099a6c374e7cf11ad56a61e78ecba24b7a40fbce2675ea0dc2f07e7ffb3c",
-      "claim": "7057d0f8b3a04530d1f926ab8230913a63c334d03056ed78b0a988bb1a2eb87b",
+      "txid": "92a922d93412af8ca13239ff0562c15973af99334f1cf6a2881ef998cf572093",
+      "claim": "c76165dbc0e76778e7fb2770f4631ba9723e52fe214e7a5f919de86947b0562d",
       "approvals": 1,
       "transactions": 1,
       "fee": "10000",
-      "milliseconds": 507.43694400000004,
-      "electrumRequests": 536,
+      "milliseconds": 6978.952799999999,
+      "electrumRequests": 339,
       "inputConfirmations": [
         0
       ],
       "discovery": {
         "addresses": 6,
-        "milliseconds": 51.654693999999836,
-        "requests": 52
+        "milliseconds": 537.4275999999954,
+        "requests": 42
       },
       "bytes": 4814
     },
     {
       "staking": {
         "kind": "token",
-        "category": "b0e27d5fe910d1e87ab439ae607ffa0564bb571cca1ed4d3bb7e85f1193db8e4"
+        "category": "9e30d61d7b3b180a8e455cd1f20721eeefaee3ee655cca3a3a5f1c6cc2978b24"
       },
       "reward": {
         "kind": "bch"
       },
-      "txid": "45b5563410ae21ce60fa7bae6f2dab195fa4e7af26c6dceae5505bb4bc0b2a42",
-      "claim": "483d5d6ca902d3349518a30b139533778f4415433d1997f3b2ce3c667915de93",
+      "txid": "5e1afded853ebf0db736f1f868abc916d5427a33b61dccbaf7f7e6f1896e65bd",
+      "claim": "d81424053f09f87596121b70e616ef4824cf43a862b21cf84da1de9cc567bbe2",
       "approvals": 1,
       "transactions": 1,
       "fee": "10000",
-      "milliseconds": 609.2832579999995,
-      "electrumRequests": 648,
+      "milliseconds": 8980.994799999986,
+      "electrumRequests": 386,
       "inputConfirmations": [
         1,
         1
       ],
       "discovery": {
         "addresses": 6,
-        "milliseconds": 67.56948099999863,
-        "requests": 68
+        "milliseconds": 1327.7694000000192,
+        "requests": 54
       },
       "bytes": 5028
     },
     {
       "staking": {
         "kind": "token",
-        "category": "b0e27d5fe910d1e87ab439ae607ffa0564bb571cca1ed4d3bb7e85f1193db8e4"
+        "category": "9e30d61d7b3b180a8e455cd1f20721eeefaee3ee655cca3a3a5f1c6cc2978b24"
       },
       "reward": {
         "kind": "token",
-        "category": "33b33f082648f95f846b08068ca8b0aa027311e38749ad69dd70980bbfd5ebe5"
+        "category": "c1c4bacb4bc575559d1abc5f58a10ae73aec74f7541f12145c98b3c8eb7a7bfd"
       },
-      "txid": "7eab70a3998767744c1b3c022ac0c1d46357895f9cb1839d97b5b6b4661bc4b8",
-      "claim": "196a16ac43d177f4562b999e5b92b67e2ae850a77ef8b0a5adfe918542a53a7f",
+      "txid": "94a2d953eec5e711f0da32652f2dac248acaaa0b8fd01bc8e6361e165dc04600",
+      "claim": "1328e4680bdb4a24482b62f13afec35a2471ec05ccc6b927a039ec8896ac22fe",
       "approvals": 1,
       "transactions": 1,
       "fee": "10000",
-      "milliseconds": 693.5918329999986,
-      "electrumRequests": 682,
+      "milliseconds": 8137.86010000002,
+      "electrumRequests": 383,
       "inputConfirmations": [
         1,
         0
       ],
       "discovery": {
         "addresses": 6,
-        "milliseconds": 83.65344099999857,
-        "requests": 70
+        "milliseconds": 1129.8484000000171,
+        "requests": 54
       },
       "bytes": 5065
     },
     {
       "staking": {
         "kind": "token",
-        "category": "b0e27d5fe910d1e87ab439ae607ffa0564bb571cca1ed4d3bb7e85f1193db8e4"
+        "category": "9e30d61d7b3b180a8e455cd1f20721eeefaee3ee655cca3a3a5f1c6cc2978b24"
       },
       "reward": {
         "kind": "token",
-        "category": "b0e27d5fe910d1e87ab439ae607ffa0564bb571cca1ed4d3bb7e85f1193db8e4"
+        "category": "9e30d61d7b3b180a8e455cd1f20721eeefaee3ee655cca3a3a5f1c6cc2978b24"
       },
-      "txid": "78bef2e205a899f045a94bddd478c7a4e91a084d2c88a6d76988b779acc76bdd",
-      "claim": "1da2eda6bc20485e2595b84ba00b2c3b137953bfa14a05f3c8760358b12a6e47",
+      "txid": "38ac9a91315907935c43fa8288ff5d62a4e8d89e1fceaebaa8a51940b73545db",
+      "claim": "6b2cf13fea654a28084beb8107709aa0e0893a7df9fc3a90730a0437f6de6a6d",
       "approvals": 1,
       "transactions": 1,
       "fee": "10000",
-      "milliseconds": 828.8019129999993,
-      "electrumRequests": 790,
+      "milliseconds": 24128.263800000015,
+      "electrumRequests": 422,
       "inputConfirmations": [
         0,
         1
       ],
       "discovery": {
         "addresses": 6,
-        "milliseconds": 105.992929,
-        "requests": 86
+        "milliseconds": 5019.429600000032,
+        "requests": 66
       },
       "bytes": 5065
     }

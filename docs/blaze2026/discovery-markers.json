@@ -1,0 +1,29 @@
+{
+  "legacy": {
+    "redeemScript": "51",
+    "lockingScript": "a914da1745e9b549bd0bfa1a569971c77eba30cd5a4b87",
+    "electrumScriptHash": "0a13081785a298b8b9dc427343ee7252e963361394f4b196aaad918e85315fb0"
+  },
+  "dedicated": [
+    {
+      "network": "mainnet",
+      "redeemScript": "275374616b696e674172656e612f424c415a452f646973636f766572792f76322f6d61696e6e65747551",
+      "lockingScript": "a914fb5c8dc8451d8adb72c8e9fd5034d9f07ca2c10687",
+      "electrumScriptHash": "825d6b0304594b2bd374315d744648f4a8fba1960258866f907e684077374387"
+    },
+    {
+      "network": "chipnet",
+      "redeemScript": "275374616b696e674172656e612f424c415a452f646973636f766572792f76322f636869706e65747551",
+      "lockingScript": "a91451d0a5abbb7616cad75dcfbd5f17ec3edbbc713e87",
+      "electrumScriptHash": "d3c5f5a00f062a57edded6edc16906699b68d829d3d100fa91265d5ec2322225"
+    },
+    {
+      "network": "regtest",
+      "redeemScript": "275374616b696e674172656e612f424c415a452f646973636f766572792f76322f726567746573747551",
+      "lockingScript": "a9142f1350dbc03025e9c653f7f07080eb9acd8be73687",
+      "electrumScriptHash": "2cb2e089818668e928a3aee64e8362d56815e00f0ae0fceda8567efc04e8c679"
+    }
+  ],
+  "carrierSatoshis": 1000,
+  "minerFeeSatoshis": 10000
+}

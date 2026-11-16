@@ -1,0 +1,945 @@
+{
+  "at": "2026-11-15T22:27:45.441Z",
+  "target": "https://staking-arena-blaze2026.github.io/staking-arena-blaze-site/",
+  "freshContext": true,
+  "walletConnected": false,
+  "storagePrepopulated": false,
+  "errors": [],
+  "reads": [
+    {
+      "network": "",
+      "reads": []
+    },
+    {
+      "network": "mainnet",
+      "reads": [
+        {
+          "method": "server.version",
+          "params": [
+            "Staking Arena",
+            "1.5.0"
+          ]
+        },
+        {
+          "method": "blockchain.block.header",
+          "params": [
+            0
+          ]
+        },
+        {
+          "method": "blockchain.block.header",
+          "params": [
+            792773
+          ]
+        },
+        {
+          "method": "blockchain.headers.subscribe",
+          "params": []
+        },
+        {
+          "method": "blockchain.block.header",
+          "params": [
+            977534
+          ]
+        },
+        {
+          "method": "blockchain.headers.subscribe",
+          "params": []
+        },
+        {
+          "method": "blockchain.block.header",
+          "params": [
+            977534
+          ]
+        },
+        {
+          "method": "server.version",
+          "params": [
+            "Staking Arena",
+            "1.5.0"
+          ]
+        },
+        {
+          "method": "blockchain.block.header",
+          "params": [
+            0
+          ]
+        },
+        {
+          "method": "blockchain.block.header",
+          "params": [
+            792773
+          ]
+        },
+        {
+          "method": "blockchain.headers.subscribe",
+          "params": []
+        },
+        {
+          "method": "blockchain.block.header",
+          "params": [
+            977534
+          ]
+        },
+        {
+          "method": "blockchain.headers.subscribe",
+          "params": []
+        },
+        {
+          "method": "blockchain.block.header",
+          "params": [
+            977534
+          ]
+        },
+        {
+          "method": "server.version",
+          "params": [
+            "Staking Arena",
+            "1.5.0"
+          ]
+        },
+        {
+          "method": "blockchain.block.header",
+          "params": [
+            0
+          ]
+        },
+        {
+          "method": "blockchain.block.header",
+          "params": [
+            792773
+          ]
+        },
+        {
+          "method": "blockchain.scripthash.get_history",
+          "params": [
+            "0a13081785a298b8b9dc427343ee7252e963361394f4b196aaad918e85315fb0"
+          ]
+        },
+        {
+          "method": "server.version",
+          "params": [
+            "Staking Arena",
+            "1.5.0"
+          ]
+        },
+        {
+          "method": "blockchain.block.header",
+          "params": [
+            0
+          ]
+        },
+        {
+          "method": "blockchain.block.header",
+          "params": [
+            792773
+          ]
+        },
+        {
+          "method": "blockchain.scripthash.get_history",
+          "params": [
+            "0a13081785a298b8b9dc427343ee7252e963361394f4b196aaad918e85315fb0"
+          ]
+        },
+        {
+          "method": "server.version",
+          "params": [
+            "Staking Arena",
+            "1.5.0"
+          ]
+        },
+        {
+          "method": "blockchain.block.header",
+          "params": [
+            0
+          ]
+        },
+        {
+          "method": "blockchain.block.header",
+          "params": [
+            792773
+          ]
+        },
+        {
+          "method": "blockchain.transaction.get",
+          "params": [
+            "3bdba97857b6e144bc2fe5243dd14ab4cdc40f1edde0058f48475719173b6fb2",
+            false
+          ]
+        },
+        {
+          "method": "server.version",
+          "params": [
+            "Staking Arena",
+            "1.5.0"
+          ]
+        },
+        {
+          "method": "blockchain.block.header",
+          "params": [
+            0
+          ]
+        },
+        {
+          "method": "blockchain.block.header",
+          "params": [
+            792773
+          ]
+        },
+        {
+          "method": "blockchain.transaction.get",
+          "params": [
+            "3bdba97857b6e144bc2fe5243dd14ab4cdc40f1edde0058f48475719173b6fb2",
+            false
+          ]
+        },
+        {
+          "method": "server.version",
+          "params": [
+            "Staking Arena",
+            "1.5.0"
+          ]
+        },
+        {
+          "method": "blockchain.block.header",
+          "params": [
+            0
+          ]
+        },
+        {
+          "method": "blockchain.block.header",
+          "params": [
+            792773
+          ]
+        },
+        {
+          "method": "blockchain.transaction.get",
+          "params": [
+            "c14b3170fd156ee0b5cdefba0241981407a481caa08d7169b2e07ea5caccb2e5",
+            false
+          ]
+        },
+        {
+          "method": "server.version",
+          "params": [
+            "Staking Arena",
+            "1.5.0"
+          ]
+        },
+        {
+          "method": "blockchain.block.header",
+          "params": [
+            0
+          ]
+        },
+        {
+          "method": "blockchain.block.header",
+          "params": [
+            792773
+          ]
+        },
+        {
+          "method": "blockchain.transaction.get",
+          "params": [
+            "3e3a6558f2c249ef9017d923557e1344f9891418fa07ca97ce85ed6ee7426e49",
+            false
+          ]
+        },
+        {
+          "method": "server.version",
+          "params": [
+            "Staking Arena",
+            "1.5.0"
+          ]
+        },
+        {
+          "method": "blockchain.block.header",
+          "params": [
+            0
+          ]
+        },
+        {
+          "method": "blockchain.block.header",
+          "params": [
+            792773
+          ]
+        },
+        {
+          "method": "blockchain.transaction.get",
+          "params": [
+            "3e3a6558f2c249ef9017d923557e1344f9891418fa07ca97ce85ed6ee7426e49",
+            false
+          ]
+        },
+        {
+          "method": "server.version",
+          "params": [
+            "Staking Arena",
+            "1.5.0"
+          ]
+        },
+        {
+          "method": "blockchain.block.header",
+          "params": [
+            0
+          ]
+        },
+        {
+          "method": "blockchain.block.header",
+          "params": [
+            792773
+          ]
+        },
+        {
+          "method": "blockchain.transaction.get",
+          "params": [
+            "cce5ab18ecef9c151b7a05913074f2783b89902a18abdd306d0e61ec0245e363",
+            false
+          ]
+        },
+        {
+          "method": "server.version",
+          "params": [
+            "Staking Arena",
+            "1.5.0"
+          ]
+        },
+        {
+          "method": "blockchain.block.header",
+          "params": [
+            0
+          ]
+        },
+        {
+          "method": "blockchain.block.header",
+          "params": [
+            792773
+          ]
+        },
+        {
+          "method": "blockchain.transaction.get",
+          "params": [
+            "cce5ab18ecef9c151b7a05913074f2783b89902a18abdd306d0e61ec0245e363",
+            false
+          ]
+        },
+        {
+          "method": "server.version",
+          "params": [
+            "Staking Arena",
+            "1.5.0"
+          ]
+        },
+        {
+          "method": "blockchain.block.header",
+          "params": [
+            0
+          ]
+        },
+        {
+          "method": "blockchain.block.header",
+          "params": [
+            792773
+          ]
+        },
+        {
+          "method": "blockchain.transaction.get",
+          "params": [
+            "a84744e6f5a97c30021fdf35647ef3fdb4121563884c23128ecedeacfa7c7f78",
+            false
+          ]
+        },
+        {
+          "method": "server.version",
+          "params": [
+            "Staking Arena",
+            "1.5.0"
+          ]
+        },
+        {
+          "method": "blockchain.block.header",
+          "params": [
+            0
+          ]
+        },
+        {
+          "method": "blockchain.block.header",
+          "params": [
+            792773
+          ]
+        },
+        {
+          "method": "blockchain.transaction.get",
+          "params": [
+            "a84744e6f5a97c30021fdf35647ef3fdb4121563884c23128ecedeacfa7c7f78",
+            false
+          ]
+        },
+        {
+          "method": "server.version",
+          "params": [
+            "Staking Arena",
+            "1.5.0"
+          ]
+        },
+        {
+          "method": "blockchain.block.header",
+          "params": [
+            0
+          ]
+        },
+        {
+          "method": "blockchain.block.header",
+          "params": [
+            792773
+          ]
+        },
+        {
+          "method": "blockchain.transaction.get",
+          "params": [
+            "6f70265217bd6db9bcee09e18755e78e0d50362eedede31f86022704aec17486",
+            false
+          ]
+        },
+        {
+          "method": "server.version",
+          "params": [
+            "Staking Arena",
+            "1.5.0"
+          ]
+        },
+        {
+          "method": "blockchain.block.header",
+          "params": [
+            0
+          ]
+        },
+        {
+          "method": "blockchain.block.header",
+          "params": [
+            792773
+          ]
+        },
+        {
+          "method": "blockchain.transaction.get",
+          "params": [
+            "6f70265217bd6db9bcee09e18755e78e0d50362eedede31f86022704aec17486",
+            false
+          ]
+        },
+        {
+          "method": "server.version",
+          "params": [
+            "Staking Arena",
+            "1.5.0"
+          ]
+        },
+        {
+          "method": "blockchain.block.header",
+          "params": [
+            0
+          ]
+        },
+        {
+          "method": "blockchain.block.header",
+          "params": [
+            792773
+          ]
+        },
+        {
+          "method": "blockchain.transaction.get",
+          "params": [
+            "000353a5585090568e08081bd530e140e64a077b5d83d77fbbe37f210de0b96c",
+            false
+          ]
+        },
+        {
+          "method": "server.version",
+          "params": [
+            "Staking Arena",
+            "1.5.0"
+          ]
+        },
+        {
+          "method": "blockchain.block.header",
+          "params": [
+            0
+          ]
+        },
+        {
+          "method": "blockchain.block.header",
+          "params": [
+            792773
+          ]
+        },
+        {
+          "method": "blockchain.transaction.get",
+          "params": [
+            "000353a5585090568e08081bd530e140e64a077b5d83d77fbbe37f210de0b96c",
+            false
+          ]
+        },
+        {
+          "method": "server.version",
+          "params": [
+            "Staking Arena",
+            "1.5.0"
+          ]
+        },
+        {
+          "method": "blockchain.block.header",
+          "params": [
+            0
+          ]
+        },
+        {
+          "method": "blockchain.block.header",
+          "params": [
+            792773
+          ]
+        },
+        {
+          "method": "blockchain.transaction.get",
+          "params": [
+            "0005f8fc60c91c74fcd0428ad2f910c91137d040f93380e79616a8e69a0a95dd",
+            false
+          ]
+        },
+        {
+          "method": "server.version",
+          "params": [
+            "Staking Arena",
+            "1.5.0"
+          ]
+        },
+        {
+          "method": "blockchain.block.header",
+          "params": [
+            0
+          ]
+        },
+        {
+          "method": "blockchain.block.header",
+          "params": [
+            792773
+          ]
+        },
+        {
+          "method": "blockchain.transaction.get",
+          "params": [
+            "0005f8fc60c91c74fcd0428ad2f910c91137d040f93380e79616a8e69a0a95dd",
+            false
+          ]
+        },
+        {
+          "method": "server.version",
+          "params": [
+            "Staking Arena",
+            "1.5.0"
+          ]
+        },
+        {
+          "method": "blockchain.block.header",
+          "params": [
+            0
+          ]
+        },
+        {
+          "method": "blockchain.block.header",
+          "params": [
+            792773
+          ]
+        },
+        {
+          "method": "blockchain.transaction.get",
+          "params": [
+            "00082992d44017612514cff216e843bd22e3cdffad2fba943e28075455c9c502",
+            false
+          ]
+        },
+        {
+          "method": "server.version",
+          "params": [
+            "Staking Arena",
+            "1.5.0"
+          ]
+        },
+        {
+          "method": "blockchain.block.header",
+          "params": [
+            0
+          ]
+        },
+        {
+          "method": "blockchain.block.header",
+          "params": [
+            792773
+          ]
+        },
+        {
+          "method": "blockchain.transaction.get",
+          "params": [
+            "00082992d44017612514cff216e843bd22e3cdffad2fba943e28075455c9c502",
+            false
+          ]
+        },
+        {
+          "method": "server.version",
+          "params": [
+            "Staking Arena",
+            "1.5.0"
+          ]
+        },
+        {
+          "method": "blockchain.block.header",
+          "params": [
+            0
+          ]
+        },
+        {
+          "method": "blockchain.block.header",
+          "params": [
+            792773
+          ]
+        },
+        {
+          "method": "blockchain.transaction.get",
+          "params": [
+            "0008edef5d232e7a2ea00e85848332f923ef964e639a896d020f884df8136f68",
+            false
+          ]
+        },
+        {
+          "method": "server.version",
+          "params": [
+            "Staking Arena",
+            "1.5.0"
+          ]
+        },
+        {
+          "method": "blockchain.block.header",
+          "params": [
+            0
+          ]
+        },
+        {
+          "method": "blockchain.block.header",
+          "params": [
+            792773
+          ]
+        },
+        {
+          "method": "blockchain.transaction.get",
+          "params": [
+            "0008edef5d232e7a2ea00e85848332f923ef964e639a896d020f884df8136f68",
+            false
+          ]
+        },
+        {
+          "method": "server.version",
+          "params": [
+            "Staking Arena",
+            "1.5.0"
+          ]
+        },
+        {
+          "method": "blockchain.block.header",
+          "params": [
+            0
+          ]
+        },
+        {
+          "method": "blockchain.block.header",
+          "params": [
+            792773
+          ]
+        },
+        {
+          "method": "blockchain.transaction.get",
+          "params": [
+            "0017f7397d5677fee66b54bd5dff06f8c138114578820c75e3e1bd2812045ec2",
+            false
+          ]
+        },
+        {
+          "method": "server.version",
+          "params": [
+            "Staking Arena",
+            "1.5.0"
+          ]
+        },
+        {
+          "method": "blockchain.block.header",
+          "params": [
+            0
+          ]
+        },
+        {
+          "method": "blockchain.block.header",
+          "params": [
+            792773
+          ]
+        },
+        {
+          "method": "blockchain.transaction.get",
+          "params": [
+            "0017f7397d5677fee66b54bd5dff06f8c138114578820c75e3e1bd2812045ec2",
+            false
+          ]
+        },
+        {
+          "method": "server.version",
+          "params": [
+            "Staking Arena",
+            "1.5.0"
+          ]
+        },
+        {
+          "method": "blockchain.block.header",
+          "params": [
+            0
+          ]
+        },
+        {
+          "method": "blockchain.block.header",
+          "params": [
+            792773
+          ]
+        },
+        {
+          "method": "blockchain.transaction.get",
+          "params": [
+            "001969cb8e56b2a56a6a46873f3a838f726ca08fa49fd3091c840930b37d9293",
+            false
+          ]
+        },
+        {
+          "method": "server.version",
+          "params": [
+            "Staking Arena",
+            "1.5.0"
+          ]
+        },
+        {
+          "method": "blockchain.block.header",
+          "params": [
+            0
+          ]
+        },
+        {
+          "method": "blockchain.block.header",
+          "params": [
+            792773
+          ]
+        },
+        {
+          "method": "blockchain.transaction.get",
+          "params": [
+            "001969cb8e56b2a56a6a46873f3a838f726ca08fa49fd3091c840930b37d9293",
+            false
+          ]
+        },
+        {
+          "method": "server.version",
+          "params": [
+            "Staking Arena",
+            "1.5.0"
+          ]
+        },
+        {
+          "method": "blockchain.block.header",
+          "params": [
+            0
+          ]
+        },
+        {
+          "method": "blockchain.block.header",
+          "params": [
+            792773
+          ]
+        },
+        {
+          "method": "blockchain.transaction.get",
+          "params": [
+            "001b2f9e7bce401b7ea1256771159d2a7024595918e964d7467f4c619e6968d3",
+            false
+          ]
+        },
+        {
+          "method": "server.version",
+          "params": [
+            "Staking Arena",
+            "1.5.0"
+          ]
+        },
+        {
+          "method": "blockchain.block.header",
+          "params": [
+            0
+          ]
+        },
+        {
+          "method": "blockchain.block.header",
+          "params": [
+            792773
+          ]
+        },
+        {
+          "method": "blockchain.transaction.get",
+          "params": [
+            "001b2f9e7bce401b7ea1256771159d2a7024595918e964d7467f4c619e6968d3",
+            false
+          ]
+        },
+        {
+          "method": "server.version",
+          "params": [
+            "Staking Arena",
+            "1.5.0"
+          ]
+        },
+        {
+          "method": "blockchain.block.header",
+          "params": [
+            0
+          ]
+        },
+        {
+          "method": "blockchain.block.header",
+          "params": [
+            792773
+          ]
+        },
+        {
+          "method": "blockchain.transaction.get",
+          "params": [
+            "002882a2c6c0cafb61fb70e7704f48fbab7aa40bce0a4cf4e1eb00cbd9496d88",
+            false
+          ]
+        },
+        {
+          "method": "server.version",
+          "params": [
+            "Staking Arena",
+            "1.5.0"
+          ]
+        },
+        {
+          "method": "blockchain.block.header",
+          "params": [
+            0
+          ]
+        },
+        {
+          "method": "blockchain.block.header",
+          "params": [
+            792773
+          ]
+        },
+        {
+          "method": "blockchain.transaction.get",
+          "params": [
+            "002882a2c6c0cafb61fb70e7704f48fbab7aa40bce0a4cf4e1eb00cbd9496d88",
+            false
+          ]
+        },
+        {
+          "method": "server.version",
+          "params": [
+            "Staking Arena",
+            "1.5.0"
+          ]
+        },
+        {
+          "method": "blockchain.block.header",
+          "params": [
+            0
+          ]
+        },
+        {
+          "method": "blockchain.block.header",
+          "params": [
+            792773
+          ]
+        },
+        {
+          "method": "blockchain.transaction.get",
+          "params": [
+            "002cc49c0f656619dc83a613e44191c7adeb60df08cb356d0e38a7877bf18f6c",
+            false
+          ]
+        },
+        {
+          "method": "server.version",
+          "params": [
+            "Staking Arena",
+            "1.5.0"
+          ]
+        },
+        {
+          "method": "blockchain.block.header",
+          "params": [
+            0
+          ]
+        },
+        {
+          "method": "blockchain.block.header",
+          "params": [
+            792773
+          ]
+        },
+        {
+          "method": "blockchain.transaction.get",
+          "params": [
+            "002cc49c0f656619dc83a613e44191c7adeb60df08cb356d0e38a7877bf18f6c",
+            false
+          ]
+        },
+        {
+          "method": "server.version",
+          "params": [
+            "Staking Arena",
+            "1.5.0"
+          ]
+        },
+        {
+          "method": "blockchain.block.header",
+          "params": [
+            0
+          ]
+        },
+        {
+          "method": "blockchain.block.header",
+          "params": [
+            792773
+          ]
+        },
+        {
+          "method": "blockchain.transaction.get",
+          "params": [
+            "00314ff015b5bad65bb43eee91ed3e865e416030bbc306a0d9c7974c58d627b1",
+            false
+          ]
+        },
+        {
+          "method": "server.version",
+          "params": [
+            "Staking Arena",
+            "1.5.0"
+          ]
+        }
+      ]
+    }
+  ],
+  "runs": [
+    {
+      "run": 0,
+      "listError": "TimeoutError: locator.waitFor: Timeout 60000ms exceeded.\nCall log:\n\u001b[2m  - waiting for locator('.v3-vault-card').filter({ hasText: 'c14b3170fd156ee0' }) to be visible\u001b[22m\n",
+      "elapsedMs": 61708.5061
+    }
+  ],
+  "resources": [],
+  "storage": [
+    "staking-arena-v3-configs-mainnet-snapshots"
+  ]
+}

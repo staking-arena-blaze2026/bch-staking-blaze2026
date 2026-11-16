@@ -1,5 +1,5 @@
 {
-  "at": "2026-11-15T14:34:37.155Z",
+  "at": "2026-11-15T22:51:54.332Z",
   "node": "/Bitcoin Cash Node:29.2.0/",
   "transport": "local Electrum protocol facade over isolated BCHN; not public chipnet",
   "distinctAliceBobKeys": true,

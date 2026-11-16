@@ -1,4 +1,5 @@
-import {addAnnouncement,announcementScript,DISCOVERY_SCRIPT,DISCOVERY_CARRIER} from './discovery.js';
+import {v3Network} from './network.js';
+import {addAnnouncement,announcementScript,discoveryScripts,DISCOVERY_CARRIER} from './discovery.js';
 import {MAX_FUNDING_INPUTS} from '../wallet-funding-policy.js';
 import {ZERO,FEE,CARRIER,assetId,assetBytes,validateParameters,validateTerms,decision,initialState,rewardRemaining,advance,allocationSequence,V3_STATE_SIZE,type Asset,type Parameters,type Terms} from './model.js';
 export * from './model.js';
@@ -111,7 +112,7 @@ export function validateGenesis(p:Parameters,raw:string,inputs:SpendableUtxo[],p
  for(const u of inputs)if(u.token)totals.set(u.token.category,(totals.get(u.token.category)??0n)+u.token.amount);
  const scripts=new Set(inputs.map(u=>u.lockingBytecode).filter(s=>/^76a914[0-9a-f]{40}88ac$/.test(s??'')));
  for(const [i,o]of outputs.entries()){
-  if(p.discovery===1&&outputs[3]?.lockingBytecode===DISCOVERY_SCRIPT&&(i===3||i===4)){if(o.token||o.lockingBytecode!==(i===3?DISCOVERY_SCRIPT:announcementScript(p,'direct'))||o.satoshis!==(i===3?DISCOVERY_CARRIER:0n))throw Error('Invalid discovery output');continue;}
+  if(p.discovery===1&&discoveryScripts(v3Network(provider)).includes(outputs[3]?.lockingBytecode??'')&&(i===3||i===4)){if(o.token||o.lockingBytecode!==(i===3?outputs[3]!.lockingBytecode:announcementScript(p,'direct'))||o.satoshis!==(i===3?DISCOVERY_CARRIER:0n))throw Error('Invalid discovery output');continue;}
   if(i>=3&&(!scripts.has(o.lockingBytecode)||o.satoshis<CARRIER||o.token?.nft))throw Error('Invalid genesis wallet change');
   if(i===0)continue;
   if(o.token){if(o.token.nft||o.token.category===category)throw Error('Unexpected genesis token mint');totals.set(o.token.category,(totals.get(o.token.category)??0n)-o.token.amount);}

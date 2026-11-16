@@ -1,0 +1,17 @@
+
+> staking-arena-web@0.3.0 test
+> vitest run --testTimeout=15000
+
+
+ RUN  v5.1.0 /home/omarchy/bch-staking-blaze2026/frontend
+
+
+ Test Files  29 passed (29)
+      Tests  146 passed (146)
+   Start at  09:09:38
+   Duration  155.74s (environment 45%, tests 22%, import 21%, setup 9%, transform 3%)
+
+Environment  jsdom was created 29 times · 63.80s total, 45% of tracked time
+             create it once per worker with pool: 'vmThreads' (keeps per-file isolation) or isolate: false (shares it across files)
+             learn more: https://vitest.dev/guide/improving-performance#test-environments
+

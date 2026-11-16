@@ -60,6 +60,10 @@ export class ElectrumCore implements NetworkProvider {
   unresolvedChainPeers=new Set<string>();
   persistChainConflict?:(peers:string[])=>Promise<void>;
   private rawCache?: Map<string,string>;
+  // Only immutable, txid-validated bytes persist. Histories, proofs, UTXOs and tips
+  // are always live. Peer scope preserves independent provider observations.
+  private immutableRaw=new Map<string,string>();
+  private immutableBytes=0;
   private queue: Promise<unknown> = Promise.resolve();
   session<T>(work: () => Promise<T>, endpoint?: string): Promise<T> {
     const result = this.queue.then(() => this.runSession(work,endpoint));
@@ -131,8 +135,8 @@ export class ElectrumCore implements NetworkProvider {
   }
   async medianTime(height: number, expectedTipHash?: string) {
     const headers: Header[] = [];
-    for (let n = Math.max(0, height-10); n <= height; n++) {
-      const h = await this.header(n);
+    const fetched=await Promise.all(Array.from({length:Math.min(11,height+1)},(_,i)=>this.header(Math.max(0,height-10)+i)));
+    for (const h of fetched) {
       if (headers.length && h.parent !== headers.at(-1)!.hash) throw Error('Inconsistent MTP headers');
       headers.push(h);
     }
@@ -150,9 +154,14 @@ export class ElectrumCore implements NetworkProvider {
     if (!isHash(txid)) throw Error('Invalid transaction ID');
     const cached = this.rawCache?.get(txid); if (cached) return cached;
     if (this.rawCache && this.rawCache.size >= this.maxTransactions) throw Error('Raw transaction limit exceeded');
-    const raw = await this.request('blockchain.transaction.get', txid, false);
+    const identity=this.network+':'+this.endpoint+':'+txid;
+    const raw = this.immutableRaw.get(identity) ?? await this.request('blockchain.transaction.get', txid, false);
     if (typeof raw !== 'string' || raw.length/2 + this.rawBytes > this.maxRawBytes) throw Error('Raw transaction byte limit exceeded; snapshot withheld');
     decodeRawTransaction(raw, txid);
+    if(!this.immutableRaw.has(identity)&&raw.length/2<=this.maxRawBytes){
+      while(this.immutableRaw.size>=512||this.immutableBytes+raw.length/2>this.maxRawBytes){const first=this.immutableRaw.keys().next().value;if(first===undefined)break;this.immutableBytes-=this.immutableRaw.get(first)!.length/2;this.immutableRaw.delete(first);}
+      this.immutableRaw.set(identity,raw);this.immutableBytes+=raw.length/2;
+    }
     if(this.rawCache) {if(!this.rawCache.has(txid)&&this.rawCache.size>=this.maxTransactions)throw Error('Raw transaction limit exceeded');this.rawBytes+=raw.length/2;this.rawCache.set(txid,raw);}
     return raw;
   }

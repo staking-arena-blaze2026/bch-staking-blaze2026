@@ -1,5 +1,5 @@
 import {ProviderVerificationError} from '../verified-providers.js';
-import {addAnnouncement,announcementScript,DISCOVERY_SCRIPT,DISCOVERY_CARRIER} from './discovery.js';
+import {addAnnouncement,announcementScript,discoveryScripts,DISCOVERY_CARRIER} from './discovery.js';
 import {selectAtomicFunding} from './atomic-funding.js';
 import {fundingReport,fundingOutpoints,reservesFunding,type FundingReport} from './funding-report.js';
 import {FUNDING_BYTE_BUDGET,FundingSelectionError} from '../wallet-funding-policy.js';
@@ -47,7 +47,7 @@ export function validateFundingPlan(op:Operation,provider:NetworkProvider){
  if(!op.plan||BigInt(op.plan.fee)!==FEE)throw Error('Unexpected v3 wallet fee');
  if(op.step!=='funding'&&!(op.kind==='create'&&op.creationMode==='chained'&&op.step==='action'))return;
  const discovery=op.kind==='create'&&op.parameters.discovery===1;
- if(discovery){const outputs=op.plan.request.transaction.outputs;for(const i of [2,3]){const output=outputs[i];if(!output||output.token||output.valueSatoshis!==(i===2?DISCOVERY_CARRIER:0n)||binToHex(output.lockingBytecode)!==(i===2?DISCOVERY_SCRIPT:announcementScript(op.parameters,'parent')))throw Error('Wallet preparation changes public discovery outputs');}}
+ if(discovery){const outputs=op.plan.request.transaction.outputs;for(const i of [2,3]){const output=outputs[i];if(!output||output.token||output.valueSatoshis!==(i===2?DISCOVERY_CARRIER:0n)||!(i===2?discoveryScripts(v3Network(provider)).includes(binToHex(output.lockingBytecode)):binToHex(output.lockingBytecode)===announcementScript(op.parameters,'parent')))throw Error('Wallet preparation changes public discovery outputs');}}
  if(op.creationMode==='chained'&&op.kind==='create'){
   const asset=op.parameters.rewardAsset,category=asset.kind==='token'?asset.category:undefined,prep=chainedPreparation(op.parameters,hexToBin(op.owner.publicKey),provider);
   let inputTokens=0n,outputTokens=0n;const tx=op.plan.request.transaction as Transaction,owner=walletScript(op.owner.publicKey);

@@ -1,0 +1,87 @@
+vite v8.3.7 building client environment for production...
+transforming...
+✓ 656 modules transformed.
+rendering chunks...
+computing gzip size...
+.static-test/v3/assets/indexer-D5V_VY42.js                     0.05 kB
+.static-test/v3/assets/keeper-BRelbEv1.js                      0.58 kB
+.static-test/v3/assets/indexer.bootstrap.worker-q27X5Kja.js    0.62 kB
+.static-test/v3/index.html                                     1.54 kB │ gzip:   0.79 kB
+.static-test/v3/assets/model-_T7ZtZtD.js                       1.68 kB
+.static-test/v3/assets/wallet-DrHmabpS.js                     12.22 kB
+.static-test/v3/assets/wallet.worker-poehec0M.js              34.50 kB
+.static-test/v3/assets/indexer-DDTOagIm.js                    45.90 kB
+.static-test/v3/assets/electrum-wallet--SEFD0fl.js           299.82 kB
+.static-test/v3/assets/registry-R-0oSpMz.js                  378.30 kB
+.static-test/v3/assets/arena.worker-BCd7hCrt.js              690.81 kB
+.static-test/v3/assets/v3.worker-B9eo_ThY.js                 811.43 kB
+.static-test/v3/assets/app-entry-B8_jMg1H.css                 12.88 kB │ gzip:   3.43 kB
+.static-test/v3/assets/GeneralizedVaults-C6a0-gF_.js           0.12 kB │ gzip:   0.12 kB
+.static-test/v3/assets/rolldown-runtime-WkwZ5CU-.js            0.59 kB │ gzip:   0.36 kB
+.static-test/v3/assets/preload-helper-DclECHGd.js              1.63 kB │ gzip:   0.83 kB
+.static-test/v3/assets/publicIndexTransport-DNoH_kqY.js        1.84 kB │ gzip:   0.94 kB
+.static-test/v3/assets/GeneralizedVaults-CDaA4hJd.js           2.34 kB │ gzip:   1.15 kB
+.static-test/v3/assets/index-CXFUvBu2.js                       4.84 kB │ gzip:   2.30 kB
+.static-test/v3/assets/v3Client-Yy_ns_6d.js                    5.96 kB │ gzip:   2.74 kB
+.static-test/v3/assets/GeneralizedAssets-BUGKlll0.js           9.14 kB │ gzip:   3.35 kB
+.static-test/v3/assets/createAssets-D_bVmer-.js              139.23 kB │ gzip:  41.80 kB
+.static-test/v3/assets/V3Arena-BBQEBP55.js                   397.73 kB │ gzip: 180.82 kB
+.static-test/v3/assets/app-entry-D2BJwQ3V.js                 792.48 kB │ gzip: 309.80 kB
+
+[plugin builtin:vite-reporter] 
+(!) Some chunks are larger than 500 kB after minification. Consider:
+- Using dynamic import() to code-split the application
+- Use build.rolldownOptions.output.codeSplitting to improve chunking: https://rolldown.rs/reference/OutputOptions.codeSplitting
+- Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.
+✓ built in 9.35s
+[33m[PLUGIN_TIMINGS] [0mJavaScript callbacks ran for 8.6s of this 9.2s build (93%).
+The slowest callbacks, timed inside each callback (the wait before a callback starts is excluded, the time it awaits is included):
+  - plugin vite:worker load (88%, 8.2s, 1 call)
+Additional callback time came from the callbacks below and from callbacks under 1s.
+1 callback is listed without a time. Its calls overlapped, so the time inside one call includes work from other calls. To find its cost, profile the build with `node --cpu-prof`:
+  - plugin vite:worker-import-meta-url transform (2 calls)
+See https://rolldown.rs/reference/InputOptions.checks#bundlertimings for more details.
+
+Browser diagnostics: /home/omarchy/bch-staking-blaze2026/frontend/browser-diagnostics/2026-11-16T08-09-13.030Z/
+[WebServer] (node:12449) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+[WebServer] (Use `node --trace-warnings ...` to show where the warning was created)
+
+Running 7 tests using 1 worker
+
+(node:12501) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  pw:browser <launching> /home/omarchy/.cache/ms-playwright/chromium_headless_shell-1254/chrome-headless-shell-linux64/chrome-headless-shell --disable-field-trial-config --disable-background-networking --disable-background-timer-throttling --disable-backgrounding-occluded-windows --disable-back-forward-cache --disable-breakpad --disable-component-extensions-with-background-pages --disable-component-update --no-default-browser-check --disable-default-apps --disable-dev-shm-usage --disable-edgeupdater --disable-extensions --disable-features=AvoidUnnecessaryBeforeUnloadCheckSync,DestroyProfileOnBrowserClose,HttpsUpgrades,HttpsFirstBalancedModeAutoEnable,LensOverlay,MediaRouter,PaintHolding,ThirdPartyStoragePartitioning,AvoidCorsURLLoaderRestartOnRedirect,TcpPortRandomizationWin,OptimizationHints,NetworkTimeServiceQuerying,AimEnabled,PreconnectToSearch,msForceBrowserSignIn,msEdgeUpdateLaunchServicesPreferredVersion --enable-features=CDPScreenshotNewSurface,SkipListAccountsWithoutGaiaCookies --allow-pre-commit-input --disable-hang-monitor --disable-ipc-flooding-protection --disable-popup-blocking --disable-prompt-on-repost --disable-renderer-backgrounding --disable-updater-scheduler --force-color-profile=srgb --metrics-recording-only --no-first-run --password-store=basic --use-mock-keychain --no-service-autorun --disable-search-engine-choice-screen --unsafely-disable-devtools-self-xss-warnings --enable-unsafe-swiftshader --edge-skip-compat-layer-relaunch --disable-stack-profiler --disable-infobars --disable-sync --do-not-de-elevate --headless --hide-scrollbars --mute-audio --blink-settings=primaryHoverType=2,availableHoverTypes=2,primaryPointerType=4,availablePointerTypes=4 --no-sandbox --disable-gpu --ignore-certificate-errors --user-data-dir=/tmp/playwright_chromiumdev_profile-qbRu9Y --remote-debugging-pipe --no-startup-window +0ms
+  pw:browser <launched> pid=12577 +281ms
+  pw:browser [pid=12577][err] [1116/090937.980208:WARNING:sandbox/policy/linux/sandbox_linux.cc:405] InitializeSandbox() called with multiple threads in process gpu-process. +3s
+  pw:browser [pid=12577][err] [1116/090938.088050:WARNING:components/dbus/xdg/portal.cc:162] Failed to register with org.freedesktop.host.portal.Registry +136ms
+  pw:browser [pid=12577][err] [1116/090940.049075:INFO:CONSOLE:10] "[Arena wallet] Wallet worker started", source: http://127.0.0.1:4176/v3/assets/app-entry-D2BJwQ3V.js (10) +2s
+  pw:browser [pid=12577][err] [1116/090948.230827:INFO:CONSOLE:10] "[Arena wallet] Wallet worker started", source: http://127.0.0.1:4176/v3/assets/app-entry-D2BJwQ3V.js (10) +8s
+  ✓  1 tests/v3/arena.spec.ts:23:1 › real browser worker verifies wallet-funded claims over WSS and requires a connected caller wallet (17.6s)
+  pw:browser [pid=12577][err] [1116/090956.833733:INFO:CONSOLE:10] "[Arena wallet] Wallet worker started", source: http://127.0.0.1:4176/v3/assets/app-entry-D2BJwQ3V.js (10) +9s
+  ✓  2 tests/v3/arena.spec.ts:35:1 › provider failure disables v3 actions and a reorganization restores the queue and allocation state (16.2s)
+  pw:browser [pid=12577][err] [1116/091013.485153:INFO:CONSOLE:10] "[Arena wallet] Wallet worker started", source: http://127.0.0.1:4176/v3/assets/app-entry-D2BJwQ3V.js (10) +17s
+  pw:browser [pid=12577][err] [1116/091015.239977:INFO:CONSOLE:10] "[Arena wallet] Wallet worker started", source: http://127.0.0.1:4176/v3/assets/app-entry-D2BJwQ3V.js (10) +2s
+  pw:browser [pid=12577][err] [1116/091037.334767:INFO:CONSOLE:10] "[Arena wallet] Wallet worker started", source: http://127.0.0.1:4176/v3/assets/app-entry-D2BJwQ3V.js (10) +22s
+  ✓  3 tests/v3/arena.spec.ts:43:1 › direct genesis journal survives browser reload and automatically confirms its pending vault (27.7s)
+  pw:browser [pid=12577][err] [1116/091040.950073:INFO:CONSOLE:10] "[Arena wallet] Wallet worker started", source: http://127.0.0.1:4176/v3/assets/app-entry-D2BJwQ3V.js (10) +4s
+  pw:browser [pid=12577][err] [1116/091048.338055:INFO:CONSOLE:10] "[Arena wallet] Wallet worker started", source: http://127.0.0.1:4176/v3/assets/app-entry-D2BJwQ3V.js (10) +7s
+  ✓  4 tests/v3/arena.spec.ts:62:1 › tabs preserve form values, verified cards open vault routes, and desktop/mobile layouts follow task order (10.6s)
+  pw:browser [pid=12577][err] [1116/091051.812141:INFO:CONSOLE:10] "[Arena wallet] Wallet worker started", source: http://127.0.0.1:4176/v3/assets/app-entry-D2BJwQ3V.js (10) +3s
+  pw:browser [pid=12577][err] [1116/091057.203921:INFO:CONSOLE:10] "[Arena wallet] Wallet worker started", source: http://127.0.0.1:4176/v3/assets/app-entry-D2BJwQ3V.js (10) +5s
+  pw:browser [pid=12577][err] [1116/091101.919371:INFO:CONSOLE:10] "[Arena wallet] Wallet worker started", source: http://127.0.0.1:4176/v3/assets/app-entry-D2BJwQ3V.js (10) +5s
+  pw:browser [pid=12577][err] [1116/091104.250810:INFO:CONSOLE:10] "[Arena wallet] Wallet worker started", source: http://127.0.0.1:4176/v3/assets/app-entry-D2BJwQ3V.js (10) +2s
+  pw:browser [pid=12577][err] [1116/091109.966085:INFO:CONSOLE:10] "[Arena wallet] Wallet worker started", source: http://127.0.0.1:4176/v3/assets/app-entry-D2BJwQ3V.js (10) +6s
+  pw:browser [pid=12577][err] [1116/091114.924119:INFO:CONSOLE:10] "[Arena wallet] Wallet worker started", source: http://127.0.0.1:4176/v3/assets/app-entry-D2BJwQ3V.js (10) +5s
+  ✓  5 tests/v3/arena.spec.ts:78:1 › fresh independent profiles automatically discover V3 and Atomic V4 announcements without wallet connection (25.4s)
+  pw:browser [pid=12577][err] [1116/091117.137615:INFO:CONSOLE:10] "[Arena wallet] Wallet worker started", source: http://127.0.0.1:4176/v3/assets/app-entry-D2BJwQ3V.js (10) +2s
+  ✓  6 tests/v3/arena.spec.ts:107:1 › a thousand indexed candidates render bounded pages without a visitor history scan; malformed rows cannot authorize actions (4.1s)
+  pw:browser [pid=12577][err] [1116/091121.780778:INFO:CONSOLE:10] "[Arena wallet] Wallet worker started", source: http://127.0.0.1:4176/v3/assets/app-entry-D2BJwQ3V.js (10) +5s
+  pw:browser [pid=12577][err] [1116/091122.054130:INFO:CONSOLE:10] "[Arena wallet] Wallet worker started", source: http://127.0.0.1:4176/v3/assets/app-entry-D2BJwQ3V.js (10) +282ms
+  ✓  7 tests/v3/arena.spec.ts:118:1 › simultaneous fresh visitors load the same public index without wallet identity or discovery-history reads (3.7s)
+  pw:browser [pid=12577] <gracefully close start> +2s
+  pw:browser [pid=12577] <process did exit: exitCode=0, signal=null> +205ms
+  pw:browser [pid=12577] starting temporary directories cleanup +0ms
+  pw:browser [pid=12577] finished temporary directories cleanup +19ms
+  pw:browser [pid=12577] <gracefully close end> +0ms
+
+  7 passed (2.1m)

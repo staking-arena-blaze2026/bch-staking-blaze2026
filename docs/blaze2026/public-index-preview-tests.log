@@ -1,0 +1,13 @@
+
+> staking-arena-web@0.3.0 test
+> vitest run tests/publicIndexPreview.test.ts --testTimeout=15000
+
+
+ RUN  v5.1.0 /home/omarchy/bch-staking-blaze2026/frontend
+
+
+ Test Files  1 passed (1)
+      Tests  2 passed (2)
+   Start at  09:08:09
+   Duration  2.41s (environment 64%, setup 17%, transform 11%, tests 7%, import 1%)
+

@@ -1,0 +1,48 @@
+
+> bch-staking@0.3.0 blaze:build
+> BLAZE_PAGES_BASE=/staking-arena-blaze-site/ node frontend/scripts/build-pages.mjs
+
+vite v8.3.7 building client environment for production...
+transforming...
+✓ 656 modules transformed.
+rendering chunks...
+computing gzip size...
+.pages-production/assets/indexer-D5V_VY42.js                     0.05 kB
+.pages-production/assets/keeper-BRelbEv1.js                      0.58 kB
+.pages-production/assets/indexer.bootstrap.worker-q27X5Kja.js    0.62 kB
+.pages-production/index.html                                     1.61 kB │ gzip:   0.81 kB
+.pages-production/assets/model-_T7ZtZtD.js                       1.68 kB
+.pages-production/assets/wallet-DrHmabpS.js                     12.22 kB
+.pages-production/assets/wallet.worker-poehec0M.js              34.50 kB
+.pages-production/assets/indexer-DDTOagIm.js                    45.90 kB
+.pages-production/assets/electrum-wallet--SEFD0fl.js           299.82 kB
+.pages-production/assets/registry-R-0oSpMz.js                  378.30 kB
+.pages-production/assets/arena.worker-BCd7hCrt.js              690.81 kB
+.pages-production/assets/v3.worker-0m0jY7h1.js                 814.10 kB
+.pages-production/assets/app-entry-B8_jMg1H.css                 12.88 kB │ gzip:   3.43 kB
+.pages-production/assets/GeneralizedVaults-CBEyqBvj.js           0.12 kB │ gzip:   0.12 kB
+.pages-production/assets/rolldown-runtime-WkwZ5CU-.js            0.59 kB │ gzip:   0.36 kB
+.pages-production/assets/preload-helper-CgO_7G-2.js              1.64 kB │ gzip:   0.84 kB
+.pages-production/assets/publicIndexTransport-DNoH_kqY.js        1.84 kB │ gzip:   0.94 kB
+.pages-production/assets/GeneralizedVaults-BducKKZW.js           2.34 kB │ gzip:   1.15 kB
+.pages-production/assets/index-D-NoMMJZ.js                       4.86 kB │ gzip:   2.30 kB
+.pages-production/assets/v3Client-a9rnXbL6.js                    7.74 kB │ gzip:   3.18 kB
+.pages-production/assets/GeneralizedAssets-CQP7KgSz.js           9.14 kB │ gzip:   3.35 kB
+.pages-production/assets/createAssets-CIDAXRvV.js              139.22 kB │ gzip:  41.79 kB
+.pages-production/assets/V3Arena-Dzj9JBV-.js                   397.73 kB │ gzip: 180.82 kB
+.pages-production/assets/app-entry-C5y-GCf5.js                 793.37 kB │ gzip: 310.04 kB
+
+[plugin builtin:vite-reporter] 
+(!) Some chunks are larger than 500 kB after minification. Consider:
+- Using dynamic import() to code-split the application
+- Use build.rolldownOptions.output.codeSplitting to improve chunking: https://rolldown.rs/reference/OutputOptions.codeSplitting
+- Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.
+✓ built in 9.22s
+[33m[PLUGIN_TIMINGS] [0mJavaScript callbacks ran for 7.7s of this 9.2s build (84%).
+The slowest callbacks, timed inside each callback (the wait before a callback starts is excluded, the time it awaits is included):
+  - plugin vite:worker load (69%, 6.4s, 1 call)
+Additional callback time came from the callbacks below and from callbacks under 1s.
+1 callback is listed without a time. Its calls overlapped, so the time inside one call includes work from other calls. To find its cost, profile the build with `node --cpu-prof`:
+  - plugin vite:worker-import-meta-url transform (2 calls)
+See https://rolldown.rs/reference/InputOptions.checks#bundlertimings for more details.
+

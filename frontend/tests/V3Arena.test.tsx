@@ -6,9 +6,10 @@ import {v3Call} from '../src/v3Client';
 import {Buffer} from '../../src/bytes';
 import {initialState,advance,type Parameters} from '../../src/v3/model';
 import {offer} from '../../src/registry';
-vi.mock('../src/v3Client',()=>({v3Call:vi.fn(async()=>[])}));
+vi.mock('../src/v3Client',()=>({v3Call:vi.fn(async()=>[]),verifyMarketplace:vi.fn(async(config:unknown)=>v3Call({operation:'sync',config})),cancelMarketplaceReads:vi.fn()}));
 const p:Parameters={version:3,stakingAsset:{kind:'bch'},rewardAsset:{kind:'bch'},epoch:1800000000,periodSeconds:3600,periods:4,cap:2000n},config={...p,genesis:'ab'.repeat(32)};
 const wallet={publicKey:()=>'02'+'11'.repeat(32),execute:vi.fn(),v3:vi.fn()};
+function stubCatalog(){vi.stubGlobal('fetch',vi.fn(async()=>new Response(JSON.stringify({schema:1,network:'mainnet',vaults:[{config,announcement:config.genesis,height:1,status:'observed-confirmed'}],pages:[],total:1},(_,v)=>typeof v==='bigint'?String(v):v))));}
 function stub(phase='ready'){const state=advance(initialState(p),0,0,offer(Buffer.from('02'+'11'.repeat(32),'hex'),3000,513,3000,2));vi.mocked(v3Call).mockImplementation(async intent=>{
  if(intent.operation==='sync')return {snapshot:{config,instance:{parameters:p,state},clock:{mtp:p.epoch+7201},pending:[],allocations:[]},next:{phase,available:4000n,reason:'Top offer exceeds available buffer'},required:10000n,minerFee:10000n,carriers:0n};
  if(intent.operation==='claim')return {id:'cd'.repeat(32),status:'pending'};return [];
@@ -136,13 +137,13 @@ it('switches tabs without losing creation inputs and follows browser history has
  expect(screen.getByLabelText('Interval (seconds)')).toHaveValue('7200');expect(screen.getByRole('link',{name:'Create a Vault'})).toHaveAttribute('aria-current','page');
 });
 it('verifies shared configurations before showing figures and links to their dedicated page',async()=>{
- stub();window.location.hash='/v3/offers';vi.stubGlobal('fetch',vi.fn().mockResolvedValue({ok:true,json:async()=>({network:'mainnet',vaults:[{...config,cap:'2000'}]})}));
+ stub();window.location.hash='/v3/offers';stubCatalog();
  render(<V3Arena/>);await waitFor(()=>expect(screen.getByText('Active offers')).toBeInTheDocument());
  const card=screen.getByRole('link',{name:/V3 vault/});expect(card).toHaveAttribute('href','#/v3/vault/'+config.genesis);expect(card).toHaveTextContent('Confirmed · chain verified');expect(card).toHaveTextContent('Remaining reward reserve');
  expect(v3Call).toHaveBeenCalledWith({operation:'sync',config});
 });
 it('withholds shared financial figures if chain verification fails',async()=>{
- stub();window.location.hash='/v3/offers';vi.stubGlobal('fetch',vi.fn().mockResolvedValue({ok:true,json:async()=>({network:'mainnet',vaults:[{...config,cap:'2000'}]})}));
+ stub();window.location.hash='/v3/offers';stubCatalog();
  const previous=vi.mocked(v3Call).getMockImplementation()!;vi.mocked(v3Call).mockImplementation(async(...args)=>{if(args[0].operation==='sync')throw Error('Genesis mismatch');return previous(...args);});
  render(<V3Arena/>);await waitFor(()=>expect(screen.getByText(/Financial state unavailable/)).toHaveTextContent('Genesis mismatch'));expect(screen.queryByText('Remaining reward reserve')).not.toBeInTheDocument();
 });
@@ -181,18 +182,26 @@ it('shows one fee on atomic vaults and refreshes the provisional queue after reg
 
 it('discovers a public vault in a fresh browser without a connected wallet or local configurations',async()=>{
  stub();window.location.hash='/v3/offers';const previous=vi.mocked(v3Call).getMockImplementation()!;
- vi.mocked(v3Call).mockImplementation(async(...args)=>args[0].operation==='discover'?{vaults:[config],observed:1,online:2,rejected:0}:previous(...args));
+ stubCatalog();
  expect(localStorage.length).toBe(0);render(<WalletTransactionsContext.Provider value={null}><V3Arena/></WalletTransactionsContext.Provider>);
  await waitFor(()=>expect(screen.getByRole('link',{name:/V3 vault/})).toHaveTextContent('Confirmed · chain verified'));
- expect(v3Call).toHaveBeenCalledWith({operation:'discover',cursor:undefined,limit:20});
+ expect(vi.mocked(v3Call).mock.calls.some(([i])=>i.operation==='discover')).toBe(false);
 });
 it('retains configuration and stale verified figures through failure, reload and deployment without wallet access',async()=>{
  stub();window.location.hash='/v3/offers';const previous=vi.mocked(v3Call).getMockImplementation()!;
- vi.mocked(v3Call).mockImplementation(async(...args)=>args[0].operation==='discover'?{vaults:[config],observed:1,online:2,rejected:0}:previous(...args));
+ stubCatalog();
  const first=render(<V3Arena/>);await waitFor(()=>expect(screen.getByRole('link',{name:/V3 vault/})).toHaveTextContent('Confirmed · chain verified'));await waitFor(()=>expect(JSON.parse(localStorage.getItem('staking-arena-v3-configs-mainnet-snapshots')??'{}')[config.genesis]?.snapshot).toBeDefined());first.unmount();
  vi.mocked(v3Call).mockImplementation(async intent=>{if(intent.operation==='sync'||intent.operation==='discover')throw Error('Public provider offline');return [];});
  render(<V3Arena/>);await waitFor(()=>expect(screen.getByRole('link',{name:/V3 vault/})).toHaveTextContent('Verification temporarily unavailable'));
  expect(screen.getByRole('link',{name:/V3 vault/})).toHaveTextContent('Stale, non-authoritative snapshot');
  expect(screen.getByRole('link',{name:/V3 vault/})).toHaveTextContent('Remaining reward reserve');
- expect(JSON.parse(localStorage.getItem('staking-arena-v3-configs-mainnet')!)[0].genesis).toBe(config.genesis);
+ expect(JSON.parse(localStorage.getItem('arena-public-index-v1-mainnet')!)[0].config.genesis).toBe(config.genesis);
+});
+
+it('limits verification to two displayed candidates while rendering a twenty-entry page immediately',async()=>{
+ stub();window.location.hash='/v3/offers';const rows=Array.from({length:20},(_,i)=>({config:{...config,genesis:(i+1).toString(16).padStart(64,'0')},announcement:(i+1).toString(16).padStart(64,'0'),height:0,status:'provisional'}));
+ vi.stubGlobal('fetch',vi.fn(async()=>new Response(JSON.stringify({schema:1,network:'mainnet',vaults:rows,pages:[],total:1000},(_,v)=>typeof v==='bigint'?String(v):v))));
+ const original=vi.mocked(v3Call).getMockImplementation()!;let active=0;const release:Array<()=>void>=[];
+ vi.mocked(v3Call).mockImplementation(async(...args)=>{if(args[0].operation==='sync'){active++;await new Promise<void>(resolve=>release.push(resolve));active--;throw Error('Offline');}return original(...args);});
+ const view=render(<V3Arena/>);await waitFor(()=>expect(document.querySelectorAll('.v3-vault-card')).toHaveLength(20));await waitFor(()=>expect(active).toBe(2));expect(vi.mocked(v3Call).mock.calls.filter(([i])=>i.operation==='discover')).toHaveLength(0);view.unmount();await act(async()=>release.forEach(resolve=>resolve()));
 });

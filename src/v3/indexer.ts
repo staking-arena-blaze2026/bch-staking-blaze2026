@@ -19,14 +19,16 @@ const identity=(s:Snapshot)=>JSON.stringify({tip:s.tip.hash,state:s.instance.inp
  */
 export class AssetIndexer {
  snapshot?:Snapshot;error?:string;private busy=false;
- constructor(readonly electrum:ElectrumCore,readonly config:Config){v3Network(electrum);}
+ constructor(readonly electrum:ElectrumCore,readonly config:Config,readonly onProfile?:(phase:string,ms:number)=>void){v3Network(electrum);}
  async sync(){if(this.busy)throw Error('V3 synchronization already running');this.busy=true;try{
   const result=await verifiedProviders(this.electrum,walletPeers(this.electrum),async()=>{
    const value=await this.replay();return {value,tip:value.tip,identity:identity(value)};
   });this.snapshot=result;this.error=undefined;return result;
  }catch(e){this.error=String(e);throw e;}finally{this.busy=false;}}
  private async replay():Promise<Snapshot>{
+  const started=performance.now();
   const e=this.electrum,c=this.config,tip=await e.tip(),clock={height:tip.height,mtp:await e.medianTime(tip.height,tip.hash)},proofs=new Map<number,string>(),pending=new Set<string>(),allocations:Allocation[]=[],cache=new Map<string,any>(),pendingHistory:string[]=[];
+  this.onProfile?.('clock',performance.now()-started);const genesisStarted=performance.now();
   const ancestry=ancestryVerifier(e,clock);
   const rawRead=async(id:string)=>{if(!cache.has(id))cache.set(id,await e.transaction(id));return cache.get(id);};
   const confirm=async(id:string,history:HistoryEntry[])=>{const entry=history.find(h=>h.tx_hash===id);if(!entry)throw Error('V3 transaction absent from provider history');if(entry.height<=0){const tx=await ancestry(id);cache.set(id,tx);if(!pendingHistory.includes(id))pendingHistory.push(id);return tx;}const tx=await e.transaction(id,entry.height);if(proofs.has(entry.height)&&proofs.get(entry.height)!==tx.blockhash)throw Error('Inconsistent proof header');proofs.set(entry.height,tx.blockhash);cache.set(id,tx);return tx;};
@@ -35,6 +37,7 @@ export class AssetIndexer {
   const category=genesisRaw.vin[0].txid,cs=family(c,category,e),history=await e.history(cs.registry.lockingBytecode),genesis=await confirm(c.genesis,history);
   const genesisInputs=[];for(const i of genesis.vin)genesisInputs.push(utxo(await rawRead(i.txid),i.vout));validateGenesis(c,genesis.hex,genesisInputs,e);await verify(genesis);
   let instance:Instance={parameters:c,category,state:initialState(c),inputs:[utxo(genesis,0),utxo(genesis,1),utxo(genesis,2)]};validateInstance(instance,e);
+  this.onProfile?.('genesis',performance.now()-genesisStarted);const stateStarted=performance.now();
   const ids=[c.genesis],registryEntries=history.filter(h=>h.tx_hash!==c.genesis),transactions=[];
   for(const h of registryEntries){const tx=await confirm(h.tx_hash,history);if(tx.vout[0]?.tokenData?.category===category&&tx.vout[0]?.tokenData?.nft?.capability==='mutable')transactions.push(tx);}
   for(;;){const children=transactions.filter(tx=>tx.vin.some((i:any)=>i.txid===instance.inputs[0].txid&&i.vout<3));if(!children.length)break;if(children.length!==1)throw Error('Competing v3 spends');const tx=children[0];
@@ -48,6 +51,7 @@ export class AssetIndexer {
   for(const a of allocations){const script=a.input.lockingBytecode!;for(const h of await e.history(script)){if(h.tx_hash===a.input.txid)continue;const tx=await rawRead(h.tx_hash);if(!tx.vin.some((i:any)=>i.txid===a.input.txid&&i.vout===4))continue;if(h.height<=0)a.pending=h.tx_hash;else {const confirmed=await confirm(h.tx_hash,[h]);await verify(confirmed);if(a.withdrawal)throw Error('Duplicate allocation spend');a.withdrawal=h.tx_hash;}}}
   if(proofs.size)await e.verifyHeaderChain(Math.min(...proofs.keys()),tip,proofs);
   for(const input of instance.inputs)if(!(await e.getUtxosForLockingBytecode(input.lockingBytecode!)).some(u=>u.txid===input.txid&&u.vout===input.vout))throw Error('Current vault output missing, evicted or conflicting');if((await e.tip()).hash!==tip.hash)throw Error('V3 tip changed during replay');
+  this.onProfile?.('stateReplay',performance.now()-stateStarted);
   return {version:3,config:c,instance,tip,clock,pending:[...pending],provisional:pendingHistory.length>0,pendingHistory,ancestry:[...ancestry.evidence].map(([id,tx])=>`${id}:${tx.height??0}:${tx.blockhash??'pending'}`).sort(),allocations,history:ids.filter(id=>!pendingHistory.includes(id)),endpoint:e.endpoint};
  }
 }

@@ -1,0 +1,13 @@
+0-conf asset pair bch token
+0-conf asset pair token bch
+0-conf asset pair token token
+0-conf asset pair token token
+✔ isolated BCHN 29.2: direct genesis and dependent offers/claim without blocks (92656.222308ms)
+ℹ tests 1
+ℹ suites 0
+ℹ pass 1
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 99913.183749

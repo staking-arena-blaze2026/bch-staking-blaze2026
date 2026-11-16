@@ -1,5 +1,8 @@
+import {startPublicPreview} from './publicIndexPreview';
+startPublicPreview();
 // Load the UI explicitly so a failed module request cannot leave an empty page.
 function showStartupError(error: unknown) {
+  document.getElementById('arena-public-preview')?.remove();
   const status = document.getElementById('arena-startup');
   if (!status) return; // React has already replaced the startup message.
   status.setAttribute('role', 'alert');
