@@ -1,0 +1,339 @@
+{
+  "at": "2026-11-16T09:20:59.098Z",
+  "readOnly": true,
+  "walletConnected": false,
+  "requests": {},
+  "timings": [],
+  "broadcastAttempts": 0,
+  "result": {
+    "coldFinancialStartupMs": 2223.2999999998137,
+    "financialQueueProbeMs": 13.100000000558794,
+    "error": "Error: Error: V3 operation is not awaiting unsigned wallet approval",
+    "readResults": [
+      "fulfilled",
+      "fulfilled"
+    ],
+    "times": [
+      {
+        "operation": "authorize",
+        "requestId": 1,
+        "stage": "worker-queue",
+        "milliseconds": 7,
+        "requests": {},
+        "ok": true
+      },
+      {
+        "operation": "authorize",
+        "requestId": 1,
+        "stage": "pre-approval-revalidation",
+        "milliseconds": 15.700000000186265,
+        "requests": {},
+        "ok": false
+      },
+      {
+        "operation": "authorize",
+        "requestId": 1,
+        "stage": "authorize",
+        "milliseconds": 16.09999999962747,
+        "requests": {},
+        "ok": false
+      },
+      {
+        "operation": "authorize",
+        "requestId": 2,
+        "stage": "worker-queue",
+        "milliseconds": 1,
+        "requests": {},
+        "ok": true
+      },
+      {
+        "operation": "authorize",
+        "requestId": 2,
+        "stage": "pre-approval-revalidation",
+        "milliseconds": 3.3999999994412065,
+        "requests": {},
+        "ok": false
+      },
+      {
+        "operation": "authorize",
+        "requestId": 2,
+        "stage": "authorize",
+        "milliseconds": 3.5,
+        "requests": {},
+        "ok": false
+      },
+      {
+        "operation": "sync",
+        "requestId": 3,
+        "stage": "worker-queue",
+        "milliseconds": 14,
+        "requests": {},
+        "ok": true
+      },
+      {
+        "operation": "sync",
+        "requestId": 4,
+        "stage": "worker-queue",
+        "milliseconds": 10,
+        "requests": {},
+        "ok": true
+      },
+      {
+        "operation": "connect",
+        "requestId": 1,
+        "stage": "worker-queue",
+        "milliseconds": 19,
+        "requests": {},
+        "ok": true
+      },
+      {
+        "operation": "list",
+        "requestId": 3,
+        "stage": "worker-queue",
+        "milliseconds": 14,
+        "requests": {},
+        "ok": true
+      },
+      {
+        "operation": "list",
+        "requestId": 3,
+        "stage": "list",
+        "milliseconds": 3.7999999998137355,
+        "requests": {},
+        "ok": true
+      },
+      {
+        "operation": "list",
+        "requestId": 4,
+        "stage": "worker-queue",
+        "milliseconds": 20,
+        "requests": {},
+        "ok": true
+      },
+      {
+        "operation": "list",
+        "requestId": 4,
+        "stage": "list",
+        "milliseconds": 4.900000000372529,
+        "requests": {},
+        "ok": true
+      },
+      {
+        "operation": "claims",
+        "requestId": 5,
+        "stage": "worker-queue",
+        "milliseconds": 9,
+        "requests": {},
+        "ok": true
+      },
+      {
+        "operation": "claims",
+        "requestId": 5,
+        "stage": "claims",
+        "milliseconds": 7.800000000745058,
+        "requests": {},
+        "ok": true
+      },
+      {
+        "operation": "claims",
+        "requestId": 6,
+        "stage": "worker-queue",
+        "milliseconds": 4,
+        "requests": {},
+        "ok": true
+      },
+      {
+        "operation": "claims",
+        "requestId": 6,
+        "stage": "claims",
+        "milliseconds": 5.7999999998137355,
+        "requests": {},
+        "ok": true
+      },
+      {
+        "operation": "connect",
+        "requestId": 1,
+        "stage": "independent-provider-verification",
+        "milliseconds": 5390.299999999814,
+        "requests": {
+          "server.version": 2,
+          "blockchain.block.header": 6,
+          "blockchain.headers.subscribe": 4
+        },
+        "ok": true
+      },
+      {
+        "operation": "connect",
+        "requestId": 1,
+        "stage": "connect",
+        "milliseconds": 5391.5,
+        "requests": {
+          "server.version": 2,
+          "blockchain.block.header": 6,
+          "blockchain.headers.subscribe": 4
+        },
+        "ok": true
+      },
+      {
+        "operation": "connect",
+        "requestId": 2,
+        "stage": "worker-queue",
+        "milliseconds": 5412,
+        "requests": {},
+        "ok": true
+      },
+      {
+        "operation": "sync",
+        "requestId": 3,
+        "stage": "vault-state-replay",
+        "milliseconds": 5004,
+        "requests": {
+          "blockchain.block.header": 23,
+          "blockchain.headers.subscribe": 2,
+          "blockchain.transaction.get": 4,
+          "blockchain.scripthash.get_history": 4,
+          "blockchain.transaction.get_merkle": 6,
+          "blockchain.block.headers": 1,
+          "blockchain.scripthash.listunspent": 3
+        },
+        "ok": true
+      },
+      {
+        "operation": "sync",
+        "requestId": 3,
+        "stage": "vault-state-replay",
+        "milliseconds": 5288.799999999814,
+        "requests": {
+          "blockchain.block.header": 23,
+          "blockchain.headers.subscribe": 2,
+          "blockchain.transaction.get": 4,
+          "blockchain.scripthash.get_history": 4,
+          "blockchain.transaction.get_merkle": 6,
+          "blockchain.block.headers": 1,
+          "blockchain.scripthash.listunspent": 3
+        },
+        "ok": true
+      },
+      {
+        "operation": "sync",
+        "requestId": 3,
+        "stage": "independent-provider-verification",
+        "milliseconds": 7141.799999999814,
+        "requests": {
+          "server.version": 2,
+          "blockchain.block.header": 52,
+          "blockchain.headers.subscribe": 6,
+          "blockchain.transaction.get": 8,
+          "blockchain.scripthash.get_history": 8,
+          "blockchain.transaction.get_merkle": 12,
+          "blockchain.block.headers": 2,
+          "blockchain.scripthash.listunspent": 6
+        },
+        "ok": true
+      },
+      {
+        "operation": "sync",
+        "requestId": 3,
+        "stage": "sync",
+        "milliseconds": 7147.300000000745,
+        "requests": {
+          "server.version": 2,
+          "blockchain.block.header": 52,
+          "blockchain.headers.subscribe": 6,
+          "blockchain.transaction.get": 8,
+          "blockchain.scripthash.get_history": 8,
+          "blockchain.transaction.get_merkle": 12,
+          "blockchain.block.headers": 2,
+          "blockchain.scripthash.listunspent": 6
+        },
+        "ok": true
+      },
+      {
+        "operation": "sync",
+        "requestId": 4,
+        "stage": "vault-state-replay",
+        "milliseconds": 4989.199999999255,
+        "requests": {
+          "blockchain.block.header": 23,
+          "blockchain.headers.subscribe": 2,
+          "blockchain.transaction.get": 4,
+          "blockchain.scripthash.get_history": 4,
+          "blockchain.transaction.get_merkle": 6,
+          "blockchain.block.headers": 1,
+          "blockchain.scripthash.listunspent": 3
+        },
+        "ok": true
+      },
+      {
+        "operation": "sync",
+        "requestId": 4,
+        "stage": "vault-state-replay",
+        "milliseconds": 5179.399999999441,
+        "requests": {
+          "blockchain.block.header": 23,
+          "blockchain.headers.subscribe": 2,
+          "blockchain.transaction.get": 4,
+          "blockchain.scripthash.get_history": 4,
+          "blockchain.transaction.get_merkle": 6,
+          "blockchain.block.headers": 1,
+          "blockchain.scripthash.listunspent": 3
+        },
+        "ok": true
+      },
+      {
+        "operation": "sync",
+        "requestId": 4,
+        "stage": "independent-provider-verification",
+        "milliseconds": 8291.099999999627,
+        "requests": {
+          "server.version": 2,
+          "blockchain.block.header": 52,
+          "blockchain.headers.subscribe": 6,
+          "blockchain.transaction.get": 8,
+          "blockchain.scripthash.get_history": 8,
+          "blockchain.transaction.get_merkle": 12,
+          "blockchain.block.headers": 2,
+          "blockchain.scripthash.listunspent": 6
+        },
+        "ok": true
+      },
+      {
+        "operation": "sync",
+        "requestId": 4,
+        "stage": "sync",
+        "milliseconds": 8292.400000000373,
+        "requests": {
+          "server.version": 2,
+          "blockchain.block.header": 52,
+          "blockchain.headers.subscribe": 6,
+          "blockchain.transaction.get": 8,
+          "blockchain.scripthash.get_history": 8,
+          "blockchain.transaction.get_merkle": 12,
+          "blockchain.block.headers": 2,
+          "blockchain.scripthash.listunspent": 6
+        },
+        "ok": true
+      }
+    ]
+  },
+  "workerRequests": [
+    {},
+    {},
+    {
+      "server.version": 2,
+      "blockchain.block.header": 52,
+      "blockchain.headers.subscribe": 6,
+      "blockchain.transaction.get": 8,
+      "blockchain.scripthash.get_history": 8,
+      "blockchain.transaction.get_merkle": 12,
+      "blockchain.block.headers": 2,
+      "blockchain.scripthash.listunspent": 6
+    },
+    {
+      "server.version": 4,
+      "blockchain.block.header": 9,
+      "blockchain.headers.subscribe": 6
+    },
+    {}
+  ]
+}

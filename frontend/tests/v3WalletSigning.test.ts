@@ -104,3 +104,10 @@ it('retains an atomic signature returned during reconnection without submitting 
   expect(vi.mocked(v3Call).mock.calls.some(([i])=>i.operation==='submit')).toBe(false);
  }finally{wallet.close?.();}
 });
+
+it('retains signed vault creation before rejecting a reconnected authorization',async()=>{
+ const {wallet,manager}=setup();const original=vi.mocked(v3Call).getMockImplementation()!;
+ vi.mocked(v3Call).mockImplementation(async(...args)=>args[0].operation==='create'?{...await original({operation:'claim'}),kind:'create',creationMode:'direct'}:original(...args));
+ manager.signTransaction.mockImplementation(async()=>{manager.emit('reconnecting');return {signedTransaction:'signed'};});
+ try{await expect(wallet.v3!({operation:'create',parameters:{}})).rejects.toThrow(/authorization changed/);expect(v3Call).toHaveBeenCalledWith({operation:'retainSigned',id:'claim',raw:'signed'},[]);expect(vi.mocked(v3Call).mock.calls.some(([i])=>i.operation==='submit')).toBe(false);}finally{wallet.close?.();}
+});

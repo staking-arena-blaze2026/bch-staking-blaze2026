@@ -18,6 +18,7 @@ export async function confirmedWalletTransaction(p:ElectrumCore,id:string){
 /** Verify supplied public source coins against raw transactions, token UTXOs, proofs and linked tip headers. */
 export async function verifyCoins(p:ElectrumCore,coins:SpendableUtxo[],peer:string,allowUnconfirmed=false){
  const tip=await p.tip(),mtp=await p.medianTime(tip.height,tip.hash),transactions=new Map<string,any>(),scriptCoins=new Map<string,Promise<SpendableUtxo[]>>(),ancestry=ancestryVerifier(p,{height:tip.height,mtp});
+ for(const script of new Set(coins.map(c=>c.lockingBytecode).filter((s):s is string=>!!s))){const read=p.getUtxosForLockingBytecode(script);void read.catch(()=>{});scriptCoins.set(script,read);}
  for(const coin of coins){
   if(!coin.lockingBytecode)throw Error('Missing source script');
   if(!scriptCoins.has(coin.lockingBytecode))scriptCoins.set(coin.lockingBytecode,p.getUtxosForLockingBytecode(coin.lockingBytecode));
@@ -35,7 +36,7 @@ export async function verifyCoins(p:ElectrumCore,coins:SpendableUtxo[],peer:stri
    throw Error('Input availability temporarily unverified');
   }
   if(coinIdentity(actual)!==coinIdentity(coin))throw Error('Source-output proof mismatch');
-  let status=transactions.get(coin.txid);if(!status){try{status=allowUnconfirmed?await ancestry(coin.txid):await p.transactionStatus(coin.txid);}catch(error){if(/Tip changed during transaction lookup/.test(String(error))&&await p.classifyTipChange(tip)==='extension')throw new ChainExtension();throw error;}transactions.set(coin.txid,status);}if(!allowUnconfirmed&&status.confirmations<=0)throw Error('Only confirmed wallet/covenant inputs may be spent');
+  let status=transactions.get(coin.txid);if(!status){try{status=allowUnconfirmed?await ancestry(coin.txid,Number.isSafeInteger((actual as any).height)?{tx_hash:coin.txid,height:(actual as any).height}:undefined):await p.transactionStatus(coin.txid);}catch(error){if(/Tip changed during transaction lookup/.test(String(error))&&await p.classifyTipChange(tip)==='extension')throw new ChainExtension();throw error;}transactions.set(coin.txid,status);}if(!allowUnconfirmed&&status.confirmations<=0)throw Error('Only confirmed wallet/covenant inputs may be spent');
   if(allowUnconfirmed&&status.vin?.length===1&&status.vin[0].vout===0xffffffff&&/^0+$/.test(status.vin[0].txid)&&status.confirmations<100)throw Error('Immature coinbase input');
   if(coinIdentity(utxo(status,coin.vout))!==coinIdentity(coin))throw Error('Source-output proof mismatch');
  }
@@ -43,11 +44,11 @@ export async function verifyCoins(p:ElectrumCore,coins:SpendableUtxo[],peer:stri
  return {height:tip.height,hash:tip.hash,mtp,peer,...(allowUnconfirmed?{ancestry:[...ancestry.evidence].map(([id,tx])=>[id,tx.hex,tx.height??0,tx.confirmations>0]).sort((a,b)=>String(a[0]).localeCompare(String(b[0])))}:{})};
 }
 export async function verifyCoinsAcrossPeers(p:ElectrumCore,coins:SpendableUtxo[],allowUnconfirmed=false,progress?:(message:string)=>void) {
- return verifiedProviders(p,walletPeers(p),async peer=>{
-  const value=await verifyCoins(p,coins,peer,allowUnconfirmed),tip=await p.tip();
-  if(tip.hash!==value.hash){const moved=await p.classifyTipChange(value);if(moved==='reorg')throw Error('Reorganization after input verification');throw new ChainExtension();}
+ return verifiedProviders(p,walletPeers(p),async (peer,source)=>{
+  const value=await verifyCoins(source,coins,peer,allowUnconfirmed),tip=await source.tip();
+  if(tip.hash!==value.hash){const moved=await source.classifyTipChange(value);if(moved==='reorg')throw Error('Reorganization after input verification');throw new ChainExtension();}
   return {value,tip,identity:json({hash:value.hash,mtp:value.mtp,ancestry:value.ancestry})};
- },{onProgress:progress});
+ },{onProgress:progress,parallel:true});
 }
 export interface WalletInventory {coins:WalletCoin[];bch:string;tokens:Record<string,string>;addresses:number;gap:number;limit:number;bounded:true}
 /** A changed tip is never accepted as a snapshot. Prove extension, then restart all reads. */

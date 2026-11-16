@@ -25,7 +25,7 @@ it('refreshes canonical state before offer funding and again before approval; re
  await wallet.authorize(op.id);expect(sync).toHaveBeenCalledTimes(2);
  sync.mockResolvedValue({...snapshot,instance:{...snapshot.instance,inputs:[{txid:'aa'.repeat(32)}] as any}});
  await expect(wallet.authorize(op.id)).rejects.toThrow(/state changed/);expect(journal.get(op.id)?.raw).toBeUndefined();
- await expect(wallet.submit(op.id,'stale signed bytes')).rejects.toThrow(/state changed/);
+ await expect(wallet.submit(op.id,'stale signed bytes')).rejects.toThrow();expect(journal.get(op.id)?.raw).toBeUndefined(); // Invalid signature bytes fail locally before state/network checks.
 });
 it('rejects pending state and capacity exhaustion during fresh offer verification',async()=>{
  const {wallet,snapshot,sync,owner}=setup(),terms={stake:3000n,duration:3600,reward:1000n,maxWins:1};

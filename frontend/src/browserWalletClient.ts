@@ -82,6 +82,7 @@ export function browserWalletClient(manager:DappConnectionManager|null,check:()=
      // Existing public journals point to actual previously funded children. Query these
      // before expanding unrelated addresses; bind each hint to this exact live owner.
      let hinted=0;const owner=publicKeys.find(k=>k.path==='receive'&&k.index===0),journal=await v3Call({operation:'list'},[]) as import('../../src/v3/wallet').Operation[];
+     const hintDerivationStarted=performance.now();
      for(const op of journal){if(op.owner?.publicKey!==owner?.publicKey||!op.plan)continue;
       for(const [input,path,index] of op.plan.inputPaths){if(!Number.isSafeInteger(index)||index<0||index>=200)continue;const pub=op.plan.signers[input];if(!pub)continue;
        let current=derived?.find(k=>k.path===path&&k.index===index);if(!current){current=checkedWalletKey(getManager().getSessionPaths(),path,index,(c,i)=>getManager().getPubkey(c,i),activeNetwork==='mainnet'?'mainnet':'testnet');(derived??=[]).push(current);hinted++;}if(current.publicKey!==pub)continue;
@@ -89,6 +90,8 @@ export function browserWalletClient(manager:DappConnectionManager|null,check:()=
       }
      }
      window.dispatchEvent(new CustomEvent('arena-wallet-derivation',{detail:{derived:hinted,total:derived?.length??0,first:owner,paths:getManager().getSessionPaths().map(p=>p.name)}}));
+     derivationMilliseconds+=performance.now()-hintDerivationStarted;
+     window.dispatchEvent(new CustomEvent('arena-wallet-timing',{detail:{operation:intent.operation,stage:'public-key-derivation',milliseconds:derivationMilliseconds}}));
      check();if(JSON.stringify(getManager().getSessionPaths())!==session)throw Error('Wallet changed during funding discovery');
     }
     const result=(await v3Call(intent,publicKeys));
@@ -101,12 +104,17 @@ export function browserWalletClient(manager:DappConnectionManager|null,check:()=
     window.dispatchEvent(new CustomEvent('arena-wallet-timing',{detail:{operation:intent.operation,derivationMilliseconds,untilAuthorizationMilliseconds:performance.now()-started}}));
     window.dispatchEvent(new CustomEvent('arena-wallet-progress',{detail:'Requesting Cashonize approval… '+authorization.plan.label}));
     try{
+    const approvalStarted=performance.now();
     const signed=await signWithRefusalEvidence(getManager(),{transaction:wizardWireTransaction(authorization.plan.request),inputPaths:authorization.plan.inputPaths},{signal:signing.signal});
-    if(result.registrationMode==='atomic'&&signed.signedTransaction)await v3Call({operation:'retainAtomicSigned',id:result.id,raw:signed.signedTransaction},[]);
+    const signatureReturned=performance.now();
+    window.dispatchEvent(new CustomEvent('arena-wallet-timing',{detail:{operation:intent.operation,stage:'cashonize-request-response',milliseconds:signatureReturned-approvalStarted}}));
+    if(signed.signedTransaction)await v3Call({operation:result.registrationMode==='atomic'?'retainAtomicSigned':'retainSigned',id:result.id,raw:signed.signedTransaction},[]);
     check();if(JSON.stringify(getManager().getSessionPaths())!==session)throw Error('Wallet changed during v3 approval');
     if(!signed.signedTransaction)throw Error('V3 signing status unknown; inputs remain reserved');
     window.dispatchEvent(new CustomEvent('arena-wallet-progress',{detail:'Verifying BCH inputs… Checking unconfirmed ancestry…'}));
-    return (await v3Call({operation:'submit',id:result.id,raw:signed.signedTransaction},[]));
+    const submitted=await v3Call({operation:'submit',id:result.id,raw:signed.signedTransaction},[]);
+    window.dispatchEvent(new CustomEvent('arena-wallet-timing',{detail:{operation:intent.operation,stage:'signature-to-feedback',milliseconds:performance.now()-signatureReturned}}));
+    return submitted;
     }catch(error){await v3Call({operation:'signingFailed',id:result.id,error:String(error),rejected:error instanceof ExplicitWalletRefusal},[]).catch(()=>{});throw error;}
    }finally{v3Approval=false;}
   },publicKey(){check();const key=getManager().getPubkey(0,0n);if(!key)throw Error('Wallet receive key unavailable');return binToHex(key);},async inventory(limit=40){if(![40,200].includes(limit))throw Error("Unsupported scan bound");scanLimit=limit;await startup;return rpc('scan',keys());},async operations(){await startup;const list=await rpc('list') as WalletOperation[];list.forEach(rememberGenesis);return list;},async inspect(id){await startup;const op=await rpc('get',id) as WalletOperation;if(op.step==='complete')await finish(op);return op;},async importVault(config){await startup;const result=await rpc('importVault',config,true);saveLocalVault(result.config,result.category);return result;},async execute(intent){

@@ -1,3 +1,4 @@
+import {timed} from '../operation-timing.js';
 import {ProviderVerificationError} from '../verified-providers.js';
 import {addAnnouncement,announcementScript,discoveryScripts,DISCOVERY_CARRIER} from './discovery.js';
 import {selectAtomicFunding} from './atomic-funding.js';
@@ -16,7 +17,7 @@ import {ChainExtension,type ElectrumCore} from '../electrum-core.js';
 import {utxo,records} from '../arena-core.js';
 import {AssetIndexer,type Config,type Snapshot} from './indexer.js';
 import {atomicOfferBuilder,directGenesisBuilder,validateGenesis,ownerAddress,FEE,CARRIER,decision,assetOutput,covenant,parameterArgs,validateParameters,validateTerms,genesisBuilder,chainedParentBuilder,chainedChildBuilder,chainedPreparation,transitionBuilder,sponsorAmount,withdrawalBuilder,rewardRemaining,type Parameters,type Terms,type Asset} from './protocol.js';
-const verifyCoinsAcrossPeers=(p:ElectrumCore,coins:SpendableUtxo[],progress?:(message:string)=>void)=>verifyConfirmedCoinsAcrossPeers(p,coins,true,progress);
+const verifyCoinsAcrossPeers=(p:ElectrumCore,coins:SpendableUtxo[],progress?:(message:string)=>void)=>timed(p,'input-verification',()=>verifyConfirmedCoinsAcrossPeers(p,coins,true,progress));
 export interface Operation {network?:V3Network;id:string;version:3;creationMode?:'direct'|'chained';registrationMode?:'atomic';offerPolicy?:'single-win';kind:'create'|'offer'|'action'|'withdraw'|'claim';step:'funding'|'action'|'complete';signing?:'unsigned'|'requested'|'rejected';stage:'review'|'prepared'|'pending'|'confirmed'|'conflicted';parameters:Parameters;config?:Config;terms?:Terms;action?:number;slot?:number;allocation?:string;owner:WalletKey;payer?:WalletKey;source?:string;plan?:BrowserPlan;raw?:string;txid?:string;funding?:string;fundingRaw?:string;fundingPlan?:BrowserPlan;childRaw?:string;error?:string;confirmations?:number}
 export interface Store {list():Promise<Operation[]>;save(value:Operation):Promise<void>}
 function plan(builder:TransactionBuilder,label:string,coins:{coin:WalletCoin;index:number}[],authorization?:WalletKey):BrowserPlan {
@@ -165,7 +166,7 @@ export class AssetWallet {
  }
  report.selectedInputs=selected.length;report.reason='selected';this.onFundingReport(report);
  this.progress(mode==='direct'?'Constructing direct genesis…':'Constructing covenant-controlled preparation…');
- const op:Operation={id:crypto.randomUUID(),version:3,kind:'create',creationMode:mode,parameters,owner,step:mode==='direct'?'action':'action',stage:'review',signing:'unsigned',plan:mode==='direct'?directPlan(parameters,selected,this.provider):chainedPlan(parameters,selected,owner,this.provider)};
+ const op:Operation={id:crypto.randomUUID(),version:3,kind:'create',creationMode:mode,parameters,owner,step:mode==='direct'?'action':'action',stage:'review',signing:'unsigned',plan:await timed(this.provider,'transaction-construction',async()=>mode==='direct'?directPlan(parameters,selected,this.provider):chainedPlan(parameters,selected,owner,this.provider))};
  if(encodeTransaction(op.plan!.request.transaction as Transaction).length>FUNDING_BYTE_BUDGET)throw Error('Funding transaction exceeds its 10,000-byte fee budget; fewer inputs are required.');
  this.progress('Verifying BCH inputs… Checking unconfirmed ancestry…');
  try{if(verifiedSelection!==identity(selected))await verifyCoinsAcrossPeers(this.provider,selected.map(c=>c.utxo),this.progress);}
@@ -210,9 +211,11 @@ export class AssetWallet {
  const reserved=new Set((await this.store.list()).filter(reservesFunding).flatMap(fundingOutpoints));
  const select=(all:WalletCoin[])=>selectAtomicFunding(all.filter(c=>!reserved.has(c.utxo.txid+':'+c.utxo.vout)),config.stakingAsset,terms.stake);
  const inventory=await discoverFunding(this.provider,keys,coins=>{try{select(coins);return true;}catch{return false;}},this.progress),coins=select(inventory.coins);
- this.progress('Constructing atomic offer…');const reviewed=this.atomicPlan(snapshot,terms,owner,coins);
+ this.progress('Constructing atomic offer…');const reviewed=await timed(this.provider,'transaction-construction',async()=>this.atomicPlan(snapshot,terms,owner,coins));
  const op:Operation={id:crypto.randomUUID(),version:3,kind:'offer',registrationMode:'atomic',offerPolicy:'single-win',parameters:config,config,terms,owner,source:snapshot.instance.inputs[0].txid,step:'action',stage:'review',signing:'unsigned',plan:reviewed};
- await verifyCoinsAcrossPeers(this.provider,planCoins(reviewed),this.progress);await this.store.save(op);return op;
+ // Discovery and replay establish the review. Authorize independently verifies all
+ // selected sources immediately before signing; avoid duplicating that check here.
+ await this.store.save(op);return op;
  }
  private atomicPlan(snapshot:Snapshot,terms:Terms,owner:WalletKey,coins:WalletCoin[]){
  const built=atomicOfferBuilder(snapshot.instance,terms,hexToBin(owner.publicKey),coins,this.provider,snapshot.clock,placeholderSignature());
@@ -364,6 +367,7 @@ export class AssetWallet {
  }
  /** Read-only pre-approval validation. Never signs, sends or replaces a funding transaction. */
  async authorize(id:string){
+ return timed(this.provider,'pre-approval-revalidation',async()=>{
  const op=(await this.store.list()).find(o=>o.id===id);
  if(!op?.plan||op.stage!=='review'||op.raw||op.txid)throw Error('V3 operation is not awaiting unsigned wallet approval');
  if(op.registrationMode!=='atomic')await this.checkIntent(op);
@@ -374,6 +378,7 @@ export class AssetWallet {
  await verifyCoinsAcrossPeers(this.provider,planCoins(op.plan),this.progress);
  await this.store.save({...op,signing:'requested'});
  return {plan:authorizedPlan,owner:op.owner,verifiedAt:Date.now()};
+ });
  }
  async signingFailed(id:string,error:string,rejected=false){const op=(await this.store.list()).find(o=>o.id===id);if(!op||op.raw||op.txid)return op;const next={...op,signing:rejected?'rejected' as const:op.signing,error:'Wallet authorization interrupted or refused: '+error.slice(0,500)};await this.store.save(next);return next;}
  async rebroadcastFunding(id:string){const op=(await this.store.list()).find(o=>o.id===id);if(!op?.fundingRaw||!op.fundingPlan)throw Error('No saved signed funding transaction');
@@ -402,25 +407,39 @@ export class AssetWallet {
  const retained:Operation={...op,raw,txid:signed.txid,stage:'prepared',error:'Signed atomic transaction retained; current state must be verified before broadcast'};
  await this.store.save(retained);return retained;
  }
- async submit(id:string,raw:string){const op=(await this.store.list()).find(o=>o.id===id);if(!op?.plan||(op.stage!=='review'&&!(op.registrationMode==='atomic'&&op.stage==='prepared'&&op.raw===raw)))throw Error('No reviewed v3 plan');
- if(op.raw&&op.raw!==raw)throw Error('Only identical saved signed bytes may be retried');
- // Retain authorized atomic bytes even if state/UTXO verification now detects a race.
- // Validate the signed shape and scripts first; never broadcast before fresh checks.
- if(op.registrationMode==='atomic')await this.retainAtomicSigned(id,raw);
+ /** Save valid signatures without network I/O, including a recoverable chained child. */
+ async retainSigned(id:string,raw:string){
+ const op=(await this.store.list()).find(o=>o.id===id);
+ if(op?.registrationMode==='atomic')return this.retainAtomicSigned(id,raw);
+ if(!op?.plan||op.stage!=='review'||op.raw&&op.raw!==raw)throw Error('No matching reviewed authorization');
+ const signed=validateWalletSigned(op.plan,raw,{height:0xffffffff,mtp:0xffffffff},v3WalletValidation);
+ if(op.creationMode==='chained'){
+  const child=this.buildChainedChild(op,raw);
+  const retained:Operation={...op,fundingRaw:raw,funding:child.parentId,fundingPlan:op.plan,childRaw:child.raw,raw:child.raw,txid:child.txid,stage:'prepared',config:{...op.parameters,genesis:child.txid}};
+  await this.store.save(retained);return retained;
+ }
+ const retained:Operation={...op,raw,txid:signed.txid,stage:'prepared',...(op.kind==='create'&&op.step==='action'?{config:{...op.parameters,genesis:signed.txid}}:{})};
+ await this.store.save(retained);return retained;
+ }
+ async submit(id:string,raw:string){const op=(await this.store.list()).find(o=>o.id===id);
+ const saved=op?.creationMode==='chained'?op.fundingRaw:op?.raw;
+ if(!op?.plan||(op.stage!=='review'&&!(op.stage==='prepared'&&saved===raw)))throw Error('No reviewed v3 plan');
+ if(saved&&saved!==raw)throw Error('Only identical saved signed bytes may be retried');
+ if(!saved)await this.retainSigned(id,raw);
  if(op.registrationMode!=='atomic')await this.checkIntent(op);
  validateFundingPlan(op,this.provider);if(op.registrationMode==='atomic')op.plan=await this.checkAtomic(op);if(op.kind==='claim')await this.checkClaim(op);if(op.creationMode==='direct')op.plan=this.checkDirect(op);if(op.creationMode==='chained')op.plan=this.checkChained(op);const inputs=planCoins(op.plan);
- const clock=await verifyCoinsAcrossPeers(this.provider,inputs,this.progress),validated=validateWalletSigned(op.plan,raw,clock,v3WalletValidation);
+ const clock=await verifyCoinsAcrossPeers(this.provider,inputs,this.progress),validated=await timed(this.provider,'post-signature-validation',async()=>validateWalletSigned(op.plan!,raw,clock,v3WalletValidation));
  if(op.creationMode==='chained'){
   const child=this.buildChainedChild(op,raw);
   const prepared:Operation={...op,fundingRaw:raw,funding:child.parentId,fundingPlan:op.plan,childRaw:child.raw,raw:child.raw,txid:child.txid,stage:'prepared',config:{...op.parameters,genesis:child.txid}};
   await this.store.save(prepared);this.progress('Broadcasting preparation and permissionless genesis…');
-  try{await this.provider.session(async()=>{await verifyCoinsAcrossPinned(this.provider,inputs,clock.hash);const parentAccepted=await this.provider.sendRawTransaction(raw);if(parentAccepted!==child.parentId)throw Error('Parent broadcast returned an unexpected transaction ID');const childAccepted=await this.provider.sendRawTransaction(child.raw);if(childAccepted!==child.txid)throw Error('Child broadcast returned an unexpected transaction ID');},clock.peer);
+  try{await timed(this.provider,'broadcast',()=>this.provider.session(async()=>{await verifyCoinsAcrossPinned(this.provider,inputs,clock.hash);const parentAccepted=await this.provider.sendRawTransaction(raw);if(parentAccepted!==child.parentId)throw Error('Parent broadcast returned an unexpected transaction ID');const childAccepted=await this.provider.sendRawTransaction(child.raw);if(childAccepted!==child.txid)throw Error('Child broadcast returned an unexpected transaction ID');},clock.peer));
    const sent={...prepared,stage:'pending' as const,confirmations:0};await this.store.save(sent);this.progress('Vault pending (0-conf)');return sent;
   }catch(e){const uncertain={...prepared,error:String(e)};await this.store.save(uncertain);return uncertain;}
  }
  const prepared={...op,raw,txid:validated.txid,stage:'prepared' as const,...(op.kind==='create'&&op.step==='action'?{config:{...op.parameters,genesis:validated.txid}}:{})};if(op.creationMode==='direct')validateGenesis(op.parameters,raw,inputs,this.provider);await this.store.save(prepared);
  this.progress('Broadcasting vault…');
- try {await this.provider.session(async()=>{await verifyCoinsAcrossPinned(this.provider,inputs,clock.hash);const accepted=await this.provider.sendRawTransaction(raw);if(accepted!==validated.txid)throw Error('Broadcast returned an unexpected transaction ID');},clock.peer);const sent={...prepared,stage:'pending' as const,...(op.creationMode==='direct'?{confirmations:0}:{})};await this.store.save(sent);this.progress(op.kind==='create'?'Vault pending (0-conf)':'Transaction pending (0-conf)');return sent;}catch(e){const uncertain={...prepared,error:String(e)};await this.store.save(uncertain);return uncertain;}
+ try {await timed(this.provider,'broadcast',()=>this.provider.session(async()=>{await verifyCoinsAcrossPinned(this.provider,inputs,clock.hash);const accepted=await this.provider.sendRawTransaction(raw);if(accepted!==validated.txid)throw Error('Broadcast returned an unexpected transaction ID');},clock.peer));const sent={...prepared,stage:'pending' as const,...(op.creationMode==='direct'?{confirmations:0}:{})};await this.store.save(sent);this.progress(op.kind==='create'?'Vault pending (0-conf)':'Transaction pending (0-conf)');return sent;}catch(e){const uncertain={...prepared,error:String(e)};await this.store.save(uncertain);return uncertain;}
  }
 }
 async function verifyCoinsAcrossPinned(p:ElectrumCore,inputs:SpendableUtxo[],hash:string){if((await p.tip()).hash!==hash)throw new ProviderVerificationError('synchronizing');const checked=await verifyCoins(p,inputs,p.endpoint,true);if(checked.hash!==hash)throw new ProviderVerificationError('synchronizing');}

@@ -1,0 +1,38 @@
+{
+  "at": "2026-11-16T09:08:45.796Z",
+  "network": "mainnet",
+  "readOnly": true,
+  "limitations": "Public vault replay and input verification proxies; no wallet preparation, approval or broadcast measured.",
+  "runs": [
+    {
+      "run": 0,
+      "replayMs": 7384.047191,
+      "inputVerificationMs": 3532.4890049999995,
+      "requests": {
+        "server.version": 4,
+        "blockchain.block.header": 80,
+        "blockchain.headers.subscribe": 18,
+        "blockchain.transaction.get": 8,
+        "blockchain.scripthash.get_history": 8,
+        "blockchain.transaction.get_merkle": 20,
+        "blockchain.block.headers": 2,
+        "blockchain.scripthash.listunspent": 12
+      }
+    },
+    {
+      "run": 1,
+      "replayMs": 2878.695359000001,
+      "inputVerificationMs": 3607.5454040000004,
+      "requests": {
+        "server.version": 8,
+        "blockchain.block.header": 136,
+        "blockchain.headers.subscribe": 36,
+        "blockchain.transaction.get": 8,
+        "blockchain.scripthash.get_history": 16,
+        "blockchain.transaction.get_merkle": 34,
+        "blockchain.block.headers": 2,
+        "blockchain.scripthash.listunspent": 24
+      }
+    }
+  ]
+}

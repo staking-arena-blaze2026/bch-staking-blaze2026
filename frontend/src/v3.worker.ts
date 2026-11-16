@@ -1,3 +1,4 @@
+import {timed} from '../../src/operation-timing';
 import {providerConflictStore} from './providerConflictStore';
 import {verifiedProviders} from '../../src/verified-providers';
 /// <reference lib="webworker" />
@@ -9,20 +10,39 @@ import {v3Config} from './v3Config';
 import {walletPeers} from '../../src/electrum-wallet';
 // Worker name is immutable for this worker's lifetime; Vite retains the direct worker URL.
 const workerEnv:Record<string,string|undefined>=import.meta.env;
-const options=v3Config({...workerEnv,VITE_V3_NETWORK:self.name||workerEnv.VITE_V3_NETWORK});
-const provider=new BrowserElectrumProvider(options),wallet=new AssetWallet(provider,new BrowserAssetStore(options.network),message=>self.postMessage({type:'progress',message}),report=>self.postMessage({type:'funding-report',report}));
-provider.onVerificationProgress=message=>self.postMessage({type:'progress',message});
+const readOnly=self.name.endsWith(':read');
+const options=v3Config({...workerEnv,VITE_V3_NETWORK:self.name.split(':')[0]||workerEnv.VITE_V3_NETWORK});
+if(readOnly)options.allowBroadcast=false;
+let activeId:number|undefined;let activeOperation='';
+const stage=(name:string)=>self.postMessage({type:'stage',id:activeId,stage:name});
+const provider=new BrowserElectrumProvider(options),store=new BrowserAssetStore(options.network),wallet=new AssetWallet(provider,{list:()=>store.list(),save:op=>timed(provider,'journal-write',()=>store.save(op))},message=>{if(message.startsWith('Broadcasting'))stage('broadcast');self.postMessage({type:'progress',id:activeId,message});},report=>self.postMessage({type:'funding-report',id:activeId,report}));
+provider.onStage=stage;
+provider.onTiming=timing=>self.postMessage({type:'timing',id:activeId,timing});
+provider.onVerificationProgress=message=>self.postMessage({type:'progress',id:activeId,message});
 const scope=self as unknown as DedicatedWorkerGlobalScope;
 const conflicts=providerConflictStore(options.network);
 let storageFailure=false;
 let queue=conflicts.then(async store=>{provider.unresolvedChainPeers=new Set(await store.read());provider.persistChainConflict=async hosts=>{try{await store.save(hosts);}catch(error){storageFailure=true;throw error;}};}).catch(()=>{storageFailure=true;});
-scope.onmessage=event=>{queue=queue.catch(()=>{}).then(async()=>{const {id,intent,keys=[]}=event.data;try{
+scope.onmessage=event=>{queue=queue.catch(()=>{}).then(async()=>{const {id,intent,keys=[],enqueuedAt}=event.data;activeId=id;activeOperation=intent.operation;stage(activeOperation);self.postMessage({type:'timing',id,timing:{stage:'worker-queue',milliseconds:Math.max(0,Date.now()-enqueuedAt),requests:{},ok:true}});try{
  const run=async()=>{
+  if(readOnly&&!['connect','sync','list','claims','inspectRead'].includes(intent.operation))throw Error('Read worker cannot change transaction journals or submit transactions');
   if(options.network==='chipnet'&&!['connect','discover','list','claims','sync'].includes(intent.operation))throw Error('Chipnet temporarily unavailable for transactions: consensus/provider conflict; journals retained');
   if(storageFailure&&!['list','claims','discover'].includes(intent.operation))throw Error('Provider conflict evidence unavailable; verification and transactions blocked.');
   if(intent.operation==='connect'){const tip=await verifiedProviders(provider,walletPeers(provider),async()=>{const tip=await provider.tip();return {tip,value:{hash:tip.hash,height:tip.height,endpoint:provider.endpoint},identity:tip.hash};});return {network:options.network,tips:[tip]};}
   if(intent.operation==='discover')throw Error('Public discovery uses the static public index');
   if(intent.operation==='list')return wallet.store.list();
+  if(intent.operation==='inspectRead'){
+   const original=(await wallet.store.list()).find(o=>o.id===intent.id);
+   if(!original?.raw||!['direct','chained'].includes(original.creationMode??'')&&original.registrationMode!=='atomic')throw Error('Read-only inspection requires a signed direct, chained or atomic operation');
+   const copy=structuredClone(original),preview=new AssetWallet(provider,{list:async()=>[copy],save:async()=>{}});
+   return {original,result:await preview.resume(original.id)};
+  }
+  if(intent.operation==='applyInspection'){
+   const current=(await wallet.store.list()).find(o=>o.id===intent.original.id);
+   const encode=(v:unknown)=>JSON.stringify(v,(_,value)=>typeof value==='bigint'?value.toString():value);
+   if(current&&intent.result.id===current.id&&encode(current)===encode(intent.original))await wallet.store.save({...current,step:intent.result.step,stage:intent.result.stage,confirmations:intent.result.confirmations,error:intent.result.error,config:intent.result.config});
+   return current;
+  }
   if(intent.operation==='sync')return inspectClaim(new AssetIndexer(provider,intent.config));
   if(intent.operation==='claim')return wallet.claim(intent.config,keys);
   if(intent.operation==='reconcileClaim')return new RewardClaimer(new AssetIndexer(provider,intent.config),new BrowserClaimStore(options.network)).reconcile(intent.id,false);
@@ -35,6 +55,7 @@ scope.onmessage=event=>{queue=queue.catch(()=>{}).then(async()=>{const {id,inten
   if(intent.operation==='resume'||intent.operation==='inspect')return wallet.resume(intent.id);
   if(intent.operation==='signingFailed')return wallet.signingFailed(intent.id,String(intent.error),intent.rejected===true);
   if(intent.operation==='authorize')return wallet.authorize(intent.id);
+  if(intent.operation==='retainSigned')return wallet.retainSigned(intent.id,intent.raw);
   if(intent.operation==='retainAtomicSigned')return wallet.retainAtomicSigned(intent.id,intent.raw);
   if(intent.operation==='submit')return wallet.submit(intent.id,intent.raw);
   if(intent.operation==='rebroadcast')return wallet.rebroadcast(intent.id);
@@ -43,8 +64,8 @@ scope.onmessage=event=>{queue=queue.catch(()=>{}).then(async()=>{const {id,inten
   throw Error('Unknown v3 operation');
  };
  if(!scope.navigator.locks)throw Error('V3 requires Web Locks');
- if(intent.operation==='sync'){const store=await conflicts;for(const host of await store.read())provider.unresolvedChainPeers.add(host);const result=await run();scope.postMessage({id,result});return;}
+ if(['sync','connect','list','claims','inspectRead'].includes(intent.operation)){const store=await conflicts;for(const host of await store.read())provider.unresolvedChainPeers.add(host);const result=await timed(provider,activeOperation,run);scope.postMessage({id,result});return;}
  const store=await conflicts;for(const host of await store.read())provider.unresolvedChainPeers.add(host);
- const result=await scope.navigator.locks.request(`arena-${options.network}-v3`,{ifAvailable:true},async lock=>{if(!lock)throw Error('Another tab is updating v3');return run();});scope.postMessage({id,result});
- }catch(e){scope.postMessage({id,error:String(e)});}});};
+ const result=await scope.navigator.locks.request(`arena-${options.network}-v3`,{ifAvailable:true},async lock=>{if(!lock)throw Error('Another tab is updating v3');return timed(provider,activeOperation,run);});scope.postMessage({id,result});
+ }catch(e){scope.postMessage({id,error:String(e)});}finally{activeId=undefined;}});};
 scope.postMessage({type:'ready'});

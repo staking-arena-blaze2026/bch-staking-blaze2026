@@ -19,3 +19,14 @@ test('a verified pending transition cannot be voted away by two empty mempools',
 test('a proved fork remains blocked through provider outage and clears only after compatible evidence',async()=>{const f=fixture();await assert.rejects(verifiedProviders(f.p,peers,async peer=>result(100,peer===peers[2]?'fork':'same',peer===peers[2]?'fork-100':undefined)),/Conflicting/);f.offline.add(peers[2]!);await assert.rejects(verifiedProviders(f.p,peers,async()=>result()),/Conflicting/);f.offline.clear();assert.equal((await verifiedProviders(f.p,peers,async()=>result())).height,100);assert.equal(f.p.unresolvedChainPeers.size,0);});
 
 test('a provider retreating to an earlier tip inside a read is a reorganization',async()=>{const f=fixture();await assert.rejects(verifiedProviders(f.p,peers,async peer=>peer===peers[0]?result(99,'retreated'):result()),/Conflicting blockchain evidence/);assert.ok(f.p.unresolvedChainPeers.size);});
+
+test('parallel verification uses independent transports and still waits for a slow conflicting third source',async()=>{
+ const f=fixture(),started:string[]=[],release:{done?:()=>void}={};
+ const barrier=new Promise<void>(resolve=>{release.done=resolve;});
+ Object.assign(f.p,{requestCounts:{}}); // Fixture only: production counters live on each provider.
+ const sources=new Map(peers.map(peer=>[peer,{requestCounts:{},tip:async()=>header(100),session:async(work:()=>Promise<unknown>)=>{started.push(peer);if(started.length===3)release.done!();await barrier;return work();}}]));
+ f.p.independentReader=peer=>sources.get(peer) as ElectrumCore;
+ await assert.rejects(verifiedProviders(f.p,peers,async(peer,source)=>{
+  assert.equal(source,sources.get(peer));if(peer===peers[2]){await new Promise(r=>setTimeout(r,10));return result(100,'fork','fork-100');}return result();
+ },{parallel:true}),/Conflicting/);assert.equal(started.length,3);
+});

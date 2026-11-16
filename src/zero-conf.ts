@@ -13,13 +13,13 @@ export function ancestryVerifier(p:ElectrumCore,clock:KeeperClock){
  const rawFor=(id:string)=>{if(!raws.has(id))raws.set(id,p.transaction(id));return raws.get(id)!;};
  const checked=new Map<string,any>(),visiting=new Set<string>(),spends=new Map<string,string>();
  let count=0,bytes=0;
- const load=async(id:string):Promise<any>=>{
+ const load=async(id:string,observed?:import('./electrum-core.js').HistoryEntry):Promise<any>=>{
   if(checked.has(id))return checked.get(id);
   if(checked.size+visiting.size>=1024)throw Error('Ancestry exceeds total source transaction budget (1024)');
   if(visiting.has(id))throw Error('Cyclic unconfirmed ancestry');
   if(visiting.size>=256)throw Error('Unconfirmed ancestry exceeds application depth limit (256)');
   visiting.add(id);
-  const tx=await p.transactionStatus(id);
+  const tx=await p.transactionStatus(id,observed);
   if(tx.confirmations>0){checked.set(id,tx);visiting.delete(id);return tx;}
   if(++count>256||(bytes+=tx.hex.length/2)>4_000_000)throw Error('Unconfirmed ancestry exceeds application validation budget');
   const decoded=decodeTransaction(hexToBin(tx.hex));if(typeof decoded==='string')throw Error(decoded);

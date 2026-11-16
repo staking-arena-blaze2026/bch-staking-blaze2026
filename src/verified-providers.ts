@@ -1,3 +1,4 @@
+import {timed} from './operation-timing.js';
 import type {ElectrumCore,Header} from './electrum-core.js';
 /** Public categories intentionally omit scripts, outpoints and wallet addresses. */
 export class ProviderVerificationError extends Error {
@@ -7,15 +8,25 @@ export class ProviderVerificationError extends Error {
 }
 export interface VerifiedRead<T>{value:T;tip:Header;identity:string}
 /** Each candidate must perform its own complete cryptographic verification. A quorum
- * only establishes agreement; it never substitutes for verification. Sessions are
- * sequential because ElectrumCore pins mutable transport state to one connection. */
-export async function verifiedProviders<T>(p:ElectrumCore,peers:string[],read:(peer:string)=>Promise<VerifiedRead<T>>,options:{attempts?:number;sleep?:(ms:number)=>Promise<void>;onProgress?:(message:string)=>void}={}):Promise<T>{
+ * only establishes agreement; it never substitutes for verification. Parallel reads require separate ElectrumCore instances; a shared mutable
+ * transport always stays sequential. All configured sources are checked. */
+export async function verifiedProviders<T>(p:ElectrumCore,peers:string[],read:(peer:string,source:ElectrumCore)=>Promise<VerifiedRead<T>>,options:{parallel?:boolean;attempts?:number;sleep?:(ms:number)=>Promise<void>;onProgress?:(message:string)=>void}={}):Promise<T>{
+ return timed(p,'independent-provider-verification',async()=>{
  let category:'synchronizing'|'unavailable'='unavailable';
  const unresolved=p.unresolvedChainPeers??=new Set<string>();
  const conflict=async(hosts:string[])=>{for(const host of hosts)unresolved.add(host);try{await p.persistChainConflict?.([...unresolved]);}catch{/* Failure to persist never authorizes a conflicting snapshot. */}throw new ProviderVerificationError('conflict');};
  for(let attempt=0;attempt<(options.attempts??3);attempt++){
   const good:{peer:string;result:VerifiedRead<T>}[]=[],tips=new Map<string,Header>(),observations:{peer:string;result:{tip:Header}}[]=[];let movement=false;
-  for(const peer of peers)try{const result=await p.session(async()=>{const tip=await p.tip();tips.set(peer,tip);observations.push({peer,result:{tip}});return read(peer);},peer);const initial=tips.get(peer)!;if(result.tip.height<initial.height||(result.tip.height===initial.height&&result.tip.hash!==initial.hash))await conflict([...tips.keys()]);tips.set(peer,result.tip);observations.push({peer,result:{tip:result.tip}});good.push({peer,result});}catch(error){
+  const readPeer=async(peer:string)=>{
+   const source=options.parallel?p.independentReader?.(peer)??p:p,before={...source.requestCounts};
+   try{return await source.session(async()=>{const tip=await source.tip();tips.set(peer,tip);observations.push({peer,result:{tip}});return read(peer,source);},peer);}
+   finally{if(source!==p)for(const [method,count]of Object.entries(source.requestCounts))p.requestCounts[method]=(p.requestCounts[method]??0)+count-(before[method]??0);}
+  };
+  const parallel=options.parallel&&peers.every(peer=>p.independentReader?.(peer));
+  const results=parallel?await Promise.allSettled(peers.map(readPeer)):undefined;
+  for(const [index,peer]of peers.entries())try{
+   const settled=results?.[index];if(settled?.status==='rejected')throw settled.reason;
+   const result=settled?.status==='fulfilled'?settled.value:await readPeer(peer);const initial=tips.get(peer)!;if(result.tip.height<initial.height||(result.tip.height===initial.height&&result.tip.hash!==initial.hash))await conflict([...tips.keys()]);tips.set(peer,result.tip);observations.push({peer,result:{tip:result.tip}});good.push({peer,result});}catch(error){
    if(error instanceof ProviderVerificationError&&error.category==='conflict')throw error;
    if(/synchronizing|[Tt]ip changed|normal blockchain extension/.test(String(error)))movement=true;
    if(/[Rr]eorganization/.test(String(error)))await conflict([...tips.keys()]);
@@ -49,4 +60,5 @@ export async function verifiedProviders<T>(p:ElectrumCore,peers:string[],read:(p
   if(attempt+1<(options.attempts??3))await (options.sleep??(ms=>new Promise(r=>setTimeout(r,ms))))((attempt+1)*500);
  }
  throw new ProviderVerificationError(category);
+ });
 }

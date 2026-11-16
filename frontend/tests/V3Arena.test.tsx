@@ -43,9 +43,7 @@ it('keeps eligible actions and the ranked display available after thirty seconds
  expect(screen.getByRole('button',{name:'Review and pay fee in wallet'})).toBeEnabled();
  expect(vi.mocked(v3Call).mock.calls.filter(([i])=>i.operation==='sync')).toHaveLength(0);
  await act(async()=>fireEvent.click(screen.getByRole('button',{name:'Make an Offer'})));
- expect(v3Call).toHaveBeenCalledWith({operation:'sync',config});expect(wallet.v3).toHaveBeenCalledWith(expect.objectContaining({operation:'offer',config}));
- const syncIndex=vi.mocked(v3Call).mock.calls.findIndex(([i])=>i.operation==='sync');
- expect(vi.mocked(v3Call).mock.invocationCallOrder[syncIndex]).toBeLessThan(wallet.v3.mock.invocationCallOrder[0]!);
+ expect(vi.mocked(v3Call).mock.calls.filter(([i])=>i.operation==='sync')).toHaveLength(0);expect(wallet.v3).toHaveBeenCalledWith(expect.objectContaining({operation:'offer',config}));
  expect(screen.getByRole('heading',{name:'Live ranked queue'})).toBeInTheDocument();
 });
 it('recalculates claim eligibility after refreshing an aged display',async()=>{
@@ -60,21 +58,21 @@ it('allows an aged insufficient-buffer display to be rechecked for a newly relea
  await act(async()=>fireEvent.click(screen.getByRole('button',{name:'Review and pay fee in wallet'})));
  expect(wallet.v3).toHaveBeenCalledWith({operation:'claim',config});
 });
-it('shows fresh capacity exhaustion without entering the wallet',async()=>{
+it('shows capacity exhaustion rejected by wallet preparation before approval',async()=>{
  stub();wallet.v3.mockReset();await open();const previous=vi.mocked(v3Call).getMockImplementation()!;
- vi.mocked(v3Call).mockImplementation(async(...args)=>{const result=await previous(...args);if(args[0].operation==='sync')result.snapshot.instance.state[5]=16;return result;});
+ wallet.v3.mockRejectedValue(Error('Vault offer capacity exhausted (sixteen lifetime registrations).'));
  await act(async()=>fireEvent.click(screen.getByRole('button',{name:'Make an Offer'})));
- expect(wallet.v3).not.toHaveBeenCalled();expect(screen.getByText(/Make an Offer unavailable:/)).toHaveTextContent('capacity exhausted');
+ expect(wallet.v3).toHaveBeenCalledTimes(1);expect(screen.getByRole('status')).toHaveTextContent('capacity exhausted');
 });
 it('keeps invalid offers blocked as the display ages',async()=>{
  stub();await open();fireEvent.change(screen.getByLabelText('Duration T (seconds)'),{target:{value:'0'}});await ageDisplay();
  expect(screen.getByRole('button',{name:'Make an Offer'})).toBeDisabled();expect(screen.getByText(/Make an Offer unavailable:/)).toBeInTheDocument();
 });
-it('retains the display after provider failure and never enters the wallet on unverified state',async()=>{
+it('retains the display when wallet preparation rejects unavailable providers',async()=>{
  stub();wallet.v3.mockReset();await open();const previous=vi.mocked(v3Call).getMockImplementation()!;
- vi.mocked(v3Call).mockImplementation(async(...args)=>{if(args[0].operation==='sync')throw Error('Provider unavailable');return previous(...args);});
+ wallet.v3.mockRejectedValue(Error('Provider unavailable'));
  await act(async()=>fireEvent.click(screen.getByRole('button',{name:'Make an Offer'})));
- expect(wallet.v3).not.toHaveBeenCalled();expect(screen.getByRole('status')).toHaveTextContent('Provider unavailable');expect(screen.getByRole('heading',{name:'Live ranked queue'})).toBeInTheDocument();
+ expect(wallet.v3).toHaveBeenCalledTimes(1);expect(screen.getByRole('status')).toHaveTextContent('Provider unavailable');expect(screen.getByRole('heading',{name:'Live ranked queue'})).toBeInTheDocument();
 });
 it('opens a saved vault automatically without a manual verification click',async()=>{
  stub();window.location.hash='/v3/vault/'+config.genesis;localStorage.setItem('staking-arena-v3-configs-mainnet',JSON.stringify([config],(_,v)=>typeof v==='bigint'?v.toString():v));
@@ -175,7 +173,7 @@ it('shows one fee on atomic vaults and refreshes the provisional queue after reg
  await open();expect(screen.getByText(/Atomic registration: one transaction/)).toHaveTextContent('one 10,000-satoshi miner fee');
  const before=vi.mocked(v3Call).mock.calls.filter(([i])=>i.operation==='sync').length;
  await act(async()=>fireEvent.click(screen.getByRole('button',{name:'Make an Offer'})));
- expect(vi.mocked(v3Call).mock.calls.filter(([i])=>i.operation==='sync').length).toBe(before+2);
+ expect(vi.mocked(v3Call).mock.calls.filter(([i])=>i.operation==='sync').length).toBe(before+1);
  expect(screen.getByText(/Offer registered — Pending/)).toHaveTextContent('cd'.repeat(32));
  expect(screen.getByRole('cell',{name:/Pending \(0-conf\) · provisional/})).toBeInTheDocument();
 });

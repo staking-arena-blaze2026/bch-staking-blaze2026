@@ -56,6 +56,9 @@ export class ElectrumCore implements NetworkProvider {
     for (const limit of [this.maxTransactions,this.maxHistoryEntries,this.maxRawBytes,this.maxTipAgeSeconds]) if (!Number.isSafeInteger(limit) || limit<1) throw Error('Invalid Electrum safety limit');
   }
   /** Public verification category only; never includes wallet scripts or outpoints. */
+  readonly requestCounts:Record<string,number>={};
+  onStage?:(stage:string)=>void;
+  onTiming?:(timing:{stage:string;milliseconds:number;requests:Record<string,number>;ok:boolean})=>void;
   onVerificationProgress?:(message:string)=>void;
   unresolvedChainPeers=new Set<string>();
   persistChainConflict?:(peers:string[])=>Promise<void>;
@@ -64,6 +67,15 @@ export class ElectrumCore implements NetworkProvider {
   // are always live. Peer scope preserves independent provider observations.
   private immutableRaw=new Map<string,string>();
   private immutableBytes=0;
+  private readPeers=new Map<string,ElectrumCore>();
+  independentReader(endpoint:string):ElectrumCore|undefined {
+    // Test/adapter subclasses with custom sessions must supply their own semantics.
+    if(this.session!==ElectrumCore.prototype.session)return undefined;
+    let peer=this.readPeers.get(endpoint);
+    if(!peer){peer=new ElectrumCore(this.connectionFactory,{network:this.network as 'mainnet'|'chipnet'|'regtest',endpoints:[endpoint],timeoutMs:this.timeoutMs,maxTipAgeSeconds:this.maxTipAgeSeconds,maxHistoryEntries:this.maxHistoryEntries,maxTransactions:this.maxTransactions,maxRawBytes:this.maxRawBytes,allowBroadcast:false});this.readPeers.set(endpoint,peer);}
+    peer.onStage=this.onStage;peer.onTiming=this.onTiming;peer.onVerificationProgress=this.onVerificationProgress;
+    return peer;
+  }
   private queue: Promise<unknown> = Promise.resolve();
   session<T>(work: () => Promise<T>, endpoint?: string): Promise<T> {
     const result = this.queue.then(() => this.runSession(work,endpoint));
@@ -77,11 +89,21 @@ export class ElectrumCore implements NetworkProvider {
       const connection = this.connectionFactory(endpoint, this.timeoutMs);
       try {
         this.rawCache = new Map(); this.rawBytes = 0;
-        await connection.connect(); this.endpoint = endpoint; this.request = connection.request;
+        await connection.connect(); this.endpoint = endpoint;
+        // Only immutable header requests are coalesced within a pinned session.
+        const headers=new Map<string,Promise<any>>();
+        this.request = (method,...params) => {
+          const key=method==='blockchain.block.header'?String(params[0]):undefined;
+          if(key!==undefined&&headers.has(key))return headers.get(key)!;
+          this.requestCounts[method]=(this.requestCounts[method]??0)+1;
+          const result=connection.request(method,...params);
+          if(key!==undefined){headers.set(key,result);void result.catch(()=>headers.delete(key));}
+          return result;
+        };
         const version = await this.request('server.version', 'Staking Arena', '1.5.0');
         if (!Array.isArray(version) || !/^1\.(?:[5-9]|[1-9][0-9])(?:\.|$)/.test(version[1])) throw Error('Electrum Cash protocol 1.5.0 required: ' + JSON.stringify(version));
         if(this.network===Network.REGTEST){if((await this.header(0)).hash!=='0f9188f13cb7b2c71f2a335e3a4fc328bf5beb436012afca590b1a11466e2206')throw Error('Electrum regtest identity mismatch');}
-        else if(this.network===Network.MAINNET){if((await this.header(0)).hash!=='000000000019d6689c085ae165831e934ff763ae46a2a6c172b3f1b60a8ce26f'||(await this.header(792773)).hash!=='000000000000000002fc0cdadaef1857bbd2936d37ea94f80ba3db4a5e8353e8')throw Error('Electrum mainnet identity mismatch');}
+        else if(this.network===Network.MAINNET){const [genesis,checkpoint]=await Promise.all([this.header(0),this.header(792773)]);if(genesis.hash!=='000000000019d6689c085ae165831e934ff763ae46a2a6c172b3f1b60a8ce26f'||checkpoint.hash!=='000000000000000002fc0cdadaef1857bbd2936d37ea94f80ba3db4a5e8353e8')throw Error('Electrum mainnet identity mismatch');}
         else if ((await this.header(0)).hash !== '000000001dd410c49a788668ce26751718cc797474d3152a5fc073dd44fd9f7b'
           || (await this.header(121957)).hash !== '0000000056087dee73fb66178ca70da89dfd0be098b1a63cf6fe93934cd04c78') throw Error('Electrum chipnet identity mismatch');
         this.activeChainSession=true;
@@ -119,7 +141,17 @@ export class ElectrumCore implements NetworkProvider {
     return 'reorg';
   }
   /** Link every relevant proof header to the selected tip, including gaps without vault activity. */
+  // Reuse only a fully linked range anchored to this exact peer/network/tip hash.
+  // Tips, histories, UTXOs and Merkle proofs are still freshly observed.
+  private linkedRanges=new Map<string,{first:number;hashes:Map<number,string>}>();
   async verifyHeaderChain(firstHeight: number, tip: Header, expected: Map<number, string>) {
+    const context=this.network+':'+this.endpoint+':'+tip.height+':'+tip.hash;
+    const cached=this.linkedRanges.get(context);
+    if(cached&&cached.first<=firstHeight){
+      for(const [height,hash]of expected)if(height>=firstHeight&&height<=tip.height&&cached.hashes.get(height)!==hash)throw Error('Header chain mismatch');
+      return;
+    }
+    const hashes=new Map<number,string>();
     let previous: string | undefined;
     for (let start = firstHeight; start <= tip.height; start += 2016) {
       const count = Math.min(2016, tip.height-start+1);
@@ -129,8 +161,13 @@ export class ElectrumCore implements NetworkProvider {
         const hex = result.hex.slice(i*160, (i+1)*160), bytes = Buffer.from(hex, 'hex'), hash = headerHash(hex);
         const parent = Buffer.from(bytes.subarray(4,36)).reverse().toString('hex'), height = start+i;
         if ((previous && parent !== previous) || (expected.has(height) && expected.get(height) !== hash) || (height === tip.height && hash !== tip.hash)) throw Error('Header chain mismatch');
-        previous = hash;
+        hashes.set(height,hash);previous = hash;
       }
+    }
+    if(hashes.size<=100000){
+      // Bounded memory, independent evidence for each endpoint.
+      if(!this.linkedRanges.has(context)&&this.linkedRanges.size>=4)this.linkedRanges.delete(this.linkedRanges.keys().next().value!);
+      this.linkedRanges.set(context,{first:firstHeight,hashes});
     }
   }
   async medianTime(height: number, expectedTipHash?: string) {
@@ -168,7 +205,7 @@ export class ElectrumCore implements NetworkProvider {
   async transaction(txid: string, height?: number): Promise<any> {
     const tx = decodeRawTransaction(await this.getRawTransaction(txid), txid);
     if (height === undefined || height <= 0) return { ...tx, confirmations: 0 };
-    const proof = await this.request('blockchain.transaction.get_merkle', txid, height), header = await this.header(height);
+    const [proof,header] = await Promise.all([this.request('blockchain.transaction.get_merkle', txid, height),this.header(height)]);
     if (proof.block_height !== height || !Number.isSafeInteger(proof.pos) || proof.pos < 0 || !Array.isArray(proof.merkle) || proof.merkle.length > 32 || proof.merkle.some((s: any) => !isHash(s))) throw Error('Invalid transaction proof');
     let hash: Buffer = Buffer.from(txid, 'hex').reverse();
     let position = proof.pos;
@@ -179,11 +216,12 @@ export class ElectrumCore implements NetworkProvider {
     if (position !== 0 || Buffer.from(hash).reverse().toString('hex') !== header.merkle) throw Error('Transaction Merkle proof mismatch');
     return { ...tx, confirmations: 1, blockhash: header.hash, height };
   }
-  async transactionStatus(txid: string) {
+  async transactionStatus(txid: string, observed?: HistoryEntry) {
     const tx = await this.transaction(txid);
     // A raw transaction lookup does not prove confirmation. Locate it through one of its output scripts.
     if (!tx.vout.length) throw Error('Transaction has no outputs');
-    const entry = (await this.history(tx.vout[0].scriptPubKey.hex)).find(h => h.tx_hash === txid);
+    if(observed&&(observed.tx_hash!==txid||!Number.isSafeInteger(observed.height)||observed.height< -1))throw Error('Invalid observed transaction status');
+    const entry = observed ?? (await this.history(tx.vout[0].scriptPubKey.hex)).find(h => h.tx_hash === txid);
     if (!entry) throw Error('Transaction status unavailable');
     const tip = await this.tip();
     if (entry.height > tip.height) throw Error('Transaction confirmation ahead of tip');

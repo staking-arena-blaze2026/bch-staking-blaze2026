@@ -1,47 +1,62 @@
 import {activeNetwork,networkLeaving} from './activeNetwork';
-interface Task {resolve:(value:any)=>void;reject:(error:Error)=>void;timer:ReturnType<typeof setTimeout>}
+interface Task {resolve:(value:any)=>void;reject:(error:Error)=>void;timer:ReturnType<typeof setTimeout>;operation:string;started:number;stage:string;stageStarted:number}
 interface Client {cancel:(error:Error)=>void;worker:Worker;ready:Promise<void>;tasks:Map<number,Task>}
-let client:Client|undefined,counter=0;
-window.addEventListener('arena-network-leaving',()=>{if(client){client.cancel(Error('Network changed; saved journals retained'));client=undefined;}});
-function start():Client{
- const worker=new Worker(new URL('./v3.worker.ts',import.meta.url),{type:'module',name:activeNetwork}),tasks=new Map<number,Task>();
+let client:Client|undefined,reader:Client|undefined,journal:Client|undefined,counter=0;
+const readers:Array<Client|undefined>=[undefined,undefined];
+const reads=new Map<string,Promise<any>>();
+const operationKinds=new Map<string,string>();
+const progress=(message:string)=>window.dispatchEvent(new CustomEvent('arena-wallet-progress',{detail:message}));
+function start(readOnly=false):Client{
+ const worker=new Worker(new URL('./v3.worker.ts',import.meta.url),{type:'module',name:readOnly?`${activeNetwork}:read`:activeNetwork}),tasks=new Map<number,Task>();
  let resolveReady!:()=>void,rejectReady!:(e:Error)=>void;
  const ready=new Promise<void>((resolve,reject)=>{resolveReady=resolve;rejectReady=reject;});
  const current:Client={worker,ready,tasks,cancel:()=>{}};
- const fail=(error:Error)=>{clearTimeout(startup);rejectReady(error);for(const task of tasks.values()){clearTimeout(task.timer);task.reject(error);}tasks.clear();worker.terminate();if(client===current)client=undefined;};
+ const fail=(error:Error)=>{clearTimeout(startup);rejectReady(error);for(const task of tasks.values()){clearInterval(task.timer);task.reject(error);}tasks.clear();worker.terminate();if(client===current)client=undefined;if(reader===current)reader=undefined;if(journal===current)journal=undefined;for(let i=0;i<readers.length;i++)if(readers[i]===current)readers[i]=undefined;};
  current.cancel=fail;
  const startup=setTimeout(()=>fail(Error('V3 worker startup timeout; reconnect and reconcile saved operations')),30000);
  worker.onmessage=event=>{
-  if(event.data?.type==='funding-report'){window.dispatchEvent(new CustomEvent('arena-funding-report',{detail:event.data.report}));return;}
-  if(event.data?.type==='progress'){window.dispatchEvent(new CustomEvent('arena-wallet-progress',{detail:event.data.message}));return;}
-  if(event.data?.type==='ready'){clearTimeout(startup);resolveReady();return;}
-  const task=tasks.get(event.data?.id);if(!task)return;tasks.delete(event.data.id);clearTimeout(task.timer);
-  event.data.error?task.reject(Error(event.data.error)):task.resolve(event.data.result);
+  const data=event.data;
+  if(data?.type==='ready'){clearTimeout(startup);resolveReady();return;}
+  const task=tasks.get(data?.id);if(!task)return; // Ignore late responses after cancellation.
+  if(data.type==='timing'){window.dispatchEvent(new CustomEvent('arena-wallet-timing',{detail:{operation:task.operation,requestId:data.id,...data.timing}}));return;}
+  if(data.type==='stage'){task.stage=data.stage;task.stageStarted=performance.now();return;}
+  if(data.type==='funding-report'){window.dispatchEvent(new CustomEvent('arena-funding-report',{detail:data.report}));return;}
+  if(data.type==='progress'){if(current===client)progress(`${data.message} (${((performance.now()-task.started)/1000).toFixed(1)}s)`);return;}
+  if(data.result?.id&&data.result?.kind){if(operationKinds.size>=256)operationKinds.delete(operationKinds.keys().next().value!);operationKinds.set(data.result.id,data.result.kind);}
+  tasks.delete(data.id);clearInterval(task.timer);
+  data.error?task.reject(Error(data.error)):task.resolve(data.result);
  };
  worker.onerror=()=>fail(Error('V3 worker failed; saved operations remain recoverable'));
  return current;
 }
-/** Wait for module/WASM initialization before sending a request. Inspection needs no wallet; funding and claims require explicit wallet authorization. */
-export async function v3Call(intent:Record<string,unknown>,keys:unknown[]=[]):Promise<any>{
- if(networkLeaving)throw Error('Network changed; review again');
- const current=client??=start();await current.ready;
- return new Promise((resolve,reject)=>{
-  const id=++counter,timer=setTimeout(()=>{current.tasks.delete(id);reject(Error('V3 request timed out; reconcile saved operations before retrying'));},120000);
-  current.tasks.set(id,{resolve,reject,timer});
-  try{current.worker.postMessage({id,intent,keys});}catch(e){clearTimeout(timer);current.tasks.delete(id);reject(e);}
- });
+function call(current:Client,intent:Record<string,unknown>,keys:unknown[]=[]):Promise<any>{
+ return current.ready.then(()=>new Promise((resolve,reject)=>{
+  if(networkLeaving){reject(Error('Network changed; review again'));return;}
+  const id=++counter,started=performance.now(),operation=operationKinds.get(String(intent.id))??String(intent.operation);
+  // A timeout cancels the worker, never abandons a still-running submission that
+  // could race a retry. Signed journals survive and recovery is always explicit.
+  const timer=setInterval(()=>{const t=current.tasks.get(id);if(!t)return;
+   const elapsed=performance.now()-t.stageStarted;
+   const limit=t.stage==='queued'?30000:t.stage==='broadcast'?45000:180000;
+   if(elapsed>limit||performance.now()-started>600000){current.cancel(Error(`V3 ${t.stage} timed out; reconcile saved operations before retrying`));return;}
+   if(current===client)progress(`${t.stage} · ${((performance.now()-started)/1000).toFixed(0)}s elapsed; saved operations retained`);
+  },5000);
+  current.tasks.set(id,{resolve,reject,timer,operation,started,stage:'queued',stageStarted:started});
+  try{current.worker.postMessage({id,intent,keys,enqueuedAt:Date.now()});}catch(e){clearInterval(timer);current.tasks.delete(id);reject(e);}
+ }));
 }
-
-// Background read workers have independent transports. Financial calls always use
-// the original worker and its fresh action-time verification, never this pool.
-const readers:Array<Client|undefined>=[undefined,undefined];
-const reads=new Map<string,Promise<any>>();
-export function cancelMarketplaceReads(){for(let i=0;i<readers.length;i++){const c=readers[i];if(c){c.cancel(Error('Marketplace verification cancelled'));readers[i]=undefined;}}reads.clear();}
-window.addEventListener('arena-network-leaving',cancelMarketplaceReads);
+/** Independent read transports cannot queue ahead of preparation or submission. */
+export function v3Call(intent:Record<string,unknown>,keys:unknown[]=[]):Promise<any>{
+ if(networkLeaving)return Promise.reject(Error('Network changed; review again'));
+ const op=String(intent.operation);
+ if(['sync','connect','inspectRead'].includes(op))return call(reader??=start(true),intent,[]);
+ if(['list','claims'].includes(op))return call(journal??=start(true),intent,[]);
+ return call(client??=start(),intent,keys);
+}
+export function cancelMarketplaceReads(){for(let i=0;i<readers.length;i++){readers[i]?.cancel(Error('Marketplace verification cancelled'));readers[i]=undefined;}reads.clear();}
+window.addEventListener('arena-network-leaving',()=>{client?.cancel(Error('Network changed; saved journals retained'));reader?.cancel(Error('Network changed'));journal?.cancel(Error('Network changed'));cancelMarketplaceReads();operationKinds.clear();});
 export function verifyMarketplace(config:unknown,slot:number):Promise<any>{
- const key=JSON.stringify(config,(_,v)=>typeof v==='bigint'?String(v):v);
- const existing=reads.get(key);if(existing)return existing;
- const job=(async()=>{if(networkLeaving)throw Error('Network changed');const i=slot%2,current=readers[i]??=start();
- try{await current.ready;return await new Promise((resolve,reject)=>{const id=++counter,timer=setTimeout(()=>current.cancel(Error('Verification timed out — retry available')),60000);current.tasks.set(id,{resolve,reject,timer});try{current.worker.postMessage({id,intent:{operation:'sync',config},keys:[]});}catch(e){clearTimeout(timer);current.tasks.delete(id);reject(e);}});}catch(e){current.cancel(Error('Verification worker reset'));if(readers[i]===current)readers[i]=undefined;throw e;}})();
+ const key=JSON.stringify(config,(_,v)=>typeof v==='bigint'?String(v):v),existing=reads.get(key);if(existing)return existing;
+ const job=call(readers[slot%2]??=start(true),{operation:'sync',config});
  reads.set(key,job);void job.finally(()=>{if(reads.get(key)===job)reads.delete(key);}).catch(()=>{});return job;
 }
