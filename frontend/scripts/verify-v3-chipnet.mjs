@@ -43,7 +43,7 @@ try{
  await page.reload({waitUntil:'domcontentloaded'});await connection(page);
  console.log('Reload chipnet connection verified; checking v1/v2 navigation');
  await page.getByRole('link',{name:'V2 vaults & recovery'}).click();await page.getByRole('heading',{name:/v2/i}).first().waitFor();
- await page.getByRole('link',{name:'Vaults',exact:true}).click();await page.getByRole('heading',{name:'Staking Arena',exact:true}).waitFor();await page.getByRole('link',{name:'Create Vault',exact:true}).click();await page.getByRole('heading',{name:/Create/}).first().waitFor();
+ await page.getByRole('link',{name:'Vaults',exact:true}).click();await page.getByRole('heading',{name:'Stake Arena',exact:true}).waitFor();await page.getByRole('link',{name:'Create Vault',exact:true}).click();await page.getByRole('heading',{name:/Create/}).first().waitFor();
  for(const w of page.workers())methods.push(...await w.evaluate(()=>globalThis.__arenaReadonlyMethods??[]));
  assert.deepEqual(errors,[]);assert.deepEqual(responses,[]);assert(methods.includes('blockchain.block.header'));assert.equal(methods.includes('blockchain.transaction.broadcast'),false);
  const result={verifiedAt:new Date().toISOString(),url,status,pairs,v3Reload:true,tabsAndHistory:true,mobileWidth:true,v1Accessible:true,v2Accessible:true,directGenesisOneApproval:true,walletConnected:false,walletSigningVerified:false,broadcasts:0,pageErrors:errors,httpErrors:responses,workers,electrumMethods:[...new Set(methods)]};

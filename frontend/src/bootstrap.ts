@@ -7,7 +7,7 @@ function showStartupError(error: unknown) {
   const status = document.getElementById('arena-startup');
   if (!status) return; // React has already replaced the startup message.
   status.setAttribute('role', 'alert');
-  status.textContent = 'Staking Arena could not start. Reload this page to try again.';
+  status.textContent = 'Stake Arena could not start. Reload this page to try again.';
   const details = document.createElement('details');
   const summary = document.createElement('summary');
   summary.textContent = 'Show startup error';

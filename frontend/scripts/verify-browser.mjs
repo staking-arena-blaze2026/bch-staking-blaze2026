@@ -12,7 +12,7 @@ try {
  page.setDefaultTimeout(15000);page.setDefaultNavigationTimeout(30000);
  const errors=[],requests=[];page.on('pageerror',e=>errors.push(e.message));page.on('request',r=>requests.push({url:r.url(),method:r.method()}));
  const go=path=>page.goto('http://127.0.0.1:4174'+path,{waitUntil:'domcontentloaded'});
- await go('/#/v1');await page.getByRole('heading',{name:'Staking Arena'}).waitFor();await page.getByText('Offline · no API configured',{exact:true}).waitFor();
+ await go('/#/v1');await page.getByRole('heading',{name:'Stake Arena'}).waitFor();await page.getByText('Offline · no API configured',{exact:true}).waitFor();
  assert.equal(requests.filter(r=>r.url.includes('/api/')).length,0);
  await page.getByRole('link',{name:'Create Vault'}).click();await page.getByRole('heading',{name:'Create Vault'}).waitFor();
  await page.reload({waitUntil:'domcontentloaded'});await page.getByRole('heading',{name:'Create Vault',exact:true}).waitFor();
@@ -46,7 +46,7 @@ try {
  console.log('PASS: production direct vault/offer routes, ranking, calculation, mobile layout, snapshot persistence and recovery; no JavaScript errors; GET only');
  if(process.env.ARENA_LIVE_URL){
   const base=process.env.ARENA_LIVE_URL;const response=await fetch(base+'/api/vaults',{signal:AbortSignal.timeout(15000)});assert.equal(response.status,200);const data=await response.json();assert.equal(data.chain,'regtest');assert.equal(data.confirmedOnly,true);
-  await page.setViewportSize({width:1280,height:900});await page.goto(base+'/#/v1',{waitUntil:'domcontentloaded'});await page.getByRole('heading',{name:'Staking Arena'}).waitFor();
+  await page.setViewportSize({width:1280,height:900});await page.goto(base+'/#/v1',{waitUntil:'domcontentloaded'});await page.getByRole('heading',{name:'Stake Arena'}).waitFor();
   if(data.vaults.length){await page.locator('.vault-row').first().waitFor();if(process.env.ARENA_CAPTURE_SCREENSHOTS==='1'&&!process.env.ARENA_SKIP_SCREENSHOTS)await page.screenshot({path:'test-results/marketplace-home-live.png',fullPage:true});const v=data.vaults[0];await page.goto(base+'/#/vault/'+v.category,{waitUntil:'domcontentloaded'});await page.getByRole('heading',{name:/Vault /}).waitFor();await page.getByText('Maximum reward per period',{exact:true}).waitFor();}
   else await page.getByText('No vaults listed',{exact:true}).waitFor();
   if(process.env.ARENA_CAPTURE_SCREENSHOTS==='1'&&!process.env.ARENA_SKIP_SCREENSHOTS)await page.screenshot({path:'test-results/marketplace-live-indexer.png',fullPage:true});

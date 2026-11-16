@@ -32,7 +32,7 @@ try {
  const go=hash=>page.goto(target+hash,{waitUntil:'domcontentloaded'});
  const waitHeading=name=>page.getByRole('heading',{name,level:1,exact:true}).waitFor();
  const response=await go('');assert.equal(response.status(),200);
- await waitHeading('Staking Arena');
+ await waitHeading('Stake Arena');
  await page.getByText('Offline · no API configured',{exact:true}).waitFor();
  assert.equal(await page.getByRole('link',{name:'Create Vault',exact:true}).getAttribute('href'),'#/create');
  await page.waitForFunction(()=>getComputedStyle(document.body).margin==='0px');

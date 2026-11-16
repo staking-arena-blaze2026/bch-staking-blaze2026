@@ -11,13 +11,13 @@ async function navigate(href:string){await act(async()=>{window.location.hash=hr
 it('shows indexed vault terms with a v3 home link and no legacy navigation',async()=>{
  const fetcher=vi.fn(()=>response(fixture()));vi.stubGlobal('fetch',fetcher);render(<App/>);
  await screen.findByText('Maximum reward / period');
- expect(screen.getByRole('heading',{name:'Staking Arena'})).toBeInTheDocument();
+ expect(screen.getByRole('heading',{name:'Stake Arena'})).toBeInTheDocument();
  expect(screen.getByRole('link',{name:'Create Vault'})).toHaveAttribute('href','#/create');
  expect(screen.getByText('0.00001000 BCH')).toBeInTheDocument();
  expect(screen.getByText('Every minute')).toBeInTheDocument();
  expect(fetcher.mock.calls[0]).toBeDefined();
  expect(within(screen.getByRole('navigation')).queryAllByRole('link')).toHaveLength(0);
- expect(screen.getByRole('link',{name:'Staking Arena home'})).toHaveAttribute('href','#/v3/offers');
+ expect(screen.getByRole('link',{name:'Stake Arena home'})).toHaveAttribute('href','#/v3/offers');
  expect(screen.queryByText('Native BCH reserves')).not.toBeInTheDocument();
 });
 it('opens a dedicated hash detail route and ranks offers by exact priority',async()=>{

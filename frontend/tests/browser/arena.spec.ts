@@ -4,7 +4,7 @@ const id='a'.repeat(64);
 test.beforeEach(async({page,context})=>{await context.routeWebSocket(/^wss:\/\/relay\./,socket=>{socket.onMessage(()=>{});});await page.clock.setFixedTime(browserTime);});
 test('marketplace uses indexed terms and detail links survive reload',async({page})=>{
  await page.route('**/api/vaults',route=>route.fulfill({json:fixture()}));
- await page.goto('/#/v1',{waitUntil:'domcontentloaded'});await expect(page.getByRole('heading',{name:'Staking Arena'})).toBeVisible();
+ await page.goto('/#/v1',{waitUntil:'domcontentloaded'});await expect(page.getByRole('heading',{name:'Stake Arena'})).toBeVisible();
  await page.getByRole('link',{name:/Vault aaaaaa/}).click();await expect(page.getByRole('heading',{name:/Vault aaaaaa/})).toBeVisible();
  await page.reload({waitUntil:'domcontentloaded'});await expect(page.getByText('Maximum reward per period',{exact:true})).toBeVisible();
  await expect(page.getByRole('table')).toBeVisible();

@@ -22,7 +22,7 @@ export function startPublicPreview(){
    if(rows.has(c.genesis)&&JSON.stringify(rows.get(c.genesis).config)!==JSON.stringify(c))conflicts.add(c.genesis);else rows.set(c.genesis,row);
   }
   if(!rows.size)return;
-  root.replaceChildren(el('h1','Staking Arena'),el('h2','Known vaults'));
+  root.replaceChildren(el('h1','Stake Arena'),el('h2','Known vaults'));
   const refresh=el('button','Refresh public discovery') as HTMLButtonElement;refresh.disabled=true;root.append(refresh);
   const table=document.createElement('table');table.className='marketplace-table';
   const head=table.createTHead().insertRow();for(const label of ['Vault','Max reward / period','Staking asset','Offers']){const th=el('th',label);th.setAttribute('scope','col');head.append(th);}

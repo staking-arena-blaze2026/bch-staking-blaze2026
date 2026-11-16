@@ -163,7 +163,7 @@ test('fresh homepage is the four-column marketplace with accessible rows on desk
  await page.route('**/public-index/regtest/index.json',route=>route.fulfill({contentType:'application/json',body:stringify({schema:1,network:'regtest',vaults:[{config:fixture.config,announcement:fixture.config.genesis,height:1,status:'observed-confirmed'}],pages:[]})}));
  await page.goto('./');await expect(page).toHaveURL(/#\/v3\/offers$/);await expect(page.getByRole('heading',{name:'Known vaults'})).toBeVisible();
  await expect(page.locator('.v3-tabs a').first()).toHaveText('Make an Offer');await expect(page.locator('.v3-tabs a').first()).toHaveAttribute('aria-current','page');
- await expect(page.getByRole('link',{name:'Staking Arena home'})).toHaveAttribute('href','#/v3/offers');
+ await expect(page.getByRole('link',{name:'Stake Arena home'})).toHaveAttribute('href','#/v3/offers');
  await expect(page.locator('.wallet-network-note')).toHaveCount(0);await expect(page.getByText(/Mainnet uses real BCH\. Review exact amounts/)).toHaveCount(0);
  await expect(page.getByRole('columnheader')).toHaveText(['Vault','Max reward / period','Staking asset','Offers']);
  expect(await page.getByRole('heading',{name:'Known vaults'}).evaluate(el=>el.nextElementSibling?.textContent)).toBe('Refresh public discovery');

@@ -117,7 +117,7 @@ class WalletOwner {
       setItem:(key,value)=>{if(this.manager === manager)this.storage.setItem(key,value);},
       removeItem:key=>{if(this.manager === manager)this.storage.removeItem(key);},
     };
-    manager = new DappConnectionManager('Staking Arena',new URL('./arena.svg',window.location.href).href,{session:{key:WALLET_SESSION_KEY,storage}});
+    manager = new DappConnectionManager('Stake Arena',new URL('./arena.svg',window.location.href).href,{session:{key:WALLET_SESSION_KEY,storage}});
     this.manager = manager;
     walletDiagnostic('Wallet manager created');
     manager.on('messagesent', message => {
