@@ -9,15 +9,18 @@ import {mkdtempSync,readFileSync,rmSync} from 'node:fs';
 import {tmpdir} from 'node:os';
 import {execFileSync} from 'node:child_process';
 import {once} from 'node:events';
+import {atomicOfferBuilder,genesisBuilder,covenant,parameterArgs} from '../../../src/v3/protocol';
 import {directGenesisBuilder} from '../../../src/v3/protocol';
+import {utxo} from '../../../src/arena-core';
 import {binToHex,encodeTransaction,generateSigningSerializationBch,hash256,encodeDataPush,type Transaction} from '@bitauth/libauth';
+let hiddenOffer:string|undefined,hideHosts:string[]=[];
 let fixture:ReturnType<typeof v3BrowserChain>,hosts:string[]=[],methods:string[]=[],discoveryReads:string[]=[];
 const certificate=mkdtempSync(tmpdir()+'/arena-v3-wss-');
 execFileSync('openssl',['req','-x509','-newkey','rsa:2048','-nodes','-keyout',certificate+'/key','-out',certificate+'/cert','-days','1','-subj','/CN=localhost','-addext','subjectAltName=IP:127.0.0.1,DNS:localhost'],{stdio:'ignore'});
 const server=createServer({key:readFileSync(certificate+'/key'),cert:readFileSync(certificate+'/cert')}),sockets=new WebSocketServer({server});
-test.beforeAll(async()=>{sockets.on('connection',(socket,req)=>{hosts.push(req.headers.host??'');socket.on('message',async data=>{const m=JSON.parse(data.toString());methods.push(m.method);if(m.method==='blockchain.scripthash.get_history'&&[DISCOVERY_SCRIPT,discoveryScript('regtest')].map(scriptHash).includes(m.params[0]))discoveryReads.push(m.params[0]);try{const result=await fixture.chain.request(m.method,...m.params);socket.send(JSON.stringify({id:m.id,result}));}catch(e){socket.send(JSON.stringify({id:m.id,error:{code:-1,message:String(e)}}));}});});server.listen(4177,'0.0.0.0');await once(server,'listening');});
+test.beforeAll(async()=>{sockets.on('connection',(socket,req)=>{hosts.push(req.headers.host??'');socket.on('message',async data=>{const m=JSON.parse(data.toString());methods.push(m.method);if(m.method==='blockchain.scripthash.get_history'&&[DISCOVERY_SCRIPT,discoveryScript('regtest')].map(scriptHash).includes(m.params[0]))discoveryReads.push(m.params[0]);try{const hide=hiddenOffer&&hideHosts.some(host=>(req.headers.host??'').startsWith(host));const wasPending=hide&&fixture.chain.pending.delete(hiddenOffer!);const response=fixture.chain.request(m.method,...m.params);if(wasPending)fixture.chain.pending.add(hiddenOffer!);const result=await response;socket.send(JSON.stringify({id:m.id,result}));}catch(e){socket.send(JSON.stringify({id:m.id,error:{code:-1,message:String(e)}}));}});});server.listen(4177,'0.0.0.0');await once(server,'listening');});
 test.afterAll(async()=>{for(const s of sockets.clients)s.terminate();sockets.close();server.close();await once(server,'close');rmSync(certificate,{recursive:true,force:true});});
-test.beforeEach(async({context})=>{fixture=v3BrowserChain();hosts=[];methods=[];discoveryReads=[];await context.routeWebSocket(/^wss:\/\/relay\./,s=>{s.onMessage(()=>{});});});
+test.beforeEach(async({context})=>{fixture=v3BrowserChain();hiddenOffer=undefined;hideHosts=[];hosts=[];methods=[];discoveryReads=[];await context.routeWebSocket(/^wss:\/\/relay\./,s=>{s.onMessage(()=>{});});});
 async function refresh(page:Page){const input=page.getByLabel('Public v3 configuration');if(!await input.isVisible())await page.getByText('Import or share a vault configuration',{exact:true}).click();if(!await input.inputValue())await input.fill(JSON.stringify(fixture.config,(_,v)=>typeof v==='bigint'?v.toString():v));const button=page.getByRole('button',{name:'Verify and refresh chain state'});await expect(button).toBeEnabled({timeout:60000});await button.click();await expect(page.getByRole('button',{name:'Refresh vault state',exact:true})).toBeEnabled({timeout:60000});await expect(page.getByRole('heading',{name:'Live ranked queue'})).toBeVisible({timeout:60000});}
 async function open(page:Page){await page.goto('./#/v3/offers');await page.getByLabel('Public v3 configuration').fill(JSON.stringify(fixture.config,(_,v)=>typeof v==='bigint'?v.toString():v));await refresh(page);}
 test('real browser worker verifies wallet-funded claims over WSS and requires a connected caller wallet',async({page})=>{
@@ -118,4 +121,41 @@ test('a thousand indexed candidates render bounded pages without a visitor histo
 test('simultaneous fresh visitors load the same public index without wallet identity or discovery-history reads',async({browser})=>{
  const contexts=await Promise.all([browser.newContext({ignoreHTTPSErrors:true}),browser.newContext({ignoreHTTPSErrors:true})]);let downloads=0;
  try{await Promise.all(contexts.map(async context=>{await context.routeWebSocket(/^wss:\/\/relay\./,s=>s.onMessage(()=>{}));await context.route('**/public-index/regtest/index.json',route=>{downloads++;return route.fulfill({contentType:'application/json',body:stringify({schema:1,network:'regtest',vaults:[{config:fixture.config,announcement:fixture.config.genesis,height:1,status:'observed-confirmed'}],total:1,pages:[]})});});const page=await context.newPage();await page.goto('http://127.0.0.1:4176/v3/#/v3/offers');await expect(page.locator('.v3-vault-card')).toHaveCount(1);expect(await page.evaluate(()=>localStorage.getItem('staking-arena-v3-configs'))).toBeNull();}));expect(downloads).toBe(2);expect(discoveryReads).toEqual([]);expect(methods).not.toContain('blockchain.transaction.broadcast');}finally{await Promise.all(contexts.map(c=>c.close()));}
+});
+
+test('accepted atomic offer is visible unranked through reload and asymmetric propagation, then automatically ranks and confirms',async({page})=>{
+ const parameters={...fixture.config,registryVersion:4 as const},owner={publicKey:binToHex(fixture.key.publicKey),path:'receive' as const,index:0};
+ const factory=covenant('RegistryAtomicGenesisV4',parameterArgs(parameters),fixture.provider),funding=fixture.coin(12000n,factory.lockingBytecode),reserve=fixture.coin(9000n);
+ const g=genesisBuilder(parameters,funding,{input:reserve,unlocker:fixture.key.unlockP2PKH()},fixture.provider),genesis=fixture.add(g.builder.build()),config={...parameters,genesis:genesis.txid};
+ const input=fixture.coin(100000n),terms={stake:3000n,duration:3600,reward:1000n,maxWins:1};
+ const built=atomicOfferBuilder({parameters,category:funding.txid,state:g.state,inputs:[utxo(genesis,0),utxo(genesis,1),utxo(genesis,2)]},terms,fixture.key.publicKey,[{...owner,utxo:input}],fixture.provider,fixture.chain.clock(),fixture.key);
+ const request=built.builder.generateWcTransactionObject({broadcast:false}),tx=structuredClone(request.transaction) as Transaction;
+ for(const i of [0,3]){
+  const source=request.sourceOutputs[i]!,sig=fixture.key.generateSignature(hash256(generateSigningSerializationBch({transaction:tx,sourceOutputs:request.sourceOutputs,inputIndex:i},{coveredBytecode:source.contract?.redeemScript??source.lockingBytecode,signingSerializationType:Uint8Array.of(0x61)})));sig[64]=0x61;
+  tx.inputs[i]!.unlockingBytecode=source.contract?Buffer.from(Buffer.from(source.unlockingBytecode).toString('hex').replace('41'+'00'.repeat(65),'41'+binToHex(sig)),'hex'):new Uint8Array([...encodeDataPush(sig),...encodeDataPush(fixture.key.publicKey)]);
+ }
+ const raw=binToHex(encodeTransaction(tx)),submitted=fixture.add(raw,false);hiddenOffer=submitted.txid;hideHosts=['127.0.0.1','localhost'];
+ const operation={id:'atomic-browser',version:3,kind:'offer',registrationMode:'atomic',step:'action',stage:'pending',observation:'propagating',parameters,owner,raw,txid:submitted.txid,source:genesis.txid,config,terms,plan:{kind:'offer',label:'Atomic fixture',request,signers:{0:owner.publicKey,3:owner.publicKey},inputPaths:[[0,'receive',0],[3,'receive',0]],fee:'10000'}};
+ await page.goto('./#/v3');
+ const encoded=JSON.stringify(operation,(_,v)=>typeof v==='bigint'?{bigint:v.toString()}:v instanceof Uint8Array?{bytes:Array.from(v)}:v);
+ const acceptedAt=await page.evaluate(async({encoded,config})=>{
+  const op=JSON.parse(encoded,(_,v)=>v?.bigint!==undefined?BigInt(v.bigint):v?.bytes?Uint8Array.from(v.bytes):v);op.acceptedAt=Date.now();
+  localStorage.setItem('staking-arena-v3-configs',config);
+  await new Promise<void>((resolve,reject)=>{const r=indexedDB.open('staking-arena-wallet-v3',1);r.onupgradeneeded=()=>r.result.createObjectStore('operations');r.onerror=()=>reject(r.error);r.onsuccess=()=>{const db=r.result,t=db.transaction('operations','readwrite');t.objectStore('operations').put(op,op.id);t.oncomplete=()=>{db.close();resolve();};t.onerror=()=>reject(t.error);};});return op.acceptedAt;
+ },{encoded,config:JSON.stringify([config],(_,v)=>typeof v==='bigint'?v.toString():v)});
+ await page.goto('./#/v3/vault/'+config.genesis);await page.reload();
+ const provisional=page.getByRole('region',{name:'Locally submitted offers'});await expect(provisional).toContainText('Unranked');await expect(provisional).toContainText('Pending (0-conf) — awaiting on-chain verification');
+ const visibleAt=Date.now();await expect(provisional).toContainText(submitted.txid);await expect(provisional).toContainText('3000 satoshis');
+ await expect(page.locator('.v3-queue')).toContainText('No independently verified active offers yet');await expect(page.locator('.v3-queue')).toContainText(genesis.txid);
+ // One provider observes the transaction while the other still reports the old state.
+ hideHosts=['localhost'];await page.waitForTimeout(4000);await expect(provisional).toBeVisible();
+ await page.reload();await expect(provisional).toContainText(submitted.txid);
+ hideHosts=[];const propagatedAt=Date.now();
+ await expect(provisional).toHaveCount(0,{timeout:45000});await expect(page.locator('.v3-queue')).toContainText(submitted.txid);await expect(page.locator('.v3-queue')).toContainText('Pending (0-conf)');
+ const rankedAt=Date.now();fixture.chain.mine();
+ await expect(page.locator('.v3-queue')).toContainText('Confirmed',{timeout:75000});
+ const timing={fixture:'synthetic loopback WSS, real covenant/transaction verification; no BCH spent',acceptedToVisibleMs:visibleAt-acceptedAt,propagationToRankedMs:rankedAt-propagatedAt,acceptedToRankedMs:rankedAt-acceptedAt};
+ console.log('SUBMITTED_OFFER_TIMING',JSON.stringify(timing));
+ await page.screenshot({path:'test-results/submitted-offer-confirmed.png',fullPage:true});
+ expect(methods).not.toContain('blockchain.transaction.broadcast');
 });

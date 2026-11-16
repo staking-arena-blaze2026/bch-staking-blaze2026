@@ -1,0 +1,37 @@
+{
+  "fixture": "synthetic loopback WSS, real covenant/transaction verification; no BCH spent",
+  "acceptedToVisibleMs": 2995,
+  "propagationToRankedMs": 1499,
+  "acceptedToRankedMs": 12566,
+  "warmSyntheticClickToProvisionalMs": 193.36696999999913,
+  "before": "No separate provisional row existed; visibility required successful independent replay. No live mainnet before/after timing measured.",
+  "browserTests": {
+    "passed": 8,
+    "failed": 0
+  },
+  "focusedTests": {
+    "passed": 35,
+    "failed": 0
+  },
+  "isolatedBchnTests": {
+    "passed": 2,
+    "failed": 0
+  },
+  "limitations": "Browser acceptance timestamp is journal injection before cold navigation/reload. Warm render is a mocked-wallet React measurement. Public Cashonize approval and live mainnet broadcast were not exercised.",
+  "frontendTests": {
+    "passed": 168,
+    "failed": 0,
+    "files": 32
+  },
+  "finalFeedbackFocusedTests": {
+    "passed": 27,
+    "failed": 0
+  },
+  "finalWarmSyntheticClickToProvisionalMs": 113.15069100000255,
+  "checks": {
+    "rootTypecheck": "passed",
+    "frontendTypecheck": "passed",
+    "productionBuild": "passed",
+    "compiledCovenantsUnchanged": "passed"
+  }
+}

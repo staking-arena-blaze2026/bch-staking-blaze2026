@@ -14,7 +14,7 @@ function stub(phase='ready'){const state=advance(initialState(p),0,0,offer(Buffe
  if(intent.operation==='sync')return {snapshot:{config,instance:{parameters:p,state},clock:{mtp:p.epoch+7201},pending:[],allocations:[]},next:{phase,available:4000n,reason:'Top offer exceeds available buffer'},required:10000n,minerFee:10000n,carriers:0n};
  if(intent.operation==='claim')return {id:'cd'.repeat(32),status:'pending'};return [];
 });}
-async function open(connected=true){window.location.hash='/v3/offers';render(<WalletTransactionsContext.Provider value={connected?wallet:null}><V3Arena/></WalletTransactionsContext.Provider>);fireEvent.change(screen.getByLabelText('Public v3 configuration'),{target:{value:JSON.stringify(config,(_,v)=>typeof v==='bigint'?v.toString():v)}});await act(async()=>fireEvent.click(screen.getByRole('button',{name:'Verify and refresh chain state'})));await waitFor(()=>expect(screen.getByRole('heading',{name:'Live ranked queue'})).toBeInTheDocument());}
+async function open(connected=true){window.location.hash='/v3/offers';const view=render(<WalletTransactionsContext.Provider value={connected?wallet:null}><V3Arena/></WalletTransactionsContext.Provider>);fireEvent.change(screen.getByLabelText('Public v3 configuration'),{target:{value:JSON.stringify(config,(_,v)=>typeof v==='bigint'?v.toString():v)}});await act(async()=>fireEvent.click(screen.getByRole('button',{name:'Verify and refresh chain state'})));await waitFor(()=>expect(screen.getByRole('heading',{name:'Live ranked queue'})).toBeInTheDocument());return view;}
 it('requires explicit caller wallet approval and labels broadcast as pending',async()=>{
  stub();wallet.v3.mockResolvedValue({kind:'claim',id:'claim',step:'action',stage:'pending'});await open();expect(screen.getByRole('button',{name:'Review and pay fee in wallet'})).toBeEnabled();expect(screen.getByRole('cell',{name:'513'})).toBeInTheDocument();expect(screen.getByText(/Priority uses the requested T/)).toBeInTheDocument();expect(screen.getByText(/Estimated queue position:/)).toHaveTextContent('Independent lock: 4096s');
  await act(async()=>fireEvent.click(screen.getByRole('button',{name:'Review and pay fee in wallet'})));expect(wallet.v3).toHaveBeenCalledWith({operation:'claim',config});expect(screen.getByRole('status')).toHaveTextContent('pending');expect(screen.getByRole('status')).not.toHaveTextContent('confirmed');
@@ -166,15 +166,15 @@ it('shows creation progress immediately and reports rejection beneath Create Vau
  expect(screen.getByRole('status')).toHaveTextContent('Insufficient BCH');expect(screen.getByRole('button',{name:/^Create Vault$/})).toBeEnabled();
 });
 
-it('shows one fee on atomic vaults and refreshes the provisional queue after registration',async()=>{
+it('shows one fee on atomic vaults and reports accepted broadcast without waiting for refresh',async()=>{
  stub();const original=vi.mocked(v3Call).getMockImplementation()!;
  vi.mocked(v3Call).mockImplementation(async(...args)=>{const result=await original(...args);if(args[0].operation==='sync'){result.snapshot.config={...config,registryVersion:4};result.snapshot.provisional=true;result.snapshot.instance.inputs=[{txid:'cd'.repeat(32)}];}return result;});
- wallet.v3.mockReset().mockResolvedValue({id:'atomic',kind:'offer',registrationMode:'atomic',step:'action',stage:'pending',txid:'cd'.repeat(32)});
+ wallet.v3.mockReset().mockResolvedValue({id:'atomic',kind:'offer',registrationMode:'atomic',step:'action',stage:'pending',raw:'signed',txid:'cd'.repeat(32)});
  await open();expect(screen.getByText(/Atomic registration: one transaction/)).toHaveTextContent('one 10,000-satoshi miner fee');
  const before=vi.mocked(v3Call).mock.calls.filter(([i])=>i.operation==='sync').length;
  await act(async()=>fireEvent.click(screen.getByRole('button',{name:'Make an Offer'})));
- expect(vi.mocked(v3Call).mock.calls.filter(([i])=>i.operation==='sync').length).toBe(before+1);
- expect(screen.getByText(/Offer registered — Pending/)).toHaveTextContent('cd'.repeat(32));
+ expect(vi.mocked(v3Call).mock.calls.filter(([i])=>i.operation==='sync').length).toBe(before);
+ expect(screen.getByText(/Pending \(0-conf\) — awaiting on-chain verification/)).toHaveTextContent('cd'.repeat(32));
  expect(screen.getByRole('cell',{name:/Pending \(0-conf\) · provisional/})).toBeInTheDocument();
 });
 
@@ -203,3 +203,31 @@ it('limits verification to two displayed candidates while rendering a twenty-ent
  vi.mocked(v3Call).mockImplementation(async(...args)=>{if(args[0].operation==='sync'){active++;await new Promise<void>(resolve=>release.push(resolve));active--;throw Error('Offline');}return original(...args);});
  const view=render(<V3Arena/>);await waitFor(()=>expect(document.querySelectorAll('.v3-vault-card')).toHaveLength(20));await waitFor(()=>expect(active).toBe(2));expect(vi.mocked(v3Call).mock.calls.filter(([i])=>i.operation==='discover')).toHaveLength(0);view.unmount();await act(async()=>release.forEach(resolve=>resolve()));
 });
+
+it('shows a submitted offer before slow refresh and automatically promotes it after failed and delayed provider reads, without a wallet',async()=>{
+ stub();const previous=vi.mocked(v3Call).getMockImplementation()!;
+ const txid='47'.repeat(32),source='c5'.repeat(32);
+ let journal:any[]=[],attempt=0,accepted=false;
+ const pendingOp={id:'submitted',version:3,kind:'offer',registrationMode:'atomic',step:'action',stage:'pending',raw:'signed',txid,source,config,parameters:p,owner:{publicKey:wallet.publicKey(),path:'receive',index:0},terms:{stake:3000n,duration:3600,reward:1000n,maxWins:1},acceptedAt:Date.now()};
+ vi.mocked(v3Call).mockImplementation(async(...args)=>{
+  const intent=args[0];if(intent.operation==='list')return journal;
+  if(intent.operation==='inspectRead')return {original:journal[0],result:{...journal[0],observation:attempt>=2?'pending':'propagating'}};
+  if(intent.operation==='applyInspection'){journal=[intent.result];return intent.result;}
+  const result=await previous(...args);
+  if(intent.operation==='sync'){
+   if(accepted&&++attempt===1)throw Error('Provider propagation delayed');
+   result.snapshot.instance.inputs=[{txid:attempt>=3?txid:source}];result.snapshot.history=[];result.snapshot.pendingHistory=attempt>=3?[txid]:[];
+   result.snapshot.instance.state=attempt>=3?advance(initialState(p),0,0,offer(Buffer.from(wallet.publicKey(),'hex'),3000,3600,1000,1)):initialState(p);
+   if(journal.length)result.inspections=[{original:journal[0],result:{...journal[0],observation:attempt>=3?'pending':'propagating',stage:attempt>=3?'pending':'prepared'}}];
+  }return result;
+ });
+ wallet.v3.mockImplementation(async()=>{accepted=true;journal=[pendingOp];return pendingOp;});const view=await open();
+ const start=performance.now();await act(async()=>fireEvent.click(screen.getByRole('button',{name:'Make an Offer'})));
+ expect(screen.getByRole('region',{name:'Locally submitted offers'})).toHaveTextContent('Unranked');const visibleMs=performance.now()-start;expect(visibleMs).toBeLessThan(500);console.log('ACCEPTED_TO_PROVISIONAL_RENDER_MS',visibleMs);
+ expect(screen.getByText(/Make an Offer unavailable:/)).not.toHaveTextContent('discard');
+ view.rerender(<WalletTransactionsContext.Provider value={null}><V3Arena/></WalletTransactionsContext.Provider>);
+ await waitFor(()=>expect(attempt).toBeGreaterThanOrEqual(1),{timeout:2500});expect(screen.getByRole('region',{name:'Locally submitted offers'})).toBeVisible();
+ await waitFor(()=>expect(screen.queryByRole('region',{name:'Locally submitted offers'})).toBeNull(),{timeout:10000});
+ expect(screen.getByRole('cell',{name:'Active · #0'})).toBeVisible();expect(screen.getByText(/Current state transaction:/)).toHaveTextContent(txid);expect(journal[0].observation).toBe('pending');expect(screen.getByText(/Offer independently verified — Pending/)).toHaveTextContent('Live queue updated');
+ expect(vi.mocked(v3Call).mock.calls.some(([i])=>i.operation==='rebroadcast')).toBe(false);
+},15000);

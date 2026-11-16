@@ -1,3 +1,4 @@
+import {reconcileAtomicOffer} from '../../src/v3/offer-status';
 import {timed} from '../../src/operation-timing';
 import {providerConflictStore} from './providerConflictStore';
 import {verifiedProviders} from '../../src/verified-providers';
@@ -40,10 +41,14 @@ scope.onmessage=event=>{queue=queue.catch(()=>{}).then(async()=>{const {id,inten
   if(intent.operation==='applyInspection'){
    const current=(await wallet.store.list()).find(o=>o.id===intent.original.id);
    const encode=(v:unknown)=>JSON.stringify(v,(_,value)=>typeof value==='bigint'?value.toString():value);
-   if(current&&intent.result.id===current.id&&encode(current)===encode(intent.original))await wallet.store.save({...current,step:intent.result.step,stage:intent.result.stage,confirmations:intent.result.confirmations,error:intent.result.error,config:intent.result.config});
+   if(current&&intent.result.id===current.id&&encode(current)===encode(intent.original))await wallet.store.save({...current,step:intent.result.step,stage:intent.result.stage,confirmations:intent.result.confirmations,observation:intent.result.observation,verifiedAt:intent.result.verifiedAt,error:intent.result.error,config:intent.result.config});
    return current;
   }
-  if(intent.operation==='sync')return inspectClaim(new AssetIndexer(provider,intent.config));
+  if(intent.operation==='sync'){
+   const result=await inspectClaim(new AssetIndexer(provider,intent.config));
+   const originals=(await wallet.store.list()).filter(op=>op.registrationMode==='atomic'&&op.raw&&op.txid&&op.config?.genesis===intent.config.genesis);
+   return {...result,inspections:originals.map(original=>({original,result:reconcileAtomicOffer(original,result.snapshot)}))};
+  }
   if(intent.operation==='claim')return wallet.claim(intent.config,keys);
   if(intent.operation==='reconcileClaim')return new RewardClaimer(new AssetIndexer(provider,intent.config),new BrowserClaimStore(options.network)).reconcile(intent.id,false);
   if(intent.operation==='claims')return new BrowserClaimStore(options.network).list();
