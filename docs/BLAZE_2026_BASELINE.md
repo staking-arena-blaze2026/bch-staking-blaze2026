@@ -165,3 +165,5 @@ Public About page and repository introduction: the supplied Stake Arena document
 Marketplace presentation cleanup: removed the manual vault configuration import/share panel from the V3 offer interface and the “MAINNET — REAL BCH” header/footer text. This is post-baseline presentation work.
 
 Create Vault presentation cleanup: removed the V3 introduction, detailed creation-path explanation, private funding diagnostics panel and optional legacy factory control. This is post-baseline frontend work; default creation and transaction verification remain unchanged.
+
+Create Vault presentation cleanup follow-up: removed the manual “Search more wallet addresses” button. This is post-baseline frontend work.
