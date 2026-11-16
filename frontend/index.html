@@ -3,18 +3,27 @@
   <head>
     <meta charset="UTF-8"/>
     <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-    <meta name="theme-color" content="#132f2b"/>
+    <meta name="theme-color" content="#070605"/>
     <meta name="description" content="Browse public Bitcoin Cash mainnet and chipnet vault candidates. Financial state is independently verified before wallet-authorized transactions."/>
-    <link rel="icon" type="image/svg+xml" href="./arena.svg"/>
+    <link rel="icon" type="image/svg+xml" href="./favicon.svg"/>
     <title>Stake Arena · Vault marketplace</title>
   </head>
   <body>
-    <style>#arena-public-preview:not([hidden])~#root{display:none}</style>
-    <main id="arena-public-preview" hidden style="font:16px system-ui;max-width:1120px;margin:auto;padding:24px;overflow-wrap:anywhere;color:#173a31"></main>
-    <div id="root"><div id="arena-startup" role="status" style="font:16px system-ui;padding:32px">Loading Stake Arena…</div></div>
+    <style>
+      body{margin:0;background:#070605;color:#f6f1e6;font:16px/1.5 Georgia,"Palatino Linotype",Palatino,serif}
+      #arena-startup,noscript section{max-width:640px;padding:32px}
+      #arena-public-preview:not([hidden])~#root{display:none}
+      #arena-public-preview{max-width:1120px;margin:28px auto;padding:0 20px 40px}
+      #arena-public-preview h1{font-size:40px;margin:0 0 8px}
+      #arena-public-preview h1{color:#f6e7b8}
+      #arena-public-preview table{width:100%;border-collapse:collapse;background:#120f0c;border:1px solid #c6a15b;color:#f6f1e6}
+      #arena-public-preview th,#arena-public-preview td{padding:14px;text-align:left;border-bottom:1px solid #3a2d1c}
+    </style>
+    <main id="arena-public-preview" hidden></main>
+    <div id="root"><div id="arena-startup" role="status">Loading Stake Arena…</div></div>
     <noscript>
       <style>#root { display: none; }</style>
-      <section style="font:16px system-ui;padding:32px;max-width:640px">
+      <section>
         <h1>Stake Arena needs JavaScript</h1>
         <p>JavaScript is disabled in this browser. In Chrome, open the controls beside the address, choose Site settings, allow JavaScript, then reload this page.</p>
       </section>
