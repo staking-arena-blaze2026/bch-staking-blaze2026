@@ -23,7 +23,7 @@ try{
  activePage=page;
  page.on('pageerror',e=>errors.push(e.message));page.on('worker',w=>{workers.push(w.url());void w.evaluate(()=>{globalThis.__arenaReadonlyMethods=[];const original=WebSocket.prototype.send;WebSocket.prototype.send=function(data){let m;try{m=JSON.parse(String(data));}catch{}if(m?.method){globalThis.__arenaReadonlyMethods.push(m.method);if(m.method==='blockchain.transaction.broadcast')throw Error('Read-only browser check refuses transaction broadcasting');}return original.call(this,data);};}).catch(()=>{});});page.on('response',r=>{if(r.status()>=400)responses.push({url:r.url(),status:r.status()});});
  await context.routeWebSocket(/wss:\/\//,ws=>{const peer=ws.connectToServer();ws.onMessage(data=>{let m;try{m=JSON.parse(data.toString());}catch{}if(m?.method){methods.push(m.method);assert.notEqual(m.method,'blockchain.transaction.broadcast','Read-only verification must never broadcast');}peer.send(data);});peer.onMessage(data=>ws.send(data));});
- console.log('Opening compiled v3 page',url);await page.goto(url+'#/v3',{waitUntil:'domcontentloaded'});await page.getByRole('heading',{name:'Create a v3 vault'}).waitFor();await connection(page);
+ console.log('Opening compiled v3 page',url);await page.goto(url+'#/v3',{waitUntil:'domcontentloaded'});await page.getByRole('combobox',{name:'Staking asset',exact:true}).waitFor();await connection(page);
  console.log('Initial chipnet connection verified');
  assert.match(await page.locator('body').innerText(),/Each new offer exchanges one reward payment for one independent stake lock/);
  assert.match(await page.locator('body').innerText(),/Direct creation uses one Cashonize approval and one transaction/);
@@ -35,9 +35,9 @@ try{
  await page.getByRole('link',{name:'Make an Offer',exact:true}).click();await page.getByRole('heading',{name:'Known vaults',exact:true}).waitFor();
  assert.match(await page.locator('body').innerText(),/Every action verifies current blockchain state automatically/);
  assert.equal(await page.getByRole('link',{name:'Make an Offer',exact:true}).getAttribute('aria-current'),'page');
- await page.goBack();await page.getByRole('heading',{name:'Create a v3 vault'}).waitFor();await page.goForward();await page.getByRole('heading',{name:'Known vaults',exact:true}).waitFor();
+ await page.goBack();await page.getByRole('combobox',{name:'Staking asset',exact:true}).waitFor();await page.goForward();await page.getByRole('heading',{name:'Known vaults',exact:true}).waitFor();
  await page.setViewportSize({width:390,height:844});assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth),true);
- await page.getByRole('link',{name:'Create a Vault',exact:true}).click();await page.getByRole('heading',{name:'Create a v3 vault'}).waitFor();assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth),true);
+ await page.getByRole('link',{name:'Create a Vault',exact:true}).click();await page.getByRole('combobox',{name:'Staking asset',exact:true}).waitFor();assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth),true);
  await page.setViewportSize({width:1360,height:1000});
  console.log('Four creation asset choices, tabs, history, and mobile widths verified; reloading');
  await page.reload({waitUntil:'domcontentloaded'});await connection(page);

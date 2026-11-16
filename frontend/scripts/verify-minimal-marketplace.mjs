@@ -39,7 +39,7 @@ try{
  await page.mouse.click(hit.x+hit.width/2,hit.y+hit.height/2);await page.waitForURL(u=>u.hash===href);report.fullRowClick=true;report.detailRoute=new URL(page.url()).hash;
  await page.locator('.brand').click();await page.getByRole('heading',{name:'Known vaults',exact:true}).waitFor();
  const link=page.locator('.marketplace-table tbody a').first();await link.focus();await page.keyboard.press('Enter');await page.waitForURL(u=>u.hash===href);
- await page.getByRole('link',{name:'Create a Vault',exact:true}).click();await page.getByRole('heading',{name:'Create a v3 vault'}).waitFor();
+ await page.getByRole('link',{name:'Create a Vault',exact:true}).click();await page.getByRole('combobox',{name:'Staking asset',exact:true}).waitFor();
  assert.equal(await page.getByRole('button',{name:'Create Vault',exact:true}).isEnabled(),false);
  await page.getByRole('combobox',{name:'Network',exact:true}).selectOption('chipnet');await page.waitForURL(/network=chipnet/);await page.getByRole('heading',{name:'Known vaults',exact:true}).waitFor({timeout:90000});report.networkSwitch=true;
  assert.deepEqual(errors,[]);report.passed=true;

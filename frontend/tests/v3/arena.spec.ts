@@ -51,7 +51,7 @@ test('direct genesis journal survives browser reload and automatically confirms 
  const raw=binToHex(encodeTransaction(tx)),genesis=fixture.add(raw,false),config={...parameters,genesis:genesis.txid};
  const op={id:'direct-browser',version:3,kind:'create',creationMode:'direct',step:'action',stage:'pending',parameters,owner,raw,txid:genesis.txid,config,plan:{kind:'offer',label:'Direct browser genesis',request,signers:{0:owner.publicKey},inputPaths:[[0,'receive',0]],fee:'10000'}};
  const encoded=JSON.stringify(op,(_,v)=>typeof v==='bigint'?{bigint:v.toString()}:v instanceof Uint8Array?{bytes:Array.from(v)}:v);
- await page.goto('./#/v3');await page.getByRole('heading',{name:'Create a v3 vault'}).waitFor();
+ await page.goto('./#/v3');await page.getByRole('combobox',{name:'Staking asset',exact:true}).waitFor();
  await page.evaluate(async encoded=>{
  const op=JSON.parse(encoded,(_,v)=>v?.bigint!==undefined?BigInt(v.bigint):v?.bytes?Uint8Array.from(v.bytes):v);
  await new Promise<void>((resolve,reject)=>{const r=indexedDB.open('staking-arena-wallet-v3',1);r.onupgradeneeded=()=>r.result.createObjectStore('operations');r.onerror=()=>reject(r.error);r.onsuccess=()=>{const db=r.result,t=db.transaction('operations','readwrite');t.objectStore('operations').put(op,op.id);t.oncomplete=()=>{db.close();resolve();};t.onerror=()=>reject(t.error);};});

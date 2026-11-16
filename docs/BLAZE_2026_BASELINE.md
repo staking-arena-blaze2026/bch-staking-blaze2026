@@ -163,3 +163,5 @@ Marketplace total rewards: the public preview and marketplace now show “Total 
 Public About page and repository introduction: the supplied Stake Arena document is preserved verbatim in root `ABOUT.md`, rendered on the wallet-independent `#/about` route and used as the primary root README content. The previous technical README is preserved byte-for-byte in `docs/README-legacy-development.md`. Navigation and document styling are post-baseline presentation work; vault, wallet and transaction implementations are unchanged.
 
 Marketplace presentation cleanup: removed the manual vault configuration import/share panel from the V3 offer interface and the “MAINNET — REAL BCH” header/footer text. This is post-baseline presentation work.
+
+Create Vault presentation cleanup: removed the V3 introduction, detailed creation-path explanation, private funding diagnostics panel and optional legacy factory control. This is post-baseline frontend work; default creation and transaction verification remain unchanged.
