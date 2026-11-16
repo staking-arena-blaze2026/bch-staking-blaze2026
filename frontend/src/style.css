@@ -16,3 +16,16 @@
 /* A single linked row keeps native table semantics and keyboard navigation. */
 .v3-known{padding:8px 0 28px}.v3-known>h2{margin-bottom:8px}.marketplace-table{width:100%;border-collapse:collapse;margin:24px 0 16px;table-layout:fixed}.marketplace-table tr{position:relative}.marketplace-table th,.v3-arena .marketplace-table td{padding:20px 16px;text-align:left;border-bottom:1px solid var(--line);font-variant-numeric:tabular-nums;overflow-wrap:anywhere}.marketplace-table th{font-size:12px;font-weight:500;color:var(--muted)}.marketplace-table th:first-child{width:12%}.marketplace-table th:nth-child(2){width:42%}.marketplace-table th:nth-child(3){width:28%}.marketplace-table th:last-child{width:18%;text-align:right}.v3-arena .marketplace-table td:last-child{text-align:right}.marketplace-link{font-weight:600;text-decoration:none}.marketplace-link::after{content:"";position:absolute;inset:0;z-index:1}.marketplace-table tbody tr:hover{background:#edf3e9}.marketplace-table tr:focus-within{outline:2px solid var(--green);outline-offset:-2px;background:#edf3e9}.marketplace-pagination{display:flex;align-items:center;gap:12px;flex-wrap:wrap;font-size:13px}.marketplace-table small{font-size:11px}.v3-known button{background:transparent;border:1px solid var(--line);border-radius:6px;padding:8px 12px;color:var(--green)}
 @media(max-width:560px){.marketplace-table thead{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%)}.marketplace-table,.marketplace-table tbody{display:block}.marketplace-table tr{display:grid;grid-template-columns:48px minmax(0,1fr);padding:16px 0;border-bottom:1px solid var(--line)}.v3-arena .marketplace-table td,.marketplace-table td{display:block;border:0;padding:4px 8px;text-align:left!important}.marketplace-table td:first-child{grid-row:1 / span 3;font-size:20px}.marketplace-table td:not(:first-child)::before{content:attr(data-label);display:block;font-size:11px;color:var(--muted);font-weight:400}.marketplace-table td:nth-child(2){font-weight:600}.marketplace-pagination{gap:6px}.v3-known{padding-top:0}}
+
+/* The public document stays readable independently of wallet/chain startup. */
+.header nav>a.about-nav,.about-page .header nav>a{display:inline-block}
+.about-page main{max-width:780px;padding-block:30px 60px}
+.about-document{margin-top:36px;font-size:16px;line-height:1.8}
+.about-document h1{margin-bottom:12px}
+.about-document h3{margin:32px 0 16px;font-size:22px;line-height:1.4}
+.about-document p{margin-block:16px}
+.about-document hr{border:0;border-top:1px solid var(--line);margin-block:28px}
+.about-document ol,.about-document ul{padding-left:26px}
+.about-document li{padding-left:4px;margin-block:14px}
+.about-document li li{margin-block:10px}
+@media(max-width:650px){.about-page .header nav{justify-content:flex-start;gap:24px}.about-document{font-size:15px}}

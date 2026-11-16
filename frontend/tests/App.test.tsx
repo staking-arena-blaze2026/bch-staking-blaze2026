@@ -16,7 +16,7 @@ it('shows indexed vault terms with a v3 home link and no legacy navigation',asyn
  expect(screen.getByText('0.00001000 BCH')).toBeInTheDocument();
  expect(screen.getByText('Every minute')).toBeInTheDocument();
  expect(fetcher.mock.calls[0]).toBeDefined();
- expect(within(screen.getByRole('navigation')).queryAllByRole('link')).toHaveLength(0);
+ expect(within(screen.getByRole('navigation')).getByRole('link',{name:'About'})).toHaveAttribute('href','#/about');
  expect(screen.getByRole('link',{name:'Stake Arena home'})).toHaveAttribute('href','#/v3/offers');
  expect(screen.queryByText('Native BCH reserves')).not.toBeInTheDocument();
 });
@@ -94,4 +94,24 @@ it('resolves the confirmed genesis ID as an alias without confusing it with the 
  await screen.findByRole('table',{name:'Competing offers ranked by priority'});
  expect(screen.getByRole('link',{name:'Make an Offer'})).toHaveAttribute('href','#/vault/'+data.vaults[0].category+'/offer');
  expect(screen.queryByText('Vault not found')).not.toBeInTheDocument();
+});
+
+it('opens About directly without starting data requests or wallet controls',()=>{
+ const fetcher=vi.fn(()=>new Promise(()=>{}));vi.stubGlobal('fetch',fetcher);
+ window.location.hash='#/about';render(<App/>);
+ expect(screen.getByRole('heading',{name:'Stake Arena'})).toBeInTheDocument();
+ expect(screen.getByRole('heading',{name:'How It Works'})).toBeInTheDocument();
+ expect(screen.getByRole('heading',{name:'Core Use Cases'})).toBeInTheDocument();
+ expect(screen.getByText('PvP staking protocol').tagName).toBe('EM');
+ expect(screen.getByRole('link',{name:'← Back to marketplace'})).toHaveAttribute('href','#/v3/offers');
+ expect(screen.queryByRole('button',{name:/connect wallet/i})).not.toBeInTheDocument();
+ expect(fetcher).not.toHaveBeenCalled();
+});
+
+it('navigates to About and back to the existing marketplace views',async()=>{
+ live();await screen.findByText('Maximum reward / period');
+ await navigate('/about');
+ expect(screen.getByRole('heading',{name:'How It Works'})).toBeInTheDocument();
+ expect(screen.queryByText('Maximum reward / period')).not.toBeInTheDocument();
+ await navigate('/');await screen.findByText('Maximum reward / period');
 });
