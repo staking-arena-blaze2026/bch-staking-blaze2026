@@ -12,7 +12,7 @@ import {hashState} from '../registry.js';
 import {validateGenesis,advance,covenant,family,initialState,validateInstance,validateBuilt,termsFor,V3_STATE_SIZE,type Parameters,type Instance} from './protocol.js';
 export interface Config extends Parameters {genesis:string}
 export interface Allocation {id:string;terms:Buffer;input:ReturnType<typeof utxo>;withdrawal?:string;pending?:string;mature:boolean;sourceMtp:number}
-export interface Snapshot {version:3;config:Config;instance:Instance;tip:Header;clock:{height:number;mtp:number;nextBlockTicks?:number};pending:string[];provisional?:boolean;pendingHistory?:string[];ancestry?:string[];allocations:Allocation[];history:string[];endpoint:string}
+export interface Snapshot {version:3;config:Config;instance:Instance;tip:Header;clock:{height:number;mtp:number;nextBlockTicks?:number};pending:string[];provisional?:boolean;pendingHistory?:string[];ancestry?:string[];allocations:Allocation[];history:string[];endpoint:string;offerHistory?:{txid:string;action:number;slot:number;pending:boolean}[]}
 function witness(hex:string){const pushes=decodeAuthenticationInstructions(Buffer.from(hex,'hex')).map(i=>{if('data'in i&&i.data)return Buffer.from(i.data);if(i.opcode===0)return Buffer.alloc(0);if(i.opcode>=81&&i.opcode<=96)return Buffer.from([i.opcode-80]);throw Error('Malformed v3 witness');});if(pushes.length!==6||pushes[4]!.length!==V3_STATE_SIZE)throw Error('Invalid v3 witness layout');const num=(b:Buffer)=>{if(b.length>1||(b[0]??0)>127)throw Error('Invalid v3 action/slot');return b[0]??0;};return {state:pushes[4]!,action:num(pushes[3]!),slot:num(pushes[2]!),record:pushes[1]!};}
 const identity=(s:Snapshot)=>JSON.stringify({tip:s.tip.hash,state:s.instance.inputs[0].txid,witness:hashState(s.instance.state),pending:[...s.pending].sort(),pendingHistory:[...(s.pendingHistory??[])].sort(),provisional:s.provisional,ancestry:s.ancestry,allocations:s.allocations.map(a=>[a.id,a.withdrawal,a.pending])});
 /** Replay evidence is reusable only with unchanged peer, tip, histories and live outputs.
@@ -33,7 +33,7 @@ export class AssetIndexer {
  }catch(e){this.error=String(e);throw e;}finally{this.busy=false;}}
  private async replay(source=this.electrum):Promise<Snapshot>{
   const started=performance.now();
-  const e=source,c=this.config,tip=await e.tip(),clock={height:tip.height,mtp:await e.medianTime(tip.height,tip.hash),...await tickContext(e,tip)},proofs=new Map<number,string>(),pending=new Set<string>(),allocations:Allocation[]=[],cache=new Map<string,any>(),pendingHistory:string[]=[];
+  const e=source,c=this.config,tip=await e.tip(),clock={height:tip.height,mtp:await e.medianTime(tip.height,tip.hash),...await tickContext(e,tip)},proofs=new Map<number,string>(),pending=new Set<string>(),allocations:Allocation[]=[],cache=new Map<string,any>(),pendingHistory:string[]=[],offerHistory:NonNullable<Snapshot['offerHistory']>=[];
   const configKey=JSON.stringify(c,(_,v)=>typeof v==='bigint'?v.toString():v),entries=replayEvidence.get(e)??new Map<string,{snapshot:Snapshot;histories:Map<string,string>}>();replayEvidence.set(e,entries);
   const saved=entries.get(configKey),histories=new Map<string,Promise<HistoryEntry[]>>();
   const historyRead=(script:string)=>{let read=histories.get(script);if(!read){read=e.history(script);histories.set(script,read);}return read;};
@@ -64,7 +64,7 @@ export class AssetIndexer {
   for(const h of registryEntries){const tx=await confirm(h.tx_hash,history);if(tx.vout[0]?.tokenData?.category===category&&tx.vout[0]?.tokenData?.nft?.capability==='mutable')transactions.push(tx);}
   for(;;){const children=transactions.filter(tx=>tx.vin.some((i:any)=>i.txid===instance.inputs[0].txid&&i.vout<3));if(!children.length)break;if(children.length!==1)throw Error('Competing v3 spends');const tx=children[0];
    for(let n=0;n<3;n++)if(tx.vin[n]?.txid!==instance.inputs[n]!.txid||tx.vin[n].vout!==n)throw Error('V3 paired lineage broken');
-   const w=witness(tx.vin[0].scriptSig.hex);if(!w.state.equals(instance.state))throw Error('V3 state witness mismatch');await verify(tx);const next=advance(w.state,w.action,w.slot,w.record);
+   const w=witness(tx.vin[0].scriptSig.hex);if(!w.state.equals(instance.state))throw Error('V3 state witness mismatch');await verify(tx);const next=advance(w.state,w.action,w.slot,w.record);offerHistory.push({txid:tx.txid,action:w.action,slot:w.slot,pending:pendingHistory.includes(tx.txid)});
    if(w.action===3){const terms=termsFor(instance,w.slot),input=utxo(tx,4),a=covenant('StakeAllocationV3',[terms],e);if(input.lockingBytecode!==a.lockingBytecode)throw Error('V3 allocation identity mismatch');const h=history.find(h=>h.tx_hash===tx.txid)!.height,anchor=await e.header(h>0?h-1:tip.height),sourceMtp=await e.medianTime(anchor.height,anchor.hash);proofs.set(anchor.height,anchor.hash);allocations.push({id:tx.txid+':4',terms,input,sourceMtp,mature:h>0&&clock.mtp>=sourceMtp+(terms.readUInt32LE(74)&65535)*512});}
    instance={...instance,state:next,inputs:[utxo(tx,0),utxo(tx,1),utxo(tx,2)]};validateInstance(instance,e);ids.push(tx.txid);
   }
@@ -74,7 +74,7 @@ export class AssetIndexer {
   if(proofs.size)await e.verifyHeaderChain(Math.min(...proofs.keys()),tip,proofs);
   for(const input of instance.inputs)if(!(await e.getUtxosForLockingBytecode(input.lockingBytecode!)).some(u=>u.txid===input.txid&&u.vout===input.vout))throw Error('Current vault output missing, evicted or conflicting');if((await e.tip()).hash!==tip.hash)throw Error('V3 tip changed during replay');
   this.onProfile?.('stateReplay',performance.now()-stateStarted);
-  const snapshot:Snapshot={version:3,config:c,instance,tip,clock,pending:[...pending],provisional:pendingHistory.length>0,pendingHistory,ancestry:[...ancestry.evidence].map(([id,tx])=>`${id}:${tx.height??0}:${tx.blockhash??'pending'}`).sort(),allocations,history:ids.filter(id=>!pendingHistory.includes(id)),endpoint:e.endpoint};
+  const snapshot:Snapshot={version:3,config:c,instance,tip,clock,pending:[...pending],provisional:pendingHistory.length>0,pendingHistory,ancestry:[...ancestry.evidence].map(([id,tx])=>`${id}:${tx.height??0}:${tx.blockhash??'pending'}`).sort(),allocations,history:ids.filter(id=>!pendingHistory.includes(id)),endpoint:e.endpoint,offerHistory};
   if(!snapshot.provisional&&!snapshot.pending.length){
    const observed=new Map<string,string>();for(const [script,read]of histories)observed.set(script,historyIdentity(await read));
    if(entries.size>=8)entries.delete(entries.keys().next().value!);

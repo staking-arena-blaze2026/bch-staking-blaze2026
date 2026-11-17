@@ -1,3 +1,4 @@
+import {rememberOfferOwner} from './offerIdentity';
 import {activeNetwork} from './activeNetwork';
 import {encodeCashAddress, hash160, hexToBin} from '@bitauth/libauth';
 import {checkedWalletKey} from './walletDerivation';
@@ -73,6 +74,7 @@ class WalletOwner {
       session.accept(this.extensions);
       assertTransactionSession(session,activeNetwork === 'mainnet' ? MAINNET_NETWORK : CHIPNET_NETWORK);
       const key = checkedWalletKey(manager.getSessionPaths(),'receive',0,(c,i)=>manager.getPubkey(c,i),activeNetwork === 'mainnet' ? 'mainnet' : 'testnet');
+      rememberOfferOwner(key.publicKey,activeNetwork);
       const encoded = encodeCashAddress({prefix:activeNetwork === 'mainnet' ? 'bitcoincash' : 'bchtest',type:'p2pkh',payload:hash160(hexToBin(key.publicKey))});
       if(typeof encoded === 'string') throw Error('Address unavailable');
       this.storage.setItem(WALLET_ADDRESS_KEY,JSON.stringify({identity:this.pairing().identity,network:activeNetwork,address:encoded.address}));

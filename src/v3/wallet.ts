@@ -1,3 +1,4 @@
+import {canDiscardUnsigned,blocksVault} from './recovery-policy.js';
 import {finalityLimit} from '../consensus-clock.js';
 import {reconcileAtomicOffer} from './offer-status.js';
 import {timed} from '../operation-timing.js';
@@ -94,7 +95,7 @@ function validateIntent(op:Pick<Operation,'kind'|'parameters'> & Partial<Operati
  const state=snapshot.instance.state;
  if(op.kind==='offer'){if(state[5]!>=16)throw Error('Registration is closed');(op.offerPolicy==='single-win'?validateNewOffer:validateTerms)(snapshot.config,op.terms!,rewardRemaining(state));return;}
  if(op.kind==='withdraw'){const a=snapshot.allocations.find(a=>a.id===op.allocation);if(!a||!a.mature||a.withdrawal||a.pending||a.terms.subarray(0,33).toString('hex')!==owner.publicKey)throw Error('Allocation unavailable, immature, or not owned');return;}
- if(op.action===1||op.action===4){const entry=records(state)[op.slot??0];if(!entry||entry.owner!==owner.publicKey)throw Error('Offer is not owned by this wallet');if(op.action===1&&entry.cancelled)throw Error('Offer is already cancelled');if(op.action===4&&(!entry.cancelled||entry.refunded||entry.wins>=entry.maxWins))throw Error('Remaining stake cannot be refunded in the current state');return;}
+ if(op.action===1||op.action===4){const entry=records(state)[op.slot??0];if(!entry||entry.owner!==owner.publicKey)throw Error('Offer is not owned by this wallet');if(op.action===1&&(entry.cancelled||entry.refunded||entry.wins>=entry.maxWins))throw Error('Only active offers may be cancelled');if(op.action===4&&(!entry.cancelled||entry.refunded||entry.wins>=entry.maxWins))throw Error('Remaining stake cannot be refunded in the current state');return;}
  const next=decision(snapshot.instance,snapshot.clock);if(next.phase!=='ready'||next.action!==op.action||next.slot!==(op.slot??0))throw Error('Claim head changed; refresh canonical state');
 }
 /** Bind unsigned plans to the relevant canonical source, not a wall-clock deadline. */
@@ -247,7 +248,7 @@ export class AssetWallet {
   if(snapshot.pending.length)throw Error('A competing vault transaction is pending; refresh before claiming');
   if(next.phase!=='ready')throw Error(next.reason);
   const journal=await this.store.list();
-  if(journal.some(o=>o.kind==='claim'&&o.config?.genesis===config.genesis&&o.step!=='complete'&&!snapshot.history.includes(o.txid??'')&&!(snapshot.pendingHistory??[]).includes(o.txid??'')))throw Error('An existing claim needs reconciliation or explicit discard before another spend');
+  if(journal.some(o=>o.kind==='claim'&&o.config?.genesis===config.genesis&&blocksVault(o)&&!snapshot.history.includes(o.txid??'')&&!(snapshot.pendingHistory??[]).includes(o.txid??'')))throw Error('An existing claim needs reconciliation or explicit discard before another spend');
   const reserved=new Set(journal.filter(reservesFunding).flatMap(o=>o.plan?planCoins(o.plan).map(i=>i.txid+':'+i.vout):[]));
   const required=sponsorAmount(snapshot.instance,3);
  const eligible=(coins:WalletCoin[])=>coins.filter(c=>!c.utxo.token&&!reserved.has(c.utxo.txid+':'+c.utxo.vout)&&(c.utxo.satoshis===required||c.utxo.satoshis>=required+CARRIER));
@@ -398,7 +399,7 @@ export class AssetWallet {
  }
  const reviewed={...op,stage:'review' as const};await this.store.save(reviewed);return this.submit(id,op.raw);
  }
- async discard(id:string){const op=(await this.store.list()).find(o=>o.id===id);if(!op||op.raw||op.txid)throw Error('Only unsigned operations may be discarded');if(op.kind==='create'&&op.funding)throw Error('A funded factory must remain recoverable; finish genesis instead of discarding it');const discarded={...op,step:'complete' as const,stage:op.kind==='claim'?'conflicted' as const:'confirmed' as const,plan:undefined,error:'Unsigned operation discarded; prepared wallet coins remain spendable'};await this.store.save(discarded);return discarded;}
+ async discard(id:string){const op=(await this.store.list()).find(o=>o.id===id);if(!op||!canDiscardUnsigned(op))throw Error('Only proven unsigned, unfunded operations may be discarded; uncertain approvals and signed evidence must remain recoverable');const discarded={...op,step:'complete' as const,stage:'confirmed' as const,plan:undefined,error:'Unsigned operation discarded; journal retained and wallet coins released'};await this.store.save(discarded);return discarded;}
  /** Persist a returned signature before session/state checks; this method never broadcasts. */
  async retainAtomicSigned(id:string,raw:string){
  const op=(await this.store.list()).find(o=>o.id===id);

@@ -6,7 +6,7 @@ export function routeFromHash(hash:string):Route {
   if(path==='/'||path==='/v1') return {page:'home'};
   const v2=path.match(/^\/v2\/vault\/([a-f0-9]{64})$/i);
   if(v2)return {page:'v2vault',id:v2[1].toLowerCase()};
-  if(/^\/v3(?:\/(?:offers|vault\/[a-f0-9]{64}))?$/i.test(path)) return {page:'v3'};
+  if(/^\/v3(?:\/(?:offers|my-offers|vault\/[a-f0-9]{64}))?$/i.test(path)) return {page:'v3'};
   if(path==='/v2') return {page:'v2'};
   if(path==='/create') return {page:'create'};
   const match=path.match(/^\/vault\/([a-f0-9]{64})(\/offer)?$/i);

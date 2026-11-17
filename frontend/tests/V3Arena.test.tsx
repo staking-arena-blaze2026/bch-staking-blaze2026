@@ -93,12 +93,13 @@ it('keeps owner cancellation, unused commitment recovery and matured withdrawal 
  stub();const previous=vi.mocked(v3Call).getMockImplementation()!;
  vi.mocked(v3Call).mockImplementation(async(...args)=>{const result=await previous(...args);if(args[0].operation==='sync'){
   result.snapshot.instance.state=advance(advance(result.snapshot.instance.state,0,1,offer(Buffer.from(wallet.publicKey(),'hex'),3000,513,3000,2)),1,1);
-  const terms=Buffer.alloc(78);Buffer.from(wallet.publicKey(),'hex').copy(terms);terms.writeUInt32LE(3000,70);terms.writeUInt32LE(2,74);
-  result.snapshot.allocations=[{id:'allocation:4',terms,sourceMtp:p.epoch,mature:true}];
+  const terms=Buffer.alloc(110);Buffer.from(wallet.publicKey(),'hex').copy(terms);terms.writeUInt32LE(3000,70);terms.writeUInt32LE(2,74);
+  result.snapshot.allocations=[{id:'allocation:4',terms,input:{txid:'allocation'},sourceMtp:p.epoch,mature:true}];
  }return result;});
- await open();await ageDisplay();expect(screen.getAllByRole('button',{name:'Cancel'})[0]).toBeEnabled();
- expect(screen.getAllByRole('button',{name:'Recover unused commitment'})[1]).toBeEnabled();
- expect(screen.getByRole('button',{name:'Withdraw in owner wallet'})).toBeEnabled();
+ await open();await ageDisplay();await act(async()=>{window.location.hash='/v3/my-offers';window.dispatchEvent(new HashChangeEvent('hashchange'));});
+ expect(screen.getByRole('button',{name:'Cancel'})).toBeEnabled();
+ expect(screen.getByRole('button',{name:'Continue cancellation'})).toBeEnabled();
+ expect(screen.getByRole('button',{name:'Get my stake back'})).toBeEnabled();
 });
 
 it('allows an aged empty queue to be checked for newly eligible offers',async()=>{
@@ -121,10 +122,11 @@ it('offers only S, T and R, shows commitment S, and submits one win',async()=>{
  await act(async()=>fireEvent.click(screen.getByRole('button',{name:'Make an Offer'})));
  expect(wallet.v3).toHaveBeenCalledWith({operation:'offer',config,terms:{stake:3000n,duration:3600,reward:1000n,maxWins:1}});
 });
-it('shows a one-win offer as completed outside the active queue after its reward is paid',async()=>{
+it('shows a winning offer as locked outside the active queue after its reward is paid',async()=>{
  stub();const previous=vi.mocked(v3Call).getMockImplementation()!;
  vi.mocked(v3Call).mockImplementation(async(...args)=>{const result=await previous(...args);if(args[0].operation==='sync')result.snapshot.instance.state=advance(advance(initialState(p),0,0,offer(Buffer.from(wallet.publicKey(),'hex'),3000,513,3000,1)),3,0);return result;});
- await open();expect(screen.getByText('Offer #0: completed')).toBeInTheDocument();expect(screen.getAllByRole('row')).toHaveLength(1);expect(screen.getByText('No active offers. Make the first offer; released rewards continue accumulating.')).toBeInTheDocument();
+ await open();expect(screen.getAllByRole('row')).toHaveLength(1);expect(screen.getByText('No active offers. Make the first offer; released rewards continue accumulating.')).toBeInTheDocument();
+ await act(async()=>{window.location.hash='/v3/my-offers';window.dispatchEvent(new HashChangeEvent('hashchange'));});expect(screen.getByText('WON / LOCKED')).toBeInTheDocument();expect(screen.queryByRole('button',{name:'Cancel'})).toBeNull();
 });
 
 it('switches tabs without losing creation inputs and follows browser history hashes',async()=>{
@@ -342,4 +344,21 @@ it('cancels waiting creation on edits and never continues it after a page remoun
  await waitFor(()=>expect(screen.getByRole('status')).toHaveTextContent('Review the current terms'));
  fireEvent.click(screen.getByRole('button',{name:'Create Vault'}));view.unmount();render(tree);act(()=>t.connect());
  await act(async()=>{await new Promise(resolve=>setTimeout(resolve,150));});expect(t.client.v3).not.toHaveBeenCalled();
+});
+
+it('safe unsigned rejection does not block offers or claims and discard remains available offline',async()=>{
+ stub();const previous=vi.mocked(v3Call).getMockImplementation()!;
+ vi.mocked(v3Call).mockImplementation(async(...args)=>args[0].operation==='list'?[{id:'rejected',kind:'offer',version:3,owner:{publicKey:wallet.publicKey()},config,parameters:p,step:'action',stage:'review',signing:'rejected'}]:previous(...args));
+ const view=await open();expect(screen.getByRole('button',{name:'Make an Offer'})).toBeEnabled();expect(screen.getByRole('button',{name:'Review and pay fee in wallet'})).toBeEnabled();
+ view.rerender(<WalletTransactionsContext.Provider value={null}><V3Arena/></WalletTransactionsContext.Provider>);
+ expect(screen.getByRole('button',{name:'Discard unsigned operation',hidden:true})).toBeEnabled();
+ await act(async()=>fireEvent.click(screen.getByRole('button',{name:'Discard unsigned operation',hidden:true})));expect(v3Call).toHaveBeenCalledWith({operation:'discard',id:'rejected'});
+});
+it('My Offers cancellation verifies ownership and resumes its existing operation rather than replacing funded recovery',async()=>{
+ stub();wallet.v3.mockReset().mockResolvedValue({step:'funding',stage:'pending'});vi.spyOn(window,'confirm').mockReturnValue(true);
+ const previous=vi.mocked(v3Call).getMockImplementation()!;
+ vi.mocked(v3Call).mockImplementation(async(...args)=>args[0].operation==='list'?[{id:'cancel-funding',kind:'action',action:1,slot:0,owner:{publicKey:wallet.publicKey()},config,parameters:p,step:'action',stage:'review',fundingRaw:'signed-parent'}]:previous(...args));
+ await open();await act(async()=>{window.location.hash='/v3/my-offers';window.dispatchEvent(new HashChangeEvent('hashchange'));});
+ await act(async()=>fireEvent.click(screen.getByRole('button',{name:'Cancel'})));
+ expect(wallet.v3).toHaveBeenCalledWith({operation:'resume',id:'cancel-funding'});expect(window.confirm).toHaveBeenCalled();
 });

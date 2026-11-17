@@ -1,0 +1,24 @@
+# My Offers, cancellation and stake withdrawal
+
+Post-baseline frontend and recovery work, November 17, 2026. Existing V3/Atomic V4 covenants, legacy registry identities, owner signatures, external fee funding and transaction builders are preserved. No covenant deployment or migration is required.
+
+My Offers (`#/v3/my-offers`) checks all pages of the public vault catalog together with saved configurations. It filters canonical retained offer slots by the authenticated receive/0 public key, rather than discovering ownership from transaction journals. Each network remembers its last connected public owner key for read-only viewing. That identity is never signing authorization. Another live wallet replaces the selected owner. Retained snapshots are explicitly stale when verification is unavailable; every action independently replays chain state and rechecks ownership.
+
+The five primary statuses are ACTIVE, WON / LOCKED, BAKED, FINISHED and CANCELLED. Consensus-derived allocation maturity controls BAKED, and a verified confirmed allocation spend controls FINISHED. A pending withdrawal remains BAKED with a processing label. Cancelled registry flags alone never imply that unused stake was returned. Legacy multi-win records retain independent allocation accounting and unused commitment recovery.
+
+Cancel explains both removal and recovery. It uses the existing owner-authorized CANCEL and REFUND REMAINDER operations. These legacy builders require a separately signed BCH funding preparation and covenant action. Each necessary approval is explicit; after a pending transaction, continue using My Offers or Transaction recovery. A retained operation is resumed instead of being replaced. After CANCEL confirms, on-chain cancelled/unrefunded slots produce Recovery pending and Continue cancellation controls, even without a local transaction journal. There is no separate normal-interface Refund button. Recovery remains pending until REFUND REMAINDER confirms.
+
+Get my stake back uses the unchanged StakeAllocationV3 withdrawal builder. The original owner signs the allocation input and supplies the existing 10,000-satoshi BCH withdrawal fee (plus the separately approved preparation transaction fee on the funded path). The full stake returns to the owner. No keeper withdrawal path is added.
+
+Unsigned discard is network-independent and does not require the wallet or a provider connection. It retains the journal while releasing the plan. Only an explicitly unsigned or explicitly refused, unfunded operation qualifies, including the narrowly recognized historical Cashonize refusal. Unknown/requested signing, signed bytes, txids, signed parents/children, accepted broadcasts and funded operations remain protected. Safe unsigned operations no longer block unrelated vault actions; uncertain and signed transactions retain reservations, verification and identical-byte retry requirements. Reconciliation and identical retries require fresh blockchain checks, not a live wallet signature.
+
+Validation evidence is recorded in this directory. Browser evidence uses synthetic public identities/snapshots, blocked wallet/Electrum sockets and no signing or broadcast. Native tests use a disposable BCHN datadir, dedicated RPC port 18538 and the previously signature-verified preview binary. Original nodes and wallets are untouched. Real Cashonize approval and public-network spending are not asserted by these checks.
+
+Discovery covers the retained/public catalog, including historical offer slots in those vaults; it is not a complete address-wide chain index. Provider outages retain read-only history and prevent actions until verification succeeds.
+
+## Verification results
+
+- 107 focused frontend tests passed across seven files: My Offers, V3Arena, App routing/navigation, V3 wallet signing, worker scheduling, offline wallet requests and submitted-offer reconciliation. The 11 My Offers tests also passed again after tightening unsigned discard to the review stage and checking zero remaining legacy commitment after recovery.
+- Disposable BCHN test `tests/blaze-my-offers.test.ts` passed: new single-win queue exit, active cancellation, interrupted recovery with a reconstructed worker, confirmed full commitment return, immature withdrawal rejection, reorganization replay, owner/fee input plan, full stake output, pending withdrawal remaining BAKED and confirmed withdrawal becoming FINISHED. See `native-results.json`.
+- Root/frontend TypeScript checks, production Pages build and `node scripts/compile-v3.mjs --check` passed. Build retains the existing large-chunk advisory.
+- Built-browser checks passed for all five statuses, foreign-owner exclusion, offline identity reload, reconnect prompt, wallet-free unsigned discard, retained signed recovery controls and 390px layout. See `local-browser.json` and `local-mobile.png`. Public deployment checks use the same synthetic, isolated browser context and record separate evidence.

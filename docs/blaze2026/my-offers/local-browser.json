@@ -1,0 +1,14 @@
+{
+  "url": "http://127.0.0.1:39613/staking-arena-blaze-site/",
+  "at": "2026-11-17T14:06:44.074Z",
+  "synthetic": true,
+  "liveWallet": false,
+  "offlineDiscard": true,
+  "signedRecoveryRetained": true,
+  "offlineReload": true,
+  "fiveStatuses": true,
+  "ownershipFilter": true,
+  "offlineAuthorizationPrompt": true,
+  "mobileFits": true,
+  "errors": []
+}
