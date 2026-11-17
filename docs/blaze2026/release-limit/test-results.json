@@ -1,5 +1,5 @@
 {
-  "at": "2026-11-16T23:37:05.875190+00:00",
+  "at": "2026-11-17T12:22:25.884879+00:00",
   "results": [
     {
       "group": "release limit / native BCHN",
@@ -41,9 +41,9 @@
     "localProductionBrowser": true
   },
   "notes": [
-    "Native discovery integration creates old 4-release and new 1000-release V3/V4 vaults in an isolated node.",
-    "Frontend timing failures under simultaneous compilation were resolved by a sequential rerun.",
-    "RPC-dependent transport tests were rerun successfully with scripts/test-isolated-protocol.ts.",
+    "Revalidated all focused groups on 2026-11-17; 19 release-limit, 8 historical compatibility, 1 isolated discovery integration and 79 frontend tests passed.",
+    "Initial concurrent run hit isolated-node startup and frontend five-second timeouts; reruns with compilation complete passed without code changes.",
+    "Artifact reproducibility, root TypeScript check, frontend TypeScript/production build and local production browser passed.",
     "No physical wallet signing or public broadcasts."
   ]
 }

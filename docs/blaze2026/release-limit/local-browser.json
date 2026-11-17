@@ -1,5 +1,5 @@
 {
-  "at": "2026-11-16T23:35:22.290Z",
+  "at": "2026-11-17T12:16:32.036Z",
   "target": "http://127.0.0.1:5184/staking-arena-blaze-site/",
   "local": true,
   "walletConnected": false,
@@ -42,5 +42,5 @@
   "walletPairingDialog": true,
   "discoveredRows": 1,
   "confirmedLegacyVault": "c14b3170fd156ee0b5cdefba0241981407a481caa08d7169b2e07ea5caccb2e5",
-  "legacySummary": "Vault summary\n\nRegistryAtomicV4 · direct atomic offer registration\n\nRefresh vault state\nStaking asset\nBCH\nReward asset\nBCH\n\nConfirmed state verified. Chain MTP 2026-11-16T23:02:23.000Z.\n\nRemaining reward reserve: 0.00004000 BCH (4000 satoshis). Available buffer: 0.00004000 BCH (4000 satoshis). Release amount: 0.00001000 BCH (1000 satoshis) every 360s.\n\nNext scheduled release: All rewards released. Rewards become usable after MTP exceeds the boundary."
+  "legacySummary": "Vault summary\n\nRegistryAtomicV4 · direct atomic offer registration\n\nRefresh vault state\nStaking asset\nBCH\nReward asset\nBCH\n\nConfirmed state verified. Chain MTP 2026-11-17T11:47:49.000Z.\n\nRemaining reward reserve: 0.00004000 BCH (4000 satoshis). Available buffer: 0.00004000 BCH (4000 satoshis). Release amount: 0.00001000 BCH (1000 satoshis) every 360s.\n\nNext scheduled release: All rewards released. Rewards become usable after MTP exceeds the boundary."
 }
