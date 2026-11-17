@@ -1,4 +1,4 @@
-import type {V3Network} from './network';
+import type {V3Network} from './network.js';
 export const STAKING_UNIT_SECONDS=512;
 export const MAX_STAKING_UNITS=65535;
 export const minimumMinutes=(network:V3Network)=>network==='mainnet'?10:1;

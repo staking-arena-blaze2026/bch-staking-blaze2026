@@ -1,5 +1,5 @@
 import {createBrandArtwork} from './brandArtwork';
-import {warmPublicIndex} from './publicIndexTransport';
+import {warmQueuePage} from './queueCatalog';
 import type {V3Network} from '../../src/v3/network';
 /** Candidate hints only. This tiny startup view has no wallet, transaction or state
  * verification dependencies. React replaces it once its actual catalog is ready. */
@@ -13,14 +13,15 @@ export function startPublicPreview(){
  const changed=()=>{if(!location.hash.startsWith('#/v3/offers'))remove();};
  const deadline=setTimeout(()=>{if(root.isConnected&&!root.hidden)(root.querySelector('main')??root).append(el('p','Vault verification is taking longer than expected. Reload to retry; financial actions remain unavailable.'));},15000);
  window.addEventListener('hashchange',changed);
- void warmPublicIndex(network as V3Network).then(data=>{
+ void warmQueuePage(network as V3Network).then(data=>{
   if(!root.isConnected||!location.hash.startsWith('#/v3/offers'))return;
   const rows=new Map<string,any>(),conflicts=new Set<string>();
-  for(const row of data.vaults){const c=row?.config;
-   if(!/^[a-f0-9]{64}$/.test(row?.announcement??'')||!Number.isSafeInteger(row?.height)||row.height< -1||!['observed-confirmed','provisional','not-observed'].includes(row?.status))continue;
-   if(!c||c.version!==3||!(/^[a-f0-9]{64}$/.test(c.genesis))||c.registryVersion!==undefined&&c.registryVersion!==4||!/^\d{1,7}$/.test(String(c.cap))||Number(c.cap)<1||Number(c.cap)>1000000||![c.epoch,c.periodSeconds,c.periods].every(Number.isSafeInteger)||c.epoch<500000000||c.periodSeconds<1||c.periods<1||c.periods>1000||c.epoch+c.periodSeconds*c.periods>2147483647||c.discovery!==undefined&&c.discovery!==1)continue;
-   const validAsset=(a:any)=>a?.kind==='bch'||a?.kind==='token'&&/^[a-f0-9]{64}$/.test(a.category);if(!validAsset(c.stakingAsset)||!validAsset(c.rewardAsset)||c.rewardAsset.kind==='bch'&&Number(c.cap)<1000)continue;
-   if(rows.has(c.genesis)&&JSON.stringify(rows.get(c.genesis).config)!==JSON.stringify(c))conflicts.add(c.genesis);else rows.set(c.genesis,row);
+  for(const c of data.vaults){
+   const p=c?.parameters;
+   if(!p||!c.identity||!c.anchor||![c.anchor.genesis,c.identity.vault,c.identity.queue,p.stakingCategory,p.rewardCategory].every(v=>typeof v==='string'&&/^[a-f0-9]{64}$/.test(v))||!/^(02|03)[a-f0-9]{64}$/.test(c.anchor.creator))continue;
+   if(!/^\d{1,7}$/.test(String(p.cap))||Number(p.cap)<1||Number(p.cap)>1000000||![p.epoch,p.interval,p.releases].every(Number.isSafeInteger)||p.epoch<500000000||p.interval<1||p.releases<1||p.releases>1000||p.epoch+p.interval*p.releases>2147483647)continue;
+   const config={genesis:c.anchor.genesis,cap:p.cap,periods:p.releases,stakingAsset:p.stakingCategory==='00'.repeat(32)?{kind:'bch'}:{kind:'token',category:p.stakingCategory},rewardAsset:p.rewardCategory==='00'.repeat(32)?{kind:'bch'}:{kind:'token',category:p.rewardCategory}};
+   if(rows.has(config.genesis)&&JSON.stringify(rows.get(config.genesis).config)!==JSON.stringify(config))conflicts.add(config.genesis);else rows.set(config.genesis,{config});
   }
   if(!rows.size)return;
   const header=el('header','');header.className='header';header.append(createBrandArtwork());

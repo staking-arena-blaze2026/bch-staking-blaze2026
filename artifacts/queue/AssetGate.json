@@ -1,0 +1,86 @@
+{
+  "contractName": "AssetGate",
+  "constructorInputs": [
+    {
+      "name": "vault",
+      "type": "bytes32"
+    },
+    {
+      "name": "queue",
+      "type": "bytes32"
+    },
+    {
+      "name": "arena",
+      "type": "bytes35"
+    },
+    {
+      "name": "id",
+      "type": "bytes32"
+    }
+  ],
+  "abi": [
+    {
+      "name": "release",
+      "inputs": []
+    }
+  ],
+  "bytecode": "OP_0 OP_UTXOTOKENCATEGORY OP_OVER OP_1 OP_CAT OP_EQUAL OP_0 OP_UTXOTOKENCATEGORY OP_3 OP_PICK OP_2 OP_CAT OP_EQUAL OP_0 OP_UTXOBYTECODE OP_5 OP_PICK OP_EQUAL OP_BOOLAND OP_BOOLOR OP_VERIFY OP_1 OP_UTXOBYTECODE OP_3 OP_ROLL OP_EQUALVERIFY OP_1 OP_UTXOTOKENCATEGORY OP_ROT OP_2 OP_CAT OP_EQUALVERIFY OP_1 OP_UTXOTOKENCOMMITMENT OP_SIZE OP_NIP 79 OP_NUMEQUALVERIFY OP_1 OP_OUTPUTBYTECODE 76a914 OP_1 OP_UTXOTOKENCOMMITMENT 41 OP_SPLIT OP_DROP 20 OP_SPLIT OP_NIP OP_HASH160 OP_CAT 88ac OP_CAT OP_EQUALVERIFY OP_OVER 0000000000000000000000000000000000000000000000000000000000000000 OP_EQUAL OP_IF OP_0 OP_UTXOTOKENCATEGORY OP_OVER OP_1 OP_CAT OP_EQUALVERIFY OP_3 OP_OUTPUTBYTECODE OP_INPUTINDEX OP_UTXOBYTECODE OP_EQUALVERIFY OP_3 OP_OUTPUTVALUE b004 OP_NUMEQUALVERIFY OP_ELSE OP_INPUTINDEX OP_2 OP_NUMEQUALVERIFY OP_1 OP_UTXOTOKENCOMMITMENT 20 OP_SPLIT OP_DROP OP_2 OP_PICK OP_EQUALVERIFY OP_ENDIF OP_2DROP OP_1",
+  "source": "pragma cashscript ^0.14.0;\n// The queue transition checks the complete asset transfer. This gate only\n// authenticates its controller. Offer escrows bind a stable id, reserves do not.\ncontract AssetGate(bytes32 vault, bytes32 queue, bytes35 arena, bytes32 id) {\n    function release() {\n        require(tx.inputs[0].tokenCategory == vault + 0x01 || (tx.inputs[0].tokenCategory == queue + 0x02 && tx.inputs[0].lockingBytecode == arena));\n        require(tx.inputs[1].lockingBytecode == arena);\n        require(tx.inputs[1].tokenCategory == queue + 0x02);\n        require(tx.inputs[1].nftCommitment.length == 121);\n        // An insertion preserves input1 or creates another node at output1.\n        // Asset gates may only release while that authentic node is removed.\n        require(tx.outputs[1].lockingBytecode == new LockingBytecodeP2PKH(hash160(tx.inputs[1].nftCommitment.slice(32,65))));\n        if (id == 0x0000000000000000000000000000000000000000000000000000000000000000) {\n            require(tx.inputs[0].tokenCategory == vault + 0x01);\n            // Only a reward claim recreates the reserve at output3. This also\n            // protects the final tokenless carrier from use as fee funding.\n            require(tx.outputs[3].lockingBytecode == tx.inputs[this.activeInputIndex].lockingBytecode);\n            require(tx.outputs[3].value == 1200);\n        } else {\n            require(this.activeInputIndex == 2);\n            require(tx.inputs[1].nftCommitment.slice(0,32) == id);\n        }\n    }\n}\n",
+  "fingerprint": "13155e24eb2aac9f29f4afd4a645a5f2b05de63a0127c0cae9548c7cc8d07bd8",
+  "debug": {
+    "bytecode": "00ce78517e8700ce5379527e8700c75579879a9b6951c7537a8851ce7b527e8851cf827701799d51cd0376a91451cf01417f7501207f77a97e0288ac7e8878200000000000000000000000000000000000000000000000000000000000000000876300ce78517e8853cdc0c78853cc02b0049d67c0529d51cf01207f75527988686d51",
+    "sourceMap": "6:26:6:27;:16::42:1;:46::51:0;:54::58;:46:::1;:16;:73::74:0;:63::89:1;:93::98:0;;:101::105;:93:::1;:63;:119::120:0;:109::137:1;:141::146:0;;:109:::1;:63;:16::147;:8::149;7:26:7:27:0;:16::44:1;:48::53:0;;:8::55:1;8:26:8:27:0;:16::42:1;:46::51:0;:54::58;:46:::1;:8::60;9:26:9:27:0;:16::42:1;:::49;;:53::56:0;:8::58:1;12:27:12:28:0;:16::45:1;:49::123:0;:92::93;:82::108:1;:118::120:0;:82::121:1;;:115::117:0;:82::121:1;;:74::122;:49::123;;;:8::125;13:12:13:14:0;:18::84;:12:::1;:86:19:9:0;14:30:14:31;:20::46:1;:50::55:0;:58::62;:50:::1;:12::64;17:31:17:32:0;:20::49:1;:63::84:0;:53::101:1;:12::103;18:31:18:32:0;:20::39:1;:43::47:0;:12::49:1;19:15:22:9:0;20:20:20:41;:45::46;:12::48:1;21:30:21:31:0;:20::46:1;:55::57:0;:20::58:1;;:62::64:0;;:12::66:1;19:15:22:9;5:23:23:5;",
+    "logs": [],
+    "requires": [
+      {
+        "ip": 24,
+        "line": 6
+      },
+      {
+        "ip": 29,
+        "line": 7
+      },
+      {
+        "ip": 35,
+        "line": 8
+      },
+      {
+        "ip": 41,
+        "line": 9
+      },
+      {
+        "ip": 57,
+        "line": 12
+      },
+      {
+        "ip": 67,
+        "line": 14
+      },
+      {
+        "ip": 72,
+        "line": 17
+      },
+      {
+        "ip": 76,
+        "line": 18
+      },
+      {
+        "ip": 80,
+        "line": 20
+      },
+      {
+        "ip": 88,
+        "line": 21
+      }
+    ]
+  },
+  "compiler": {
+    "name": "cashc",
+    "version": "0.14.0",
+    "options": {
+      "enforceFunctionParameterTypes": true,
+      "enforceLocktimeGuard": true
+    }
+  },
+  "updatedAt": "2026-11-17T23:26:47.524Z"
+}

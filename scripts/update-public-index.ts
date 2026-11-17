@@ -27,3 +27,4 @@ for(const network of networks){
  await writeFile(join(dir,'index.json.tmp'),stringify(manifest));await rename(join(dir,'index.json.tmp'),join(dir,'index.json'));
  console.log(network,JSON.stringify({...result,total:candidates.length}));
 }
+await import('./update-queue-index.js');

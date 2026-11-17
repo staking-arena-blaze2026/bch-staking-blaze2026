@@ -1,0 +1,120 @@
+{
+  "contractName": "Allocation",
+  "constructorInputs": [
+    {
+      "name": "owner",
+      "type": "bytes33"
+    },
+    {
+      "name": "asset",
+      "type": "bytes32"
+    },
+    {
+      "name": "amount",
+      "type": "int"
+    },
+    {
+      "name": "duration",
+      "type": "int"
+    }
+  ],
+  "abi": [
+    {
+      "name": "withdraw",
+      "inputs": [
+        {
+          "name": "authorization",
+          "type": "sig"
+        }
+      ]
+    }
+  ],
+  "bytecode": "OP_INPUTINDEX OP_0 OP_NUMEQUAL OP_TXVERSION OP_2 OP_NUMEQUAL OP_BOOLAND OP_VERIFY OP_TXINPUTCOUNT OP_2 OP_GREATERTHANOREQUAL OP_TXINPUTCOUNT 11 OP_LESSTHANOREQUAL OP_BOOLAND OP_TXOUTPUTCOUNT OP_1 OP_GREATERTHANOREQUAL OP_BOOLAND OP_TXOUTPUTCOUNT OP_2 OP_LESSTHANOREQUAL OP_BOOLAND OP_VERIFY OP_3 OP_PICK OP_0 OP_GREATERTHAN OP_4 OP_PICK 00feff01 OP_LESSTHANOREQUAL OP_BOOLAND OP_4 OP_PICK 0002 OP_MOD OP_0 OP_NUMEQUAL OP_BOOLAND OP_VERIFY OP_0 OP_INPUTSEQUENCENUMBER 000040 OP_5 OP_PICK 0002 OP_DIV OP_ADD OP_NUMEQUALVERIFY 000040 OP_4 OP_ROLL 0002 OP_DIV OP_ADD OP_CHECKSEQUENCEVERIFY OP_DROP OP_3 OP_ROLL OP_OVER OP_CHECKSIGVERIFY OP_0 OP_OUTPUTBYTECODE 76a914 OP_ROT OP_HASH160 OP_CAT 88ac OP_CAT OP_EQUALVERIFY OP_0 OP_UTXOTOKENCOMMITMENT OP_0 OP_EQUAL OP_0 OP_OUTPUTTOKENCOMMITMENT OP_0 OP_EQUAL OP_BOOLAND OP_VERIFY OP_0 OP_UTXOVALUE OP_0 OP_OUTPUTVALUE OP_NUMEQUALVERIFY OP_0 OP_UTXOTOKENCATEGORY OP_0 OP_OUTPUTTOKENCATEGORY OP_EQUALVERIFY OP_0 OP_UTXOTOKENAMOUNT OP_0 OP_OUTPUTTOKENAMOUNT OP_NUMEQUALVERIFY OP_DUP 0000000000000000000000000000000000000000000000000000000000000000 OP_EQUAL OP_IF OP_0 OP_UTXOTOKENCATEGORY OP_0 OP_EQUAL OP_0 OP_UTXOTOKENAMOUNT OP_0 OP_NUMEQUAL OP_BOOLAND OP_0 OP_UTXOVALUE OP_3 OP_PICK OP_NUMEQUAL OP_BOOLAND OP_VERIFY OP_ELSE OP_0 OP_UTXOTOKENCATEGORY OP_OVER OP_EQUAL OP_0 OP_UTXOTOKENAMOUNT OP_3 OP_PICK OP_NUMEQUAL OP_BOOLAND OP_0 OP_UTXOVALUE b004 OP_NUMEQUAL OP_BOOLAND OP_VERIFY OP_ENDIF OP_0 OP_1 OP_BEGIN OP_DUP 11 OP_LESSTHAN OP_DUP OP_TOALTSTACK OP_IF OP_DUP OP_TXINPUTCOUNT OP_LESSTHAN OP_IF OP_DUP OP_UTXOTOKENCATEGORY OP_0 OP_EQUAL OP_OVER OP_UTXOTOKENAMOUNT OP_0 OP_NUMEQUAL OP_BOOLAND OP_VERIFY OP_2DUP OP_UTXOVALUE OP_ADD OP_ROT OP_DROP OP_SWAP OP_ENDIF OP_1ADD OP_ENDIF OP_FROMALTSTACK OP_NOT OP_UNTIL OP_DROP OP_TXOUTPUTCOUNT OP_2 OP_NUMEQUAL OP_IF OP_1 OP_OUTPUTBYTECODE OP_1 OP_UTXOBYTECODE OP_EQUALVERIFY OP_1 OP_OUTPUTTOKENCATEGORY OP_0 OP_EQUAL OP_1 OP_OUTPUTTOKENAMOUNT OP_0 OP_NUMEQUAL OP_BOOLAND OP_VERIFY OP_1 OP_OUTPUTVALUE OP_OVER OP_LESSTHANOREQUAL OP_VERIFY OP_ENDIF OP_2DROP OP_DROP OP_1",
+  "source": "pragma cashscript ^0.14.0;\n// Independent lock. Funding input pays fees; all locked value returns to owner.\ncontract Allocation(bytes33 owner, bytes32 asset, int amount, int duration) {\n    function withdraw(sig authorization) {\n        require(this.activeInputIndex == 0 && tx.version == 2);\n        require(tx.inputs.length >= 2 && tx.inputs.length <= 17 && tx.outputs.length >= 1 && tx.outputs.length <= 2);\n        require(duration > 0 && duration <= 33553920 && duration % 512 == 0);\n        require(tx.inputs[0].sequenceNumber == 4194304 + duration / 512);\n        require(this.age >= 4194304 + duration / 512);\n        require(checkSig(authorization, pubkey(owner)));\n        require(tx.outputs[0].lockingBytecode == new LockingBytecodeP2PKH(hash160(owner)));\n        require(tx.inputs[0].nftCommitment == 0x && tx.outputs[0].nftCommitment == 0x);\n        require(tx.inputs[0].value == tx.outputs[0].value);\n        require(tx.inputs[0].tokenCategory == tx.outputs[0].tokenCategory);\n        require(tx.inputs[0].tokenAmount == tx.outputs[0].tokenAmount);\n        if (asset == 0x0000000000000000000000000000000000000000000000000000000000000000) {\n            require(tx.inputs[0].tokenCategory == 0x && tx.inputs[0].tokenAmount == 0 && tx.inputs[0].value == amount);\n        } else {\n            require(tx.inputs[0].tokenCategory == asset && tx.inputs[0].tokenAmount == amount && tx.inputs[0].value == 1200);\n        }\n        int fundingValue = 0;\n        for (int f = 1; f < 17; f++) {\n            if (f < tx.inputs.length) {\n                require(tx.inputs[f].tokenCategory == 0x && tx.inputs[f].tokenAmount == 0);\n                fundingValue = fundingValue + tx.inputs[f].value;\n            }\n        }\n        if (tx.outputs.length == 2) {\n            require(tx.outputs[1].lockingBytecode == tx.inputs[1].lockingBytecode);\n            require(tx.outputs[1].tokenCategory == 0x && tx.outputs[1].tokenAmount == 0);\n            require(tx.outputs[1].value <= fundingValue);\n        }\n    }\n}\n",
+  "fingerprint": "367a1b48acc78f2f0532984cd47331f538b1b5efb038c68495f52b8b26443783",
+  "debug": {
+    "bytecode": "c0009cc2529c9a69c352a2c30111a19ac451a29ac452a19a69537900a054790400feff01a19a547902000297009c9a6900cb03000040557902000296939d03000040547a0200029693b275537a78ad00cd0376a9147ba97e0288ac7e8800cf008700d200879a6900c600cc9d00ce00d18800d000d39d76200000000000000000000000000000000000000000000000000000000000000000876300ce008700d0009c9a00c653799c9a696700ce788700d053799c9a00c602b0049c9a69680051657601119f766b6376c39f6376ce008778d0009c9a696ec6937b757c688b686c916675c4529c6351cd51c78851d1008751d3009c9a6951cc78a169686d7551",
+    "sourceMap": "5:16:5:37;:41::42;:16:::1;:46::56:0;:60::61;:46:::1;:16;:8::63;6:16:6:32:0;:36::37;:16:::1;:41::57:0;:61::63;:41:::1;:16;:67::84:0;:88::89;:67:::1;:16;:93::110:0;:114::115;:93:::1;:16;:8::117;7:16:7:24:0;;:27::28;:16:::1;:32::40:0;;:44::52;:32:::1;:16;:56::64:0;;:67::70;:56:::1;:74::75:0;:56:::1;:16;:8::77;8:26:8:27:0;:16::43:1;:47::54:0;:57::65;;:68::71;:57:::1;:47;:8::73;9:28:9:35:0;:38::46;;:49::52;:38:::1;:28;:8::54;;10:25:10:38:0;;:47::52;:8::56:1;11:27:11:28:0;:16::45:1;:49::89:0;:82::87;:74::88:1;:49::89;;;:8::91;12:26:12:27:0;:16::42:1;:46::48:0;:16:::1;:63::64:0;:52::79:1;:83::85:0;:52:::1;:16;:8::87;13:26:13:27:0;:16::34:1;:49::50:0;:38::57:1;:8::59;14:26:14:27:0;:16::42:1;:57::58:0;:46::73:1;:8::75;15:26:15:27:0;:16::40:1;:55::56:0;:44::69:1;:8::71;16:12:16:17:0;:21::87;:12:::1;:89:18:9:0;17:30:17:31;:20::46:1;:50::52:0;:20:::1;:66::67:0;:56::80:1;:84::85:0;:56:::1;:20;:99::100:0;:89::107:1;:111::117:0;;:89:::1;:20;:12::119;18:15:20:9:0;19:30:19:31;:20::46:1;:50::55:0;:20:::1;:69::70:0;:59::83:1;:87::93:0;;:59:::1;:20;:107::108:0;:97::115:1;:119::123:0;:97:::1;:20;:12::125;18:15:20:9;21:27:21:28:0;22:21:22:22;:8:27:9;:24:22:25;:28::30;:24:::1;;;:37:27:9:0;23:16:23:17;:20::36;:16:::1;:38:26:13:0;24:34:24:35;:24::50:1;:54::56:0;:24:::1;:70::71:0;:60::84:1;:88::89:0;:60:::1;:24;:16::91;25:31:25:57:0;:46::64:1;:31;:16::65;;;23:38:26:13;22:32:22:35;:37:27:9;;:8;;;28:12:28:29:0;:33::34;:12:::1;:36:32:9:0;29:31:29:32;:20::49:1;:63::64:0;:53::81:1;:12::83;30:31:30:32:0;:20::47:1;:51::53:0;:20:::1;:68::69:0;:57::82:1;:86::87:0;:57:::1;:20;:12::89;31:31:31:32:0;:20::39:1;:43::55:0;:20:::1;:12::57;28:36:32:9;4:41:33:5;;",
+    "logs": [],
+    "requires": [
+      {
+        "ip": 11,
+        "line": 5
+      },
+      {
+        "ip": 27,
+        "line": 6
+      },
+      {
+        "ip": 44,
+        "line": 7
+      },
+      {
+        "ip": 53,
+        "line": 8
+      },
+      {
+        "ip": 60,
+        "line": 9
+      },
+      {
+        "ip": 65,
+        "line": 10
+      },
+      {
+        "ip": 74,
+        "line": 11
+      },
+      {
+        "ip": 84,
+        "line": 12
+      },
+      {
+        "ip": 89,
+        "line": 13
+      },
+      {
+        "ip": 94,
+        "line": 14
+      },
+      {
+        "ip": 99,
+        "line": 15
+      },
+      {
+        "ip": 119,
+        "line": 17
+      },
+      {
+        "ip": 136,
+        "line": 19
+      },
+      {
+        "ip": 160,
+        "line": 24
+      },
+      {
+        "ip": 182,
+        "line": 29
+      },
+      {
+        "ip": 192,
+        "line": 30
+      },
+      {
+        "ip": 197,
+        "line": 31
+      }
+    ],
+    "sourceTags": "164:164:fu;165:168:lc;169:169:sc"
+  },
+  "compiler": {
+    "name": "cashc",
+    "version": "0.14.0",
+    "options": {
+      "enforceFunctionParameterTypes": true,
+      "enforceLocktimeGuard": true
+    }
+  },
+  "updatedAt": "2026-11-17T22:50:14.841Z"
+}

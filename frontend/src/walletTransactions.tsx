@@ -9,6 +9,7 @@ export interface WalletTransactions {
   pairing?():{paired:boolean;live:boolean;identity:string;network:string;generation?:number};
   restore?():void;
   v3?(intent:Record<string,unknown>,requestCheck?:()=>void):Promise<any>;
+  queue?(intent:Record<string,unknown>,requestCheck?:()=>void):Promise<any>;
   v2?(intent:Record<string,unknown>):Promise<any>;
   inventory?(limit?:number):Promise<import('../../src/electrum-wallet').WalletInventory>;
   operations?():Promise<import('../../src/browser-wallet').WalletOperation[]>;

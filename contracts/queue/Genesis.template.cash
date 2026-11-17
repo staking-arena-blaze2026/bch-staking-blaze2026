@@ -1,0 +1,63 @@
+pragma cashscript ^0.14.0;
+contract Genesis(bytes64 assets, bytes16 schedule, bytes33 owner) {
+    function create(sig authorization) {
+        require(this.activeInputIndex == 0 && tx.version == 2);
+        require(tx.inputs.length >= 2 && tx.inputs.length <= 18);
+        require(tx.inputs[0].outpointIndex == 0 && tx.inputs[1].outpointIndex == 0);
+        require(tx.inputs[0].tokenCategory == 0x && tx.inputs[0].tokenAmount == 0);
+        require(tx.inputs[1].tokenCategory == 0x && tx.inputs[1].tokenAmount == 0);
+        require(checkSig(authorization, pubkey(owner)));
+        bytes32 vault = tx.inputs[0].outpointTransactionHash;
+        bytes32 queue = tx.inputs[1].outpointTransactionHash;
+        bytes32 stake = unsafe_bytes32(assets.slice(0,32));
+        bytes32 reward = unsafe_bytes32(assets.slice(32,64));
+        bytes32 zero = 0x0000000000000000000000000000000000000000000000000000000000000000;
+        require(vault != queue && vault != zero && queue != zero);
+        require(vault != stake && vault != reward && queue != stake && queue != reward);
+        int epoch = int(schedule.slice(0,4));
+        int interval = int(schedule.slice(4,8));
+        int releases = int(schedule.slice(8,12));
+        int cap = int(schedule.slice(12,16));
+        require(epoch >= 500000000 && interval > 0 && interval <= 2147483647);
+        require(releases >= 1 && releases <= 1000 && cap >= 1 && cap <= 1000000);
+        require(epoch + interval * releases <= 2147483647);
+        if (reward == zero) { require(cap >= 1200); }
+        int reserve = releases * cap;
+        bytes35 node = new LockingBytecodeP2SH32(hash256(0x4c80 + vault + queue + assets + 0x__NODE_BODY__));
+        bytes35 arena = new LockingBytecodeP2SH32(hash256(0x23 + node + 0x10 + schedule + 0x4c80 + vault + queue + assets + 0x__GLOBAL_BODY__));
+        require(tx.outputs[0].lockingBytecode == arena);
+        require(tx.outputs[1].lockingBytecode == new LockingBytecodeP2SH32(hash256(0x20 + queue + 0x20 + vault + 0x__ROOT_BODY__)));
+        require(tx.outputs[0].tokenCategory == vault + 0x01 && tx.outputs[0].tokenAmount == 0);
+        require(tx.outputs[0].nftCommitment == zero + 0x000000000000000000000000 + toPaddedBytes(reserve,4));
+        require(tx.outputs[1].tokenCategory == queue + 0x02 && tx.outputs[1].tokenAmount == 0);
+        require(tx.outputs[1].value == 1200 && tx.outputs[1].nftCommitment == 0x00);
+        int changeIndex = 2;
+        if (reward == zero) { require(tx.outputs[0].value == 1200 + reserve); }
+        else {
+            require(tx.outputs[0].value == 1200);
+            bytes gate = 0x20 + zero + 0x23 + node + 0x20 + queue + 0x20 + vault + 0x__ASSETGATE_BODY__;
+            require(tx.outputs[2].lockingBytecode == new LockingBytecodeP2SH32(hash256(gate)));
+            require(tx.outputs[2].value == 1200 && tx.outputs[2].tokenCategory == reward && tx.outputs[2].tokenAmount == reserve && tx.outputs[2].nftCommitment == 0x);
+            changeIndex = 3;
+        }
+        require(tx.outputs.length >= changeIndex && tx.outputs.length <= changeIndex + 2);
+        int tokenIn = 0;
+        int tokenOut = 0;
+        for (int f = 2; f < 18; f++) {
+            if (f < tx.inputs.length) {
+                require(tx.inputs[f].nftCommitment == 0x);
+                if (tx.inputs[f].tokenCategory == 0x) { require(tx.inputs[f].tokenAmount == 0); }
+                else { require(reward != zero && tx.inputs[f].tokenCategory == reward); tokenIn = tokenIn + tx.inputs[f].tokenAmount; }
+            }
+        }
+        for (int c = 0; c < 2; c++) {
+            if (changeIndex+c < tx.outputs.length) {
+                require(tx.outputs[changeIndex+c].lockingBytecode == new LockingBytecodeP2PKH(hash160(owner)));
+                require(tx.outputs[changeIndex+c].nftCommitment == 0x);
+                if (tx.outputs[changeIndex+c].tokenCategory == 0x) { require(tx.outputs[changeIndex+c].tokenAmount == 0); }
+                else { require(reward != zero && tx.outputs[changeIndex+c].tokenCategory == reward); tokenOut = tokenOut + tx.outputs[changeIndex+c].tokenAmount; }
+            }
+        }
+        if (reward != zero) { require(tokenIn == reserve + tokenOut); }
+    }
+}

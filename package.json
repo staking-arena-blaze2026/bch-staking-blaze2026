@@ -50,7 +50,10 @@
     "test:blaze": "ARENA_NETWORK=regtest tsx --test --test-concurrency=1 tests/blaze-*.test.ts",
     "test:v3": "npm run compile:v3 && ARENA_NETWORK=regtest tsx --test --test-concurrency=1 tests/v3*.test.ts",
     "test:review": "node scripts/test-review.mjs",
-    "test:atomic": "node scripts/compile-v3.mjs --check && ARENA_NETWORK=regtest tsx --test --test-concurrency=1 tests/blaze-atomic-*.test.ts"
+    "test:atomic": "node scripts/compile-v3.mjs --check && ARENA_NETWORK=regtest tsx --test --test-concurrency=1 tests/blaze-atomic-*.test.ts",
+    "compile:queue": "node scripts/compile-queue.mjs",
+    "test:queue": "node scripts/compile-queue.mjs --check && ARENA_NETWORK=regtest tsx --test --test-concurrency=1 tests/queue-covenants.test.ts tests/queue-indexer.test.ts tests/queue-wallet.test.ts tests/queue-relay.test.ts",
+    "benchmark:queue": "tsx scripts/benchmark-queue.ts"
   },
   "keywords": [],
   "author": "",

@@ -1,0 +1,39 @@
+{
+  "at": "2026-11-17T23:57:48.766236+00:00",
+  "networkSpending": "isolated regtest only",
+  "contracts": {
+    "artifacts/queue/Allocation.json": "fbcfa4cc1691ba3bf40a42aacae63408aa0b164f567aad212921da01fc3292cf",
+    "artifacts/queue/AssetGate.json": "7b0a8e06c6b9390d9d5fb73e66cf2b23eee0e8cf1b3d0003b27dd015b8db8e3d",
+    "artifacts/queue/Genesis.json": "55e00be5c65f10ecdc43a0ea49c5a20f8d98bbbcc7d8897f14b202730d3b684e",
+    "artifacts/queue/Global.json": "f5fd7389064d6786b810fd5a720b689e98ffc3dc212b32828e965255ea24783b",
+    "artifacts/queue/Node.json": "74d23f8d3f90c0d6d66d2b2ee95db63504e3284f70135e9271d70ce0367990f0",
+    "artifacts/queue/Root.json": "10ba349115fc676612ae50c814548c00602426eea79f9bcdc39d87c5f277b0e3"
+  },
+  "checks": {
+    "artifactReproducibility": "passed",
+    "rootAndFrontendTypes": "passed",
+    "productionBuild": "passed",
+    "queueVmTests": {
+      "passed": 5,
+      "includes": "unauthorized withdrawal, protected-value diversion, early reward claim, insertion escrow/reserve theft"
+    },
+    "nativeIndexer": "passed",
+    "nativeWallet": "passed; confirmed competing spend, canonical announcement resolution and lost acknowledgement recovery",
+    "nativeStandardPolicy": {
+      "checks": 59,
+      "p2pTransactions": 35,
+      "allAttackRejections": "script/token failures; same-predecessor conflict separately rejected"
+    },
+    "focusedFrontendTests": 15,
+    "legacyVaultUiRegressionTests": 47,
+    "browser": "passed; real workers over two loopback WSS hosts, five viewport widths, Waiting-to-Baked history, creation/About navigation",
+    "readOnlyPublicDiscovery": "passed on mainnet and chipnet, no queue vaults discovered"
+  },
+  "limits": [
+    "Synthetic signing does not establish physical Cashonize acceptance",
+    "No public network spending or public queue lifecycle performed",
+    "Initial broad frontend run had four failures; updated catalog tests and legacy UI reruns passed",
+    "Combined native run completed VM, indexer and relay but was terminated before wallet completion; wallet rerun independently passed",
+    "Browser queue preparation still scans current nodes for routing; covenant head authentication is constant-size"
+  ]
+}

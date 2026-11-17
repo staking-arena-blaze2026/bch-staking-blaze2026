@@ -1,0 +1,36 @@
+/// <reference lib="webworker" />
+import {BrowserElectrumProvider} from '../../src/electrum-wss';
+import {QueueIndexer} from '../../src/queue/chain';
+import {QueueWallet,BrowserQueueStore} from '../../src/queue/wallet';
+import {v3Config} from './v3Config';
+import {providerConflictStore} from './providerConflictStore';
+const workerEnv:Record<string,string|undefined>=import.meta.env;
+const options=v3Config({...workerEnv,VITE_V3_NETWORK:self.name.split(':')[0]}),readOnly=self.name.endsWith(':read');
+if(readOnly)options.allowBroadcast=false;
+const provider=new BrowserElectrumProvider(options),store=new BrowserQueueStore(options.network),wallet=new QueueWallet(provider,store),scope=self as unknown as DedicatedWorkerGlobalScope;
+let failure=false;
+let pending=providerConflictStore(options.network).then(async s=>{provider.unresolvedChainPeers=new Set(await s.read());provider.persistChainConflict=async peers=>{try{await s.save(peers);}catch(e){failure=true;throw e;}};}).catch(()=>{failure=true;});
+scope.onmessage=event=>{pending=pending.catch(()=>{}).then(async()=>{const {id,intent,keys=[]}=event.data;try{
+ const operation=String(intent.operation),reading=['list','sync','owned'].includes(operation);
+ if(readOnly&&!reading)throw Error('Read-only queue worker cannot sign, journal or broadcast');
+ if(failure&&operation!=='list')throw Error('Provider conflict evidence is unavailable');
+ const run=async()=>{let result;
+ if(operation==='list')result=await store.list();
+ else if(operation==='sync')result=await new QueueIndexer(provider,intent.config).sync();
+ else if(operation==='owned')result=await new QueueIndexer(provider,intent.config).owned(intent.owner);
+ else if(operation==='prepare')result=await wallet.prepare(intent.intent,keys);
+ else if(operation==='authorize')result=await wallet.authorize(intent.id);
+ else if(operation==='retain')result=await wallet.retain(intent.id,intent.raw);
+ else if(operation==='beginSigning')result=await wallet.beginSigning(intent.id);
+ else if(operation==='signingFailed')result=await wallet.signingFailed(intent.id,intent.rejected===true,intent.notRequested===true);
+ else if(operation==='submit')result=await wallet.broadcast(intent.id);
+ else if(operation==='resume')result=await wallet.resume(intent.id,keys,intent.retry===true);
+ else if(operation==='discard')result=await wallet.discard(intent.id);
+ else throw Error('Unsupported queue operation');
+ return result;};
+ if(!reading&&!scope.navigator.locks)throw Error('Queue transactions require Web Locks');
+ const result=reading?await run():await scope.navigator.locks.request('arena-'+options.network+'-queue',{ifAvailable:true},async lock=>{if(!lock)throw Error('Another tab is updating this queue wallet');return run();});
+ scope.postMessage({id,result});
+ }catch(error){scope.postMessage({id,error:String(error)});}});};
+
+scope.postMessage({type:'ready'});

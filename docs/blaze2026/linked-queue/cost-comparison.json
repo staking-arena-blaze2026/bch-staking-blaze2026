@@ -1,0 +1,2031 @@
+{
+  "at": "2026-11-17T23:30:50.458Z",
+  "method": "Locally Schnorr signed, BCH2026 standard VM validated; 1 sat/byte for queue; V4 fixed 10000 sats. Creation excludes wallet preparation (see README). No public broadcast.",
+  "rows": [
+    {
+      "stake": "0000000000000000000000000000000000000000000000000000000000000000",
+      "reward": "0000000000000000000000000000000000000000000000000000000000000000",
+      "before": {
+        "create": {
+          "bytes": 384,
+          "fee": 10000,
+          "inputs": 1,
+          "outputs": 4,
+          "resources": [
+            {
+              "unlockingBytes": 100,
+              "operationCost": 28217,
+              "maximumOperationCost": 112800,
+              "hashIterations": 7,
+              "maximumHashIterations": 70
+            }
+          ]
+        },
+        "register": {
+          "bytes": 4780,
+          "fee": 10000,
+          "inputs": 4,
+          "outputs": 4,
+          "resources": [
+            {
+              "unlockingBytes": 4061,
+              "operationCost": 917096,
+              "maximumOperationCost": 3281600,
+              "hashIterations": 142,
+              "maximumHashIterations": 2051
+            },
+            {
+              "unlockingBytes": 105,
+              "operationCost": 5213,
+              "maximumOperationCost": 116800,
+              "hashIterations": 3,
+              "maximumHashIterations": 73
+            },
+            {
+              "unlockingBytes": 105,
+              "operationCost": 5213,
+              "maximumOperationCost": 116800,
+              "hashIterations": 3,
+              "maximumHashIterations": 73
+            },
+            {
+              "unlockingBytes": 100,
+              "operationCost": 28217,
+              "maximumOperationCost": 112800,
+              "hashIterations": 7,
+              "maximumHashIterations": 70
+            }
+          ]
+        },
+        "cancel": {
+          "bytes": 4697,
+          "fee": 10000,
+          "inputs": 4,
+          "outputs": 3,
+          "resources": [
+            {
+              "unlockingBytes": 4012,
+              "operationCost": 831794,
+              "maximumOperationCost": 3242400,
+              "hashIterations": 140,
+              "maximumHashIterations": 2026
+            },
+            {
+              "unlockingBytes": 105,
+              "operationCost": 5213,
+              "maximumOperationCost": 116800,
+              "hashIterations": 3,
+              "maximumHashIterations": 73
+            },
+            {
+              "unlockingBytes": 105,
+              "operationCost": 5213,
+              "maximumOperationCost": 116800,
+              "hashIterations": 3,
+              "maximumHashIterations": 73
+            },
+            {
+              "unlockingBytes": 100,
+              "operationCost": 28217,
+              "maximumOperationCost": 112800,
+              "hashIterations": 7,
+              "maximumHashIterations": 70
+            }
+          ]
+        },
+        "refund": {
+          "bytes": 4731,
+          "fee": 10000,
+          "inputs": 4,
+          "outputs": 4,
+          "resources": [
+            {
+              "unlockingBytes": 4012,
+              "operationCost": 827973,
+              "maximumOperationCost": 3242400,
+              "hashIterations": 142,
+              "maximumHashIterations": 2026
+            },
+            {
+              "unlockingBytes": 105,
+              "operationCost": 5213,
+              "maximumOperationCost": 116800,
+              "hashIterations": 3,
+              "maximumHashIterations": 73
+            },
+            {
+              "unlockingBytes": 105,
+              "operationCost": 5213,
+              "maximumOperationCost": 116800,
+              "hashIterations": 3,
+              "maximumHashIterations": 73
+            },
+            {
+              "unlockingBytes": 100,
+              "operationCost": 28217,
+              "maximumOperationCost": 112800,
+              "hashIterations": 7,
+              "maximumHashIterations": 70
+            }
+          ]
+        },
+        "claim": {
+          "bytes": 4710,
+          "fee": 10000,
+          "inputs": 4,
+          "outputs": 5,
+          "resources": [
+            {
+              "unlockingBytes": 3947,
+              "operationCost": 980654,
+              "maximumOperationCost": 3190400,
+              "hashIterations": 94,
+              "maximumHashIterations": 1994
+            },
+            {
+              "unlockingBytes": 105,
+              "operationCost": 5213,
+              "maximumOperationCost": 116800,
+              "hashIterations": 3,
+              "maximumHashIterations": 73
+            },
+            {
+              "unlockingBytes": 105,
+              "operationCost": 5213,
+              "maximumOperationCost": 116800,
+              "hashIterations": 3,
+              "maximumHashIterations": 73
+            },
+            {
+              "unlockingBytes": 100,
+              "operationCost": 28217,
+              "maximumOperationCost": 112800,
+              "hashIterations": 7,
+              "maximumHashIterations": 70
+            }
+          ]
+        },
+        "withdraw": {
+          "bytes": 650,
+          "fee": 10000,
+          "inputs": 2,
+          "outputs": 1,
+          "resources": [
+            {
+              "unlockingBytes": 422,
+              "operationCost": 50613,
+              "maximumOperationCost": 370400,
+              "hashIterations": 19,
+              "maximumHashIterations": 231
+            },
+            {
+              "unlockingBytes": 100,
+              "operationCost": 28217,
+              "maximumOperationCost": 112800,
+              "hashIterations": 7,
+              "maximumHashIterations": 70
+            }
+          ]
+        }
+      },
+      "after": {
+        "create": {
+          "bytes": 5906,
+          "fee": 5906,
+          "inputs": 2,
+          "outputs": 3,
+          "resources": [
+            {
+              "unlockingBytes": 5471,
+              "operationCost": 251319,
+              "maximumOperationCost": 4409600,
+              "hashIterations": 258,
+              "maximumHashIterations": 2756
+            },
+            {
+              "unlockingBytes": 100,
+              "operationCost": 28217,
+              "maximumOperationCost": 112800,
+              "hashIterations": 7,
+              "maximumHashIterations": 70
+            }
+          ]
+        },
+        "emptyInsertion": {
+          "bytes": 3955,
+          "fee": 3955,
+          "inputs": 3,
+          "outputs": 4,
+          "resources": [
+            {
+              "unlockingBytes": 3089,
+              "operationCost": 347770,
+              "maximumOperationCost": 2504000,
+              "hashIterations": 109,
+              "maximumHashIterations": 1565
+            },
+            {
+              "unlockingBytes": 190,
+              "operationCost": 9412,
+              "maximumOperationCost": 184800,
+              "hashIterations": 5,
+              "maximumHashIterations": 115
+            },
+            {
+              "unlockingBytes": 100,
+              "operationCost": 28217,
+              "maximumOperationCost": 112800,
+              "hashIterations": 7,
+              "maximumHashIterations": 70
+            }
+          ]
+        },
+        "ordinaryInsertion": {
+          "bytes": 2447,
+          "fee": 2447,
+          "inputs": 2,
+          "outputs": 3,
+          "resources": [
+            {
+              "unlockingBytes": 1819,
+              "operationCost": 276691,
+              "maximumOperationCost": 1488000,
+              "hashIterations": 66,
+              "maximumHashIterations": 930
+            },
+            {
+              "unlockingBytes": 100,
+              "operationCost": 28217,
+              "maximumOperationCost": 112800,
+              "hashIterations": 7,
+              "maximumHashIterations": 70
+            }
+          ]
+        },
+        "highestInsertion": {
+          "bytes": 5593,
+          "fee": 5593,
+          "inputs": 3,
+          "outputs": 4,
+          "resources": [
+            {
+              "unlockingBytes": 3089,
+              "operationCost": 347963,
+              "maximumOperationCost": 2504000,
+              "hashIterations": 104,
+              "maximumHashIterations": 1565
+            },
+            {
+              "unlockingBytes": 1706,
+              "operationCost": 123554,
+              "maximumOperationCost": 1397600,
+              "hashIterations": 28,
+              "maximumHashIterations": 873
+            },
+            {
+              "unlockingBytes": 100,
+              "operationCost": 28217,
+              "maximumOperationCost": 112800,
+              "hashIterations": 7,
+              "maximumHashIterations": 70
+            }
+          ]
+        },
+        "cancel": {
+          "bytes": 3985,
+          "fee": 3985,
+          "inputs": 3,
+          "outputs": 3,
+          "resources": [
+            {
+              "unlockingBytes": 1774,
+              "operationCost": 228066,
+              "maximumOperationCost": 1452000,
+              "hashIterations": 64,
+              "maximumHashIterations": 907
+            },
+            {
+              "unlockingBytes": 1706,
+              "operationCost": 123554,
+              "maximumOperationCost": 1397600,
+              "hashIterations": 28,
+              "maximumHashIterations": 873
+            },
+            {
+              "unlockingBytes": 100,
+              "operationCost": 28217,
+              "maximumOperationCost": 112800,
+              "hashIterations": 7,
+              "maximumHashIterations": 70
+            }
+          ]
+        },
+        "claim": {
+          "bytes": 5161,
+          "fee": 5161,
+          "inputs": 3,
+          "outputs": 4,
+          "resources": [
+            {
+              "unlockingBytes": 2979,
+              "operationCost": 266514,
+              "maximumOperationCost": 2416000,
+              "hashIterations": 57,
+              "maximumHashIterations": 1510
+            },
+            {
+              "unlockingBytes": 1706,
+              "operationCost": 123554,
+              "maximumOperationCost": 1397600,
+              "hashIterations": 28,
+              "maximumHashIterations": 873
+            },
+            {
+              "unlockingBytes": 100,
+              "operationCost": 28217,
+              "maximumOperationCost": 112800,
+              "hashIterations": 7,
+              "maximumHashIterations": 70
+            }
+          ]
+        },
+        "withdraw": {
+          "bytes": 659,
+          "fee": 659,
+          "inputs": 2,
+          "outputs": 2,
+          "resources": [
+            {
+              "unlockingBytes": 397,
+              "operationCost": 102688,
+              "maximumOperationCost": 350400,
+              "hashIterations": 19,
+              "maximumHashIterations": 219
+            },
+            {
+              "unlockingBytes": 100,
+              "operationCost": 28217,
+              "maximumOperationCost": 112800,
+              "hashIterations": 7,
+              "maximumHashIterations": 70
+            }
+          ]
+        }
+      },
+      "totalUserActionFees": {
+        "before": {
+          "register": 10000,
+          "cancel": 20000,
+          "winAndWithdraw": 30000
+        },
+        "after": {
+          "registerEmpty": "3955",
+          "registerOrdinary": "2447",
+          "cancel": "3985",
+          "winAndWithdrawEmpty": "9775"
+        }
+      }
+    },
+    {
+      "stake": "0000000000000000000000000000000000000000000000000000000000000000",
+      "reward": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "before": {
+        "create": {
+          "bytes": 562,
+          "fee": 10000,
+          "inputs": 2,
+          "outputs": 4,
+          "resources": [
+            {
+              "unlockingBytes": 100,
+              "operationCost": 28217,
+              "maximumOperationCost": 112800,
+              "hashIterations": 7,
+              "maximumHashIterations": 70
+            },
+            {
+              "unlockingBytes": 100,
+              "operationCost": 28409,
+              "maximumOperationCost": 112800,
+              "hashIterations": 8,
+              "maximumHashIterations": 70
+            }
+          ]
+        },
+        "register": {
+          "bytes": 4817,
+          "fee": 10000,
+          "inputs": 4,
+          "outputs": 4,
+          "resources": [
+            {
+              "unlockingBytes": 4061,
+              "operationCost": 917208,
+              "maximumOperationCost": 3281600,
+              "hashIterations": 142,
+              "maximumHashIterations": 2051
+            },
+            {
+              "unlockingBytes": 105,
+              "operationCost": 5213,
+              "maximumOperationCost": 116800,
+              "hashIterations": 3,
+              "maximumHashIterations": 73
+            },
+            {
+              "unlockingBytes": 105,
+              "operationCost": 5213,
+              "maximumOperationCost": 116800,
+              "hashIterations": 3,
+              "maximumHashIterations": 73
+            },
+            {
+              "unlockingBytes": 100,
+              "operationCost": 28217,
+              "maximumOperationCost": 112800,
+              "hashIterations": 7,
+              "maximumHashIterations": 70
+            }
+          ]
+        },
+        "cancel": {
+          "bytes": 4734,
+          "fee": 10000,
+          "inputs": 4,
+          "outputs": 3,
+          "resources": [
+            {
+              "unlockingBytes": 4012,
+              "operationCost": 831911,
+              "maximumOperationCost": 3242400,
+              "hashIterations": 140,
+              "maximumHashIterations": 2026
+            },
+            {
+              "unlockingBytes": 105,
+              "operationCost": 5213,
+              "maximumOperationCost": 116800,
+              "hashIterations": 3,
+              "maximumHashIterations": 73
+            },
+            {
+              "unlockingBytes": 105,
+              "operationCost": 5213,
+              "maximumOperationCost": 116800,
+              "hashIterations": 3,
+              "maximumHashIterations": 73
+            },
+            {
+              "unlockingBytes": 100,
+              "operationCost": 28217,
+              "maximumOperationCost": 112800,
+              "hashIterations": 7,
+              "maximumHashIterations": 70
+            }
+          ]
+        },
+        "refund": {
+          "bytes": 4768,
+          "fee": 10000,
+          "inputs": 4,
+          "outputs": 4,
+          "resources": [
+            {
+              "unlockingBytes": 4012,
+              "operationCost": 828087,
+              "maximumOperationCost": 3242400,
+              "hashIterations": 142,
+              "maximumHashIterations": 2026
+            },
+            {
+              "unlockingBytes": 105,
+              "operationCost": 5213,
+              "maximumOperationCost": 116800,
+              "hashIterations": 3,
+              "maximumHashIterations": 73
+            },
+            {
+              "unlockingBytes": 105,
+              "operationCost": 5213,
+              "maximumOperationCost": 116800,
+              "hashIterations": 3,
+              "maximumHashIterations": 73
+            },
+            {
+              "unlockingBytes": 100,
+              "operationCost": 28217,
+              "maximumOperationCost": 112800,
+              "hashIterations": 7,
+              "maximumHashIterations": 70
+            }
+          ]
+        },
+        "claim": {
+          "bytes": 4784,
+          "fee": 10000,
+          "inputs": 4,
+          "outputs": 5,
+          "resources": [
+            {
+              "unlockingBytes": 3947,
+              "operationCost": 980833,
+              "maximumOperationCost": 3190400,
+              "hashIterations": 94,
+              "maximumHashIterations": 1994
+            },
+            {
+              "unlockingBytes": 105,
+              "operationCost": 5213,
+              "maximumOperationCost": 116800,
+              "hashIterations": 3,
+              "maximumHashIterations": 73
+            },
+            {
+              "unlockingBytes": 105,
+              "operationCost": 5213,
+              "maximumOperationCost": 116800,
+              "hashIterations": 3,
+              "maximumHashIterations": 73
+            },
+            {
+              "unlockingBytes": 100,
+              "operationCost": 28217,
+              "maximumOperationCost": 112800,
+              "hashIterations": 7,
+              "maximumHashIterations": 70
+            }
+          ]
+        },
+        "withdraw": {
+          "bytes": 650,
+          "fee": 10000,
+          "inputs": 2,
+          "outputs": 1,
+          "resources": [
+            {
+              "unlockingBytes": 422,
+              "operationCost": 50613,
+              "maximumOperationCost": 370400,
+              "hashIterations": 19,
+              "maximumHashIterations": 231
+            },
+            {
+              "unlockingBytes": 100,
+              "operationCost": 28217,
+              "maximumOperationCost": 112800,
+              "hashIterations": 7,
+              "maximumHashIterations": 70
+            }
+          ]
+        }
+      },
+      "after": {
+        "create": {
+          "bytes": 6128,
+          "fee": 6128,
+          "inputs": 3,
+          "outputs": 4,
+          "resources": [
+            {
+              "unlockingBytes": 5471,
+              "operationCost": 254227,
+              "maximumOperationCost": 4409600,
+              "hashIterations": 264,
+              "maximumHashIterations": 2756
+            },
+            {
+              "unlockingBytes": 100,
+              "operationCost": 28217,
+              "maximumOperationCost": 112800,
+              "hashIterations": 7,
+              "maximumHashIterations": 70
+            },
+            {
+              "unlockingBytes": 100,
+              "operationCost": 28409,
+              "maximumOperationCost": 112800,
+              "hashIterations": 8,
+              "maximumHashIterations": 70
+            }
+          ]
+        },
+        "emptyInsertion": {
+          "bytes": 3955,
+          "fee": 3955,
+          "inputs": 3,
+          "outputs": 4,
+          "resources": [
+            {
+              "unlockingBytes": 3089,
+              "operationCost": 347750,
+              "maximumOperationCost": 2504000,
+              "hashIterations": 109,
+              "maximumHashIterations": 1565
+            },
+            {
+              "unlockingBytes": 190,
+              "operationCost": 9412,
+              "maximumOperationCost": 184800,
+              "hashIterations": 5,
+              "maximumHashIterations": 115
+            },
+            {
+              "unlockingBytes": 100,
+              "operationCost": 28217,
+              "maximumOperationCost": 112800,
+              "hashIterations": 7,
+              "maximumHashIterations": 70
+            }
+          ]
+        },
+        "ordinaryInsertion": {
+          "bytes": 2447,
+          "fee": 2447,
+          "inputs": 2,
+          "outputs": 3,
+          "resources": [
+            {
+              "unlockingBytes": 1819,
+              "operationCost": 276685,
+              "maximumOperationCost": 1488000,
+              "hashIterations": 66,
+              "maximumHashIterations": 930
+            },
+            {
+              "unlockingBytes": 100,
+              "operationCost": 28217,
+              "maximumOperationCost": 112800,
+              "hashIterations": 7,
+              "maximumHashIterations": 70
+            }
+          ]
+        },
+        "highestInsertion": {
+          "bytes": 5593,
+          "fee": 5593,
+          "inputs": 3,
+          "outputs": 4,
+          "resources": [
+            {
+              "unlockingBytes": 3089,
+              "operationCost": 347943,
+              "maximumOperationCost": 2504000,
+              "hashIterations": 104,
+              "maximumHashIterations": 1565
+            },
+            {
+              "unlockingBytes": 1706,
+              "operationCost": 123554,
+              "maximumOperationCost": 1397600,
+              "hashIterations": 28,
+              "maximumHashIterations": 873
+            },
+            {
+              "unlockingBytes": 100,
+              "operationCost": 28217,
+              "maximumOperationCost": 112800,
+              "hashIterations": 7,
+              "maximumHashIterations": 70
+            }
+          ]
+        },
+        "cancel": {
+          "bytes": 3985,
+          "fee": 3985,
+          "inputs": 3,
+          "outputs": 3,
+          "resources": [
+            {
+              "unlockingBytes": 1774,
+              "operationCost": 228066,
+              "maximumOperationCost": 1452000,
+              "hashIterations": 64,
+              "maximumHashIterations": 907
+            },
+            {
+              "unlockingBytes": 1706,
+              "operationCost": 123554,
+              "maximumOperationCost": 1397600,
+              "hashIterations": 28,
+              "maximumHashIterations": 873
+            },
+            {
+              "unlockingBytes": 100,
+              "operationCost": 28217,
+              "maximumOperationCost": 112800,
+              "hashIterations": 7,
+              "maximumHashIterations": 70
+            }
+          ]
+        },
+        "claim": {
+          "bytes": 5591,
+          "fee": 5591,
+          "inputs": 4,
+          "outputs": 5,
+          "resources": [
+            {
+              "unlockingBytes": 2979,
+              "operationCost": 270334,
+              "maximumOperationCost": 2416000,
+              "hashIterations": 63,
+              "maximumHashIterations": 1510
+            },
+            {
+              "unlockingBytes": 1706,
+              "operationCost": 123554,
+              "maximumOperationCost": 1397600,
+              "hashIterations": 28,
+              "maximumHashIterations": 873
+            },
+            {
+              "unlockingBytes": 269,
+              "operationCost": 12795,
+              "maximumOperationCost": 248000,
+              "hashIterations": 8,
+              "maximumHashIterations": 155
+            },
+            {
+              "unlockingBytes": 100,
+              "operationCost": 28217,
+              "maximumOperationCost": 112800,
+              "hashIterations": 7,
+              "maximumHashIterations": 70
+            }
+          ]
+        },
+        "withdraw": {
+          "bytes": 659,
+          "fee": 659,
+          "inputs": 2,
+          "outputs": 2,
+          "resources": [
+            {
+              "unlockingBytes": 397,
+              "operationCost": 102688,
+              "maximumOperationCost": 350400,
+              "hashIterations": 19,
+              "maximumHashIterations": 219
+            },
+            {
+              "unlockingBytes": 100,
+              "operationCost": 28217,
+              "maximumOperationCost": 112800,
+              "hashIterations": 7,
+              "maximumHashIterations": 70
+            }
+          ]
+        }
+      },
+      "totalUserActionFees": {
+        "before": {
+          "register": 10000,
+          "cancel": 20000,
+          "winAndWithdraw": 30000
+        },
+        "after": {
+          "registerEmpty": "3955",
+          "registerOrdinary": "2447",
+          "cancel": "3985",
+          "winAndWithdrawEmpty": "10205"
+        }
+      }
+    },
+    {
+      "stake": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "reward": "0000000000000000000000000000000000000000000000000000000000000000",
+      "before": {
+        "create": {
+          "bytes": 384,
+          "fee": 10000,
+          "inputs": 1,
+          "outputs": 4,
+          "resources": [
+            {
+              "unlockingBytes": 100,
+              "operationCost": 28217,
+              "maximumOperationCost": 112800,
+              "hashIterations": 7,
+              "maximumHashIterations": 70
+            }
+          ]
+        },
+        "register": {
+          "bytes": 4817,
+          "fee": 10000,
+          "inputs": 4,
+          "outputs": 4,
+          "resources": [
+            {
+              "unlockingBytes": 4061,
+              "operationCost": 917338,
+              "maximumOperationCost": 3281600,
+              "hashIterations": 142,
+              "maximumHashIterations": 2051
+            },
+            {
+              "unlockingBytes": 105,
+              "operationCost": 5213,
+              "maximumOperationCost": 116800,
+              "hashIterations": 3,
+              "maximumHashIterations": 73
+            },
+            {
+              "unlockingBytes": 105,
+              "operationCost": 5213,
+              "maximumOperationCost": 116800,
+              "hashIterations": 3,
+              "maximumHashIterations": 73
+            },
+            {
+              "unlockingBytes": 100,
+              "operationCost": 28409,
+              "maximumOperationCost": 112800,
+              "hashIterations": 8,
+              "maximumHashIterations": 70
+            }
+          ]
+        },
+        "cancel": {
+          "bytes": 4734,
+          "fee": 10000,
+          "inputs": 4,
+          "outputs": 3,
+          "resources": [
+            {
+              "unlockingBytes": 4012,
+              "operationCost": 831921,
+              "maximumOperationCost": 3242400,
+              "hashIterations": 140,
+              "maximumHashIterations": 2026
+            },
+            {
+              "unlockingBytes": 105,
+              "operationCost": 5213,
+              "maximumOperationCost": 116800,
+              "hashIterations": 3,
+              "maximumHashIterations": 73
+            },
+            {
+              "unlockingBytes": 105,
+              "operationCost": 5213,
+              "maximumOperationCost": 116800,
+              "hashIterations": 3,
+              "maximumHashIterations": 73
+            },
+            {
+              "unlockingBytes": 100,
+              "operationCost": 28217,
+              "maximumOperationCost": 112800,
+              "hashIterations": 7,
+              "maximumHashIterations": 70
+            }
+          ]
+        },
+        "refund": {
+          "bytes": 4768,
+          "fee": 10000,
+          "inputs": 4,
+          "outputs": 4,
+          "resources": [
+            {
+              "unlockingBytes": 4012,
+              "operationCost": 828101,
+              "maximumOperationCost": 3242400,
+              "hashIterations": 142,
+              "maximumHashIterations": 2026
+            },
+            {
+              "unlockingBytes": 105,
+              "operationCost": 5213,
+              "maximumOperationCost": 116800,
+              "hashIterations": 3,
+              "maximumHashIterations": 73
+            },
+            {
+              "unlockingBytes": 105,
+              "operationCost": 5213,
+              "maximumOperationCost": 116800,
+              "hashIterations": 3,
+              "maximumHashIterations": 73
+            },
+            {
+              "unlockingBytes": 100,
+              "operationCost": 28217,
+              "maximumOperationCost": 112800,
+              "hashIterations": 7,
+              "maximumHashIterations": 70
+            }
+          ]
+        },
+        "claim": {
+          "bytes": 4747,
+          "fee": 10000,
+          "inputs": 4,
+          "outputs": 5,
+          "resources": [
+            {
+              "unlockingBytes": 3947,
+              "operationCost": 980781,
+              "maximumOperationCost": 3190400,
+              "hashIterations": 94,
+              "maximumHashIterations": 1994
+            },
+            {
+              "unlockingBytes": 105,
+              "operationCost": 5213,
+              "maximumOperationCost": 116800,
+              "hashIterations": 3,
+              "maximumHashIterations": 73
+            },
+            {
+              "unlockingBytes": 105,
+              "operationCost": 5213,
+              "maximumOperationCost": 116800,
+              "hashIterations": 3,
+              "maximumHashIterations": 73
+            },
+            {
+              "unlockingBytes": 100,
+              "operationCost": 28217,
+              "maximumOperationCost": 112800,
+              "hashIterations": 7,
+              "maximumHashIterations": 70
+            }
+          ]
+        },
+        "withdraw": {
+          "bytes": 687,
+          "fee": 10000,
+          "inputs": 2,
+          "outputs": 1,
+          "resources": [
+            {
+              "unlockingBytes": 422,
+              "operationCost": 51542,
+              "maximumOperationCost": 370400,
+              "hashIterations": 20,
+              "maximumHashIterations": 231
+            },
+            {
+              "unlockingBytes": 100,
+              "operationCost": 28217,
+              "maximumOperationCost": 112800,
+              "hashIterations": 7,
+              "maximumHashIterations": 70
+            }
+          ]
+        }
+      },
+      "after": {
+        "create": {
+          "bytes": 5906,
+          "fee": 5906,
+          "inputs": 2,
+          "outputs": 3,
+          "resources": [
+            {
+              "unlockingBytes": 5471,
+              "operationCost": 251319,
+              "maximumOperationCost": 4409600,
+              "hashIterations": 258,
+              "maximumHashIterations": 2756
+            },
+            {
+              "unlockingBytes": 100,
+              "operationCost": 28217,
+              "maximumOperationCost": 112800,
+              "hashIterations": 7,
+              "maximumHashIterations": 70
+            }
+          ]
+        },
+        "emptyInsertion": {
+          "bytes": 4036,
+          "fee": 4036,
+          "inputs": 3,
+          "outputs": 5,
+          "resources": [
+            {
+              "unlockingBytes": 3089,
+              "operationCost": 351047,
+              "maximumOperationCost": 2504000,
+              "hashIterations": 115,
+              "maximumHashIterations": 1565
+            },
+            {
+              "unlockingBytes": 190,
+              "operationCost": 9412,
+              "maximumOperationCost": 184800,
+              "hashIterations": 5,
+              "maximumHashIterations": 115
+            },
+            {
+              "unlockingBytes": 100,
+              "operationCost": 28409,
+              "maximumOperationCost": 112800,
+              "hashIterations": 8,
+              "maximumHashIterations": 70
+            }
+          ]
+        },
+        "ordinaryInsertion": {
+          "bytes": 2599,
+          "fee": 2599,
+          "inputs": 2,
+          "outputs": 5,
+          "resources": [
+            {
+              "unlockingBytes": 1819,
+              "operationCost": 280363,
+              "maximumOperationCost": 1488000,
+              "hashIterations": 74,
+              "maximumHashIterations": 930
+            },
+            {
+              "unlockingBytes": 100,
+              "operationCost": 28409,
+              "maximumOperationCost": 112800,
+              "hashIterations": 8,
+              "maximumHashIterations": 70
+            }
+          ]
+        },
+        "highestInsertion": {
+          "bytes": 5674,
+          "fee": 5674,
+          "inputs": 3,
+          "outputs": 5,
+          "resources": [
+            {
+              "unlockingBytes": 3089,
+              "operationCost": 350918,
+              "maximumOperationCost": 2504000,
+              "hashIterations": 110,
+              "maximumHashIterations": 1565
+            },
+            {
+              "unlockingBytes": 1706,
+              "operationCost": 123554,
+              "maximumOperationCost": 1397600,
+              "hashIterations": 28,
+              "maximumHashIterations": 873
+            },
+            {
+              "unlockingBytes": 100,
+              "operationCost": 28409,
+              "maximumOperationCost": 112800,
+              "hashIterations": 8,
+              "maximumHashIterations": 70
+            }
+          ]
+        },
+        "cancel": {
+          "bytes": 4334,
+          "fee": 4334,
+          "inputs": 4,
+          "outputs": 3,
+          "resources": [
+            {
+              "unlockingBytes": 1774,
+              "operationCost": 230732,
+              "maximumOperationCost": 1452000,
+              "hashIterations": 70,
+              "maximumHashIterations": 907
+            },
+            {
+              "unlockingBytes": 1706,
+              "operationCost": 123554,
+              "maximumOperationCost": 1397600,
+              "hashIterations": 28,
+              "maximumHashIterations": 873
+            },
+            {
+              "unlockingBytes": 269,
+              "operationCost": 12898,
+              "maximumOperationCost": 248000,
+              "hashIterations": 8,
+              "maximumHashIterations": 155
+            },
+            {
+              "unlockingBytes": 100,
+              "operationCost": 28217,
+              "maximumOperationCost": 112800,
+              "hashIterations": 7,
+              "maximumHashIterations": 70
+            }
+          ]
+        },
+        "claim": {
+          "bytes": 5510,
+          "fee": 5510,
+          "inputs": 4,
+          "outputs": 4,
+          "resources": [
+            {
+              "unlockingBytes": 2979,
+              "operationCost": 269510,
+              "maximumOperationCost": 2416000,
+              "hashIterations": 63,
+              "maximumHashIterations": 1510
+            },
+            {
+              "unlockingBytes": 1706,
+              "operationCost": 123554,
+              "maximumOperationCost": 1397600,
+              "hashIterations": 28,
+              "maximumHashIterations": 873
+            },
+            {
+              "unlockingBytes": 269,
+              "operationCost": 12896,
+              "maximumOperationCost": 248000,
+              "hashIterations": 8,
+              "maximumHashIterations": 155
+            },
+            {
+              "unlockingBytes": 100,
+              "operationCost": 28217,
+              "maximumOperationCost": 112800,
+              "hashIterations": 7,
+              "maximumHashIterations": 70
+            }
+          ]
+        },
+        "withdraw": {
+          "bytes": 696,
+          "fee": 696,
+          "inputs": 2,
+          "outputs": 2,
+          "resources": [
+            {
+              "unlockingBytes": 397,
+              "operationCost": 102823,
+              "maximumOperationCost": 350400,
+              "hashIterations": 19,
+              "maximumHashIterations": 219
+            },
+            {
+              "unlockingBytes": 100,
+              "operationCost": 28217,
+              "maximumOperationCost": 112800,
+              "hashIterations": 7,
+              "maximumHashIterations": 70
+            }
+          ]
+        }
+      },
+      "totalUserActionFees": {
+        "before": {
+          "register": 10000,
+          "cancel": 20000,
+          "winAndWithdraw": 30000
+        },
+        "after": {
+          "registerEmpty": "4036",
+          "registerOrdinary": "2599",
+          "cancel": "4334",
+          "winAndWithdrawEmpty": "10242"
+        }
+      }
+    },
+    {
+      "stake": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "reward": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "before": {
+        "create": {
+          "bytes": 562,
+          "fee": 10000,
+          "inputs": 2,
+          "outputs": 4,
+          "resources": [
+            {
+              "unlockingBytes": 100,
+              "operationCost": 28217,
+              "maximumOperationCost": 112800,
+              "hashIterations": 7,
+              "maximumHashIterations": 70
+            },
+            {
+              "unlockingBytes": 100,
+              "operationCost": 28409,
+              "maximumOperationCost": 112800,
+              "hashIterations": 8,
+              "maximumHashIterations": 70
+            }
+          ]
+        },
+        "register": {
+          "bytes": 4854,
+          "fee": 10000,
+          "inputs": 4,
+          "outputs": 4,
+          "resources": [
+            {
+              "unlockingBytes": 4061,
+              "operationCost": 917450,
+              "maximumOperationCost": 3281600,
+              "hashIterations": 142,
+              "maximumHashIterations": 2051
+            },
+            {
+              "unlockingBytes": 105,
+              "operationCost": 5213,
+              "maximumOperationCost": 116800,
+              "hashIterations": 3,
+              "maximumHashIterations": 73
+            },
+            {
+              "unlockingBytes": 105,
+              "operationCost": 5213,
+              "maximumOperationCost": 116800,
+              "hashIterations": 3,
+              "maximumHashIterations": 73
+            },
+            {
+              "unlockingBytes": 100,
+              "operationCost": 28409,
+              "maximumOperationCost": 112800,
+              "hashIterations": 8,
+              "maximumHashIterations": 70
+            }
+          ]
+        },
+        "cancel": {
+          "bytes": 4771,
+          "fee": 10000,
+          "inputs": 4,
+          "outputs": 3,
+          "resources": [
+            {
+              "unlockingBytes": 4012,
+              "operationCost": 832038,
+              "maximumOperationCost": 3242400,
+              "hashIterations": 140,
+              "maximumHashIterations": 2026
+            },
+            {
+              "unlockingBytes": 105,
+              "operationCost": 5213,
+              "maximumOperationCost": 116800,
+              "hashIterations": 3,
+              "maximumHashIterations": 73
+            },
+            {
+              "unlockingBytes": 105,
+              "operationCost": 5213,
+              "maximumOperationCost": 116800,
+              "hashIterations": 3,
+              "maximumHashIterations": 73
+            },
+            {
+              "unlockingBytes": 100,
+              "operationCost": 28217,
+              "maximumOperationCost": 112800,
+              "hashIterations": 7,
+              "maximumHashIterations": 70
+            }
+          ]
+        },
+        "refund": {
+          "bytes": 4805,
+          "fee": 10000,
+          "inputs": 4,
+          "outputs": 4,
+          "resources": [
+            {
+              "unlockingBytes": 4012,
+              "operationCost": 828215,
+              "maximumOperationCost": 3242400,
+              "hashIterations": 142,
+              "maximumHashIterations": 2026
+            },
+            {
+              "unlockingBytes": 105,
+              "operationCost": 5213,
+              "maximumOperationCost": 116800,
+              "hashIterations": 3,
+              "maximumHashIterations": 73
+            },
+            {
+              "unlockingBytes": 105,
+              "operationCost": 5213,
+              "maximumOperationCost": 116800,
+              "hashIterations": 3,
+              "maximumHashIterations": 73
+            },
+            {
+              "unlockingBytes": 100,
+              "operationCost": 28217,
+              "maximumOperationCost": 112800,
+              "hashIterations": 7,
+              "maximumHashIterations": 70
+            }
+          ]
+        },
+        "claim": {
+          "bytes": 4821,
+          "fee": 10000,
+          "inputs": 4,
+          "outputs": 5,
+          "resources": [
+            {
+              "unlockingBytes": 3947,
+              "operationCost": 980960,
+              "maximumOperationCost": 3190400,
+              "hashIterations": 94,
+              "maximumHashIterations": 1994
+            },
+            {
+              "unlockingBytes": 105,
+              "operationCost": 5213,
+              "maximumOperationCost": 116800,
+              "hashIterations": 3,
+              "maximumHashIterations": 73
+            },
+            {
+              "unlockingBytes": 105,
+              "operationCost": 5213,
+              "maximumOperationCost": 116800,
+              "hashIterations": 3,
+              "maximumHashIterations": 73
+            },
+            {
+              "unlockingBytes": 100,
+              "operationCost": 28217,
+              "maximumOperationCost": 112800,
+              "hashIterations": 7,
+              "maximumHashIterations": 70
+            }
+          ]
+        },
+        "withdraw": {
+          "bytes": 687,
+          "fee": 10000,
+          "inputs": 2,
+          "outputs": 1,
+          "resources": [
+            {
+              "unlockingBytes": 422,
+              "operationCost": 51542,
+              "maximumOperationCost": 370400,
+              "hashIterations": 20,
+              "maximumHashIterations": 231
+            },
+            {
+              "unlockingBytes": 100,
+              "operationCost": 28217,
+              "maximumOperationCost": 112800,
+              "hashIterations": 7,
+              "maximumHashIterations": 70
+            }
+          ]
+        }
+      },
+      "after": {
+        "create": {
+          "bytes": 6128,
+          "fee": 6128,
+          "inputs": 3,
+          "outputs": 4,
+          "resources": [
+            {
+              "unlockingBytes": 5471,
+              "operationCost": 254227,
+              "maximumOperationCost": 4409600,
+              "hashIterations": 264,
+              "maximumHashIterations": 2756
+            },
+            {
+              "unlockingBytes": 100,
+              "operationCost": 28217,
+              "maximumOperationCost": 112800,
+              "hashIterations": 7,
+              "maximumHashIterations": 70
+            },
+            {
+              "unlockingBytes": 100,
+              "operationCost": 28409,
+              "maximumOperationCost": 112800,
+              "hashIterations": 8,
+              "maximumHashIterations": 70
+            }
+          ]
+        },
+        "emptyInsertion": {
+          "bytes": 4036,
+          "fee": 4036,
+          "inputs": 3,
+          "outputs": 5,
+          "resources": [
+            {
+              "unlockingBytes": 3089,
+              "operationCost": 351027,
+              "maximumOperationCost": 2504000,
+              "hashIterations": 115,
+              "maximumHashIterations": 1565
+            },
+            {
+              "unlockingBytes": 190,
+              "operationCost": 9412,
+              "maximumOperationCost": 184800,
+              "hashIterations": 5,
+              "maximumHashIterations": 115
+            },
+            {
+              "unlockingBytes": 100,
+              "operationCost": 28409,
+              "maximumOperationCost": 112800,
+              "hashIterations": 8,
+              "maximumHashIterations": 70
+            }
+          ]
+        },
+        "ordinaryInsertion": {
+          "bytes": 2599,
+          "fee": 2599,
+          "inputs": 2,
+          "outputs": 5,
+          "resources": [
+            {
+              "unlockingBytes": 1819,
+              "operationCost": 280357,
+              "maximumOperationCost": 1488000,
+              "hashIterations": 74,
+              "maximumHashIterations": 930
+            },
+            {
+              "unlockingBytes": 100,
+              "operationCost": 28409,
+              "maximumOperationCost": 112800,
+              "hashIterations": 8,
+              "maximumHashIterations": 70
+            }
+          ]
+        },
+        "highestInsertion": {
+          "bytes": 5674,
+          "fee": 5674,
+          "inputs": 3,
+          "outputs": 5,
+          "resources": [
+            {
+              "unlockingBytes": 3089,
+              "operationCost": 350898,
+              "maximumOperationCost": 2504000,
+              "hashIterations": 110,
+              "maximumHashIterations": 1565
+            },
+            {
+              "unlockingBytes": 1706,
+              "operationCost": 123554,
+              "maximumOperationCost": 1397600,
+              "hashIterations": 28,
+              "maximumHashIterations": 873
+            },
+            {
+              "unlockingBytes": 100,
+              "operationCost": 28409,
+              "maximumOperationCost": 112800,
+              "hashIterations": 8,
+              "maximumHashIterations": 70
+            }
+          ]
+        },
+        "cancel": {
+          "bytes": 4334,
+          "fee": 4334,
+          "inputs": 4,
+          "outputs": 3,
+          "resources": [
+            {
+              "unlockingBytes": 1774,
+              "operationCost": 230732,
+              "maximumOperationCost": 1452000,
+              "hashIterations": 70,
+              "maximumHashIterations": 907
+            },
+            {
+              "unlockingBytes": 1706,
+              "operationCost": 123554,
+              "maximumOperationCost": 1397600,
+              "hashIterations": 28,
+              "maximumHashIterations": 873
+            },
+            {
+              "unlockingBytes": 269,
+              "operationCost": 12898,
+              "maximumOperationCost": 248000,
+              "hashIterations": 8,
+              "maximumHashIterations": 155
+            },
+            {
+              "unlockingBytes": 100,
+              "operationCost": 28217,
+              "maximumOperationCost": 112800,
+              "hashIterations": 7,
+              "maximumHashIterations": 70
+            }
+          ]
+        },
+        "claim": {
+          "bytes": 5940,
+          "fee": 5940,
+          "inputs": 5,
+          "outputs": 5,
+          "resources": [
+            {
+              "unlockingBytes": 2979,
+              "operationCost": 273330,
+              "maximumOperationCost": 2416000,
+              "hashIterations": 69,
+              "maximumHashIterations": 1510
+            },
+            {
+              "unlockingBytes": 1706,
+              "operationCost": 123554,
+              "maximumOperationCost": 1397600,
+              "hashIterations": 28,
+              "maximumHashIterations": 873
+            },
+            {
+              "unlockingBytes": 269,
+              "operationCost": 12896,
+              "maximumOperationCost": 248000,
+              "hashIterations": 8,
+              "maximumHashIterations": 155
+            },
+            {
+              "unlockingBytes": 269,
+              "operationCost": 12795,
+              "maximumOperationCost": 248000,
+              "hashIterations": 8,
+              "maximumHashIterations": 155
+            },
+            {
+              "unlockingBytes": 100,
+              "operationCost": 28217,
+              "maximumOperationCost": 112800,
+              "hashIterations": 7,
+              "maximumHashIterations": 70
+            }
+          ]
+        },
+        "withdraw": {
+          "bytes": 696,
+          "fee": 696,
+          "inputs": 2,
+          "outputs": 2,
+          "resources": [
+            {
+              "unlockingBytes": 397,
+              "operationCost": 102823,
+              "maximumOperationCost": 350400,
+              "hashIterations": 19,
+              "maximumHashIterations": 219
+            },
+            {
+              "unlockingBytes": 100,
+              "operationCost": 28217,
+              "maximumOperationCost": 112800,
+              "hashIterations": 7,
+              "maximumHashIterations": 70
+            }
+          ]
+        }
+      },
+      "totalUserActionFees": {
+        "before": {
+          "register": 10000,
+          "cancel": 20000,
+          "winAndWithdraw": 30000
+        },
+        "after": {
+          "registerEmpty": "4036",
+          "registerOrdinary": "2599",
+          "cancel": "4334",
+          "winAndWithdrawEmpty": "10672"
+        }
+      }
+    },
+    {
+      "stake": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "reward": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "before": {
+        "create": {
+          "bytes": 562,
+          "fee": 10000,
+          "inputs": 2,
+          "outputs": 4,
+          "resources": [
+            {
+              "unlockingBytes": 100,
+              "operationCost": 28217,
+              "maximumOperationCost": 112800,
+              "hashIterations": 7,
+              "maximumHashIterations": 70
+            },
+            {
+              "unlockingBytes": 100,
+              "operationCost": 28409,
+              "maximumOperationCost": 112800,
+              "hashIterations": 8,
+              "maximumHashIterations": 70
+            }
+          ]
+        },
+        "register": {
+          "bytes": 4854,
+          "fee": 10000,
+          "inputs": 4,
+          "outputs": 4,
+          "resources": [
+            {
+              "unlockingBytes": 4061,
+              "operationCost": 917450,
+              "maximumOperationCost": 3281600,
+              "hashIterations": 142,
+              "maximumHashIterations": 2051
+            },
+            {
+              "unlockingBytes": 105,
+              "operationCost": 5213,
+              "maximumOperationCost": 116800,
+              "hashIterations": 3,
+              "maximumHashIterations": 73
+            },
+            {
+              "unlockingBytes": 105,
+              "operationCost": 5213,
+              "maximumOperationCost": 116800,
+              "hashIterations": 3,
+              "maximumHashIterations": 73
+            },
+            {
+              "unlockingBytes": 100,
+              "operationCost": 28409,
+              "maximumOperationCost": 112800,
+              "hashIterations": 8,
+              "maximumHashIterations": 70
+            }
+          ]
+        },
+        "cancel": {
+          "bytes": 4771,
+          "fee": 10000,
+          "inputs": 4,
+          "outputs": 3,
+          "resources": [
+            {
+              "unlockingBytes": 4012,
+              "operationCost": 832038,
+              "maximumOperationCost": 3242400,
+              "hashIterations": 140,
+              "maximumHashIterations": 2026
+            },
+            {
+              "unlockingBytes": 105,
+              "operationCost": 5213,
+              "maximumOperationCost": 116800,
+              "hashIterations": 3,
+              "maximumHashIterations": 73
+            },
+            {
+              "unlockingBytes": 105,
+              "operationCost": 5213,
+              "maximumOperationCost": 116800,
+              "hashIterations": 3,
+              "maximumHashIterations": 73
+            },
+            {
+              "unlockingBytes": 100,
+              "operationCost": 28217,
+              "maximumOperationCost": 112800,
+              "hashIterations": 7,
+              "maximumHashIterations": 70
+            }
+          ]
+        },
+        "refund": {
+          "bytes": 4805,
+          "fee": 10000,
+          "inputs": 4,
+          "outputs": 4,
+          "resources": [
+            {
+              "unlockingBytes": 4012,
+              "operationCost": 828215,
+              "maximumOperationCost": 3242400,
+              "hashIterations": 142,
+              "maximumHashIterations": 2026
+            },
+            {
+              "unlockingBytes": 105,
+              "operationCost": 5213,
+              "maximumOperationCost": 116800,
+              "hashIterations": 3,
+              "maximumHashIterations": 73
+            },
+            {
+              "unlockingBytes": 105,
+              "operationCost": 5213,
+              "maximumOperationCost": 116800,
+              "hashIterations": 3,
+              "maximumHashIterations": 73
+            },
+            {
+              "unlockingBytes": 100,
+              "operationCost": 28217,
+              "maximumOperationCost": 112800,
+              "hashIterations": 7,
+              "maximumHashIterations": 70
+            }
+          ]
+        },
+        "claim": {
+          "bytes": 4821,
+          "fee": 10000,
+          "inputs": 4,
+          "outputs": 5,
+          "resources": [
+            {
+              "unlockingBytes": 3947,
+              "operationCost": 980960,
+              "maximumOperationCost": 3190400,
+              "hashIterations": 94,
+              "maximumHashIterations": 1994
+            },
+            {
+              "unlockingBytes": 105,
+              "operationCost": 5213,
+              "maximumOperationCost": 116800,
+              "hashIterations": 3,
+              "maximumHashIterations": 73
+            },
+            {
+              "unlockingBytes": 105,
+              "operationCost": 5213,
+              "maximumOperationCost": 116800,
+              "hashIterations": 3,
+              "maximumHashIterations": 73
+            },
+            {
+              "unlockingBytes": 100,
+              "operationCost": 28217,
+              "maximumOperationCost": 112800,
+              "hashIterations": 7,
+              "maximumHashIterations": 70
+            }
+          ]
+        },
+        "withdraw": {
+          "bytes": 687,
+          "fee": 10000,
+          "inputs": 2,
+          "outputs": 1,
+          "resources": [
+            {
+              "unlockingBytes": 422,
+              "operationCost": 51542,
+              "maximumOperationCost": 370400,
+              "hashIterations": 20,
+              "maximumHashIterations": 231
+            },
+            {
+              "unlockingBytes": 100,
+              "operationCost": 28217,
+              "maximumOperationCost": 112800,
+              "hashIterations": 7,
+              "maximumHashIterations": 70
+            }
+          ]
+        }
+      },
+      "after": {
+        "create": {
+          "bytes": 6128,
+          "fee": 6128,
+          "inputs": 3,
+          "outputs": 4,
+          "resources": [
+            {
+              "unlockingBytes": 5471,
+              "operationCost": 254227,
+              "maximumOperationCost": 4409600,
+              "hashIterations": 264,
+              "maximumHashIterations": 2756
+            },
+            {
+              "unlockingBytes": 100,
+              "operationCost": 28217,
+              "maximumOperationCost": 112800,
+              "hashIterations": 7,
+              "maximumHashIterations": 70
+            },
+            {
+              "unlockingBytes": 100,
+              "operationCost": 28409,
+              "maximumOperationCost": 112800,
+              "hashIterations": 8,
+              "maximumHashIterations": 70
+            }
+          ]
+        },
+        "emptyInsertion": {
+          "bytes": 4036,
+          "fee": 4036,
+          "inputs": 3,
+          "outputs": 5,
+          "resources": [
+            {
+              "unlockingBytes": 3089,
+              "operationCost": 351027,
+              "maximumOperationCost": 2504000,
+              "hashIterations": 115,
+              "maximumHashIterations": 1565
+            },
+            {
+              "unlockingBytes": 190,
+              "operationCost": 9412,
+              "maximumOperationCost": 184800,
+              "hashIterations": 5,
+              "maximumHashIterations": 115
+            },
+            {
+              "unlockingBytes": 100,
+              "operationCost": 28409,
+              "maximumOperationCost": 112800,
+              "hashIterations": 8,
+              "maximumHashIterations": 70
+            }
+          ]
+        },
+        "ordinaryInsertion": {
+          "bytes": 2599,
+          "fee": 2599,
+          "inputs": 2,
+          "outputs": 5,
+          "resources": [
+            {
+              "unlockingBytes": 1819,
+              "operationCost": 280357,
+              "maximumOperationCost": 1488000,
+              "hashIterations": 74,
+              "maximumHashIterations": 930
+            },
+            {
+              "unlockingBytes": 100,
+              "operationCost": 28409,
+              "maximumOperationCost": 112800,
+              "hashIterations": 8,
+              "maximumHashIterations": 70
+            }
+          ]
+        },
+        "highestInsertion": {
+          "bytes": 5674,
+          "fee": 5674,
+          "inputs": 3,
+          "outputs": 5,
+          "resources": [
+            {
+              "unlockingBytes": 3089,
+              "operationCost": 350898,
+              "maximumOperationCost": 2504000,
+              "hashIterations": 110,
+              "maximumHashIterations": 1565
+            },
+            {
+              "unlockingBytes": 1706,
+              "operationCost": 123554,
+              "maximumOperationCost": 1397600,
+              "hashIterations": 28,
+              "maximumHashIterations": 873
+            },
+            {
+              "unlockingBytes": 100,
+              "operationCost": 28409,
+              "maximumOperationCost": 112800,
+              "hashIterations": 8,
+              "maximumHashIterations": 70
+            }
+          ]
+        },
+        "cancel": {
+          "bytes": 4334,
+          "fee": 4334,
+          "inputs": 4,
+          "outputs": 3,
+          "resources": [
+            {
+              "unlockingBytes": 1774,
+              "operationCost": 230732,
+              "maximumOperationCost": 1452000,
+              "hashIterations": 70,
+              "maximumHashIterations": 907
+            },
+            {
+              "unlockingBytes": 1706,
+              "operationCost": 123554,
+              "maximumOperationCost": 1397600,
+              "hashIterations": 28,
+              "maximumHashIterations": 873
+            },
+            {
+              "unlockingBytes": 269,
+              "operationCost": 12898,
+              "maximumOperationCost": 248000,
+              "hashIterations": 8,
+              "maximumHashIterations": 155
+            },
+            {
+              "unlockingBytes": 100,
+              "operationCost": 28217,
+              "maximumOperationCost": 112800,
+              "hashIterations": 7,
+              "maximumHashIterations": 70
+            }
+          ]
+        },
+        "claim": {
+          "bytes": 5940,
+          "fee": 5940,
+          "inputs": 5,
+          "outputs": 5,
+          "resources": [
+            {
+              "unlockingBytes": 2979,
+              "operationCost": 273330,
+              "maximumOperationCost": 2416000,
+              "hashIterations": 69,
+              "maximumHashIterations": 1510
+            },
+            {
+              "unlockingBytes": 1706,
+              "operationCost": 123554,
+              "maximumOperationCost": 1397600,
+              "hashIterations": 28,
+              "maximumHashIterations": 873
+            },
+            {
+              "unlockingBytes": 269,
+              "operationCost": 12896,
+              "maximumOperationCost": 248000,
+              "hashIterations": 8,
+              "maximumHashIterations": 155
+            },
+            {
+              "unlockingBytes": 269,
+              "operationCost": 12795,
+              "maximumOperationCost": 248000,
+              "hashIterations": 8,
+              "maximumHashIterations": 155
+            },
+            {
+              "unlockingBytes": 100,
+              "operationCost": 28217,
+              "maximumOperationCost": 112800,
+              "hashIterations": 7,
+              "maximumHashIterations": 70
+            }
+          ]
+        },
+        "withdraw": {
+          "bytes": 696,
+          "fee": 696,
+          "inputs": 2,
+          "outputs": 2,
+          "resources": [
+            {
+              "unlockingBytes": 397,
+              "operationCost": 102823,
+              "maximumOperationCost": 350400,
+              "hashIterations": 19,
+              "maximumHashIterations": 219
+            },
+            {
+              "unlockingBytes": 100,
+              "operationCost": 28217,
+              "maximumOperationCost": 112800,
+              "hashIterations": 7,
+              "maximumHashIterations": 70
+            }
+          ]
+        }
+      },
+      "totalUserActionFees": {
+        "before": {
+          "register": 10000,
+          "cancel": 20000,
+          "winAndWithdraw": 30000
+        },
+        "after": {
+          "registerEmpty": "4036",
+          "registerOrdinary": "2599",
+          "cancel": "4334",
+          "winAndWithdrawEmpty": "10672"
+        }
+      }
+    }
+  ]
+}

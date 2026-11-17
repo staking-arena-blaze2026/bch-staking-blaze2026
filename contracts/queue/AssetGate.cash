@@ -1,0 +1,24 @@
+pragma cashscript ^0.14.0;
+// The queue transition checks the complete asset transfer. This gate only
+// authenticates its controller. Offer escrows bind a stable id, reserves do not.
+contract AssetGate(bytes32 vault, bytes32 queue, bytes35 arena, bytes32 id) {
+    function release() {
+        require(tx.inputs[0].tokenCategory == vault + 0x01 || (tx.inputs[0].tokenCategory == queue + 0x02 && tx.inputs[0].lockingBytecode == arena));
+        require(tx.inputs[1].lockingBytecode == arena);
+        require(tx.inputs[1].tokenCategory == queue + 0x02);
+        require(tx.inputs[1].nftCommitment.length == 121);
+        // An insertion preserves input1 or creates another node at output1.
+        // Asset gates may only release while that authentic node is removed.
+        require(tx.outputs[1].lockingBytecode == new LockingBytecodeP2PKH(hash160(tx.inputs[1].nftCommitment.slice(32,65))));
+        if (id == 0x0000000000000000000000000000000000000000000000000000000000000000) {
+            require(tx.inputs[0].tokenCategory == vault + 0x01);
+            // Only a reward claim recreates the reserve at output3. This also
+            // protects the final tokenless carrier from use as fee funding.
+            require(tx.outputs[3].lockingBytecode == tx.inputs[this.activeInputIndex].lockingBytecode);
+            require(tx.outputs[3].value == 1200);
+        } else {
+            require(this.activeInputIndex == 2);
+            require(tx.inputs[1].nftCommitment.slice(0,32) == id);
+        }
+    }
+}

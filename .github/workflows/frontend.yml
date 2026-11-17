@@ -27,6 +27,7 @@ jobs:
       - run: npm run test:static
       - run: npm run test:static:browser
       - run: npm run test:electrum
+      - run: npm run test:queue:browser
       - name: Upload browser failure evidence
         if: failure()
         uses: actions/upload-artifact@v4

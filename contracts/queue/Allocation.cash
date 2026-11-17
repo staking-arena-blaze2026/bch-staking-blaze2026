@@ -1,0 +1,34 @@
+pragma cashscript ^0.14.0;
+// Independent lock. Funding input pays fees; all locked value returns to owner.
+contract Allocation(bytes33 owner, bytes32 asset, int amount, int duration) {
+    function withdraw(sig authorization) {
+        require(this.activeInputIndex == 0 && tx.version == 2);
+        require(tx.inputs.length >= 2 && tx.inputs.length <= 17 && tx.outputs.length >= 1 && tx.outputs.length <= 2);
+        require(duration > 0 && duration <= 33553920 && duration % 512 == 0);
+        require(tx.inputs[0].sequenceNumber == 4194304 + duration / 512);
+        require(this.age >= 4194304 + duration / 512);
+        require(checkSig(authorization, pubkey(owner)));
+        require(tx.outputs[0].lockingBytecode == new LockingBytecodeP2PKH(hash160(owner)));
+        require(tx.inputs[0].nftCommitment == 0x && tx.outputs[0].nftCommitment == 0x);
+        require(tx.inputs[0].value == tx.outputs[0].value);
+        require(tx.inputs[0].tokenCategory == tx.outputs[0].tokenCategory);
+        require(tx.inputs[0].tokenAmount == tx.outputs[0].tokenAmount);
+        if (asset == 0x0000000000000000000000000000000000000000000000000000000000000000) {
+            require(tx.inputs[0].tokenCategory == 0x && tx.inputs[0].tokenAmount == 0 && tx.inputs[0].value == amount);
+        } else {
+            require(tx.inputs[0].tokenCategory == asset && tx.inputs[0].tokenAmount == amount && tx.inputs[0].value == 1200);
+        }
+        int fundingValue = 0;
+        for (int f = 1; f < 17; f++) {
+            if (f < tx.inputs.length) {
+                require(tx.inputs[f].tokenCategory == 0x && tx.inputs[f].tokenAmount == 0);
+                fundingValue = fundingValue + tx.inputs[f].value;
+            }
+        }
+        if (tx.outputs.length == 2) {
+            require(tx.outputs[1].lockingBytecode == tx.inputs[1].lockingBytecode);
+            require(tx.outputs[1].tokenCategory == 0x && tx.outputs[1].tokenAmount == 0);
+            require(tx.outputs[1].value <= fundingValue);
+        }
+    }
+}

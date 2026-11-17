@@ -1,0 +1,141 @@
+pragma cashscript ^0.14.0;
+// config: vault category, queue category, staking category, reward category.
+// State 48: head id+score (44), remaining reward (4).
+// Node 121: id(32), owner(33), S/T/R(12), successor id+score(44).
+// Root: 0x00. Every node and root has minting capability; state is mutable only.
+contract Node(bytes128 config) {
+    // action: 0 insert below this node, 1 owner cancellation of successor.
+    function transition(int action, bytes offer, sig authorization) {
+        require(this.activeInputIndex == 0 && tx.version == 2);
+        bytes32 vault = unsafe_bytes32(config.slice(0,32));
+        bytes32 queue = unsafe_bytes32(config.slice(32,64));
+        bytes32 stake = unsafe_bytes32(config.slice(64,96));
+        bytes32 reward = unsafe_bytes32(config.slice(96,128));
+        bytes32 zero = 0x0000000000000000000000000000000000000000000000000000000000000000;
+        bytes mine = tx.inputs[0].nftCommitment;
+        bytes link = 0x;
+        require(mine.length == 121);
+        link = mine.slice(77,121);
+        require(tx.inputs[0].tokenCategory == queue + 0x02);
+        int initialCollateral = 1200;
+        if (stake == zero) { initialCollateral = initialCollateral + int(mine.slice(65,69)); }
+        require(tx.inputs[0].value == initialCollateral);
+        require(tx.inputs[0].tokenAmount == 0);
+        require(tx.outputs[0].lockingBytecode == tx.inputs[0].lockingBytecode);
+        require(tx.outputs[0].tokenCategory == tx.inputs[0].tokenCategory && tx.outputs[0].tokenAmount == 0);
+        bytes nextLink = link;
+        int nextValue = tx.inputs[0].value;
+        int changeIndex = 0;
+        if (action == 0) {
+            require(offer.length == 45);
+            bytes owner = offer.slice(0,33);
+            int s = int(offer.slice(33,37));
+            int t = int(offer.slice(37,41));
+            int r = int(offer.slice(41,45));
+            // Products <= 1e6 * 33553920 * 1e9 < 2^75. BCH2026 BigInt.
+            require(s >= 1200 && s <= 1000000);
+            require(t >= 512 && t <= 33553920 && t % 512 == 0);
+            require(r >= 1 && r <= 1000000000);
+            if (reward == zero) { require(r >= 1200); }
+            require(checkSig(authorization, pubkey(owner)));
+            require(int(mine.slice(65,69)) * int(mine.slice(69,73)) * r >= s * t * int(mine.slice(73,77)));
+            if (link.slice(0,32) != zero) {
+                require(s * t * int(link.slice(40,44)) > int(link.slice(32,36)) * int(link.slice(36,40)) * r);
+            }
+            int fundingIndex = 1;
+            int nodeIndex = 1;
+            require(tx.inputs.length >= fundingIndex + 1 && tx.inputs.length <= fundingIndex + 16);
+            bytes32 id = hash256(tx.inputs[fundingIndex].outpointTransactionHash + toPaddedBytes(tx.inputs[fundingIndex].outpointIndex,4));
+            require(id != zero);
+            bytes score = offer.slice(33,45);
+            bytes successor = link;
+            // Ordinary insertion points at the old successor; highest points at old head.
+            require(tx.outputs[nodeIndex].lockingBytecode == tx.inputs[0].lockingBytecode);
+            require(tx.outputs[nodeIndex].tokenCategory == queue + 0x02 && tx.outputs[nodeIndex].tokenAmount == 0);
+            require(tx.outputs[nodeIndex].nftCommitment == id + offer + successor);
+            int collateral = 1200;
+            if (stake == zero) { collateral = collateral + s; }
+            require(tx.outputs[nodeIndex].value == collateral);
+            nextLink = id + score;
+            changeIndex = nodeIndex + 1;
+            if (stake != zero) {
+                bytes gate = 0x20 + id + 0x23 + tx.inputs[0].lockingBytecode + 0x20 + queue + 0x20 + vault + 0x__ASSETGATE_BODY__;
+                require(tx.outputs[changeIndex].lockingBytecode == new LockingBytecodeP2SH32(hash256(gate)));
+                require(tx.outputs[changeIndex].tokenCategory == stake && tx.outputs[changeIndex].tokenAmount == s);
+                require(tx.outputs[changeIndex].nftCommitment == 0x && tx.outputs[changeIndex].value == 1200);
+                changeIndex = changeIndex + 1;
+            }
+            require(tx.outputs.length >= changeIndex && tx.outputs.length <= changeIndex + 2);
+            int tokenIn = 0;
+            int tokenOut = 0;
+            for (int f = 1; f < 18; f++) {
+                if (f >= fundingIndex && f < tx.inputs.length) {
+                    require(tx.inputs[f].nftCommitment == 0x);
+                    if (tx.inputs[f].tokenCategory == 0x) { require(tx.inputs[f].tokenAmount == 0); }
+                    else { require(stake != zero && tx.inputs[f].tokenCategory == stake); tokenIn = tokenIn + tx.inputs[f].tokenAmount; }
+                }
+            }
+            for (int c = 0; c < 2; c++) {
+                if (changeIndex + c < tx.outputs.length) {
+                    require(tx.outputs[changeIndex+c].lockingBytecode == new LockingBytecodeP2PKH(hash160(owner)));
+                    require(tx.outputs[changeIndex+c].nftCommitment == 0x);
+                    if (tx.outputs[changeIndex+c].tokenCategory == 0x) { require(tx.outputs[changeIndex+c].tokenAmount == 0); }
+                    else { require(stake != zero && tx.outputs[changeIndex+c].tokenCategory == stake); tokenOut = tokenOut + tx.outputs[changeIndex+c].tokenAmount; }
+                }
+            }
+            if (stake != zero) { require(tokenIn == s + tokenOut); }
+        } else {
+            require(action == 1);
+            require(offer == 0x);
+            require(tx.inputs[1].lockingBytecode == tx.inputs[0].lockingBytecode);
+            require(tx.inputs[1].tokenCategory == queue + 0x02 && tx.inputs[1].tokenAmount == 0);
+            bytes gone = tx.inputs[1].nftCommitment;
+            require(gone.length == 121);
+            require(gone.slice(0,32) + gone.slice(65,77) == link);
+            int s = int(gone.slice(65,69));
+            bytes owner = gone.slice(32,65);
+            int collateral = 1200;
+            int fundingIndex = 2;
+            if (stake == zero) { collateral = collateral + s; }
+            else {
+                bytes gate = 0x20 + gone.slice(0,32) + 0x23 + tx.inputs[0].lockingBytecode + 0x20 + queue + 0x20 + vault + 0x__ASSETGATE_BODY__;
+                require(tx.inputs[2].lockingBytecode == new LockingBytecodeP2SH32(hash256(gate)));
+                require(tx.inputs[2].tokenCategory == stake && tx.inputs[2].tokenAmount == s);
+                require(tx.inputs[2].value == 1200 && tx.inputs[2].nftCommitment == 0x);
+                fundingIndex = 3;
+            }
+            require(tx.inputs[1].value == collateral);
+            nextLink = gone.slice(77,121);
+            require(tx.outputs[1].lockingBytecode == new LockingBytecodeP2PKH(hash160(owner)));
+            require(tx.outputs[1].nftCommitment == 0x);
+            require(checkSig(authorization, pubkey(owner)));
+            if (stake == zero) { require(tx.outputs[1].value == 1200 + s && tx.outputs[1].tokenCategory == 0x && tx.outputs[1].tokenAmount == 0); }
+            else { require(tx.outputs[1].value == 2400 && tx.outputs[1].tokenCategory == stake && tx.outputs[1].tokenAmount == s); }
+            changeIndex = 2;
+            require(tx.inputs.length >= fundingIndex + 1 && tx.inputs.length <= fundingIndex + 16);
+            int fundingValue = 0;
+            for (int f = 2; f < 20; f++) {
+                if (f >= fundingIndex && f < tx.inputs.length) {
+                    require(tx.inputs[f].tokenCategory == 0x && tx.inputs[f].tokenAmount == 0);
+                    fundingValue = fundingValue + tx.inputs[f].value;
+                }
+            }
+            require(tx.outputs.length == changeIndex || tx.outputs.length == changeIndex + 1);
+            if (tx.outputs.length > changeIndex) {
+                require(tx.outputs[changeIndex].lockingBytecode == tx.inputs[fundingIndex].lockingBytecode);
+                require(tx.outputs[changeIndex].tokenCategory == 0x && tx.outputs[changeIndex].tokenAmount == 0);
+                require(tx.outputs[changeIndex].value <= fundingValue);
+            }
+        }
+        require(tx.outputs[0].value == nextValue);
+        require(tx.outputs[0].nftCommitment == mine.slice(0,77) + nextLink);
+    }
+    // Second authority/head node delegates to the authentic controller at input0.
+    // Controller transition accounts for every output and every asset gate input.
+    function authorize() {
+        require(this.activeInputIndex == 1);
+        require(tx.inputs[0].tokenCategory == config.slice(0,32) + 0x01 || tx.inputs[0].lockingBytecode == tx.inputs[1].lockingBytecode);
+        require(tx.inputs[0].tokenCategory == config.slice(0,32) + 0x01 || tx.inputs[0].tokenCategory == config.slice(32,64) + 0x02);
+        require(tx.inputs[1].tokenCategory == config.slice(32,64) + 0x02);
+    }
+}

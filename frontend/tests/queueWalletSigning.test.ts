@@ -1,0 +1,21 @@
+import {deriveHdPrivateNodeFromSeed,deriveHdPublicNode,deriveHdPublicNodeChild,encodeHdPublicKey,binToHex} from '@bitauth/libauth';
+import {EventEmitter} from 'node:events';
+import {expect,it,vi} from 'vitest';
+import {browserWalletClient} from '../src/browserWalletClient';
+import {queueCall} from '../src/queueClient';
+vi.mock('../src/queueClient',()=>({queueCall:vi.fn()}));
+function setup(){
+ class WorkerMock{onmessage:((e:any)=>void)|null=null;terminate=vi.fn();constructor(){queueMicrotask(()=>this.onmessage?.({data:{type:'ready'}}));}postMessage(m:any){queueMicrotask(()=>this.onmessage?.({data:{id:m.id,result:[]}}));}}
+ vi.stubGlobal('Worker',WorkerMock);
+ const node=deriveHdPublicNode(deriveHdPrivateNodeFromSeed(new Uint8Array(32).fill(88))),encoded=encodeHdPublicKey({node,network:'mainnet'});if(typeof encoded==='string')throw Error(encoded);
+ const pub=(index:bigint)=>{const child=deriveHdPublicNodeChild(node,Number(index));if(typeof child==='string')throw Error(child);return child.publicKey;};
+ const plan={label:'Claim; caller pays the measured fee',request:{broadcast:false,transaction:{version:2,inputs:[],outputs:[],locktime:0},sourceOutputs:[]},inputPaths:[[2,'receive',0]]};
+ const manager=Object.assign(new EventEmitter(),{getSessionPaths:()=>[{name:'receive',xpub:encoded.hdPublicKey}],hasPath:(p:number)=>p===0,getPubkey:(_path:number,index:bigint)=>pub(index),signTransaction:vi.fn(async()=>({signedTransaction:'signed'}))});
+ const events:string[]=[];
+ vi.mocked(queueCall).mockImplementation(async i=>{events.push(String(i.operation));if(i.operation==='prepare')return {id:'claim',stage:'review',plan};if(i.operation==='authorize')return {owner:{publicKey:binToHex(pub(0n))},verifiedAt:Date.now(),plan};if(i.operation==='submit')return {stage:'pending'};return {};});
+ return {wallet:browserWalletClient(manager as any,()=>{}),manager,plan,events};
+}
+it('requires explicit approval with wallet broadcast disabled, and retains bytes before submission',async()=>{const {wallet,manager,events}=setup();try{expect((await wallet.queue!({operation:'prepare',intent:{kind:'claim'}})).stage).toBe('pending');expect(manager.signTransaction).toHaveBeenCalledOnce();expect(manager.signTransaction).toHaveBeenCalledWith({transaction:expect.objectContaining({broadcast:false}),inputPaths:[[2,'receive',0]]},{signal:expect.any(AbortSignal)});expect(events).toEqual(['prepare','authorize','beginSigning','retain','submit']);}finally{wallet.close?.();}});
+it('retains a returned signature across reconnection and never broadcasts with stale authorization',async()=>{const {wallet,manager,events}=setup();manager.signTransaction.mockImplementation(async()=>{manager.emit('reconnecting');return {signedTransaction:'signed'};});try{await expect(wallet.queue!({operation:'prepare'})).rejects.toThrow('authorization changed');expect(events).toContain('retain');expect(events).not.toContain('submit');}finally{wallet.close?.();}});
+it('checks authorization again after the durable signing journal boundary',async()=>{const {wallet,manager,events}=setup(),original=vi.mocked(queueCall).getMockImplementation()!;vi.mocked(queueCall).mockImplementation(async(...args)=>{const result=await original(...args);if(args[0].operation==='beginSigning')manager.emit('reconnecting');return result;});try{await expect(wallet.queue!({operation:'prepare'})).rejects.toThrow('authorization changed');expect(manager.signTransaction).not.toHaveBeenCalled();expect(events).not.toContain('submit');expect(queueCall).toHaveBeenCalledWith({operation:'signingFailed',id:'claim',rejected:true,notRequested:true});}finally{wallet.close?.();}});
+it('rejects worker requests enabling wallet broadcasting before prompting',async()=>{const {wallet,manager,plan}=setup();plan.request.broadcast=true;try{await expect(wallet.queue!({operation:'prepare'})).rejects.toThrow('fresh verified inputs');expect(manager.signTransaction).not.toHaveBeenCalled();}finally{wallet.close?.();}});

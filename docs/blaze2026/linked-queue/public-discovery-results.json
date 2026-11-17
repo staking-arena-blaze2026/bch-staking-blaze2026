@@ -1,0 +1,21 @@
+{
+  "at": "2026-11-17T23:57:17.265421+00:00",
+  "readOnly": true,
+  "broadcast": false,
+  "rows": [
+    {
+      "network": "mainnet",
+      "total": 0,
+      "pending": 0,
+      "seen": 2,
+      "errors": []
+    },
+    {
+      "network": "chipnet",
+      "total": 0,
+      "pending": 0,
+      "seen": 0,
+      "errors": []
+    }
+  ]
+}

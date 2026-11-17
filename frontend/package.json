@@ -20,7 +20,8 @@
     "verify:settlement:live": "node scripts/build-settlement-fixture.mjs --live && node scripts/verify-browser-settlement.mjs",
     "test:mandatory": "node scripts/build-settlement-fixture.mjs && node scripts/run-browser.mjs --config playwright.mandatory.config.ts",
     "test:v3:browser": "VITE_INDEXER_MODE=off VITE_V3_NETWORK=regtest vite build --outDir .static-test/v3 && node scripts/run-browser.mjs --config playwright.v3.config.ts",
-    "test:wallet:browser": "node scripts/run-browser.mjs --config playwright.wallet.config.ts"
+    "test:wallet:browser": "node scripts/run-browser.mjs --config playwright.wallet.config.ts",
+    "test:queue:browser": "VITE_INDEXER_MODE=off VITE_V3_NETWORK=regtest vite build --outDir .static-test/v3 && node scripts/run-browser.mjs --config playwright.queue.config.ts"
   },
   "dependencies": {
     "@bitauth/libauth": "3.1.0-next.8",
