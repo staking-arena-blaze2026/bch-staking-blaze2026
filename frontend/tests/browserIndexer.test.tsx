@@ -10,7 +10,8 @@ it('defaults static builds to browser Electrum, retains explicit API/off modes a
   expect(indexerSource(null)).toBe('electrum');expect(indexerSource('/api')).toBe('api');
   expect(indexerSource(null,'off')).toBe('off');expect(indexerSource('/api','electrum')).toBe('electrum');
   expect(()=>indexerSource(null,'wrong')).toThrow();
-  const config=browserConfig({});expect(config.network).toBe('chipnet');expect(config.endpoints).toHaveLength(3);expect(config.vaults).toHaveLength(1);
+  const config=browserConfig({});expect(config.network).toBe('chipnet');expect(config.endpoints).toEqual(['wss://chipnet.imaginary.cash:50004','wss://chipnet.bch.ninja:50004']);
+  expect(()=>browserConfig({VITE_ELECTRUM_ENDPOINTS:'wss://electrum-chipnet.optnlabs.com:50004'})).toThrow('OptnLabs excluded');expect(config.vaults).toHaveLength(1);
   for(const env of [{VITE_ARENA_NETWORK:'mainnet'},{VITE_ELECTRUM_ENDPOINTS:'ws://localhost:50004'},{VITE_ELECTRUM_ENDPOINTS:'wss://user:secret@localhost:50004'},{VITE_ARENA_VAULTS:'[{}]'},{VITE_ELECTRUM_MAX_HISTORY:'0'},{VITE_ELECTRUM_POLL_MS:'1'}]) expect(()=>browserConfig(env)).toThrow();
 });
 it('uses worker envelopes, labels cached state, displays errors, refreshes and terminates cleanly without HTTP',async()=>{
