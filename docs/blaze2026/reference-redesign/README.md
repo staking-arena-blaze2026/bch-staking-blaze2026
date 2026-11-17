@@ -10,7 +10,7 @@ Both original supplied images sit together at the left of the header: the grill 
 
 The website copies these downloads byte-for-byte, without regenerating, re-encoding or retouching them:
 
-| Public asset under `frontend/public/brand/` | Supplied Drive file | SHA-256 |
+| Public asset under `frontend/public/assets/brand/` | Supplied Drive file | SHA-256 |
 | --- | --- | --- |
 | `stake-arena-logo-original.jpeg` | `1uiwF7BuIhO0vrkxJUHJ9kLobQOwyf75I` | `2f9bdf79cead1d7ae27215b806c569005d8565bd8e26db202ca059fa5108f71b` |
 | `stake-arena-slogan-original.jpeg` | `1uf2NakXhjSrl437sEledzCX9Lc4lG28P` | `738cc7c84890d95a451d4275a31d6cb6b455017f6e6b6f692707cbeb2f3e41ae` |
