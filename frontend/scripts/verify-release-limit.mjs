@@ -16,7 +16,7 @@ await context.routeWebSocket(/wss:\/\//,route=>{const peer=route.connectToServer
 page.setDefaultTimeout(30000);
 try{
  await page.goto(target+'#/v3');await page.getByLabel('Number of releases (1–1000)').waitFor();
- await page.getByLabel('Schedule starts (UTC)').fill('2027-01-01T00:00:00');await page.getByLabel('Interval (minutes)').fill('1440');
+ await page.getByLabel('Schedule starts (local time)').fill('2027-01-01T00:00:00');await page.getByLabel('Interval (minutes)').fill('1440');
  for(const n of [1,16,17,100,365,1000]){await page.getByLabel('Number of releases (1–1000)').fill(String(n));const reserve=await page.getByText('Deposit the entire reserve upfront:',{exact:false}).innerText(),duration=await page.getByText('Vault duration:',{exact:false}).innerText();assert.ok(reserve.includes((n*0.00002).toFixed(8)+' BCH'));assert.ok(duration.includes(n.toFixed(2)+' days'));report.counts.push({count:n,reserve,duration});}
  assert.equal(await page.getByLabel('Number of releases (1–1000)').getAttribute('max'),'1000');
  await page.getByLabel('Number of releases (1–1000)').fill('1001');assert.match(await page.getByRole('alert').innerText(),/whole number from 1 to 1000/);assert.equal(await page.getByRole('button',{name:'Create Vault',exact:true}).isDisabled(),true);report.rejects1001=true;

@@ -75,6 +75,8 @@ Read-only chipnet upgrade investigation: [activation evidence and operator repor
 
 Minute-based v3 creation and offer forms: new release intervals and offer durations accept whole minutes, with minimums of 1 minute on Chipnet and 10 minutes on Mainnet. Inputs convert to seconds before transaction preparation; worker preflight also enforces public-network minimums for new requests. Existing vaults, offers, recovery journals and covenant rules retain their second-based values. This is post-baseline application policy.
 
+Whole-unit staking and local release timing: offers use whole 512-second time units, release intervals retain network-specific minute steps, and local-time schedules distinguish verified MTP availability from wall-clock timing. See [representation, consensus boundaries and focused validation](blaze2026/time-units/README.md). This is post-baseline application work, without new covenant versions or migration logic.
+
 ## How judges can compare versions
 
 1. Inspect the original source and website `pre-blaze-2026` tags and exact commit links; annotated tag timestamps are intentionally later than the referenced commits.

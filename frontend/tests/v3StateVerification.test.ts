@@ -21,21 +21,38 @@ function setup(){
 }
 it('refreshes canonical state before offer funding and again before approval; rejects a changed source',async()=>{
  const {wallet,snapshot,sync,owner,journal}=setup();
- const op=await wallet.offer(config,{stake:3000n,duration:3600,reward:1000n,maxWins:1},[owner]);expect(sync).toHaveBeenCalledTimes(1);expect(op.source).toBe('cd'.repeat(32));
+ const op=await wallet.offer(config,{stake:3000n,duration:6144,reward:1000n,maxWins:1},[owner]);expect(sync).toHaveBeenCalledTimes(1);expect(op.source).toBe('cd'.repeat(32));
  await wallet.authorize(op.id);expect(sync).toHaveBeenCalledTimes(2);
  sync.mockResolvedValue({...snapshot,instance:{...snapshot.instance,inputs:[{txid:'aa'.repeat(32)}] as any}});
  await expect(wallet.authorize(op.id)).rejects.toThrow(/state changed/);expect(journal.get(op.id)?.raw).toBeUndefined();
  await expect(wallet.submit(op.id,'stale signed bytes')).rejects.toThrow();expect(journal.get(op.id)?.raw).toBeUndefined(); // Invalid signature bytes fail locally before state/network checks.
 });
 it('rejects pending state and capacity exhaustion during fresh offer verification',async()=>{
- const {wallet,snapshot,sync,owner}=setup(),terms={stake:3000n,duration:3600,reward:1000n,maxWins:1};
+ const {wallet,snapshot,sync,owner}=setup(),terms={stake:3000n,duration:6144,reward:1000n,maxWins:1};
  sync.mockResolvedValue({...snapshot,pending:['pending']});await expect(wallet.offer(config,terms,[owner])).rejects.toThrow(/pending spends/);
  snapshot.instance.state[5]=16;sync.mockResolvedValue(snapshot);await expect(wallet.offer(config,terms,[owner])).rejects.toThrow(/Registration is closed/);
 });
 
 it('new wallet offers enforce one win and fund exactly S; tagged plans cannot change that limit',async()=>{
- const {wallet,owner,journal}=setup(),terms={stake:3000n,duration:3600,reward:1000n,maxWins:1};
+ const {wallet,owner,journal}=setup(),terms={stake:3000n,duration:6144,reward:1000n,maxWins:1};
  await expect(wallet.offer(config,{...terms,maxWins:2},[owner])).rejects.toThrow(/exactly one/);expect(journal.size).toBe(0);
  const op=await wallet.offer(config,terms,[owner]);expect(op.terms?.maxWins).toBe(1);expect(op.offerPolicy).toBe('single-win');expect(op.plan?.request.transaction.outputs[0]?.valueSatoshis).toBe(3000n);
  op.terms!.maxWins=2;await expect(wallet.authorize(op.id)).rejects.toThrow(/exactly one/);
+});
+
+it('rejects invalid whole-unit durations before state reads or wallet transaction construction',async()=>{
+ const {wallet,sync,owner,journal}=setup();
+ for(const duration of [0,513,33553921]){
+  await expect(wallet.offer(config,{stake:3000n,duration,reward:1000n,maxWins:1},[owner])).rejects.toThrow(/time units/);
+ }
+ expect(sync).not.toHaveBeenCalled();expect(journal.size).toBe(0);
+});
+
+it('rejects invalid public-network release intervals before constructing a vault',async()=>{
+ const {wallet,sync,owner,journal}=setup();
+ for(const [network,periodSeconds] of [[Network.MAINNET,660],[Network.CHIPNET,59]] as const){
+  wallet.provider.network=network;
+  await expect(wallet.create({...config,periodSeconds},[owner])).rejects.toThrow(/positive multiple/);
+ }
+ expect(sync).not.toHaveBeenCalled();expect(journal.size).toBe(0);
 });

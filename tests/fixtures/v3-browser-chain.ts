@@ -20,7 +20,7 @@ export function v3BrowserChain(network:Network=Network.REGTEST){
  const factory=covenant('RegistryGenesisV3',parameterArgs(parameters),provider),funding=coin(12000n,factory.lockingBytecode),reserve=coin(9000n);
  const g=genesisBuilder(parameters,funding,{input:reserve,unlocker:key.unlockP2PKH()},provider),genesis=add(g.builder.build());
  const v:Instance={parameters,category:funding.txid,state:g.state,inputs:[utxo(genesis,0),utxo(genesis,1),utxo(genesis,2)]};
- const stake=coin(6000n),fee=coin(10000n),offer=transitionBuilder(v,0,0,provider,chain.clock(),{input:fee,unlocker:key.unlockP2PKH()},key,{owner:key.publicKey,terms:{stake:3000n,duration:513,reward:2000n,maxWins:2},funding:{input:stake,unlocker:key.unlockP2PKH()}});
+ const stake=coin(6000n),fee=coin(10000n),offer=transitionBuilder(v,0,0,provider,chain.clock(),{input:fee,unlocker:key.unlockP2PKH()},key,{owner:key.publicKey,terms:{stake:3000n,duration:512,reward:2000n,maxWins:2},funding:{input:stake,unlocker:key.unlockP2PKH()}});
  const registered=add(offer.builder.build());
  const caller=new SignatureTemplate(new Uint8Array(32).fill(94)),callerInput=coin(12000n,walletScript(binToHex(caller.publicKey)));
  return {chain,key,coin,add,provider,config:{...parameters,genesis:genesis.txid},async claim(){const current={...v,state:offer.state,inputs:[utxo(registered,0),utxo(registered,1),utxo(registered,2)] as Instance['inputs']},built=transitionBuilder(current,3,0,provider,chain.clock(),{input:callerInput,unlocker:caller.unlockP2PKH()},undefined,undefined,{address:(await import('../../src/v3/protocol.js')).ownerAddress(caller.publicKey,provider)});return chain.request('blockchain.transaction.broadcast',built.builder.build());}};

@@ -25,9 +25,9 @@ async function refresh(page:Page){const button=page.getByRole('button',{name:'Re
 async function open(page:Page){await page.goto('./#/v3/offers');await page.evaluate(config=>localStorage.setItem('staking-arena-v3-configs',config),JSON.stringify([fixture.config],(_,v)=>typeof v==='bigint'?v.toString():v));await page.reload();await page.getByRole('link',{name:'Vault 1',exact:true}).click();await refresh(page);}
 test('real browser worker verifies wallet-funded claims over WSS and requires a connected caller wallet',async({page})=>{
  const errors:string[]=[];page.on('pageerror',e=>errors.push(e.message));await open(page);
- await expect(page.getByRole('group',{name:'New v3 offer'}).getByRole('textbox')).toHaveCount(3);await expect(page.getByLabel('Maximum wins W')).toHaveCount(0);
+ await expect(page.getByRole('group',{name:'New v3 offer'}).locator('input')).toHaveCount(3);await expect(page.getByLabel('Maximum wins W')).toHaveCount(0);
  await expect(page.getByText(/Required staking commitment:/)).toContainText('3000 satoshis');
- await expect(page.getByRole('cell',{name:'513'})).toBeVisible();await expect(page.getByRole('button',{name:'Claim reward',exact:true})).toBeDisabled();
+ await expect(page.getByRole('cell',{name:/Lock duration: 1 time unit/})).toBeVisible();await expect(page.getByRole('button',{name:'Claim reward',exact:true})).toBeDisabled();
  await expect(page.getByRole('button',{name:'Claim reward',exact:true})).toHaveAttribute('title',/connect a compatible WizardConnect/);
  const claim=await fixture.claim();await refresh(page);expect(fixture.chain.pending.size).toBe(1);expect(fixture.chain.broadcasts).toHaveLength(1);
  await page.reload();await refresh(page);await expect(page.getByText(/Pending \(0-conf\) state verified/)).toBeVisible();
@@ -75,7 +75,7 @@ test('tabs preserve form values, verified rows open vault routes, and desktop/mo
  await expect(page.getByRole('table',{name:'Vault summary'}).getByRole('row')).toHaveCount(8);
  expect(await page.locator('.vault-summary-table th,.vault-summary-table td').evaluateAll(cells=>cells.every(c=>getComputedStyle(c).borderTopWidth==='0px'&&getComputedStyle(c).borderBottomWidth==='0px'))).toBe(true);
  expect(await page.locator('.v3-offer').evaluate(el=>getComputedStyle(el).position)).toBe('static');
- await expect(page.getByText('P(Priority) = S x T / R',{exact:true})).toBeVisible();
+ await expect(page.getByText('P(Priority) = S × U / R',{exact:true})).toBeVisible();
  await expect(page.getByText('Caller pays the fee. The reward goes to the winning offer.',{exact:true})).toBeVisible();
  const offerBox=await page.locator('.v3-offer').boundingBox(),claimBox=await page.locator('.v3-claim').boundingBox();expect(claimBox!.x).toBe(offerBox!.x);expect(claimBox!.y).toBeGreaterThan(offerBox!.y+offerBox!.height);expect(claimBox!.width).toBe(offerBox!.width);
  const browseBox=await page.getByRole('link',{name:'Browse All Vaults',exact:true}).boundingBox();expect(browseBox!.width).toBeLessThanOrEqual(230);expect(browseBox!.height).toBeLessThanOrEqual(48);
@@ -137,7 +137,7 @@ test('accepted atomic offer is visible unranked through reload and asymmetric pr
  const parameters={...fixture.config,registryVersion:4 as const},owner={publicKey:binToHex(fixture.key.publicKey),path:'receive' as const,index:0};
  const factory=covenant('RegistryAtomicGenesisV4',parameterArgs(parameters),fixture.provider),funding=fixture.coin(12000n,factory.lockingBytecode),reserve=fixture.coin(9000n);
  const g=genesisBuilder(parameters,funding,{input:reserve,unlocker:fixture.key.unlockP2PKH()},fixture.provider),genesis=fixture.add(g.builder.build()),config={...parameters,genesis:genesis.txid};
- const input=fixture.coin(100000n),terms={stake:3000n,duration:3600,reward:1000n,maxWins:1};
+ const input=fixture.coin(100000n),terms={stake:3000n,duration:6144,reward:1000n,maxWins:1};
  const built=atomicOfferBuilder({parameters,category:funding.txid,state:g.state,inputs:[utxo(genesis,0),utxo(genesis,1),utxo(genesis,2)]},terms,fixture.key.publicKey,[{...owner,utxo:input}],fixture.provider,fixture.chain.clock(),fixture.key);
  const request=built.builder.generateWcTransactionObject({broadcast:false}),tx=structuredClone(request.transaction) as Transaction;
  for(const i of [0,3]){
@@ -182,4 +182,28 @@ test('fresh homepage is the four-column marketplace with accessible rows on desk
  for(const width of [1360,390]){await page.setViewportSize({width,height:900});expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);await page.screenshot({path:`test-results/marketplace-${width}.png`,fullPage:true});}
  const link=page.getByRole('link',{name:'Vault 1',exact:true});await link.focus();await page.keyboard.press('Enter');await expect(page).toHaveURL(new RegExp('#/v3/vault/'+fixture.config.genesis+'$'));await expect(page.getByRole('heading',{name:'Live ranked queue'})).toBeVisible();
  expect(methods).not.toContain('blockchain.transaction.broadcast');
+});
+
+test('whole-unit controls and local schedules show exact conversions across daylight saving',async({browser})=>{
+ const context=await browser.newContext({baseURL:'http://127.0.0.1:4176/v3/',timezoneId:'America/New_York',ignoreHTTPSErrors:true}),page=await context.newPage();
+ try{
+  await page.goto('./#/v3');
+  await page.getByLabel('Schedule starts (local time)').fill('2027-03-14T01:30');
+  await page.getByLabel('Interval (minutes)',{exact:true}).fill('60');
+  await page.getByLabel('Number of releases (1–1000)').fill('1');
+  await expect(page.getByText('Equivalent interval: 1 hour',{exact:true})).toBeVisible();
+  await expect(page.getByText(/Vault duration:/)).toContainText(/03:30:00.*(EDT|GMT-4)/);
+  await open(page);
+  const input=page.getByLabel('Lock duration (time units)',{exact:true});
+  await expect(input).toHaveAttribute('min','1');await expect(input).toHaveAttribute('max','65535');await expect(input).toHaveAttribute('step','1');
+  await input.fill('12');await expect(page.locator('.v3-offer .duration-conversion')).toContainText('Equivalent duration: 1 hour, 42 minutes, 24 seconds');
+  await expect(page.locator('.v3-offer .duration-conversion')).toContainText('12 × 512 = 6,144 seconds');
+  await input.press('ArrowUp');await expect(input).toHaveValue('13');await input.press('ArrowDown');await expect(input).toHaveValue('12');
+  await input.fill('65535');await input.press('ArrowUp');await expect(input).toHaveValue('65535');
+  const timing=page.getByRole('region',{name:'Reward release timing'});
+  await expect(timing.getByText(/^Local time:/)).toBeVisible();
+  await expect(timing.getByText(/^Blockchain time \(MTP\):/)).not.toContainText('Unavailable');
+  await timing.getByText('Release schedule and history',{exact:true}).click();
+  await expect(timing.getByRole('columnheader',{name:'Scheduled local time'})).toBeVisible();
+ }finally{await context.close();}
 });

@@ -57,7 +57,7 @@ scope.onmessage=event=>{queue=queue.catch(()=>{}).then(async()=>{const {id,inten
   if(intent.operation==='claims')return new BrowserClaimStore(options.network).list();
   if(intent.operation==='createLegacy')return wallet.createLegacy(intent.parameters,keys);
   if(intent.operation==='create'){validateNewTime(intent.parameters.periodSeconds,options.network,'Interval');return wallet.create(intent.parameters,keys);}
-  if(intent.operation==='offer'){validateNewTime(intent.terms.duration,options.network,'Duration');return wallet.offer(intent.config,intent.terms,keys);}
+  if(intent.operation==='offer')return wallet.offer(intent.config,intent.terms,keys);
   if(intent.operation==='action')return wallet.action(intent.config,intent.action,intent.slot,keys);
   if(intent.operation==='withdraw')return wallet.withdraw(intent.config,intent.allocation,keys);
   if(intent.operation==='resume'||intent.operation==='inspect')return wallet.resume(intent.id);

@@ -14,7 +14,7 @@ import {MyOffers} from '../src/MyOffers';
 import {lastOfferOwner,rememberOfferOwner} from '../src/offerIdentity';
 const owner='02'+'11'.repeat(32),other='03'+'22'.repeat(32);
 const config={version:3 as const,registryVersion:4 as const,stakingAsset:{kind:'bch' as const},rewardAsset:{kind:'bch' as const},epoch:1800000000,periodSeconds:3600,periods:4,cap:2000n,genesis:'ab'.repeat(32)};
-function record(key=owner,maxWins=1){const r=Buffer.alloc(49);r.set(Buffer.from(key,'hex'));r.writeUInt32LE(3000,33);r.writeUInt32LE(3600,37);r.writeUInt32LE(1000,41);r[45]=maxWins;return r;}
+function record(key=owner,maxWins=1){const r=Buffer.alloc(49);r.set(Buffer.from(key,'hex'));r.writeUInt32LE(3000,33);r.writeUInt32LE(6144,37);r.writeUInt32LE(1000,41);r[45]=maxWins;return r;}
 function snapshot(wins=0,maxWins=1):Snapshot{
  let state=advance(initialState(config),0,0,record(owner,maxWins));state=advance(state,0,1,record(other));
  for(let i=0;i<wins;i++)state=advance(state,3,0);

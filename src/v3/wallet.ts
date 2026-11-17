@@ -1,3 +1,4 @@
+import {stakingDurationDescription,validateNewTime} from './time-policy.js';
 import {canDiscardUnsigned,blocksVault} from './recovery-policy.js';
 import {finalityLimit} from '../consensus-clock.js';
 import {reconcileAtomicOffer} from './offer-status.js';
@@ -109,6 +110,7 @@ function intentSource(op:Partial<Operation>,snapshot:Snapshot){
 export class AssetWallet {
  constructor(readonly provider:ElectrumCore,readonly store:Store,readonly progress:(message:string)=>void=()=>{},readonly onFundingReport:(report:FundingReport)=>void=()=>{}){v3Network(provider);}
  async create(parameters:Parameters,keys:WalletKey[]){
+ const network=v3Network(this.provider);if(network!=='regtest')validateNewTime(parameters.periodSeconds,network);
  parameters={...parameters,discovery:1};
  validateParameters(parameters);const owner=keys.find(k=>k.path==='receive'&&k.index===0);if(!owner)throw Error('Receive child zero required');
  const journal=await this.store.list(),reserved=new Set(journal.filter(reservesFunding).flatMap(o=>o.plan?planCoins(o.plan).map(u=>u.txid+':'+u.vout):[]));
@@ -222,7 +224,7 @@ export class AssetWallet {
  }
  private atomicPlan(snapshot:Snapshot,terms:Terms,owner:WalletKey,coins:WalletCoin[]){
  const built=atomicOfferBuilder(snapshot.instance,terms,hexToBin(owner.publicKey),coins,this.provider,snapshot.clock,placeholderSignature());
- const reviewed=plan(built.builder,`Register atomic offer: stake ${terms.stake} ${snapshot.config.stakingAsset.kind} raw units; duration ${terms.duration} seconds; reward ${terms.reward} ${snapshot.config.rewardAsset.kind} raw units; priority ${terms.stake*BigInt(terms.duration)}/${terms.reward}; one miner fee ${FEE} sats; BCH change ${built.bchChange} sats; token change ${built.tokenChange} raw units${built.tokenChange>0n?'; token change carrier 1000 sats':''}`,coins.map((coin,i)=>({coin,index:i+3})),owner);
+ const reviewed=plan(built.builder,`Register atomic offer: stake ${terms.stake} ${snapshot.config.stakingAsset.kind} raw units; ${stakingDurationDescription(terms.duration)}; reward ${terms.reward} ${snapshot.config.rewardAsset.kind} raw units; priority P = S × U / R: ${terms.stake*BigInt(terms.duration)/512n}/${terms.reward}; one miner fee ${FEE} sats; BCH change ${built.bchChange} sats; token change ${built.tokenChange} raw units${built.tokenChange>0n?'; token change carrier 1000 sats':''}`,coins.map((coin,i)=>({coin,index:i+3})),owner);
  if(encodeTransaction(reviewed.request.transaction as Transaction).length>FUNDING_BYTE_BUDGET)throw Error('Atomic offer exceeds its 10,000-byte fee budget');return reviewed;
  }
  private async checkAtomic(op:Operation){

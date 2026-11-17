@@ -6,12 +6,12 @@ import {AssetIndexer,type Snapshot} from '../../src/v3/indexer';
 import {reconcileAtomicOffer,offerDisplayStatus,OFFER_RETRY_DELAYS} from '../../src/v3/offer-status';
 import {MockNetworkProvider,Network} from 'cashscript';
 const config={version:3 as const,registryVersion:4 as const,stakingAsset:{kind:'bch' as const},rewardAsset:{kind:'bch' as const},epoch:1800000000,periodSeconds:3600,periods:4,cap:2000n,genesis:'ab'.repeat(32)};
-const op:Operation={id:'offer',version:3,kind:'offer',registrationMode:'atomic',step:'action',stage:'pending',raw:'retained-signed-evidence',txid:'47'.repeat(32),source:'c5'.repeat(32),parameters:config,config,terms:{stake:3000n,duration:3600,reward:1000n,maxWins:1},owner:{publicKey:'02'+'11'.repeat(32),path:'receive',index:0},acceptedAt:10000};
+const op:Operation={id:'offer',version:3,kind:'offer',registrationMode:'atomic',step:'action',stage:'pending',raw:'retained-signed-evidence',txid:'47'.repeat(32),source:'c5'.repeat(32),parameters:config,config,terms:{stake:3000n,duration:6144,reward:1000n,maxWins:1},owner:{publicKey:'02'+'11'.repeat(32),path:'receive',index:0},acceptedAt:10000};
 const snapshot=(history:string[]=[],pendingHistory:string[]=[],source=op.source)=>({config,instance:{inputs:[{txid:source}]},history,pendingHistory}) as unknown as Snapshot;
 afterEach(()=>vi.restoreAllMocks());
 it('renders accepted signed evidence immediately, without rank, on the previous state or failed refresh',()=>{
  const view=render(<SubmittedOffers operations={[op]} genesis={config.genesis} snapshot={snapshot()}/>);
- const row=screen.getAllByRole('row')[1];expect(row).toHaveTextContent('Unranked');expect(row).toHaveTextContent('3000 satoshis');expect(row).toHaveTextContent('3600');expect(row).toHaveTextContent('1000 satoshis');expect(row).toHaveTextContent(op.txid!);expect(row).toHaveTextContent('Pending (0-conf) — awaiting on-chain verification');
+ const row=screen.getAllByRole('row')[1];expect(row).toHaveTextContent('Unranked');expect(row).toHaveTextContent('3000 satoshis');expect(row).toHaveTextContent('12 × 512 = 6,144 seconds');expect(row).toHaveTextContent('1000 satoshis');expect(row).toHaveTextContent(op.txid!);expect(row).toHaveTextContent('Pending (0-conf) — awaiting on-chain verification');
  view.rerender(<SubmittedOffers operations={[op]} genesis={config.genesis}/>);expect(screen.getByText(op.txid!)).toBeVisible();
  view.rerender(<SubmittedOffers operations={[op]} genesis={config.genesis} snapshot={snapshot([],[op.txid!],op.txid)}/>);expect(screen.queryByText('Unranked')).toBeNull();
 });
