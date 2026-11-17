@@ -22,9 +22,9 @@ it('requires explicit caller wallet approval and labels broadcast as pending',as
  await act(async()=>fireEvent.click(screen.getByRole('button',{name:'Claim reward'})));expect(wallet.v3).toHaveBeenCalledWith({operation:'claim',config});expect(screen.getByRole('status')).toHaveTextContent('pending');expect(screen.getByRole('status')).not.toHaveTextContent('confirmed');
 });
 it('blocks claims when the covenant buffer is insufficient and preserves the top offer',async()=>{
- stub('blocked');await open();expect(screen.getByRole('button',{name:'Claim reward'})).toBeDisabled();expect(screen.getByText(/Claim unavailable:/)).toHaveTextContent('Top offer exceeds available pot');expect(screen.getByText('1539000 / 3000')).toBeInTheDocument();
+ stub('blocked');await open();expect(screen.getByRole('button',{name:'Claim reward'})).toBeDisabled();expect(screen.getByRole('button',{name:'Claim reward'})).toHaveAttribute('title','Top offer exceeds available pot');expect(screen.getByText('1539000 / 3000')).toBeInTheDocument();
 });
-it('requires a connected compatible wallet even when rewards are available',async()=>{stub('ready');await open(false);expect(screen.getByRole('button',{name:'Claim reward'})).toBeDisabled();expect(screen.getByText(/Claim unavailable:/)).toHaveTextContent('connect a compatible WizardConnect/Cashonize wallet');});
+it('requires a connected compatible wallet even when rewards are available',async()=>{stub('ready');await open(false);expect(screen.getByRole('button',{name:'Claim reward'})).toBeDisabled();expect(screen.getByRole('button',{name:'Claim reward'})).toHaveAttribute('title',expect.stringContaining('connect a compatible WizardConnect/Cashonize wallet'));});
 
 it('surfaces wallet rejection and keeps recovery operations visible',async()=>{stub();wallet.v3.mockRejectedValue(Error('Wallet rejected signing; unsigned claim retained'));await open();await act(async()=>fireEvent.click(screen.getByRole('button',{name:'Claim reward'})));expect(screen.getByRole('status')).toHaveTextContent('Wallet rejected');expect(v3Call).toHaveBeenCalledWith({operation:'list'});});
 
@@ -125,7 +125,7 @@ it('offers only S, T and R, shows commitment S, and submits one win',async()=>{
 it('shows a winning offer as locked outside the active queue after its reward is paid',async()=>{
  stub();const previous=vi.mocked(v3Call).getMockImplementation()!;
  vi.mocked(v3Call).mockImplementation(async(...args)=>{const result=await previous(...args);if(args[0].operation==='sync')result.snapshot.instance.state=advance(advance(initialState(p),0,0,offer(Buffer.from(wallet.publicKey(),'hex'),3000,513,3000,1)),3,0);return result;});
- await open();expect(within(screen.getByRole('table',{name:'Live ranked queue'})).getAllByRole('row')).toHaveLength(1);expect(screen.getByText('No active offers. Make the first offer; released rewards continue accumulating.')).toBeInTheDocument();
+ await open();expect(within(screen.getByRole('region',{name:'My Offers list'})).getByText('WON / LOCKED')).toBeVisible();expect(screen.queryByText('Independent staking allocations')).toBeNull();expect(screen.queryByRole('link',{name:'Manage your offers, cancellation and stake withdrawals'})).toBeNull();expect(within(screen.getByRole('table',{name:'Live ranked queue'})).getAllByRole('row')).toHaveLength(1);expect(screen.getByText('No active offers. Make the first offer; released rewards continue accumulating.')).toBeInTheDocument();
  await act(async()=>{window.location.hash='/v3/my-offers';window.dispatchEvent(new HashChangeEvent('hashchange'));});expect(screen.getByText('WON / LOCKED')).toBeInTheDocument();expect(screen.queryByRole('button',{name:'Cancel'})).toBeNull();
 });
 
@@ -224,8 +224,9 @@ it('shows a submitted offer before slow refresh and automatically promotes it af
   }return result;
  });
  wallet.v3.mockImplementation(async()=>{accepted=true;journal=[pendingOp];return pendingOp;});const view=await open();
- const start=performance.now();await act(async()=>fireEvent.click(screen.getByRole('button',{name:'Make an Offer'})));
- expect(screen.getByRole('region',{name:'Locally submitted offers'})).toHaveTextContent('Unranked');const visibleMs=performance.now()-start;expect(visibleMs).toBeLessThan(500);console.log('ACCEPTED_TO_PROVISIONAL_RENDER_MS',visibleMs);
+ // Accessibility queries compute styles in jsdom; measure the render, not selector overhead.
+ const submit=screen.getByRole('button',{name:'Make an Offer'}),start=performance.now();await act(async()=>fireEvent.click(submit));
+ const visibleMs=performance.now()-start;expect(screen.getByRole('region',{name:'Locally submitted offers'})).toHaveTextContent('Unranked');expect(visibleMs).toBeLessThan(500);console.log('ACCEPTED_TO_PROVISIONAL_RENDER_MS',visibleMs);
  expect(screen.getByText(/Make an Offer unavailable:/)).not.toHaveTextContent('discard');
  view.rerender(<WalletTransactionsContext.Provider value={null}><V3Arena/></WalletTransactionsContext.Provider>);
  await waitFor(()=>expect(attempt).toBeGreaterThanOrEqual(1),{timeout:2500});expect(screen.getByRole('region',{name:'Locally submitted offers'})).toBeVisible();
@@ -330,7 +331,7 @@ it.each([false,true])('offline Make an Offer revalidates state on restoration (c
  stub();const t=offlineWallet();localStorage.setItem(v3ConfigStorage,JSON.stringify([config],(_,v)=>typeof v==='bigint'?v.toString():v));window.location.hash='/v3/vault/'+config.genesis;
  render(<WalletTransactionsContext.Provider value={t.client}><V3Arena/></WalletTransactionsContext.Provider>);
  await waitFor(()=>expect(screen.getByRole('button',{name:'Make an Offer'})).toBeEnabled());const button=screen.getByRole('button',{name:'Make an Offer'});
- expect(screen.getByRole('button',{name:'Claim reward'})).toBeDisabled();
+ expect(screen.getByRole('button',{name:'Claim reward'})).toBeEnabled();
  fireEvent.click(button);expect(t.client.v3).not.toHaveBeenCalled();expect(screen.getAllByText(/Open Cashonize to continue/).length).toBeGreaterThan(0);
  if(changed){const previous=vi.mocked(v3Call).getMockImplementation()!;vi.mocked(v3Call).mockImplementation(async(...args)=>{const result=await previous(...args);if(args[0].operation==='sync')result.snapshot.instance.state=advance(result.snapshot.instance.state,3,0);return result;});}
  act(()=>t.connect());
@@ -361,4 +362,28 @@ it('My Offers cancellation verifies ownership and resumes its existing operation
  await open();await act(async()=>{window.location.hash='/v3/my-offers';window.dispatchEvent(new HashChangeEvent('hashchange'));});
  await act(async()=>fireEvent.click(screen.getByRole('button',{name:'Cancel'})));
  expect(wallet.v3).toHaveBeenCalledWith({operation:'resume',id:'cancel-funding'});expect(window.confirm).toHaveBeenCalled();
+});
+
+it.each([false,true])('offline Claim reward waits for live approval and rejects changed winners (changed=%s)',async changed=>{
+ stub();const t=offlineWallet();localStorage.setItem(v3ConfigStorage,JSON.stringify([config],(_,v)=>typeof v==='bigint'?v.toString():v));window.location.hash='/v3/vault/'+config.genesis;
+ render(<WalletTransactionsContext.Provider value={t.client}><V3Arena/></WalletTransactionsContext.Provider>);
+ const claim=await screen.findByRole('button',{name:'Claim reward'});await waitFor(()=>expect(claim).toBeEnabled());
+ fireEvent.click(claim);fireEvent.click(claim);expect(t.client.v3).not.toHaveBeenCalled();expect(t.client.restore).toHaveBeenCalledOnce();
+ if(changed){const previous=vi.mocked(v3Call).getMockImplementation()!;vi.mocked(v3Call).mockImplementation(async(...args)=>{const result=await previous(...args);if(args[0].operation==='sync')result.snapshot.instance.state=advance(result.snapshot.instance.state,3,0);return result;});}
+ act(()=>t.connect());
+ if(changed){await waitFor(()=>expect(screen.getByRole('status')).toHaveTextContent('Vault state changed while waiting'));expect(t.client.v3).not.toHaveBeenCalled();}
+ else{await waitFor(()=>expect(t.client.v3).toHaveBeenCalledOnce());expect(t.client.v3).toHaveBeenCalledWith({operation:'claim',config},expect.any(Function));}
+});
+it.each(['blocked','pending'])('offline claim rechecks %s state before asking the restored wallet to sign',async condition=>{
+ stub();const t=offlineWallet();localStorage.setItem(v3ConfigStorage,JSON.stringify([config],(_,v)=>typeof v==='bigint'?v.toString():v));window.location.hash='/v3/vault/'+config.genesis;
+ render(<WalletTransactionsContext.Provider value={t.client}><V3Arena/></WalletTransactionsContext.Provider>);
+ const claim=await screen.findByRole('button',{name:'Claim reward'});await waitFor(()=>expect(claim).toBeEnabled());fireEvent.click(claim);
+ const previous=vi.mocked(v3Call).getMockImplementation()!;vi.mocked(v3Call).mockImplementation(async(...args)=>{const result=await previous(...args);if(args[0].operation==='sync'){if(condition==='blocked')result.next.phase='blocked';else result.snapshot.pending=['competing-spend'];}return result;});
+ act(()=>t.connect());await waitFor(()=>expect(screen.getByRole('status')).toHaveTextContent(condition==='blocked'?'Claim unavailable':'Vault state changed'));expect(t.client.v3).not.toHaveBeenCalled();
+});
+it('cancels an offline claim when navigating away and does not revive it on remount',async()=>{
+ stub();const t=offlineWallet();localStorage.setItem(v3ConfigStorage,JSON.stringify([config],(_,v)=>typeof v==='bigint'?v.toString():v));window.location.hash='/v3/vault/'+config.genesis;
+ const view=render(<WalletTransactionsContext.Provider value={t.client}><V3Arena/></WalletTransactionsContext.Provider>);const claim=await screen.findByRole('button',{name:'Claim reward'});await waitFor(()=>expect(claim).toBeEnabled());fireEvent.click(claim);
+ await act(async()=>{window.location.hash='/v3/offers';window.dispatchEvent(new HashChangeEvent('hashchange'));});await waitFor(()=>expect(screen.getAllByRole('status').some(el=>el.textContent?.includes('changed or expired'))).toBe(true));
+ view.unmount();act(()=>t.connect());render(<WalletTransactionsContext.Provider value={t.client}><V3Arena/></WalletTransactionsContext.Provider>);await act(async()=>{await new Promise(resolve=>setTimeout(resolve,150));});expect(t.client.v3).not.toHaveBeenCalled();
 });

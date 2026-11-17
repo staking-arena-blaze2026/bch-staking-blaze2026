@@ -28,7 +28,7 @@ test('real browser worker verifies wallet-funded claims over WSS and requires a 
  await expect(page.getByRole('group',{name:'New v3 offer'}).getByRole('textbox')).toHaveCount(3);await expect(page.getByLabel('Maximum wins W')).toHaveCount(0);
  await expect(page.getByText(/Required staking commitment:/)).toContainText('3000 satoshis');
  await expect(page.getByRole('cell',{name:'513'})).toBeVisible();await expect(page.getByRole('button',{name:'Claim reward',exact:true})).toBeDisabled();
- await expect(page.getByText(/Claim unavailable: connect a compatible WizardConnect/)).toBeVisible();
+ await expect(page.getByRole('button',{name:'Claim reward',exact:true})).toHaveAttribute('title',/connect a compatible WizardConnect/);
  const claim=await fixture.claim();await refresh(page);expect(fixture.chain.pending.size).toBe(1);expect(fixture.chain.broadcasts).toHaveLength(1);
  await page.reload();await refresh(page);await expect(page.getByText(/Pending \(0-conf\) state verified/)).toBeVisible();
  fixture.chain.mine();
@@ -77,6 +77,11 @@ test('tabs preserve form values, verified rows open vault routes, and desktop/mo
  expect(await page.locator('.v3-offer').evaluate(el=>getComputedStyle(el).position)).toBe('static');
  await expect(page.getByText('P(Priority) = S x T / R',{exact:true})).toBeVisible();
  await expect(page.getByText('Caller pays the fee. The reward goes to the winning offer.',{exact:true})).toBeVisible();
+ const offerBox=await page.locator('.v3-offer').boundingBox(),claimBox=await page.locator('.v3-claim').boundingBox();expect(claimBox!.x).toBe(offerBox!.x);expect(claimBox!.y).toBeGreaterThan(offerBox!.y+offerBox!.height);expect(claimBox!.width).toBe(offerBox!.width);
+ const browseBox=await page.getByRole('link',{name:'Browse All Vaults',exact:true}).boundingBox();expect(browseBox!.width).toBeLessThanOrEqual(230);expect(browseBox!.height).toBeLessThanOrEqual(48);
+ await expect(page.getByText('Verified',{exact:true})).toHaveCount(0);await expect(page.getByText('Independent staking allocations',{exact:true})).toHaveCount(0);
+ expect(await page.locator('.offers-scroll>.panel').evaluate(el=>getComputedStyle(el).overflowY)).toBe('auto');
+
  await expect(page.getByText(/Current state transaction:|Top-ranked offer:|RegistryAtomicV4 · direct/)).toHaveCount(0);
  await page.screenshot({path:'test-results/v3-redesign-desktop.png',fullPage:true});
  await page.setViewportSize({width:390,height:844});const mobile=await Promise.all(['.v3-summary','.v3-offer','.v3-queue'].map(c=>page.locator(c).boundingBox()));expect(mobile[0]!.y).toBeLessThan(mobile[1]!.y);expect(mobile[1]!.y).toBeLessThan(mobile[2]!.y);

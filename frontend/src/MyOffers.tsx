@@ -3,10 +3,11 @@ import {ownedOffers,allocationStatus} from '../../src/v3/my-offers';
 import type {Config,Snapshot} from '../../src/v3/indexer';
 import type {Operation} from '../../src/v3/wallet';
 import {assetAmount,assetLabel} from './createAssets';
-export function MyOffers({owner,live,listings,busy,operations,act}:{owner:string;live:boolean;listings:Record<string,{snapshot?:Snapshot;error?:string;at:number}>;busy:boolean;operations:Operation[];act:(config:Config,slot:number,allocation?:string)=>void}){
+export function MyOffers({owner,live,listings,busy,operations,act,compact=false}:{owner:string;live:boolean;listings:Record<string,{snapshot?:Snapshot;error?:string;at:number}>;busy:boolean;operations:Operation[];act:(config:Config,slot:number,allocation?:string)=>void;compact?:boolean}){
  const rows=Object.values(listings).flatMap(listing=>listing.snapshot?ownedOffers(listing.snapshot,owner).map(offer=>({...offer,listing,snapshot:listing.snapshot!})):[]);
- return <section className="panel"><h1>My Offers</h1>{owner?<p>{live?'Connected wallet':'Last connected wallet · offline'}: <code>{owner}</code></p>:<p>Connect your wallet to find your offers. Your public owner identity will be remembered for read-only viewing.</p>}
- <p>Offers are read from on-chain records across discovered vaults. Historical offers remain visible. Wallet approval is required for every spending transaction.</p>
+ const Heading=compact?'h3':'h1';
+ return <section className="panel"><Heading>My Offers</Heading>{!compact&&owner?<p>{live?'Connected wallet':'Last connected wallet · offline'}: <code>{owner}</code></p>:!owner?<p>Connect your wallet to find your offers. Your public owner identity will be remembered for read-only viewing.</p>:null}
+ {!compact&&<p>Offers are read from on-chain records across discovered vaults. Historical offers remain visible. Wallet approval is required for every spending transaction.</p>}
  {owner&&!rows.length&&<p>No owned offers found in the vaults checked so far.</p>}
  {rows.map(({record:r,allocations,recovery,status,listing,snapshot:s})=>{
  const processing=operations.find(o=>o.owner?.publicKey===owner&&o.config?.genesis===s.config.genesis&&o.slot===r.slot&&o.kind==='action'&&o.step!=='complete');
