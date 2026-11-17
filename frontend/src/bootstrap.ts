@@ -1,3 +1,4 @@
+import './style.css';
 import {startPublicPreview} from './publicIndexPreview';
 if(!location.hash || location.hash==='#/' || location.hash==='#')history.replaceState(null,'',location.pathname+location.search+'#/v3/offers');
 startPublicPreview();

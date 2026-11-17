@@ -1,0 +1,91 @@
+{
+  "checkedAt": "2026-11-17T15:08:16.883Z",
+  "source": "Local blaze:dev; real public catalog. App entry held to reproduce startup; both original JPEGs decoded before capture. No wallet or spending actions.",
+  "startup": {
+    "width": 1672,
+    "scrollWidth": 1672,
+    "logo": {
+      "x": 64,
+      "width": 340,
+      "right": 404
+    },
+    "banner": {
+      "x": 420,
+      "width": 594,
+      "right": 1014
+    }
+  },
+  "widths": [
+    {
+      "width": 1672,
+      "scrollWidth": 1672,
+      "logo": {
+        "x": 64,
+        "width": 340,
+        "right": 404
+      },
+      "banner": {
+        "x": 420,
+        "width": 594,
+        "right": 1014
+      }
+    },
+    {
+      "width": 1024,
+      "scrollWidth": 1024,
+      "logo": {
+        "x": 28,
+        "width": 230,
+        "right": 258
+      },
+      "banner": {
+        "x": 274,
+        "width": 528.390625,
+        "right": 802.390625
+      }
+    },
+    {
+      "width": 768,
+      "scrollWidth": 768,
+      "logo": {
+        "x": 28,
+        "width": 190,
+        "right": 218
+      },
+      "banner": {
+        "x": 234,
+        "width": 506,
+        "right": 740
+      }
+    },
+    {
+      "width": 390,
+      "scrollWidth": 390,
+      "logo": {
+        "x": 16,
+        "width": 118,
+        "right": 134
+      },
+      "banner": {
+        "x": 142,
+        "width": 232,
+        "right": 374
+      }
+    },
+    {
+      "width": 320,
+      "scrollWidth": 320,
+      "logo": {
+        "x": 16,
+        "width": 98,
+        "right": 114
+      },
+      "banner": {
+        "x": 122,
+        "width": 182,
+        "right": 304
+      }
+    }
+  ],
+  "pageErrors": []
+}

@@ -32,12 +32,12 @@ try{
  const status=await page.getByTestId('v3-network').innerText();assert.match(await page.locator('body').innerText(),/Experimental — Chipnet test funds only/);assert.doesNotMatch(await page.locator('main').innerText(),/regtest/i);
  const pairs=[];for(const stake of ['bch','token'])for(const reward of ['bch','token']){await page.getByRole('combobox').nth(0).selectOption(stake);if(stake==='token')await page.getByLabel('Staking category',{exact:true}).fill('ac'.repeat(32));await page.getByRole('combobox').nth(1).selectOption(reward);if(reward==='token')await page.getByLabel('Reward category',{exact:true}).fill('bc'.repeat(32));assert.equal(await page.getByRole('button',{name:'Review full reserve funding in wallet'}).isDisabled(),true);pairs.push(stake+'-'+reward);}
  assert.equal(await page.getByRole('button',{name:'Connect Wallet',exact:true}).count(),1);
- await page.getByRole('link',{name:'Make an Offer',exact:true}).click();await page.getByRole('heading',{name:'Known vaults',exact:true}).waitFor();
+ await page.getByRole('link',{name:'Browse All Vaults',exact:true}).click();await page.getByRole('heading',{name:'Known vaults',exact:true}).waitFor();
  assert.match(await page.locator('body').innerText(),/Every action verifies current blockchain state automatically/);
- assert.equal(await page.getByRole('link',{name:'Make an Offer',exact:true}).getAttribute('aria-current'),'page');
+ assert.equal(await page.getByRole('link',{name:'Browse All Vaults',exact:true}).getAttribute('aria-current'),'page');
  await page.goBack();await page.getByRole('combobox',{name:'Staking asset',exact:true}).waitFor();await page.goForward();await page.getByRole('heading',{name:'Known vaults',exact:true}).waitFor();
  await page.setViewportSize({width:390,height:844});assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth),true);
- await page.getByRole('link',{name:'Create a Vault',exact:true}).click();await page.getByRole('combobox',{name:'Staking asset',exact:true}).waitFor();assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth),true);
+ await page.getByRole('link',{name:'Create Vault',exact:true}).click();await page.getByRole('combobox',{name:'Staking asset',exact:true}).waitFor();assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth),true);
  await page.setViewportSize({width:1360,height:1000});
  console.log('Four creation asset choices, tabs, history, and mobile widths verified; reloading');
  await page.reload({waitUntil:'domcontentloaded'});await connection(page);

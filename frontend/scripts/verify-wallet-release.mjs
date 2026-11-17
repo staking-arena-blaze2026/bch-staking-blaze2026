@@ -32,9 +32,9 @@ try {
  await page.goto(base+'#/v3');
  await page.getByRole('button',{name:'Connect Wallet',exact:true}).waitFor();
  assert.equal(await page.getByRole('button',{name:'Create Vault',exact:true}).isDisabled(),true);
- await page.getByRole('link',{name:'Make an Offer',exact:true}).click();
+ await page.getByRole('link',{name:'Browse All Vaults',exact:true}).click();
  await page.getByRole('heading',{name:'Known vaults',exact:true}).waitFor();
- await page.getByRole('link',{name:'Create a Vault',exact:true}).click();
+ await page.getByRole('link',{name:'Create Vault',exact:true}).click();
  await page.getByRole('button',{name:'Connect Wallet',exact:true}).click();
  await page.getByRole('dialog').waitFor();
  await page.keyboard.press('Escape');

@@ -26,11 +26,11 @@ try{
  assert.equal(await page.evaluate(()=>localStorage.getItem('arena-chipnet-automatic-settlement')),'false');
  report.networks.mainnet={verified:await page.locator('.v3-arena>.provider-status').innerText(),createRequiresWallet:await page.getByRole('button',{name:'Create Vault',exact:true}).isDisabled()};
  const workerReads=await Promise.all(page.workers().map(w=>w.evaluate(()=>({network:globalThis.name,requests:globalThis.__arenaRequests??[]}))));report.networks.mainnet.workerReads=workerReads;const initialSockets=workerReads.flatMap(w=>w.requests.map(r=>r.endpoint));assert(new Set(initialSockets).size>=2);assert(initialSockets.every(s=>/bch\.(loping\.net|imaginary\.cash)/.test(s)));
- await page.getByRole('link',{name:'Make an Offer',exact:true}).click();await page.getByRole('heading',{name:'Known vaults',exact:true}).waitFor();assert.equal(await page.getByRole('link',{name:/fa5bae/}).count(),0);assert.equal(await page.getByText('chipnet-recovery-sentinel',{exact:false}).count(),0);
+ await page.getByRole('link',{name:'Browse All Vaults',exact:true}).click();await page.getByRole('heading',{name:'Known vaults',exact:true}).waitFor();assert.equal(await page.getByRole('link',{name:/fa5bae/}).count(),0);assert.equal(await page.getByText('chipnet-recovery-sentinel',{exact:false}).count(),0);
  await page.getByRole('combobox',{name:'Network',exact:true}).selectOption('chipnet');await page.waitForURL(/network=chipnet/);
  await page.getByText(/Chipnet temporarily unavailable for transactions:/).waitFor();await page.getByRole('heading',{name:'Known vaults',exact:true}).waitFor();
  await page.getByRole('link',{name:/V3 vault fa5bae/}).waitFor();await page.getByText('Transaction recovery',{exact:true}).click();await page.getByText(/chipnet-recovery-sentinel/).waitFor({timeout:90000});
- await page.getByRole('link',{name:'Create a Vault',exact:true}).click();assert.equal(await page.getByRole('button',{name:'Create Vault',exact:true}).isDisabled(),true);
+ await page.getByRole('link',{name:'Create Vault',exact:true}).click();assert.equal(await page.getByRole('button',{name:'Create Vault',exact:true}).isDisabled(),true);
  await page.setViewportSize({width:390,height:844});assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);
  report.networks.chipnet={temporarilyUnavailable:true,knownVaultRetained:true,journalRetained:true,createDisabled:true,mobileFits:true};
  await page.getByRole('combobox',{name:'Network',exact:true}).selectOption('mainnet');await page.waitForURL(/network=mainnet/);await page.getByRole('heading',{name:'Known vaults',exact:true}).waitFor();

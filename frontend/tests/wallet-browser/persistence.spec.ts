@@ -20,8 +20,8 @@ test('pair once; refresh, tab reopen and navigation preserve identity and pendin
   const original=await page.evaluate(key=>JSON.parse(localStorage.getItem(key)!),key);
   // Seed a synthetic pending record in the actual v1 IndexedDB journal; no spending.
   await page.evaluate(async()=>{await new Promise<void>((resolve,reject)=>{const request=indexedDB.open('staking-arena-wallet-v1',1);request.onupgradeneeded=()=>request.result.createObjectStore('operations');request.onerror=()=>reject(request.error);request.onsuccess=()=>{const db=request.result;const tx=db.transaction('operations','readwrite');tx.objectStore('operations').put({version:1,network:'chipnet',id:'pending',kind:'create',step:'genesis',stage:'pending',observation:'submitted',parameters:{stakingCategory:'11'.repeat(32),epoch:1800000000,periodSeconds:60,periods:2,cap:1000},coins:[],txid:'22'.repeat(32),genesis:'22'.repeat(32),pregenesis:'33'.repeat(32),updatedAt:0},'pending');tx.oncomplete=()=>{db.close();resolve();};};});});
-  await page.getByRole('link',{name:'Make an Offer',exact:true}).click();
-  await page.getByRole('link',{name:'Create a Vault',exact:true}).click();
+  await page.getByRole('link',{name:'Browse All Vaults',exact:true}).click();
+  await page.getByRole('link',{name:'Create Vault',exact:true}).click();
   await connected(page);expect((await stats(page)).attempts).toBe(1);
   await page.reload();await connected(page);expect((await stats(page)).pairings).toBe(0);
   await page.close();page=await context.newPage();await page.goto('/#/v3');await connected(page);

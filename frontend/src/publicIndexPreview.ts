@@ -1,3 +1,4 @@
+import {createBrandArtwork} from './brandArtwork';
 import {warmPublicIndex} from './publicIndexTransport';
 import type {V3Network} from '../../src/v3/network';
 /** Candidate hints only. This tiny startup view has no wallet, transaction or state
@@ -10,7 +11,7 @@ export function startPublicPreview(){
  const el=(tag:string,text:string)=>{const node=document.createElement(tag);node.textContent=text;return node;};
  const remove=()=>{root.remove();window.removeEventListener('hashchange',changed);clearTimeout(deadline);};
  const changed=()=>{if(!location.hash.startsWith('#/v3/offers'))remove();};
- const deadline=setTimeout(()=>{if(root.isConnected&&!root.hidden)root.append(el('p','Vault verification is taking longer than expected. Reload to retry; financial actions remain unavailable.'));},15000);
+ const deadline=setTimeout(()=>{if(root.isConnected&&!root.hidden)(root.querySelector('main')??root).append(el('p','Vault verification is taking longer than expected. Reload to retry; financial actions remain unavailable.'));},15000);
  window.addEventListener('hashchange',changed);
  void warmPublicIndex(network as V3Network).then(data=>{
   if(!root.isConnected||!location.hash.startsWith('#/v3/offers'))return;
@@ -22,8 +23,15 @@ export function startPublicPreview(){
    if(rows.has(c.genesis)&&JSON.stringify(rows.get(c.genesis).config)!==JSON.stringify(c))conflicts.add(c.genesis);else rows.set(c.genesis,row);
   }
   if(!rows.size)return;
-  root.replaceChildren(el('h1','Stake Arena'),el('h2','Known vaults'));
-  const refresh=el('button','Refresh public discovery') as HTMLButtonElement;refresh.disabled=true;root.append(refresh);
+  const header=el('header','');header.className='header';header.append(createBrandArtwork());
+  const nav=el('nav','');nav.setAttribute('aria-label','Main navigation');
+  for(const [label,href]of [['My Offers','#/v3/my-offers'],['About','#/about']]){const link=el('a',label) as HTMLAnchorElement;link.href=href;nav.append(link);}header.append(nav);
+  const main=el('main',''),arena=el('div','');arena.className='v3-arena';
+  const tabs=el('nav','');tabs.className='v3-tabs';tabs.setAttribute('aria-label','V3 actions');
+  for(const [label,href]of [['Create Vault','#/v3'],['Browse All Vaults','#/v3/offers']]){const link=el('a',label) as HTMLAnchorElement;link.href=href;if(href==='#/v3')link.className='create-vault-tab';else link.setAttribute('aria-current','page');tabs.append(link);}
+  const panel=el('section','');panel.className='v3-known';panel.append(el('h2','Known vaults'));
+  arena.append(tabs,panel);main.append(arena);root.replaceChildren(header,main);
+  const refresh=el('button','Refresh public discovery') as HTMLButtonElement;refresh.disabled=true;panel.append(refresh);
   const table=document.createElement('table');table.className='marketplace-table';
   const head=table.createTHead().insertRow();for(const label of ['Vault','Total max reward','Staking asset','Offers']){const th=el('th',label);th.setAttribute('scope','col');head.append(th);}
   const body=table.createTBody();let number=0;
@@ -34,7 +42,7 @@ export function startPublicPreview(){
    for(const [label,text] of [['Total max reward',reward],['Staking asset',asset(c.stakingAsset)],['Offers','Verifying…']]){const cell=row.insertCell();cell.dataset.label=label;cell.textContent=text;}
 
   }
-  root.append(table);
+  panel.append(table);
   root.hidden=false;
  }).catch(()=>remove());
 }

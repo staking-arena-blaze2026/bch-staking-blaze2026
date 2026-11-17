@@ -133,9 +133,9 @@ it('switches tabs without losing creation inputs and follows browser history has
  stub();window.location.hash='/v3';render(<V3Arena/>);
  fireEvent.change(screen.getByLabelText('Interval (seconds)'),{target:{value:'7200'}});
  await act(async()=>{window.location.hash='/v3/offers';window.dispatchEvent(new HashChangeEvent('hashchange'));});
- expect(screen.getByRole('heading',{name:'Known vaults'})).toBeVisible();expect(screen.getByRole('link',{name:'Make an Offer'})).toHaveAttribute('aria-current','page');
+ expect(screen.getByRole('heading',{name:'Known vaults'})).toBeVisible();expect(screen.getByRole('link',{name:'Browse All Vaults'})).toHaveAttribute('aria-current','page');
  await act(async()=>{window.location.hash='/v3';window.dispatchEvent(new HashChangeEvent('hashchange'));});
- expect(screen.getByLabelText('Interval (seconds)')).toHaveValue('7200');expect(screen.getByRole('link',{name:'Create a Vault'})).toHaveAttribute('aria-current','page');
+ expect(screen.getByLabelText('Interval (seconds)')).toHaveValue('7200');expect(screen.getByRole('link',{name:'Create Vault'})).toHaveAttribute('aria-current','page');
 });
 it('verifies shared configurations before showing figures and links to their dedicated page',async()=>{
  stub();window.location.hash='/v3/offers';stubCatalog();
@@ -234,11 +234,11 @@ it('shows a submitted offer before slow refresh and automatically promotes it af
  expect(vi.mocked(v3Call).mock.calls.some(([i])=>i.operation==='rebroadcast')).toBe(false);
 },15000);
 
-it('shows only four marketplace columns, offers first, and places refresh directly after the heading',async()=>{
+it('shows four marketplace columns, creation first, and refresh directly after the heading',async()=>{
  stub();stubCatalog();window.location.hash='/v3/offers';render(<V3Arena/>);
  await waitFor(()=>expect(screen.getByText('0.00008000 BCH')).toBeVisible());
  expect(screen.getAllByRole('columnheader').map(h=>h.textContent)).toEqual(['Vault','Total max reward','Staking asset','Offers']);
- expect(screen.getByRole('navigation',{name:'V3 actions'}).firstElementChild).toHaveTextContent('Make an Offer');
+ expect(screen.getByRole('navigation',{name:'V3 actions'}).firstElementChild).toHaveTextContent('Create Vault');
  expect(screen.getByRole('heading',{name:'Known vaults'}).nextElementSibling).toBe(screen.getByRole('button',{name:'Refresh public discovery'}));
  expect(screen.queryByText(/Public staking marketplace:/)).toBeNull();
 });
