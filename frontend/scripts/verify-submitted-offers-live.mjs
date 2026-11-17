@@ -31,7 +31,7 @@ try{
  await page.getByRole('heading',{name:'Known vaults',exact:true}).waitFor({timeout:60000});
  const card=page.locator('.v3-vault-card').first();await card.waitFor({timeout:60000});const href=await card.getAttribute('href');await card.click();
  await page.locator('.v3-summary').waitFor({timeout:120000});
- assert.match(await page.locator('.v3-queue').innerText(),/Current state transaction:/);
+ assert.doesNotMatch(await page.locator('.v3-queue').innerText(),/Current state transaction:/);
  assert.equal(await page.getByRole('button',{name:'Make an Offer',exact:true}).isDisabled(),true);
  await page.reload();await page.locator('.v3-summary').waitFor({timeout:120000});
  await page.setViewportSize({width:390,height:844});

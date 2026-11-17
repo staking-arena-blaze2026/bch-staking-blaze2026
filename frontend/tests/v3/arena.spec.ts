@@ -27,7 +27,7 @@ test('real browser worker verifies wallet-funded claims over WSS and requires a 
  const errors:string[]=[];page.on('pageerror',e=>errors.push(e.message));await open(page);
  await expect(page.getByRole('group',{name:'New v3 offer'}).getByRole('textbox')).toHaveCount(3);await expect(page.getByLabel('Maximum wins W')).toHaveCount(0);
  await expect(page.getByText(/Required staking commitment:/)).toContainText('3000 satoshis');
- await expect(page.getByRole('cell',{name:'513'})).toBeVisible();await expect(page.getByRole('button',{name:'Review and pay fee in wallet',exact:true})).toBeDisabled();
+ await expect(page.getByRole('cell',{name:'513'})).toBeVisible();await expect(page.getByRole('button',{name:'Claim reward',exact:true})).toBeDisabled();
  await expect(page.getByText(/Claim unavailable: connect a compatible WizardConnect/)).toBeVisible();
  const claim=await fixture.claim();await refresh(page);expect(fixture.chain.pending.size).toBe(1);expect(fixture.chain.broadcasts).toHaveLength(1);
  await page.reload();await refresh(page);await expect(page.getByText(/Pending \(0-conf\) state verified/)).toBeVisible();
@@ -37,7 +37,7 @@ test('real browser worker verifies wallet-funded claims over WSS and requires a 
 });
 test('provider failure disables v3 actions and a reorganization restores the queue and allocation state',async({page})=>{
  await open(page);const claim=await fixture.claim();fixture.chain.mine();await refresh(page);await expect(page.getByText(/effective lock 1024s/)).toBeVisible();
- fixture.chain.reorgLastBlock();fixture.chain.pending.add(claim);await refresh(page);await expect(page.getByRole('cell',{name:'Pending (0-conf) · provisional · #0 · Legacy offer: 1 reward payment remaining'})).toBeVisible();await expect(page.getByText(/effective lock 1024s/)).toBeVisible();await expect(page.getByText(/Pending \(0-conf\) state verified/)).toBeVisible();await expect(page.getByRole('button',{name:'Review and pay fee in wallet',exact:true})).toBeDisabled();
+ fixture.chain.reorgLastBlock();fixture.chain.pending.add(claim);await refresh(page);await expect(page.getByRole('cell',{name:'Pending (0-conf) · provisional · #0 · Legacy offer: 1 reward payment remaining'})).toBeVisible();await expect(page.getByText(/effective lock 1024s/)).toBeVisible();await expect(page.getByText(/Pending \(0-conf\) state verified/)).toBeVisible();await expect(page.getByRole('button',{name:'Claim reward',exact:true})).toBeDisabled();
  fixture.chain.mine();await refresh(page);await expect(page.getByRole('cell',{name:'Active · #0 · Legacy offer: 1 reward payment remaining'})).toBeVisible();
  fixture.chain.fail=true;await page.getByRole('button',{name:'Refresh vault state'}).click();await expect(page.getByRole('status').filter({hasText:'Waiting for a second verified provider'})).toContainText('Waiting for a second verified provider',{timeout:60000});await expect(page.getByRole('heading',{name:'Live ranked queue'})).toBeVisible();await expect(page.getByText(/independent state verification incomplete/)).toBeVisible();
  fixture.chain.fail=false;await refresh(page);await expect(page.getByRole('cell',{name:'Active · #0 · Legacy offer: 1 reward payment remaining'})).toBeVisible();
@@ -65,13 +65,19 @@ test('direct genesis journal survives browser reload and automatically confirms 
 test('tabs preserve form values, verified rows open vault routes, and desktop/mobile layouts follow task order',async({page})=>{
  await page.setViewportSize({width:1360,height:1000});await page.goto('./#/v3');
  await page.getByLabel('Interval (seconds)',{exact:true}).waitFor({timeout:60000});await page.getByLabel('Interval (seconds)',{exact:true}).fill('7200');
- await page.getByRole('link',{name:'Make an Offer',exact:true}).click();await expect(page.getByRole('heading',{name:'Known vaults'})).toBeVisible();
+ await page.getByRole('link',{name:'Browse All Vaults',exact:true}).click();await expect(page.getByRole('heading',{name:'Known vaults'})).toBeVisible();
  await page.goBack();await expect(page.getByLabel('Interval (seconds)',{exact:true})).toHaveValue('7200');await page.goForward();
  await open(page);
  await page.getByRole('link',{name:'← Known vaults',exact:true}).click();
  const card=page.getByRole('link',{name:'Vault 1',exact:true});await expect(card.locator('xpath=ancestor::tr')).toContainText('0.00008000 BCH');await card.click();
  await expect(page).toHaveURL(new RegExp('#/v3/vault/'+fixture.config.genesis+'$'));await expect(page.locator('.v3-summary')).toBeVisible();
  const queue=await page.locator('.v3-queue').boundingBox(),form=await page.locator('.v3-offer').boundingBox();expect(queue!.x).toBeLessThan(form!.x);expect(form!.y).toBeLessThan(queue!.y);expect(await page.locator('.v3-queue .table-scroll').evaluate(el=>el.scrollWidth<=el.clientWidth)).toBe(true);
+ await expect(page.getByRole('table',{name:'Vault summary'}).getByRole('row')).toHaveCount(8);
+ expect(await page.locator('.vault-summary-table th,.vault-summary-table td').evaluateAll(cells=>cells.every(c=>getComputedStyle(c).borderTopWidth==='0px'&&getComputedStyle(c).borderBottomWidth==='0px'))).toBe(true);
+ expect(await page.locator('.v3-offer').evaluate(el=>getComputedStyle(el).position)).toBe('static');
+ await expect(page.getByText('P(Priority) = S x T / R',{exact:true})).toBeVisible();
+ await expect(page.getByText('Caller pays the fee. The reward goes to the winning offer.',{exact:true})).toBeVisible();
+ await expect(page.getByText(/Current state transaction:|Top-ranked offer:|RegistryAtomicV4 · direct/)).toHaveCount(0);
  await page.screenshot({path:'test-results/v3-redesign-desktop.png',fullPage:true});
  await page.setViewportSize({width:390,height:844});const mobile=await Promise.all(['.v3-summary','.v3-offer','.v3-queue'].map(c=>page.locator(c).boundingBox()));expect(mobile[0]!.y).toBeLessThan(mobile[1]!.y);expect(mobile[1]!.y).toBeLessThan(mobile[2]!.y);
  expect(await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth)).toBe(true);await page.screenshot({path:'test-results/v3-redesign-mobile.png',fullPage:true});

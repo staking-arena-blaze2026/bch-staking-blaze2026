@@ -50,7 +50,7 @@ try {
  assert.equal(await page.getByRole('dialog').count(),0);
  assert.equal(await page.getByRole('button',{name:'Create Vault',exact:true}).isDisabled(),true);
  await page.clock.fastForward(30_001);
- await page.getByRole('button',{name:'Retry saved connection',exact:true}).waitFor();
+ await page.getByRole('button',{name:'Pair wallet again',exact:true}).waitFor();
  assert.equal(await page.getByRole('dialog').count(),0);
  assert.equal(await page.evaluate(key=>!!localStorage.getItem(key),key),true);
  report.savedRestorationWithoutQr=true;report.offlineDeadline=true;report.savedPairingPreserved=true;report.signingDisabled=true;

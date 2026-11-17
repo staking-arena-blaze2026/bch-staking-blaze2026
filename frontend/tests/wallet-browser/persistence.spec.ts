@@ -55,7 +55,17 @@ test('offline startup keeps automatically retrying and later wallet availability
   await page.reload();
   await expect(page.getByText('Cashonize paired · Wallet offline',{exact:true})).toBeVisible();
   await page.clock.fastForward(30_001);
-  await expect(page.getByRole('button',{name:'Retry saved connection'})).toBeVisible();
+  await expect(page.getByRole('button',{name:'Retry saved connection'})).toHaveCount(0);await expect(page.getByRole('button',{name:'Pair wallet again'})).toBeVisible();
+  await expect(page.getByText(/Open Cashonize to reconnect|Pairing is saved in this browser profile/)).toHaveCount(0);
+  for(const width of [1672,1024,768,390,320]){
+    await page.setViewportSize({width,height:900});
+    const layout=await page.evaluate(()=>{
+      const banner=document.querySelector('.brand-slogan')!.getBoundingClientRect();
+      return {overflow:document.documentElement.scrollWidth>innerWidth,buttons:[...document.querySelectorAll('.wallet-actions button')].map(b=>{const r=b.getBoundingClientRect();return {width:r.width,height:r.height,overlap:r.left<banner.right&&r.right>banner.left&&r.top<banner.bottom&&r.bottom>banner.top};})};
+    });
+    expect(layout.overflow).toBe(false);expect(layout.buttons.every(b=>!b.overlap&&b.width<160&&b.height<=34)).toBe(true);
+  }
+
   await expect(page.getByRole('dialog')).toHaveCount(0);
   expect(await page.evaluate(key=>!!localStorage.getItem(key),key)).toBe(true);
   await page.clock.runFor(600_000);expect((await stats(page)).attempts).toBeGreaterThan(1);
