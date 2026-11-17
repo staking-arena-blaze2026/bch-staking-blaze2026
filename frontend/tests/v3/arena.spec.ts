@@ -64,9 +64,9 @@ test('direct genesis journal survives browser reload and automatically confirms 
 
 test('tabs preserve form values, verified rows open vault routes, and desktop/mobile layouts follow task order',async({page})=>{
  await page.setViewportSize({width:1360,height:1000});await page.goto('./#/v3');
- await page.getByLabel('Interval (seconds)',{exact:true}).waitFor({timeout:60000});await page.getByLabel('Interval (seconds)',{exact:true}).fill('7200');
+ await page.getByLabel('Interval (minutes)',{exact:true}).waitFor({timeout:60000});await page.getByLabel('Interval (minutes)',{exact:true}).fill('120');
  await page.getByRole('link',{name:'Browse All Vaults',exact:true}).click();await expect(page.getByRole('heading',{name:'Known vaults'})).toBeVisible();
- await page.goBack();await expect(page.getByLabel('Interval (seconds)',{exact:true})).toHaveValue('7200');await page.goForward();
+ await page.goBack();await expect(page.getByLabel('Interval (minutes)',{exact:true})).toHaveValue('120');await page.goForward();
  await open(page);
  await page.getByRole('link',{name:'← Known vaults',exact:true}).click();
  const card=page.getByRole('link',{name:'Vault 1',exact:true});await expect(card.locator('xpath=ancestor::tr')).toContainText('0.00008000 BCH');await card.click();

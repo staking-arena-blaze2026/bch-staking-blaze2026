@@ -110,12 +110,12 @@ test('paired offline creation waits once, expires, preserves inputs, and reload 
  await page.evaluate(()=>localStorage.removeItem('test-wallet-online'));await page.clock.install();await page.reload();
  await expect(page.getByText('Cashonize paired · Wallet offline',{exact:true})).toBeVisible();
  await expect(page.locator('.wallet-control small[title]')).toContainText('Last connected address:');
- await page.getByLabel('Interval (seconds)',{exact:true}).fill('7200');
+ await page.getByLabel('Interval (minutes)',{exact:true}).fill('120');
  const button=page.getByRole('button',{name:'Create Vault',exact:true});await expect(button).toBeEnabled();await button.click();
  await expect(page.getByText(/Open Cashonize to continue\. Waiting/)).toBeVisible();
  expect((await stats(page)).signatures).toBe(0);
  await page.clock.fastForward(90_101);await expect(page.getByText(/Wallet request changed or expired/)).toBeVisible();
- await expect(page.getByLabel('Interval (seconds)',{exact:true})).toHaveValue('7200');
+ await expect(page.getByLabel('Interval (minutes)',{exact:true})).toHaveValue('120');
  await page.evaluate(()=>{localStorage.setItem('test-wallet-online','yes');(window as any).walletTransport.ready();});await connected(page);
  await page.clock.runFor(1000);expect((await stats(page)).signatures).toBe(0);
  // A new pending click is memory-only; reload must restore pairing but no intent.

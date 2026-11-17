@@ -73,6 +73,8 @@ Public vault discovery and retained listings: new on-chain marker announcements 
 
 Read-only chipnet upgrade investigation: [activation evidence and operator report](blaze2026/chipnet-upgrade/README.md) identify the November 2026 faster-block consensus split and an Optnlabs header rejected by a signature-verified isolated BCHN 29.2.1 preview. The installed 29.2.0 node was expired and left untouched; the preview reference validated headers but did not finish full-block synchronization. Required tick-aware input verification is documented, not silently substituted into transaction rules. This investigation changes diagnostics/documentation only.
 
+Minute-based v3 creation and offer forms: new release intervals and offer durations accept whole minutes, with minimums of 1 minute on Chipnet and 10 minutes on Mainnet. Inputs convert to seconds before transaction preparation; worker preflight also enforces public-network minimums for new requests. Existing vaults, offers, recovery journals and covenant rules retain their second-based values. This is post-baseline application policy.
+
 ## How judges can compare versions
 
 1. Inspect the original source and website `pre-blaze-2026` tags and exact commit links; annotated tag timestamps are intentionally later than the referenced commits.

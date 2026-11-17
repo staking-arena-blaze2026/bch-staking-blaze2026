@@ -66,7 +66,7 @@ it('shows capacity exhaustion rejected by wallet preparation before approval',as
  expect(wallet.v3).toHaveBeenCalledTimes(1);expect(screen.getByRole('status')).toHaveTextContent('capacity exhausted');
 });
 it('keeps invalid offers blocked as the display ages',async()=>{
- stub();await open();fireEvent.change(screen.getByLabelText('Duration T (seconds)'),{target:{value:'0'}});await ageDisplay();
+ stub();await open();fireEvent.change(screen.getByLabelText('Duration T (minutes)'),{target:{value:'0'}});await ageDisplay();
  expect(screen.getByRole('button',{name:'Make an Offer'})).toBeDisabled();expect(screen.getByText(/Make an Offer unavailable:/)).toBeInTheDocument();
 });
 it('retains the display when wallet preparation rejects unavailable providers',async()=>{
@@ -116,7 +116,7 @@ it('allows an aged empty queue to be checked for newly eligible offers',async()=
 it('offers only S, T and R, shows commitment S, and submits one win',async()=>{
  stub();wallet.v3.mockReset().mockResolvedValue({stage:'pending'});await open();
  expect(screen.queryByLabelText(/Maximum wins/)).not.toBeInTheDocument();expect(screen.getByRole('group',{name:'New v3 offer'}).querySelectorAll('input')).toHaveLength(3);
- expect(screen.getByLabelText('Stake S (BCH)')).toBeInTheDocument();expect(screen.getByLabelText('Duration T (seconds)')).toBeInTheDocument();expect(screen.getByLabelText('Requested reward R (BCH)')).toBeInTheDocument();
+ expect(screen.getByLabelText('Stake S (BCH)')).toBeInTheDocument();expect(screen.getByLabelText('Duration T (minutes)')).toBeInTheDocument();expect(screen.getByLabelText('Requested reward R (BCH)')).toBeInTheDocument();
  expect(screen.getByText(/Required staking commitment:/)).toHaveTextContent('Required staking commitment: 0.00003000 BCH (3000 satoshis)');
  expect(screen.getAllByRole('columnheader').map(h=>h.textContent)).toEqual(['Rank','Stake S','Duration T (seconds)','Requested reward R','Priority P = S × T / R','Offer status']);
  await act(async()=>fireEvent.click(screen.getByRole('button',{name:'Make an Offer'})));
@@ -131,11 +131,11 @@ it('shows a winning offer as locked outside the active queue after its reward is
 
 it('switches tabs without losing creation inputs and follows browser history hashes',async()=>{
  stub();window.location.hash='/v3';render(<V3Arena/>);
- fireEvent.change(screen.getByLabelText('Interval (seconds)'),{target:{value:'7200'}});
+ fireEvent.change(screen.getByLabelText('Interval (minutes)'),{target:{value:'120'}});
  await act(async()=>{window.location.hash='/v3/offers';window.dispatchEvent(new HashChangeEvent('hashchange'));});
  expect(screen.getByRole('heading',{name:'Known vaults'})).toBeVisible();expect(screen.getByRole('link',{name:'Browse All Vaults'})).toHaveAttribute('aria-current','page');
  await act(async()=>{window.location.hash='/v3';window.dispatchEvent(new HashChangeEvent('hashchange'));});
- expect(screen.getByLabelText('Interval (seconds)')).toHaveValue('7200');expect(screen.getByRole('link',{name:'Create Vault'})).toHaveAttribute('aria-current','page');
+ expect(screen.getByLabelText('Interval (minutes)')).toHaveValue(120);expect(screen.getByRole('link',{name:'Create Vault'})).toHaveAttribute('aria-current','page');
 });
 it('verifies shared configurations before showing figures and links to their dedicated page',async()=>{
  stub();window.location.hash='/v3/offers';stubCatalog();
@@ -305,7 +305,7 @@ it('displays single-provider state before independent verification and blocks ev
 it('accepts 1–1000 releases, shows exact reserve and duration, and rejects invalid schedules',async()=>{
  stub();window.location.hash='/v3';render(<WalletTransactionsContext.Provider value={wallet}><V3Arena/></WalletTransactionsContext.Provider>);
  fireEvent.change(screen.getByLabelText('Schedule starts (UTC)'),{target:{value:'2027-01-01T00:00:00'}});
- fireEvent.change(screen.getByLabelText('Interval (seconds)'),{target:{value:'86400'}});
+ fireEvent.change(screen.getByLabelText('Interval (minutes)'),{target:{value:'1440'}});
  const count=screen.getByLabelText('Number of releases (1–1000)');
  for(const n of [1,16,17,100,365,1000]){fireEvent.change(count,{target:{value:String(n)}});expect(screen.getByText(/Deposit the entire reserve upfront:/)).toHaveTextContent((n*0.00002).toFixed(8)+' BCH');expect(screen.getByText(/Vault duration:/)).toHaveTextContent(`${n.toFixed(2)} days`);expect(screen.getByText(/Vault duration:/)).toHaveTextContent(new Date(Date.UTC(2027,0,1)+n*86400000).toISOString());}
  for(const n of ['1001','0','1.5','']){fireEvent.change(count,{target:{value:n}});expect(screen.getByRole('alert')).toHaveTextContent('whole number from 1 to 1000');expect(screen.getByRole('button',{name:/^Create Vault$/})).toBeDisabled();}
@@ -320,12 +320,12 @@ function offlineWallet(){
 it('keeps offline Create Vault clickable, retains inputs, and continues only one request after restoration',async()=>{
  stub();window.location.hash='/v3';const t=offlineWallet();
  render(<WalletTransactionsContext.Provider value={t.client}><V3Arena/></WalletTransactionsContext.Provider>);
- fireEvent.change(screen.getByLabelText('Interval (seconds)'),{target:{value:'7200'}});
+ fireEvent.change(screen.getByLabelText('Interval (minutes)'),{target:{value:'120'}});
  const button=screen.getByRole('button',{name:'Create Vault'});expect(button).toBeEnabled();fireEvent.click(button);fireEvent.click(button);
  expect(screen.getByRole('status')).toHaveTextContent('Open Cashonize to continue');expect(t.client.v3).not.toHaveBeenCalled();expect(t.client.restore).toHaveBeenCalledOnce();
  act(()=>t.connect());await waitFor(()=>expect(t.client.v3).toHaveBeenCalledOnce());
  expect(t.client.v3).toHaveBeenCalledWith(expect.objectContaining({operation:'create',parameters:expect.objectContaining({periodSeconds:7200})}),expect.any(Function));
- expect(screen.getByLabelText('Interval (seconds)')).toHaveValue('7200');
+ expect(screen.getByLabelText('Interval (minutes)')).toHaveValue(120);
 });
 it.each([false,true])('offline Make an Offer revalidates state on restoration (changed=%s)',async changed=>{
  stub();const t=offlineWallet();localStorage.setItem(v3ConfigStorage,JSON.stringify([config],(_,v)=>typeof v==='bigint'?v.toString():v));window.location.hash='/v3/vault/'+config.genesis;
@@ -341,7 +341,7 @@ it.each([false,true])('offline Make an Offer revalidates state on restoration (c
 });
 it('cancels waiting creation on edits and never continues it after a page remount',async()=>{
  stub();window.location.hash='/v3';const t=offlineWallet();const tree=<WalletTransactionsContext.Provider value={t.client}><V3Arena/></WalletTransactionsContext.Provider>;
- const view=render(tree);fireEvent.click(screen.getByRole('button',{name:'Create Vault'}));fireEvent.change(screen.getByLabelText('Interval (seconds)'),{target:{value:'7200'}});
+ const view=render(tree);fireEvent.click(screen.getByRole('button',{name:'Create Vault'}));fireEvent.change(screen.getByLabelText('Interval (minutes)'),{target:{value:'120'}});
  await waitFor(()=>expect(screen.getByRole('status')).toHaveTextContent('Review the current terms'));
  fireEvent.click(screen.getByRole('button',{name:'Create Vault'}));view.unmount();render(tree);act(()=>t.connect());
  await act(async()=>{await new Promise(resolve=>setTimeout(resolve,150));});expect(t.client.v3).not.toHaveBeenCalled();
@@ -386,4 +386,25 @@ it('cancels an offline claim when navigating away and does not revive it on remo
  const view=render(<WalletTransactionsContext.Provider value={t.client}><V3Arena/></WalletTransactionsContext.Provider>);const claim=await screen.findByRole('button',{name:'Claim reward'});await waitFor(()=>expect(claim).toBeEnabled());fireEvent.click(claim);
  await act(async()=>{window.location.hash='/v3/offers';window.dispatchEvent(new HashChangeEvent('hashchange'));});await waitFor(()=>expect(screen.getAllByRole('status').some(el=>el.textContent?.includes('changed or expired'))).toBe(true));
  view.unmount();act(()=>t.connect());render(<WalletTransactionsContext.Provider value={t.client}><V3Arena/></WalletTransactionsContext.Provider>);await act(async()=>{await new Promise(resolve=>setTimeout(resolve,150));});expect(t.client.v3).not.toHaveBeenCalled();
+});
+
+it('enforces mainnet minute inputs and submits offer duration in seconds',async()=>{
+ stub();wallet.v3.mockReset().mockResolvedValue({stage:'pending'});await open();
+ const duration=screen.getByLabelText('Duration T (minutes)');
+ expect(duration).toHaveAttribute('min','10');expect(duration).toHaveValue(60);
+ fireEvent.change(duration,{target:{value:'9'}});
+ expect(screen.getByRole('button',{name:'Make an Offer'})).toBeDisabled();
+ fireEvent.change(duration,{target:{value:'10'}});
+ await act(async()=>fireEvent.click(screen.getByRole('button',{name:'Make an Offer'})));
+ expect(wallet.v3).toHaveBeenCalledWith(expect.objectContaining({operation:'offer',terms:expect.objectContaining({duration:600})}));
+});
+it('enforces the mainnet interval minimum before creating a vault',async()=>{
+ stub();wallet.v3.mockReset().mockResolvedValue({stage:'pending'});window.location.hash='/v3';render(<WalletTransactionsContext.Provider value={wallet}><V3Arena/></WalletTransactionsContext.Provider>);
+ const interval=screen.getByLabelText('Interval (minutes)');
+ expect(interval).toHaveAttribute('min','10');expect(interval).toHaveValue(60);
+ fireEvent.change(interval,{target:{value:'9'}});
+ expect(screen.getByRole('button',{name:'Create Vault'})).toBeDisabled();
+ fireEvent.change(interval,{target:{value:'10'}});
+ await act(async()=>fireEvent.click(screen.getByRole('button',{name:'Create Vault'})));
+ expect(wallet.v3).toHaveBeenCalledWith(expect.objectContaining({operation:'create',parameters:expect.objectContaining({periodSeconds:600})}));
 });
