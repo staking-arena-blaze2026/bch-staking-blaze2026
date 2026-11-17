@@ -1,10 +1,14 @@
 import {activeNetwork} from './activeNetwork';
+import {encodeCashAddress, hash160, hexToBin} from '@bitauth/libauth';
+import {checkedWalletKey} from './walletDerivation';
+import {WalletNetworkSession, assertTransactionSession, MAINNET_NETWORK, CHIPNET_NETWORK} from './walletNetwork';
 import {useEffect, useRef, useState} from 'react';
 import {RelayMsgAction, RelayStatus, type WalletReadyMessage} from '@wizardconnect/core';
 import {InvalidWalletSession, createWalletRelay} from './walletRelay';
 import {DappConnectionManager, loadSession, type SessionStorage} from '@wizardconnect/dapp';
 
 export const WALLET_SESSION_KEY = 'staking-arena-wizardconnect-v1'+(activeNetwork==='chipnet'?'':'-'+activeNetwork);
+export const WALLET_ADDRESS_KEY = `${WALLET_SESSION_KEY}-address`;
 const INVALID_SESSION_KEY = `${WALLET_SESSION_KEY}-invalid`;
 export const RESTORE_WINDOW_MS = 30_000;
 export type ConnectionState = 'idle'|'connecting'|'restoring'|'connected'|'reconnecting'|'offline'|'invalid';
@@ -29,6 +33,7 @@ class WalletOwner {
   private replacements = 0;
   private recoveryStartedAt?: number;
   private remoteDisconnectPending = false;
+  private pairingGeneration = 0;
   private expectedPaths = '';
   private listeners = new Set<() => void>();
   private memory = new Map<string,string>();
@@ -46,9 +51,33 @@ class WalletOwner {
   };
   private storageUnavailable() { this.storageFailed = true; this.error = 'Browser storage is unavailable. This pairing can only survive this page; allow browser storage to reconnect on future visits.'; }
   subscribe = (listener: () => void) => { this.listeners.add(listener); return () => { this.listeners.delete(listener); }; };
-  private emit() { this.listeners.forEach(listener => listener()); }
+  private emit() { if (this.state === 'invalid') { this.pairingGeneration++; this.storage.removeItem(WALLET_ADDRESS_KEY); } this.listeners.forEach(listener => listener()); }
   private clearTimers() { this.timers.forEach(clearTimeout); this.timers = []; }
   private saved() { return loadSession(WALLET_SESSION_KEY,this.storage); }
+  pairing = () => {
+    const saved = this.saved();
+    const paired = !this.stopped && this.state !== 'invalid' && !this.storage.getItem(INVALID_SESSION_KEY) && !!saved?.walletPublicKey;
+    return {generation:this.pairingGeneration,paired, live:paired && this.state === 'connected', identity:paired ? JSON.stringify([saved!.walletPublicKey,this.expectedPaths || JSON.stringify(saved!.paths ?? [])]) : '', network:activeNetwork};
+  };
+  address = () => {
+    try {
+      const cached = JSON.parse(this.storage.getItem(WALLET_ADDRESS_KEY) ?? 'null');
+      const pairing = this.pairing();
+      return pairing.paired && cached?.identity === pairing.identity && cached?.network === activeNetwork && typeof cached?.address === 'string' ? cached.address as string : undefined;
+    } catch { return undefined; }
+  };
+  private rememberAddress(manager:DappConnectionManager) {
+    // Display hint only. Derive receive/0 independently from the authenticated xpub.
+    try {
+      const session = new WalletNetworkSession(() => manager.getSessionPaths());
+      session.accept(this.extensions);
+      assertTransactionSession(session,activeNetwork === 'mainnet' ? MAINNET_NETWORK : CHIPNET_NETWORK);
+      const key = checkedWalletKey(manager.getSessionPaths(),'receive',0,(c,i)=>manager.getPubkey(c,i),activeNetwork === 'mainnet' ? 'mainnet' : 'testnet');
+      const encoded = encodeCashAddress({prefix:activeNetwork === 'mainnet' ? 'bitcoincash' : 'bchtest',type:'p2pkh',payload:hash160(hexToBin(key.publicKey))});
+      if(typeof encoded === 'string') throw Error('Address unavailable');
+      this.storage.setItem(WALLET_ADDRESS_KEY,JSON.stringify({identity:this.pairing().identity,network:activeNetwork,address:encoded.address}));
+    } catch { this.storage.removeItem(WALLET_ADDRESS_KEY); }
+  }
   start() {
     const saved = this.saved();
     if (this.storage.getItem(INVALID_SESSION_KEY)) { this.state='invalid'; this.emit(); return; }
@@ -171,7 +200,7 @@ class WalletOwner {
       clearTimeout(this.replacementTimer); this.replacementTimer=undefined; this.replacements=0; this.recoveryStartedAt=undefined;
       if (!this.storageFailed) this.error=null;
       walletDiagnostic('Wallet identity validated');
-      this.state = 'connected'; walletDiagnostic('Session restoration succeeded (live handshake)'); this.emit();
+      this.state = 'connected'; this.rememberAddress(manager); walletDiagnostic('Session restoration succeeded (live handshake)'); this.emit();
     });
     manager.on('reconnecting', () => { if (this.manager === manager && this.state === 'connected') this.window(false); });
     // Revoke financial liveness immediately; the SDK gives Cashonize an 8s
@@ -233,14 +262,15 @@ class WalletOwner {
     if (this.state === 'connected') this.window(false);
     if (this.manager && this.relay) this.manager.updateConnection(this.relay.client,RelayStatus.reconnecting('Browser offline'));
   };
-  replace = () => { this.teardown(); this.storage.removeItem(WALLET_SESSION_KEY); this.storage.removeItem(INVALID_SESSION_KEY); this.state='idle'; this.remoteDisconnectPending=false; this.open(false); };
+  replace = () => { this.pairingGeneration++; this.teardown(); this.storage.removeItem(WALLET_ADDRESS_KEY); this.storage.removeItem(WALLET_SESSION_KEY); this.storage.removeItem(INVALID_SESSION_KEY); this.state='idle'; this.remoteDisconnectPending=false; this.open(false); };
   disconnect = async () => {
+    this.pairingGeneration++;
     walletDiagnostic('Explicit disconnect');
     const manager=this.manager;
     // Courtesy notification must not hold the UI hostage to an offline relay.
     void manager?.sendDisconnect().catch(()=>{});
     this.recoveryStartedAt=undefined; this.replacements=0; this.remoteDisconnectPending=false;
-    this.state='idle'; this.teardown(); this.storage.removeItem(WALLET_SESSION_KEY); this.storage.removeItem(INVALID_SESSION_KEY);
+    this.state='idle'; this.teardown(); this.storage.removeItem(WALLET_ADDRESS_KEY); this.storage.removeItem(WALLET_SESSION_KEY); this.storage.removeItem(INVALID_SESSION_KEY);
     this.uri=this.qrUri=null; this.error=null; this.emit();
   };
   stop() { this.stopped=true; this.teardown(); }
@@ -271,6 +301,6 @@ export function usePersistentWallet() {
     };
   },[]);
   const owner=ownerRef.current;
-  return {state:owner?.state??'idle',manager:owner?.manager??null,uri:owner?.uri,qrUri:owner?.qrUri,error:owner?.error,extensions:owner?.extensions,
+  return {pairing:()=>owner?.pairing()??{paired:false,live:false,identity:'',network:activeNetwork},address:owner?.address(),state:owner?.state??'idle',manager:owner?.manager??null,uri:owner?.uri,qrUri:owner?.qrUri,error:owner?.error,extensions:owner?.extensions,
     isLive:()=>owner?.state === 'connected',connect:()=>owner?.connect(),retry:()=>owner?.retry(),replace:()=>owner?.replace(),disconnect:async()=>owner?.disconnect()};
 }

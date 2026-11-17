@@ -308,3 +308,38 @@ it('accepts 1–1000 releases, shows exact reserve and duration, and rejects inv
  for(const n of ['1001','0','1.5','']){fireEvent.change(count,{target:{value:n}});expect(screen.getByRole('alert')).toHaveTextContent('whole number from 1 to 1000');expect(screen.getByRole('button',{name:/^Create Vault$/})).toBeDisabled();}
  fireEvent.change(count,{target:{value:'1000'}});fireEvent.change(screen.getByLabelText('Schedule starts (UTC)'),{target:{value:'2038-01-01T00:00:00'}});expect(screen.getByRole('alert')).toHaveTextContent('boundary');
 });
+
+function offlineWallet(){
+ let live=false;
+ const client={...wallet,v3:vi.fn(async(_intent:any,check?:()=>void)=>{check?.();return {stage:'pending'};}),pairing:()=>({paired:true,live,identity:'paired-owner',network:'mainnet'}),restore:vi.fn(),v3Availability:()=>({available:live})};
+ return {client,connect:()=>{live=true;}};
+}
+it('keeps offline Create Vault clickable, retains inputs, and continues only one request after restoration',async()=>{
+ stub();window.location.hash='/v3';const t=offlineWallet();
+ render(<WalletTransactionsContext.Provider value={t.client}><V3Arena/></WalletTransactionsContext.Provider>);
+ fireEvent.change(screen.getByLabelText('Interval (seconds)'),{target:{value:'7200'}});
+ const button=screen.getByRole('button',{name:'Create Vault'});expect(button).toBeEnabled();fireEvent.click(button);fireEvent.click(button);
+ expect(screen.getByRole('status')).toHaveTextContent('Open Cashonize to continue');expect(t.client.v3).not.toHaveBeenCalled();expect(t.client.restore).toHaveBeenCalledOnce();
+ act(()=>t.connect());await waitFor(()=>expect(t.client.v3).toHaveBeenCalledOnce());
+ expect(t.client.v3).toHaveBeenCalledWith(expect.objectContaining({operation:'create',parameters:expect.objectContaining({periodSeconds:7200})}),expect.any(Function));
+ expect(screen.getByLabelText('Interval (seconds)')).toHaveValue('7200');
+});
+it.each([false,true])('offline Make an Offer revalidates state on restoration (changed=%s)',async changed=>{
+ stub();const t=offlineWallet();localStorage.setItem(v3ConfigStorage,JSON.stringify([config],(_,v)=>typeof v==='bigint'?v.toString():v));window.location.hash='/v3/vault/'+config.genesis;
+ render(<WalletTransactionsContext.Provider value={t.client}><V3Arena/></WalletTransactionsContext.Provider>);
+ await waitFor(()=>expect(screen.getByRole('button',{name:'Make an Offer'})).toBeEnabled());const button=screen.getByRole('button',{name:'Make an Offer'});
+ expect(screen.getByRole('button',{name:'Review and pay fee in wallet'})).toBeDisabled();
+ fireEvent.click(button);expect(t.client.v3).not.toHaveBeenCalled();expect(screen.getAllByText(/Open Cashonize to continue/).length).toBeGreaterThan(0);
+ if(changed){const previous=vi.mocked(v3Call).getMockImplementation()!;vi.mocked(v3Call).mockImplementation(async(...args)=>{const result=await previous(...args);if(args[0].operation==='sync')result.snapshot.instance.state=advance(result.snapshot.instance.state,3,0);return result;});}
+ act(()=>t.connect());
+ if(changed){await waitFor(()=>expect(screen.getByRole('status')).toHaveTextContent('Vault state changed while waiting'));expect(t.client.v3).not.toHaveBeenCalled();}
+ else await waitFor(()=>expect(t.client.v3).toHaveBeenCalledWith(expect.objectContaining({operation:'offer',terms:{stake:3000n,duration:3600,reward:1000n,maxWins:1}}),expect.any(Function)));
+ expect(screen.getByLabelText('Stake S (BCH)')).toHaveValue('0.00003000');
+});
+it('cancels waiting creation on edits and never continues it after a page remount',async()=>{
+ stub();window.location.hash='/v3';const t=offlineWallet();const tree=<WalletTransactionsContext.Provider value={t.client}><V3Arena/></WalletTransactionsContext.Provider>;
+ const view=render(tree);fireEvent.click(screen.getByRole('button',{name:'Create Vault'}));fireEvent.change(screen.getByLabelText('Interval (seconds)'),{target:{value:'7200'}});
+ await waitFor(()=>expect(screen.getByRole('status')).toHaveTextContent('Review the current terms'));
+ fireEvent.click(screen.getByRole('button',{name:'Create Vault'}));view.unmount();render(tree);act(()=>t.connect());
+ await act(async()=>{await new Promise(resolve=>setTimeout(resolve,150));});expect(t.client.v3).not.toHaveBeenCalled();
+});

@@ -98,7 +98,7 @@ it('keeps the browser worker across repeated identical wallet-ready messages', a
 it('restores a paired session without showing another QR code', async () => {
   localStorage.setItem(sessionKey, JSON.stringify({ privateKey: 'saved-key', secret: 'saved-secret', walletPublicKey: '0102', walletName: 'Test BCH Wallet' }));
   render(<WalletConnect/>);
-  expect(screen.getByText('Restoring Cashonize connection…')).toBeInTheDocument();
+  expect(screen.getByText('Cashonize paired · Wallet offline')).toBeInTheDocument();
   expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
   expect(initiateDappRelay).toHaveBeenCalledWith(expect.any(Function), expect.objectContaining({ existingCredentials: { privateKey: 'saved-key', secret: 'saved-secret', walletPublicKey: '0102' } }));
   await walletReady();
@@ -133,7 +133,7 @@ it('keeps the manager and worker alive through rerenders and transport reconnect
   const workerCalls=vi.mocked(browserWalletClient).mock.calls.length;
   view.rerender(<StrictMode><WalletConnect browser onTransactions={onTransactions} targetLabel="Make an Offer"/></StrictMode>);
   await act(async()=>{const callback=vi.mocked(initiateDappRelay).mock.calls.at(-1)![0];callback({client,status:{status:'reconnecting'}} as unknown as Parameters<typeof callback>[0]);});
-  expect(screen.getByText('Reconnecting to Cashonize…')).toBeVisible();
+  expect(screen.getByText('Cashonize paired · Wallet offline')).toBeVisible();
   await walletReady();
   expect(destroyed).not.toHaveBeenCalled();
   expect(browserWalletClient).toHaveBeenCalledTimes(workerCalls);
@@ -149,7 +149,7 @@ it('restores only once under StrictMode and never trusts cached wallet paths bef
   const onTransactions=vi.fn();
   render(<StrictMode><WalletConnect browser onTransactions={onTransactions}/></StrictMode>);
   expect(initiateDappRelay).toHaveBeenCalledOnce();
-  expect(screen.getByText('Restoring Cashonize connection…')).toBeVisible();
+  expect(screen.getByText('Cashonize paired · Wallet offline')).toBeVisible();
   const check=vi.mocked(browserWalletClient).mock.calls.at(-1)![1];
   expect(check).toThrow('live chipnet wallet session');
   expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
@@ -164,7 +164,7 @@ it('continues offline restoration, preserves pairing and journals, recovers on a
   localStorage.setItem('arena-test-pending-journal','pending recovery');
   render(<WalletConnect/>);
   await act(async()=>{await vi.advanceTimersByTimeAsync(RESTORE_WINDOW_MS);});
-  expect(screen.getByText(/Cashonize connection lost/)).toBeVisible();
+  expect(screen.getByText(/Cashonize paired · Wallet offline/)).toBeVisible();
   expect(screen.getByRole('button',{name:'Retry saved connection'})).toBeVisible();
   expect(cleanup).toHaveBeenCalledTimes(2);
   expect(localStorage.getItem(sessionKey)).toContain('saved-key');
@@ -184,7 +184,7 @@ it('clearly marks a protocol-rejected session invalid without starting a QR or r
   fireEvent.click(screen.getByRole('button',{name:'Connect Wallet'}));
   await walletReady();
   await act(async()=>{client.emit('message',{action:RelayMsgAction.Disconnect,reason:'protocol_mismatch'}); await vi.advanceTimersByTimeAsync(8_000);});
-  expect(screen.getByRole('button',{name:'Pair Cashonize again'})).toBeVisible();
+  expect(screen.getByRole('button',{name:'Connect Wallet'})).toBeVisible();
   expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
   await act(async()=>{await vi.advanceTimersByTimeAsync(120_000);});
   expect(initiateDappRelay).toHaveBeenCalledOnce();
@@ -217,7 +217,7 @@ it('rejects changed wallet derivation identity and preserves the previously acce
  fireEvent.click(screen.getByRole('button',{name:'Connect Wallet'}));
  await walletReady();
  await walletReady([{name:'receive',xpub:encoded.hdPublicKey}]);
- expect(screen.getByRole('button',{name:'Pair Cashonize again'})).toBeVisible();
+ expect(screen.getByRole('button',{name:'Connect Wallet'})).toBeVisible();
  expect(JSON.parse(localStorage.getItem(sessionKey)!).paths).toEqual([]);
 });
 
@@ -226,7 +226,7 @@ it('retains pairing after an ambiguous Cashonize keepalive disconnect and recove
  vi.useFakeTimers();render(<WalletConnect/>);
  fireEvent.click(screen.getByRole('button',{name:'Connect Wallet'}));await walletReady();invalidated.mockClear();
  await act(async()=>{client.emit('message',{action:RelayMsgAction.Disconnect,reason:'user_disconnect'});await vi.advanceTimersByTimeAsync(4_000);});
- expect(screen.getByText('Reconnecting to Cashonize…')).toBeVisible();
+ expect(screen.getByText('Cashonize paired · Wallet offline')).toBeVisible();
  expect(invalidated).toHaveBeenCalled();
  expect(localStorage.getItem(sessionKey)).not.toBeNull();
  await walletReady();expect(screen.getByText('Connected to Cashonize')).toBeVisible();
@@ -302,7 +302,7 @@ it('suspends wallet handshakes offline and recovers immediately on internet retu
  await walletReady();
  expect(screen.getByText('Connected to Cashonize')).toBeVisible();
  fireEvent(window,new Event('offline'));
- expect(screen.getByText('Reconnecting to Cashonize…')).toBeVisible();
+ expect(screen.getByText('Cashonize paired · Wallet offline')).toBeVisible();
  await walletReady();expect(screen.getByText('Connected to Cashonize')).toBeVisible();
 });
 
@@ -311,7 +311,7 @@ it('explicit disconnect and wallet revocation stop automatic restoration across 
  const view=render(<WalletConnect/>);
  fireEvent.click(screen.getByRole('button',{name:'Connect Wallet'}));await walletReady();
  await act(async()=>{client.emit('message',{action:RelayMsgAction.Disconnect,reason:'user_disconnect'});await vi.advanceTimersByTimeAsync(8_000);});
- expect(screen.getByRole('button',{name:'Pair Cashonize again'})).toBeVisible();
+ expect(screen.getByRole('button',{name:'Connect Wallet'})).toBeVisible();
  view.unmount();await act(async()=>{});
  const again=render(<WalletConnect/>);
  fireEvent(window,new Event('online'));await act(async()=>{await vi.advanceTimersByTimeAsync(300_000);});
@@ -330,6 +330,38 @@ it('does not let recovery replacement erase an authenticated revocation grace ti
  // Use the manager's actual event via the existing transport status callback.
  await act(async()=>{const callback=vi.mocked(initiateDappRelay).mock.calls.at(-1)![0];callback({client,status:{status:'reconnecting'}} as unknown as Parameters<typeof callback>[0]);await vi.advanceTimersByTimeAsync(7_000);});
  await act(async()=>{client.emit('message',{action:RelayMsgAction.Disconnect,reason:'user_disconnect'});await vi.advanceTimersByTimeAsync(8_000);});
- expect(screen.getByRole('button',{name:'Pair Cashonize again'})).toBeVisible();
+ expect(screen.getByRole('button',{name:'Connect Wallet'})).toBeVisible();
  expect(initiateDappRelay).toHaveBeenCalledOnce();
+});
+
+it('remembers verified receive/0 only for the authenticated identity/network, labels offline/reload, and clears on disconnect',async()=>{
+ const {WALLET_ADDRESS_KEY}=await import('../src/usePersistentWallet');
+ const encoded=encodeHdPublicKey({node:deriveHdPublicNode(deriveHdPrivateNodeFromSeed(new Uint8Array(32).fill(88))),network:'testnet'});
+ if(typeof encoded==='string')throw Error(encoded);
+ const paths=[{name:'receive',xpub:encoded.hdPublicKey}];
+ const first=render(<WalletConnect/>);fireEvent.click(screen.getByRole('button',{name:'Connect Wallet'}));await walletReady(paths);
+ const record=JSON.parse(localStorage.getItem(WALLET_ADDRESS_KEY)!);expect(record).toMatchObject({network:'chipnet',address:expect.stringMatching(/^bchtest:/)});
+ expect(screen.getByTitle(record.address)).toHaveTextContent(/^Address:/);
+ fireEvent(window,new Event('offline'));expect(screen.getByTitle(record.address)).toHaveTextContent('Last connected address:');
+ first.unmount();await act(async()=>{});client.removeAllListeners();events.removeAllListeners();
+ render(<WalletConnect/>);expect(screen.getByText('Cashonize paired · Wallet offline')).toBeVisible();expect(screen.getByTitle(record.address)).toHaveTextContent('Last connected address:');
+ fireEvent.click(screen.getByRole('button',{name:'Disconnect'}));await act(async()=>{});
+ expect(localStorage.getItem(WALLET_ADDRESS_KEY)).toBeNull();expect(screen.queryByTitle(record.address)).not.toBeInTheDocument();
+});
+it.each(['replace','identity','revoked'])('clears last address on %s without authorizing cached data',async reason=>{
+ const {WALLET_ADDRESS_KEY}=await import('../src/usePersistentWallet');vi.useFakeTimers();
+ const key=(seed:number)=>{const e=encodeHdPublicKey({node:deriveHdPublicNode(deriveHdPrivateNodeFromSeed(new Uint8Array(32).fill(seed))),network:'testnet'});if(typeof e==='string')throw Error(e);return [{name:'receive',xpub:e.hdPublicKey}];};
+ render(<WalletConnect/>);fireEvent.click(screen.getByRole('button',{name:'Connect Wallet'}));await walletReady(key(88));expect(localStorage.getItem(WALLET_ADDRESS_KEY)).not.toBeNull();
+ if(reason==='replace'){
+  fireEvent(window,new Event('offline'));await act(async()=>{await vi.advanceTimersByTimeAsync(RESTORE_WINDOW_MS);});fireEvent.click(screen.getByRole('button',{name:'Pair wallet again'}));
+ }else if(reason==='identity')await walletReady(key(89));
+ else await act(async()=>{client.emit('message',{action:RelayMsgAction.Disconnect,reason:'user_disconnect'});await vi.advanceTimersByTimeAsync(8000);});
+ expect(localStorage.getItem(WALLET_ADDRESS_KEY)).toBeNull();expect(screen.queryByText(/Last connected address:/)).toBeNull();
+});
+it('does not display an address cached for another pairing or network, and cached paths never authorize',async()=>{
+ const {WALLET_ADDRESS_KEY}=await import('../src/usePersistentWallet');
+ localStorage.setItem(sessionKey,JSON.stringify({privateKey:'saved-key',secret:'saved-secret',walletPublicKey:'0102',paths:[]}));
+ localStorage.setItem(WALLET_ADDRESS_KEY,JSON.stringify({network:'mainnet',identity:'unrelated',address:'bitcoincash:untrusted'}));
+ const onTransactions=vi.fn();render(<WalletConnect browser onTransactions={onTransactions}/>);
+ expect(screen.queryByText(/Last connected address/)).toBeNull();expect(vi.mocked(browserWalletClient).mock.calls.at(-1)![1]).toThrow('live chipnet wallet session');
 });

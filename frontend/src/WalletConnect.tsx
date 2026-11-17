@@ -43,6 +43,7 @@ export default function WalletConnect({ browser=false, getRequiredNetwork = defa
   const control = useRef<HTMLDivElement>(null);
   const wasActive = useRef(false);
   const wallet = usePersistentWallet();
+  const walletRef = useRef(wallet); walletRef.current = wallet;
   const requirement = useRef(getRequiredNetwork);
   requirement.current = getRequiredNetwork;
   const networkSession = useMemo(() => new WalletNetworkSession(() => wallet.manager?.getSessionPaths() ?? []), [wallet.manager]);
@@ -85,7 +86,7 @@ export default function WalletConnect({ browser=false, getRequiredNetwork = defa
       if(networkLeaving)throw Error('Network changed; reconnect and review');
       assertTransactionSession(networkSession, requirement.current());
     }
-    if(browser) {const client=browserWalletClient(manager,check,()=>networkSession.revision);onTransactions(client);return()=>{client.close?.();onTransactions(null);};}
+    if(browser) {const client=browserWalletClient(manager,check,()=>networkSession.revision);client.pairing=()=>walletRef.current.pairing();client.restore=()=>walletRef.current.retry();onTransactions(client);return()=>{client.close?.();onTransactions(null);};}
     if(!manager)return;
     const publicKey = () => {
       check();
@@ -137,19 +138,22 @@ export default function WalletConnect({ browser=false, getRequiredNetwork = defa
 
   return <div ref={control} className="wallet-control">
     {active ? <>
-      <span className="wallet-status" role="status">{wallet.state === 'connected' ? 'Connected to Cashonize' : wallet.state === 'restoring' ? 'Restoring Cashonize connection…' : wallet.state === 'reconnecting' ? 'Reconnecting to Cashonize…' : 'Waiting for Cashonize approval…'}</span>
+      <span className="wallet-status" role="status">{wallet.state === 'connected' ? 'Connected to Cashonize' : wallet.state === 'restoring' || wallet.state === 'reconnecting' ? 'Cashonize paired · Wallet offline' : 'Waiting for Cashonize approval…'}</span>
+      {wallet.pairing().paired && wallet.state !== 'connected' && <button type="button" className="refresh" onClick={wallet.retry}>Retry saved connection</button>}
       <button type="button" className="refresh" disabled={closing} onClick={() => { void disconnect(); }}>{closing ? 'Disconnecting…' : wallet.state === 'connecting' ? 'Cancel connection' : 'Disconnect'}</button>
     </> : wallet.state === 'offline' ? <>
-      <span role="status">Cashonize connection lost. Retrying automatically; keep Cashonize open in a separate visible browser window. Your pairing is saved.</span>
+      <span role="status">Cashonize paired · Wallet offline</span>
       <button type="button" className="refresh" onClick={wallet.retry}>Retry saved connection</button>
       <button type="button" className="refresh" onClick={wallet.replace}>Pair wallet again</button>
       <button type="button" className="refresh" onClick={() => { void disconnect(); }}>Disconnect</button>
     </> : wallet.state === 'invalid' ? <>
       <span role="status">The saved pairing is unavailable, revoked or incompatible. New pairing is necessary.</span>
-      <button type="button" className="refresh" onClick={wallet.replace}>Pair Cashonize again</button>
+      <button type="button" className="refresh" onClick={wallet.replace}>Connect Wallet</button>
       <button type="button" className="refresh" onClick={() => { void disconnect(); }}>Disconnect</button>
     </> : <button type="button" className="refresh" onClick={() => { setError(''); wallet.connect(); }}>Connect Wallet</button>}
-    {!active && <small>Pairing is saved in this browser profile. Clearing or blocking browser storage requires pairing again.</small>}
+    {wallet.address && <small title={wallet.address}>{wallet.state === 'connected' ? 'Address' : 'Last connected address'}: {wallet.address.split(':')[1]?.slice(0,8)}…{wallet.address.slice(-8)}</small>}
+    {wallet.pairing().paired && wallet.state !== 'connected' && <small>Open Cashonize to reconnect. Retrying automatically.</small>}
+    {!active && wallet.pairing().paired && <small>Pairing is saved in this browser profile. Clearing or blocking browser storage requires pairing again.</small>}
     {wallet.state === 'connected' && !compatibility.matches && <small className="wallet-error" role="alert">{compatibility.reason.split('. ')[0]}.</small>}
     {(error || wallet.error) && <small className="wallet-error" role="alert">{error || wallet.error}</small>}
     {wallet.state === 'connecting' && wallet.uri && wallet.qrUri && <PairingDialog uri={wallet.uri} qrUri={wallet.qrUri} onClose={() => { void disconnect(); }}/>}

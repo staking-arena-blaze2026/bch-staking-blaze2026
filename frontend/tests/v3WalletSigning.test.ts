@@ -111,3 +111,34 @@ it('retains signed vault creation before rejecting a reconnected authorization',
  manager.signTransaction.mockImplementation(async()=>{manager.emit('reconnecting');return {signedTransaction:'signed'};});
  try{await expect(wallet.v3!({operation:'create',parameters:{}})).rejects.toThrow(/authorization changed/);expect(v3Call).toHaveBeenCalledWith({operation:'retainSigned',id:'claim',raw:'signed'},[]);expect(vi.mocked(v3Call).mock.calls.some(([i])=>i.operation==='submit')).toBe(false);}finally{wallet.close?.();}
 });
+
+it('checks the bounded offline request again after slow authorization, before asking Cashonize',async()=>{
+ const {wallet,manager}=setup(),original=vi.mocked(v3Call).getMockImplementation()!;
+ let valid=true;const check=()=>{if(!valid)throw Error('Waiting request expired; review again');};
+ vi.mocked(v3Call).mockImplementation(async(...args)=>{const result=await original(...args);if(args[0].operation==='authorize')valid=false;return result;});
+ try{await expect(wallet.v3!({operation:'claim'},check)).rejects.toThrow('request expired');expect(manager.signTransaction).not.toHaveBeenCalled();expect(vi.mocked(v3Call).mock.calls.some(([i])=>i.operation==='submit')).toBe(false);}finally{wallet.close?.();}
+});
+
+it.each(['create','offer'])('a valid restored offline %s request reaches explicit Cashonize approval through the ordinary live signing boundary',async operation=>{
+ const {restoreWalletRequest}=await import('../src/walletRequest');const {wallet,manager}=setup();let live=false;
+ const original=vi.mocked(v3Call).getMockImplementation()!;
+ vi.mocked(v3Call).mockImplementation(async(...args)=>args[0].operation===operation?original({operation:'claim'}):original(...args));
+ wallet.pairing=()=>({paired:true,live,identity:'same-wallet',network:'mainnet'});wallet.restore=()=>{live=true;};
+ try{
+  const ready=await restoreWalletRequest(()=>wallet,()=>true,new AbortController().signal,vi.fn());
+  expect(manager.signTransaction).not.toHaveBeenCalled();
+  await ready.wallet.v3!({operation,parameters:{},config:{}},ready.check);
+  expect(manager.signTransaction).toHaveBeenCalledOnce();expect(manager.signTransaction).toHaveBeenCalledWith(expect.objectContaining({transaction:expect.objectContaining({broadcast:false})}),{signal:expect.any(AbortSignal)});
+  expect(v3Call).toHaveBeenCalledWith({operation:'retainSigned',id:'claim',raw:'signed'},[]);
+ }finally{wallet.close?.();}
+});
+
+it('retains a signature returned after request expiry without submission or a second signing attempt',async()=>{
+ const {wallet,manager}=setup();let valid=true;
+ manager.signTransaction.mockImplementation(async()=>{valid=false;return {signedTransaction:'signed'};});
+ try{
+  await expect(wallet.v3!({operation:'claim'},()=>{if(!valid)throw Error('Request expired');})).rejects.toThrow('Request expired');
+  expect(v3Call).toHaveBeenCalledWith({operation:'retainSigned',id:'claim',raw:'signed'},[]);
+  expect(vi.mocked(v3Call).mock.calls.some(([i])=>i.operation==='submit')).toBe(false);expect(manager.signTransaction).toHaveBeenCalledOnce();
+ }finally{wallet.close?.();}
+});

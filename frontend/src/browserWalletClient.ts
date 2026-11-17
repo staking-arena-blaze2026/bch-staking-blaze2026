@@ -63,9 +63,10 @@ export function browserWalletClient(manager:DappConnectionManager|null,check:()=
     window.dispatchEvent(new CustomEvent('arena-wallet-progress',{detail:'Validating the signed v2 transaction and confirmed chipnet inputs before broadcast'}));
     return v2Updated(await rpc('v2',{operation:'submit',id:result.id,raw:signed.signedTransaction},[]));
    }finally{v2Approval=false;}
-  },async v3(intent){
+  },async v3(intent,requestCheck){
    const started=performance.now();let derivationMilliseconds=0;
-   const check=authorizationCheck();
+   const liveCheck=authorizationCheck();
+   const check=()=>{liveCheck();requestCheck?.();};
    if(intent.operation==='expandScan'){check();v3ScanLimit=v3ScanLimit<40?40:200;return `Wallet discovery expanded to ${v3ScanLimit} addresses per path. Retry Create Vault. Only needed addresses will be queried.`;}
    if(['list','sync'].includes(String(intent.operation)))return v3Call(intent,[]);
    if(v3Approval)throw Error('A v3 wallet operation is awaiting approval; finish it before continuing');
