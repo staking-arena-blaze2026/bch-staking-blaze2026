@@ -1,0 +1,16 @@
+{
+  "url": "https://staking-arena-blaze2026.github.io/staking-arena-blaze-site/",
+  "at": "2026-11-17T14:08:36.518Z",
+  "synthetic": true,
+  "liveWallet": false,
+  "offlineDiscard": true,
+  "signedRecoveryRetained": true,
+  "offlineReload": true,
+  "fiveStatuses": true,
+  "ownershipFilter": true,
+  "offlineAuthorizationPrompt": true,
+  "mobileFits": true,
+  "errors": [],
+  "sourceCommit": "e670e678892c0894a591638357c449a6129cf753",
+  "workflow": "https://github.com/staking-arena-blaze2026/staking-arena-blaze-site/actions/runs/44099665613"
+}
