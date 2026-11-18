@@ -64,6 +64,7 @@ test('automatic preparation: both public configurations, minimal approvals, reco
    const tx=structuredClone(auth.plan.request.transaction) as Transaction;
    for(const [i]of auth.plan.inputPaths){const sig=signer.generateSignature(hash256(generateSigningSerializationBch({transaction:tx,sourceOutputs:auth.plan.request.sourceOutputs,inputIndex:i},{coveredBytecode:auth.plan.request.sourceOutputs[i]!.lockingBytecode,signingSerializationType:Uint8Array.of(0x61)})));sig[64]=0x61;tx.inputs[i]!.unlockingBytecode=new Uint8Array([...encodeDataPush(sig),...encodeDataPush(signer.publicKey)]);}
    const raw=binToHex(encodeTransaction(tx));approvals++;await wallet.retain(op.id,raw);measured.push({step:op.step,bytes:raw.length/2,fee:op.plan.fee!});assert.equal(BigInt(raw.length/2)*rate,BigInt(op.plan.fee!));
+   if(scenario==='one-independent'&&approvals===1){advertised=rate+1n;const sent:number=p.broadcasts;await assert.rejects(()=>wallet.broadcast(op.id),/Relay fee policy increased/);assert.equal(p.broadcasts,sent);assert.equal((await wallet.get(op.id)).raw,raw);advertised=rate;}
    if(approvals===1&&expected>1){p.lose=true;await assert.rejects(()=>wallet.broadcast(op.id),/Lost acknowledgement/);wallet=new QueueWallet(p,store);op=await wallet.resume(op.id,keys);assert.equal(op.stage,'pending');assert.equal(approvals,1);}
    else op=await wallet.broadcast(op.id);
    if(op.step==='action')break;

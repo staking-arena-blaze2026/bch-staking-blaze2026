@@ -14,7 +14,7 @@ function setup(selected='mainnet'){network.value=selected;
  const plan={label:'Claim; caller pays the measured fee',request:{broadcast:false,transaction:{version:2,inputs:[],outputs:[],locktime:0},sourceOutputs:[]},inputPaths:[[2,'receive',0]]};
  const manager=Object.assign(new EventEmitter(),{getSessionPaths:()=>[{name:'receive',xpub:encoded.hdPublicKey}],hasPath:(p:number)=>p===0,getPubkey:(_path:number,index:bigint)=>pub(index),signTransaction:vi.fn(async()=>({signedTransaction:'signed'}))});
  const events:string[]=[];
- vi.mocked(queueCall).mockImplementation(async i=>{events.push(String(i.operation));if(i.operation==='prepare')return {id:'claim',stage:'review',plan};if(i.operation==='authorize')return {owner:{publicKey:binToHex(pub(0n))},verifiedAt:Date.now(),plan};if(i.operation==='submit')return {stage:'pending'};return {};});
+ vi.mocked(queueCall).mockImplementation(async i=>{events.push(String(i.operation));if(i.operation==='list')return [];if(i.operation==='prepare')return {id:'claim',stage:'review',plan};if(i.operation==='authorize')return {owner:{publicKey:binToHex(pub(0n))},verifiedAt:Date.now(),plan};if(i.operation==='submit')return {stage:'pending'};return {};});
  return {wallet:browserWalletClient(manager as any,()=>{}),manager,plan,events};
 }
 it('requires explicit approval with wallet broadcast disabled, and retains bytes before submission',async()=>{const {wallet,manager,events}=setup();try{expect((await wallet.queue!({operation:'prepare',intent:{kind:'claim'}})).stage).toBe('pending');expect(manager.signTransaction).toHaveBeenCalledOnce();expect(manager.signTransaction).toHaveBeenCalledWith({transaction:expect.objectContaining({broadcast:false}),inputPaths:[[2,'receive',0]]},{signal:expect.any(AbortSignal)});expect(events).toEqual(['prepare','authorize','beginSigning','retain','submit']);}finally{wallet.close?.();}});
@@ -22,7 +22,7 @@ it('retains a returned signature across reconnection and never broadcasts with s
 it('checks authorization again after the durable signing journal boundary',async()=>{const {wallet,manager,events}=setup(),original=vi.mocked(queueCall).getMockImplementation()!;vi.mocked(queueCall).mockImplementation(async(...args)=>{const result=await original(...args);if(args[0].operation==='beginSigning')manager.emit('reconnecting');return result;});try{await expect(wallet.queue!({operation:'prepare'})).rejects.toThrow('authorization changed');expect(manager.signTransaction).not.toHaveBeenCalled();expect(events).not.toContain('submit');expect(queueCall).toHaveBeenCalledWith({operation:'signingFailed',id:'claim',rejected:true,notRequested:true});}finally{wallet.close?.();}});
 it('rejects worker requests enabling wallet broadcasting before prompting',async()=>{const {wallet,manager,plan}=setup();plan.request.broadcast=true;try{await expect(wallet.queue!({operation:'prepare'})).rejects.toThrow('fresh verified inputs');expect(manager.signTransaction).not.toHaveBeenCalled();}finally{wallet.close?.();}});
 
-for(const kind of ['create','insert'])it(kind+' uses exactly one signing request and broadcasts only retained bytes',async()=>{const {wallet,manager,events}=setup();try{await wallet.queue!({operation:'prepare',intent:{kind}});expect(manager.signTransaction).toHaveBeenCalledOnce();expect(events).toEqual(['prepare','authorize','beginSigning','retain','submit']);expect(queueCall).toHaveBeenCalledWith({operation:'retain',id:'claim',raw:'signed'});}finally{wallet.close?.();}});
+for(const kind of ['create','insert'])it(kind+' uses exactly one signing request and broadcasts only retained bytes',async()=>{const {wallet,manager,events}=setup();try{await wallet.queue!({operation:'prepare',intent:{kind}});expect(manager.signTransaction).toHaveBeenCalledOnce();expect(events).toEqual([...(kind==='create'?['list']:[]),'prepare','authorize','beginSigning','retain','submit']);expect(queueCall).toHaveBeenCalledWith({operation:'retain',id:'claim',raw:'signed'});}finally{wallet.close?.();}});
 it('rejects unavailable atomic creation before requesting any signature',async()=>{const {wallet,manager}=setup();vi.mocked(queueCall).mockRejectedValue(Error('Atomic vault creation needs two eligible coins'));try{await expect(wallet.queue!({operation:'prepare',intent:{kind:'create'}})).rejects.toThrow('Atomic vault creation');expect(manager.signTransaction).not.toHaveBeenCalled();}finally{wallet.close?.();}});
 
 for(const selected of ['mainnet','chipnet'])for(const count of [2,3]){
@@ -63,7 +63,7 @@ it('searches more wallet addresses before offering preparation, preserving one a
 it('expands descriptor discovery for structured funding failures before signing',async()=>{
  const {wallet,manager}=setup(),original=vi.mocked(queueCall).getMockImplementation()!;let prepares=0;
  vi.mocked(queueCall).mockImplementation(async(...args)=>{if(args[0].operation==='prepare'&&++prepares===1)throw Object.assign(Error('Vault creation funding: verified inputs unavailable'),{details:{code:'creation-funding',available:'0'}});return original(...args);});
- try{await wallet.queue!({operation:'prepare',intent:{kind:'create'}});expect(prepares).toBe(2);expect(vi.mocked(queueCall).mock.calls.filter(c=>c[0].operation==='prepare').map(c=>c[1]?.length)).toEqual([2,40]);expect(manager.signTransaction).toHaveBeenCalledOnce();}finally{wallet.close?.();}
+ try{await wallet.queue!({operation:'prepare',intent:{kind:'create'}});expect(prepares).toBe(2);expect(vi.mocked(queueCall).mock.calls.filter(c=>c[0].operation==='prepare').map(c=>c[1]?.length)).toEqual([2,8]);expect(manager.signTransaction).toHaveBeenCalledOnce();}finally{wallet.close?.();}
 });
 it('legacy inspection never reaches approval or submission, even if a retained entry is in review',async()=>{
  const {wallet,manager}=setup();vi.mocked(queueCall).mockResolvedValue({id:'old',stage:'review',step:'seed-funding',plan:{},error:'Unresolved reservation; inspect retained evidence'});
@@ -80,5 +80,42 @@ for(const selected of ['mainnet','chipnet'])it(selected+': resolving an old requ
 it('cancelling resolution never signs, submits or discards the old request',async()=>{
  const {wallet,manager,plan}=setup();const calls:any[]=[];vi.mocked(queueCall).mockImplementation(async i=>{calls.push(i);return {id:'new-recovery',intent:{kind:'recover'},step:'wallet-recovery',stage:'review',plan,recovery:{operationId:'old'},approved:false,quote:{transactions:1,approvals:1,recovery:{operationId:'old'}}};});
  const decide=(e:Event)=>(e as CustomEvent).detail.respond(false);window.addEventListener('arena-preparation-confirm',decide);
- try{await expect(wallet.queue!({operation:'prepare',intent:{kind:'recover',operationId:'old'}})).rejects.toThrow('resolution cancelled');expect(manager.signTransaction).not.toHaveBeenCalled();expect(calls).toEqual([{operation:'prepare',intent:{kind:'recover',operationId:'old'}},{operation:'discard',id:'new-recovery'}]);}finally{window.removeEventListener('arena-preparation-confirm',decide);wallet.close?.();}
+ try{await expect(wallet.queue!({operation:'prepare',intent:{kind:'recover',operationId:'old'}})).rejects.toThrow('resolution cancelled');expect(manager.signTransaction).not.toHaveBeenCalled();expect(calls).toEqual([expect.objectContaining({operation:'prepare',intent:{kind:'recover',operationId:'old'}}),{operation:'discard',id:'new-recovery'}]);}finally{window.removeEventListener('arena-preparation-confirm',decide);wallet.close?.();}
+});
+
+for(const selected of ['mainnet','chipnet'])for(const stage of ['verification','popup'])it(selected+': >90 second '+stage+' does not expire unchanged consent',async()=>{
+ const {restoreWalletRequest}=await import('../src/walletRequest');
+ const {wallet,manager,plan}=setup(selected);let approved=false;
+ wallet.pairing=()=>({paired:true,live:true,generation:1,identity:'synthetic-owner',network:selected});
+ const request=await restoreWalletRequest(()=>wallet,()=>true,new AbortController().signal,()=>{});
+ const op=()=>({id:'slow',intent:{kind:'create'},step:'wallet-preparation',stage:'review',plan,approved,quote:{transactions:3,approvals:3},owner:{publicKey:binToHex(manager.getPubkey(0,0n))},verifiedAt:Date.now()});
+ vi.useFakeTimers({toFake:['Date']});
+ const changeTime=()=>vi.setSystemTime(Date.now()+120000);
+ vi.mocked(queueCall).mockImplementation(async i=>{if(i.operation==='list')return [];if(i.operation==='prepare'){if(stage==='verification')changeTime();return op();}if(i.operation==='confirm')approved=true;if(i.operation==='submit')return {...op(),step:'action',raw:'signed',stage:'pending'};return op();});
+ const decide=(e:Event)=>{if(stage==='popup')changeTime();(e as CustomEvent).detail.respond(true);};window.addEventListener('arena-preparation-confirm',decide);
+ try{await wallet.queue!({operation:'prepare',intent:{kind:'create'}},request.check);expect(manager.signTransaction).toHaveBeenCalledOnce();}finally{vi.useRealTimers();window.removeEventListener('arena-preparation-confirm',decide);wallet.close?.();}
+});
+
+it('finishes the required boundary before quoting a fallback and reuses one discovery scope',async()=>{
+ const {wallet,manager,plan}=setup();const ranges:number[]=[],scopes=new Set();
+ const quote={transactions:3,approvals:3};
+ vi.mocked(queueCall).mockImplementation(async(i,keys)=>{if(i.operation==='list')return [];if(i.operation==='prepare'){ranges.push(keys!.length);scopes.add(i.discoveryId);return {id:'fallback',intent:{kind:'create'},stage:'review',step:'wallet-preparation',plan,quote,approved:false};}return {};});
+ const decide=(e:Event)=>{expect(ranges).toEqual([2,8,16,24,32,40]);expect(scopes.size).toBe(1);(e as CustomEvent).detail.respond(false);};window.addEventListener('arena-preparation-confirm',decide);
+ try{await expect(wallet.queue!({operation:'prepare',intent:{kind:'create'}})).rejects.toThrow('cancelled');expect(manager.signTransaction).not.toHaveBeenCalled();}finally{window.removeEventListener('arena-preparation-confirm',decide);wallet.close?.();}
+});
+
+it('releases a provably unsigned plan when intent changes during verification',async()=>{
+ const {wallet,manager}=setup(),original=vi.mocked(queueCall).getMockImplementation()!;let changed=false;
+ vi.mocked(queueCall).mockImplementation(async(...args)=>{const value=await original(...args);if(args[0].operation==='prepare')changed=true;return value;});
+ try{await expect(wallet.queue!({operation:'prepare'},()=>{if(changed)throw Error('Request changed');})).rejects.toThrow('Request changed');expect(manager.signTransaction).not.toHaveBeenCalled();expect(queueCall).toHaveBeenCalledWith({operation:'discard',id:'claim'});}finally{wallet.close?.();}
+});
+
+for(const selected of ['mainnet','chipnet'])it(selected+': journals a late authenticated signature event after SDK abort without broadcasting',async()=>{
+ const {wallet,manager,events}=setup(selected);
+ manager.signTransaction.mockImplementation(async()=>{manager.emit('messagesent',{action:'sign_transaction_request',sequence:17});manager.emit('reconnecting');throw new DOMException('Session interrupted','AbortError');});
+ try{
+  await expect(wallet.queue!({operation:'prepare'})).rejects.toThrow('Session interrupted');
+  manager.emit('messagereceived',{action:'sign_transaction_response',sequence:17,signedTransaction:'late signed bytes'});
+  await Promise.resolve();await Promise.resolve();expect(queueCall).toHaveBeenCalledWith({operation:'retain',id:'claim',raw:'late signed bytes'});expect(events).not.toContain('submit');expect(events).not.toContain('discard');expect(manager.signTransaction).toHaveBeenCalledOnce();
+ }finally{wallet.close?.();}
 });

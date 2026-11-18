@@ -1,3 +1,4 @@
+import {boundedMap} from './bounded-map.js';
 import {tickContext,matureCoinbase} from './consensus-clock.js';
 import {verifiedProviders,ProviderVerificationError} from './verified-providers.js';
 import {checkFundingInputCount,FundingSelectionError} from './wallet-funding-policy.js';
@@ -10,16 +11,16 @@ export {ChainExtension,BLOCKCHAIN_REFRESH};
 export function walletPeers(p:ElectrumCore){if(p.network!==Network.MAINNET&&p.network!==Network.CHIPNET&&p.network!==Network.REGTEST)throw Error('Wallet transactions require mainnet, chipnet or local regtest');const peers=p.endpoints.filter((v,i,a)=>a.findIndex(x=>new URL(x).hostname===new URL(v).hostname)===i);if(peers.length<2)throw Error('Two different configured WSS hosts are required');return peers;}
 export const coinIdentity=(u:SpendableUtxo)=>json({txid:u.txid,vout:u.vout,satoshis:u.satoshis,script:u.lockingBytecode,token:u.token??null});
 export async function confirmedWalletTransaction(p:ElectrumCore,id:string){
- return verifiedProviders(p,walletPeers(p),async()=>{
+ return verifiedProviders(p,walletPeers(p),async(_peer,p)=>{
   const tip=await p.tip(),value=await p.transactionStatus(id);
   if((await p.tip()).hash!==tip.hash)throw Error('Tip changed during transaction verification');
   return {value,tip,identity:json({tip:tip.hash,height:value.height,blockhash:value.blockhash,hex:value.hex})};
- });
+ },{parallel:true});
 }
 /** Verify supplied public source coins against raw transactions, token UTXOs, proofs and linked tip headers. */
 export async function verifyCoins(p:ElectrumCore,coins:SpendableUtxo[],peer:string,allowUnconfirmed=false){
  const tip=await p.tip(),mtp=await p.medianTime(tip.height,tip.hash),transactions=new Map<string,any>(),scriptCoins=new Map<string,Promise<SpendableUtxo[]>>(),context=await tickContext(p,tip),ancestry=ancestryVerifier(p,{height:tip.height,mtp,...context});
- for(const script of new Set(coins.map(c=>c.lockingBytecode).filter((s):s is string=>!!s))){const read=p.getUtxosForLockingBytecode(script);void read.catch(()=>{});scriptCoins.set(script,read);}
+ await boundedMap([...new Set(coins.map(c=>c.lockingBytecode).filter((s):s is string=>!!s))],4,async script=>{const value=await p.getUtxosForLockingBytecode(script);scriptCoins.set(script,Promise.resolve(value));});
  for(const coin of coins){
   if(!coin.lockingBytecode)throw Error('Missing source script');
   if(!scriptCoins.has(coin.lockingBytecode))scriptCoins.set(coin.lockingBytecode,p.getUtxosForLockingBytecode(coin.lockingBytecode));
@@ -70,16 +71,16 @@ export async function scanWallet(p:ElectrumCore,keys:WalletKey[],options:WalletS
  for(let attempt=1;attempt<=3;attempt++) {
   progress?.(`Checking wallet balances: attempt ${attempt}/3. Verifying all ${keys.length} supplied addresses on two selected-network providers…`);
   try {
-   const result=await verifiedProviders(p,peers,async peer=>{
+   const result=await verifiedProviders(p,peers,async (peer,p)=>{
      const peerIndex=peers.indexOf(peer);
-     const tip=await p.tip(),found:WalletCoin[]=[],expected=new Map<number,string>();
+     const tip=await p.tip(),found:WalletCoin[]=[],expected=new Map<number,string>(),transactions=new Map<string,Promise<any>>();
      // Four addresses at a time bounds server load. Scan EVERY supplied child,
      // including those after an unused gap; listunspent always includes CashTokens.
      for(let start=0;start<keys.length;start+=4) {
       const batch=keys.slice(start,start+4);
       const settled=await Promise.allSettled(batch.map(async key=>{
        const script=walletScript(key.publicKey);
-       const history=await p.history(script),coins=await p.getUtxosForLockingBytecode(script);
+       const [history,coins]=await Promise.all([p.history(script),p.getUtxosForLockingBytecode(script)]);
        return {key,history,coins};
       }));
       // Drain all in-flight reads before closing/retrying the pinned session.
@@ -90,7 +91,8 @@ export async function scanWallet(p:ElectrumCore,keys:WalletKey[],options:WalletS
        if(!entry)throw Error('Electrum wallet history/UTXO disagreement');
        if(entry.height<=0)continue;
        if(entry.height>tip.height){await unchangedScanTip(p,tip,await p.tip());throw Error('Electrum confirmation ahead of wallet scan tip');}
-       const tx=await p.transaction(coin.txid,entry.height);
+       const identity=coin.txid+':'+entry.height;if(!transactions.has(identity))transactions.set(identity,p.transaction(coin.txid,entry.height));
+       const tx=await transactions.get(identity)!;
        if(expected.has(entry.height)&&expected.get(entry.height)!==tx.blockhash)throw Error('Electrum confirmation header disagreement');
        expected.set(entry.height,tx.blockhash);
        found.push({...key,utxo:coin});
@@ -105,7 +107,7 @@ export async function scanWallet(p:ElectrumCore,keys:WalletKey[],options:WalletS
      const coins=found.sort((a,b)=>(a.utxo.txid+':'+a.utxo.vout).localeCompare(b.utxo.txid+':'+b.utxo.vout));
      if(new Set(coins.map(c=>c.utxo.txid+':'+c.utxo.vout)).size!==coins.length)throw Error('Duplicate wallet outpoints');
      return {value:{coins,tip},tip,identity:json({coins,hash:tip.hash})};
-   },{attempts:1});
+   },{attempts:1,parallel:true});
    const coins=result.coins,tokens:Record<string,string>={};
    for(const {utxo:u} of coins)if(u.token&&!u.token.nft)tokens[u.token.category]=(BigInt(tokens[u.token.category]??0)+u.token.amount).toString();
    progress?.('Wallet balances verified on both selected-network providers.');

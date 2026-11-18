@@ -1,3 +1,4 @@
+import {timed} from '../../src/operation-timing';
 import {errorMessage} from '../../src/queue/funding';
 /// <reference lib="webworker" />
 import {BrowserElectrumProvider} from '../../src/electrum-wss';
@@ -10,8 +11,13 @@ const options=v3Config({...workerEnv,VITE_V3_NETWORK:self.name.split(':')[0]}),r
 if(readOnly)options.allowBroadcast=false;
 const provider=new BrowserElectrumProvider(options),store=new BrowserQueueStore(options.network),wallet=new QueueWallet(provider,store),scope=self as unknown as DedicatedWorkerGlobalScope;
 let failure=false;
+const messages:Record<string,string>={'preparation-planning':'Calculating the fastest vault-creation path','wallet-input-verification':'Checking wallet inputs and ancestry','prepare':'Calculating the fastest vault-creation path','wallet-address-discovery':'Finding available wallet funds','independent-provider-verification':'Verifying blockchain information on independent providers','legacy-reservation-reconciliation':'Checking relevant old wallet requests','fee-policy':'Checking current verified fee policy','authorize':'Checking wallet inputs before signing','retain':'Verifying signed transaction','submit':'Broadcasting transaction','advance':'Verifying preparation and preparing the next transaction'};
+let stage='Verifying blockchain information';
+provider.onStage=value=>{stage=messages[value]??'Checking transaction recovery';scope.postMessage({type:'progress',message:stage});};
+provider.onTiming=timing=>scope.postMessage({type:'timing',timing});
+provider.onVerificationProgress=message=>scope.postMessage({type:'progress',message});
 let pending=providerConflictStore(options.network).then(async s=>{provider.unresolvedChainPeers=new Set(await s.read());provider.persistChainConflict=async peers=>{try{await s.save(peers);}catch(e){failure=true;throw e;}};}).catch(()=>{failure=true;});
-scope.onmessage=event=>{pending=pending.catch(()=>{}).then(async()=>{const {id,intent,keys=[]}=event.data;try{
+scope.onmessage=event=>{pending=pending.catch(()=>{}).then(async()=>{const {id,intent,keys=[]}=event.data;const heartbeat=setInterval(()=>scope.postMessage({type:'heartbeat',id,message:'Still checking blockchain information: '+stage}),5000);try{
  const operation=String(intent.operation),reading=['list','sync','owned'].includes(operation);
  if(readOnly&&!reading)throw Error('Read-only queue worker cannot sign, journal or broadcast');
  if(failure&&operation!=='list')throw Error('Provider conflict evidence is unavailable');
@@ -20,7 +26,7 @@ scope.onmessage=event=>{pending=pending.catch(()=>{}).then(async()=>{const {id,i
  else if(operation==='list')result=await store.list();
  else if(operation==='sync')result=await new QueueIndexer(provider,intent.config).sync();
  else if(operation==='owned')result=await new QueueIndexer(provider,intent.config).owned(intent.owner);
- else if(operation==='prepare')result=await wallet.prepare(intent.intent,keys);
+ else if(operation==='prepare')result=await wallet.prepare(intent.intent,keys,undefined,undefined,intent.discoveryId);
  else if(operation==='advance')result=await wallet.advance(intent.id,keys);
  else if(operation==='reconcileRecovery')result=await wallet.reconcileRecovery(intent.id);
  else if(operation==='confirm')result=await wallet.confirm(intent.id);
@@ -34,8 +40,8 @@ scope.onmessage=event=>{pending=pending.catch(()=>{}).then(async()=>{const {id,i
  else throw Error('Unsupported queue operation');
  return result;};
  if(!reading&&!scope.navigator.locks)throw Error('Queue transactions require Web Locks');
- const result=reading?await run():await scope.navigator.locks.request('arena-'+options.network+'-queue',{ifAvailable:true},async lock=>{if(!lock)throw Error('Another tab is updating this queue wallet');return run();});
+ const result=reading?await run():await scope.navigator.locks.request('arena-'+options.network+'-queue',{ifAvailable:true},async lock=>{if(!lock)throw Error('Another tab is updating this queue wallet');return timed(provider,operation,run);});
  scope.postMessage({id,result});
- }catch(error){scope.postMessage({id,error:errorMessage(error),summary:(error as {summary?:string})?.summary,details:(error as {details?:unknown})?.details});}});};
+ }catch(error){scope.postMessage({id,error:errorMessage(error),summary:(error as {summary?:string})?.summary,details:(error as {details?:unknown})?.details});}finally{clearInterval(heartbeat);}});};
 
 scope.postMessage({type:'ready'});

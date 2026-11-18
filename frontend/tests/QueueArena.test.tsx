@@ -18,7 +18,7 @@ afterEach(cleanup);
 async function open(){render(<WalletTransactionsContext.Provider value={wallet}><QueueArena/></WalletTransactionsContext.Provider>);await screen.findByRole('heading',{name:'Make an Offer'});}
 it('validates 512-second units and preserves exact terms in the approval request',async()=>{await open();fireEvent.change(screen.getByLabelText('Lock duration (time units)'),{target:{value:'12'}});expect(screen.getAllByText(/1 hour, 42 minutes, 24 seconds/).length).toBeGreaterThan(0);fireEvent.click(screen.getByRole('button',{name:'Make an Offer'}));await waitFor(()=>expect(wallet.queue).toHaveBeenCalledWith({operation:'prepare',intent:{kind:'insert',config,terms:{stake:3000n,duration:6144,reward:2000n}}},expect.any(Function)));fireEvent.change(screen.getByLabelText('Lock duration (time units)'),{target:{value:'0'}});expect(screen.getByRole('button',{name:'Make an Offer'})).toBeDisabled();});
 it('binds a claim to the reviewed head, and waits for an offline saved pairing',async()=>{live=false;await open();const button=screen.getByRole('button',{name:'Claim reward'});expect(button).toBeEnabled();fireEvent.click(button);expect(wallet.queue).not.toHaveBeenCalled();await waitFor(()=>expect(wallet.restore).toHaveBeenCalled());live=true;await waitFor(()=>expect(wallet.queue).toHaveBeenCalledWith({operation:'prepare',intent:{kind:'claim',config,expectedHead:offer.id}},expect.any(Function)));});
-it('cancels deferred approval when the terms or route change',async()=>{live=false;await open();fireEvent.click(screen.getByRole('button',{name:'Make an Offer'}));await waitFor(()=>expect(wallet.restore).toHaveBeenCalled());fireEvent.change(screen.getByLabelText('Stake amount'),{target:{value:'0.00004000'}});live=true;await waitFor(()=>expect(screen.getByRole('alert')).toHaveTextContent('changed or expired'));expect(wallet.queue).not.toHaveBeenCalled();});
+it('cancels deferred approval when the terms or route change',async()=>{live=false;await open();fireEvent.click(screen.getByRole('button',{name:'Make an Offer'}));await waitFor(()=>expect(wallet.restore).toHaveBeenCalled());fireEvent.change(screen.getByLabelText('Stake amount'),{target:{value:'0.00004000'}});live=true;await waitFor(()=>expect(screen.getByRole('alert')).toHaveTextContent('request changed'));expect(wallet.queue).not.toHaveBeenCalled();});
 it('shows owner states and enables matured withdrawal on the My Offers route',async()=>{window.location.hash='#/v3/my-offers';rows=[{id:offer.id,offer,status:'Baked',maturesAt:1800001000,checkedMtp:1800001200}];render(<WalletTransactionsContext.Provider value={wallet}><QueueArena/></WalletTransactionsContext.Provider>);const button=await screen.findByRole('button',{name:'Get my stake back'});expect(button).toBeEnabled();fireEvent.click(button);await waitFor(()=>expect(wallet.queue).toHaveBeenCalledWith({operation:'prepare',intent:{kind:'withdraw',config,offerId:offer.id}},expect.any(Function)));});
 it('displays local/MTP release timing and the complete expandable schedule',async()=>{await open();expect(screen.getByText(/Blockchain time \(MTP\):/)).toBeInTheDocument();const summary=screen.getByText('Release schedule and history');await act(async()=>{fireEvent.click(summary);summary.closest('details')!.open=true;fireEvent(summary.closest('details')!,new Event('toggle'));});expect(screen.getByRole('columnheader',{name:'Scheduled local time'})).toBeInTheDocument();expect(screen.getAllByRole('row').length).toBeGreaterThan(10);});
 
@@ -86,4 +86,23 @@ it('provides an explicit retry for an interrupted signed resolution without retr
  window.location.hash='#/create';const rec={id:'new-resolution',intent:{kind:'recover',operationId:'old'},step:'wallet-recovery',stage:'signed',raw:'new-signed-self-send',owner:{publicKey:owner},recovery:{operationId:'old'}};
  vi.mocked(queueCall).mockImplementation(async i=>i.operation==='list'?[rec]:i.operation==='reconcileRecovery'?rec:[]);
  render(<WalletTransactionsContext.Provider value={wallet}><QueueArena/></WalletTransactionsContext.Provider>);fireEvent.click(await screen.findByRole('button',{name:'Retry signed resolution'}));await waitFor(()=>expect(wallet.queue).toHaveBeenCalledWith({operation:'resume',id:'new-resolution',retry:true},expect.any(Function)));
+});
+
+it('cancels an offline request when form values change and then change back',async()=>{
+ live=false;await open();fireEvent.click(screen.getByRole('button',{name:'Make an Offer'}));await waitFor(()=>expect(wallet.restore).toHaveBeenCalled());
+ fireEvent.change(screen.getByLabelText('Stake amount'),{target:{value:'0.00004000'}});fireEvent.change(screen.getByLabelText('Stake amount'),{target:{value:'0.00003000'}});live=true;
+ await waitFor(()=>expect(screen.getByRole('alert')).toHaveTextContent('request changed'));expect(wallet.queue).not.toHaveBeenCalled();
+});
+it('a page restored from interruption cannot resume an old request',async()=>{
+ live=false;await open();fireEvent.click(screen.getByRole('button',{name:'Make an Offer'}));await waitFor(()=>expect(wallet.restore).toHaveBeenCalled());
+ act(()=>{window.dispatchEvent(new Event('pagehide'));window.dispatchEvent(new Event('pageshow'));});live=true;
+ await waitFor(()=>expect(screen.getByRole('alert')).toHaveTextContent('request changed'));expect(wallet.queue).not.toHaveBeenCalled();
+});
+
+it('allows cancelling a stranded unsigned reservation without signing or deleting its journal',async()=>{
+ const unsigned={id:'unsigned',intent:{kind:'create'},owner:{publicKey:owner},stage:'review',signing:'unsigned',step:'action'};
+ vi.mocked(queueCall).mockImplementation(async i=>i.operation==='list'?[unsigned]:i.operation==='owned'?[]:snapshot);
+ await open();vi.mocked(wallet.queue!).mockRejectedValueOnce(Object.assign(Error('Reserved by unsigned request'),{details:{reservations:[{id:'unsigned',step:'action'}]}}));
+ fireEvent.click(screen.getByRole('button',{name:'Make an Offer'}));fireEvent.click(await screen.findByRole('button',{name:'Cancel unsigned request'}));
+ await waitFor(()=>expect(queueCall).toHaveBeenCalledWith({operation:'discard',id:'unsigned'}));expect(wallet.queue).toHaveBeenCalledTimes(1);
 });

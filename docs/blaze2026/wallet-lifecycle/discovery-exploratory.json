@@ -1,0 +1,384 @@
+{
+  "at": "2026-11-18T16:35:21.993Z",
+  "environment": "isolated BCHN regtest; public application configurations; synthetic keys; 5ms injected per-address delay; no user confirmation or physical Cashonize latency",
+  "results": [
+    {
+      "network": "mainnet",
+      "scenario": "origins in initial addresses",
+      "before": {
+        "runs": 7,
+        "medianMs": 3495.6973999999973,
+        "p95Ms": 6050.298999999999,
+        "medianRequests": 112,
+        "addresses": 2
+      },
+      "after": {
+        "runs": 7,
+        "medianMs": 2352.3683999999994,
+        "p95Ms": 6673.746299999999,
+        "medianRequests": 112,
+        "addresses": 2
+      },
+      "samples": {
+        "before": [
+          {
+            "milliseconds": 3495.6973999999973,
+            "requests": 142,
+            "addresses": 2
+          },
+          {
+            "milliseconds": 1660.9056999999993,
+            "requests": 112,
+            "addresses": 2
+          },
+          {
+            "milliseconds": 2343.277900000001,
+            "requests": 112,
+            "addresses": 2
+          },
+          {
+            "milliseconds": 1497.9051999999938,
+            "requests": 112,
+            "addresses": 2
+          },
+          {
+            "milliseconds": 4081.458400000003,
+            "requests": 112,
+            "addresses": 2
+          },
+          {
+            "milliseconds": 6050.298999999999,
+            "requests": 112,
+            "addresses": 2
+          },
+          {
+            "milliseconds": 3551.237899999993,
+            "requests": 112,
+            "addresses": 2
+          }
+        ],
+        "after": [
+          {
+            "milliseconds": 2352.3683999999994,
+            "requests": 112,
+            "addresses": 2
+          },
+          {
+            "milliseconds": 1737.369300000002,
+            "requests": 112,
+            "addresses": 2
+          },
+          {
+            "milliseconds": 2025.2916999999943,
+            "requests": 112,
+            "addresses": 2
+          },
+          {
+            "milliseconds": 1803.111499999999,
+            "requests": 112,
+            "addresses": 2
+          },
+          {
+            "milliseconds": 5127.679000000004,
+            "requests": 112,
+            "addresses": 2
+          },
+          {
+            "milliseconds": 6673.746299999999,
+            "requests": 112,
+            "addresses": 2
+          },
+          {
+            "milliseconds": 3589.3745000000054,
+            "requests": 112,
+            "addresses": 2
+          }
+        ]
+      },
+      "maximumConcurrentAddressReads": 2
+    },
+    {
+      "network": "mainnet",
+      "scenario": "origins first found at indices 22 and 23",
+      "before": {
+        "runs": 7,
+        "medianMs": 6591.288800000009,
+        "p95Ms": 10356.641199999998,
+        "medianRequests": 246,
+        "addresses": 40
+      },
+      "after": {
+        "runs": 7,
+        "medianMs": 8423.493399999992,
+        "p95Ms": 30571.76740000001,
+        "medianRequests": 280,
+        "addresses": 26
+      },
+      "samples": {
+        "before": [
+          {
+            "milliseconds": 9962.4188,
+            "requests": 250,
+            "addresses": 40
+          },
+          {
+            "milliseconds": 10356.641199999998,
+            "requests": 246,
+            "addresses": 40
+          },
+          {
+            "milliseconds": 4665.471099999995,
+            "requests": 246,
+            "addresses": 40
+          },
+          {
+            "milliseconds": 5110.405100000004,
+            "requests": 246,
+            "addresses": 40
+          },
+          {
+            "milliseconds": 5728.535999999993,
+            "requests": 246,
+            "addresses": 40
+          },
+          {
+            "milliseconds": 9459.335300000006,
+            "requests": 246,
+            "addresses": 40
+          },
+          {
+            "milliseconds": 6591.288800000009,
+            "requests": 246,
+            "addresses": 40
+          }
+        ],
+        "after": [
+          {
+            "milliseconds": 30571.76740000001,
+            "requests": 280,
+            "addresses": 26
+          },
+          {
+            "milliseconds": 8423.493399999992,
+            "requests": 280,
+            "addresses": 26
+          },
+          {
+            "milliseconds": 7196.255199999985,
+            "requests": 280,
+            "addresses": 26
+          },
+          {
+            "milliseconds": 6505.663100000005,
+            "requests": 280,
+            "addresses": 26
+          },
+          {
+            "milliseconds": 10652.645099999994,
+            "requests": 280,
+            "addresses": 26
+          },
+          {
+            "milliseconds": 8366.405200000008,
+            "requests": 280,
+            "addresses": 26
+          },
+          {
+            "milliseconds": 12345.589699999982,
+            "requests": 280,
+            "addresses": 26
+          }
+        ]
+      }
+    },
+    {
+      "network": "chipnet",
+      "scenario": "origins in initial addresses",
+      "before": {
+        "runs": 7,
+        "medianMs": 7651.412100000016,
+        "p95Ms": 13461.910400000052,
+        "medianRequests": 162,
+        "addresses": 2
+      },
+      "after": {
+        "runs": 7,
+        "medianMs": 7051.950799999991,
+        "p95Ms": 8687.602699999989,
+        "medianRequests": 162,
+        "addresses": 2
+      },
+      "samples": {
+        "before": [
+          {
+            "milliseconds": 12144.795799999993,
+            "requests": 196,
+            "addresses": 2
+          },
+          {
+            "milliseconds": 7651.412100000016,
+            "requests": 162,
+            "addresses": 2
+          },
+          {
+            "milliseconds": 5477.989700000035,
+            "requests": 162,
+            "addresses": 2
+          },
+          {
+            "milliseconds": 4179.105100000044,
+            "requests": 162,
+            "addresses": 2
+          },
+          {
+            "milliseconds": 6060.423999999999,
+            "requests": 162,
+            "addresses": 2
+          },
+          {
+            "milliseconds": 9103.398600000015,
+            "requests": 162,
+            "addresses": 2
+          },
+          {
+            "milliseconds": 13461.910400000052,
+            "requests": 162,
+            "addresses": 2
+          }
+        ],
+        "after": [
+          {
+            "milliseconds": 6007.64910000001,
+            "requests": 162,
+            "addresses": 2
+          },
+          {
+            "milliseconds": 8687.602699999989,
+            "requests": 162,
+            "addresses": 2
+          },
+          {
+            "milliseconds": 4362.179800000042,
+            "requests": 162,
+            "addresses": 2
+          },
+          {
+            "milliseconds": 5715.5225999999675,
+            "requests": 162,
+            "addresses": 2
+          },
+          {
+            "milliseconds": 8597.278699999966,
+            "requests": 162,
+            "addresses": 2
+          },
+          {
+            "milliseconds": 7142.17359999998,
+            "requests": 162,
+            "addresses": 2
+          },
+          {
+            "milliseconds": 7051.950799999991,
+            "requests": 162,
+            "addresses": 2
+          }
+        ]
+      },
+      "maximumConcurrentAddressReads": 2
+    },
+    {
+      "network": "chipnet",
+      "scenario": "origins first found at indices 22 and 23",
+      "before": {
+        "runs": 7,
+        "medianMs": 2803.725000000035,
+        "p95Ms": 11825.126999999979,
+        "medianRequests": 280,
+        "addresses": 40
+      },
+      "after": {
+        "runs": 7,
+        "medianMs": 4486.963199999998,
+        "p95Ms": 9906.758900000015,
+        "medianRequests": 314,
+        "addresses": 26
+      },
+      "samples": {
+        "before": [
+          {
+            "milliseconds": 7953.121400000004,
+            "requests": 286,
+            "addresses": 40
+          },
+          {
+            "milliseconds": 11825.126999999979,
+            "requests": 280,
+            "addresses": 40
+          },
+          {
+            "milliseconds": 8093.196599999967,
+            "requests": 280,
+            "addresses": 40
+          },
+          {
+            "milliseconds": 2530.9388000000035,
+            "requests": 280,
+            "addresses": 40
+          },
+          {
+            "milliseconds": 2550.5390999999945,
+            "requests": 280,
+            "addresses": 40
+          },
+          {
+            "milliseconds": 2628.7339999999967,
+            "requests": 280,
+            "addresses": 40
+          },
+          {
+            "milliseconds": 2803.725000000035,
+            "requests": 280,
+            "addresses": 40
+          }
+        ],
+        "after": [
+          {
+            "milliseconds": 8894.455000000016,
+            "requests": 314,
+            "addresses": 26
+          },
+          {
+            "milliseconds": 9906.758900000015,
+            "requests": 314,
+            "addresses": 26
+          },
+          {
+            "milliseconds": 5460.236399999994,
+            "requests": 314,
+            "addresses": 26
+          },
+          {
+            "milliseconds": 2757.9693000000552,
+            "requests": 314,
+            "addresses": 26
+          },
+          {
+            "milliseconds": 2173.972300000023,
+            "requests": 314,
+            "addresses": 26
+          },
+          {
+            "milliseconds": 1693.2079000000376,
+            "requests": 314,
+            "addresses": 26
+          },
+          {
+            "milliseconds": 4486.963199999998,
+            "requests": 314,
+            "addresses": 26
+          }
+        ]
+      }
+    }
+  ]
+}

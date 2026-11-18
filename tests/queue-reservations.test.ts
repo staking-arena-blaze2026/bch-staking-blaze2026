@@ -27,6 +27,8 @@ for(const network of ['mainnet','chipnet'] as const)test(network+': legacy signe
   assert.equal(e.details.code,'creation-funding');assert.equal(e.details.available,'0');assert.equal(e.details.reserved,'867920');assert.equal(e.details.reservations[0].id,'legacy');assert.match(e.message,/Inspect Transaction recovery/);return true;
  });
  assert.equal(saved.get('legacy')!.raw,raw);assert.equal(saved.get('legacy')!.stage,'signed');assert.deepEqual((await rpc<string[]>('getrawmempool')).sort(),before);
+ const status=p.transactionStatus.bind(p);let repeatedStatus=0;p.transactionStatus=async txid=>{if(txid===id)repeatedStatus++;return status(txid);};
+ await assert.rejects(()=>wallet.prepare({kind:'create',parameters},keys),/Insufficient wallet funding/);assert.equal(repeatedStatus,0,'same-tip verified unspent reservations need no repeated legacy status lookup');p.transactionStatus=status;
  // Safe inspection never rebroadcasts, even when retry was requested.
  const inspected=await wallet.resume('legacy',keys,true);assert.equal(inspected.reservationEvidence?.kind,'verified-unspent-inputs');assert.equal(inspected.reservationEvidence?.bch,'866420');assert.match(inspected.error!,/actual signed input/);assert.deepEqual((await rpc<string[]>('getrawmempool')).sort(),before);
  const unrelated=await fund(50000),newOp=await wallet.prepare({kind:'create',parameters},keys);assert.ok(newOp.sources.some(u=>u.txid===unrelated.txid));assert.ok(!newOp.sources.some(u=>u.txid===source.txid));await wallet.discard(newOp.id);

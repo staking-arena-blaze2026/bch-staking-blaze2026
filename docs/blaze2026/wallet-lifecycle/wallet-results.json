@@ -1,0 +1,215 @@
+{
+  "at": "2026-11-18T16:29:58.850Z",
+  "syntheticWallet": true,
+  "realBchn": true,
+  "requestMethod": "Electrum facade request invocations; excludes direct BCHN RPC in the fixture and warm cache hits are counted",
+  "timings": [
+    {
+      "kind": "create",
+      "step": "prepare",
+      "phase": "prepare",
+      "ms": 667.4663,
+      "requests": 72
+    },
+    {
+      "kind": "create",
+      "step": "prepare",
+      "phase": "prepare",
+      "ms": 1608.9147000000012,
+      "requests": 60
+    },
+    {
+      "kind": "create",
+      "step": "prepare",
+      "phase": "prepare",
+      "ms": 691.1821999999993,
+      "requests": 62
+    },
+    {
+      "kind": "create",
+      "step": "action",
+      "phase": "authorize",
+      "ms": 619.0627999999997,
+      "requests": 56
+    },
+    {
+      "kind": "create",
+      "step": "action",
+      "phase": "signature-to-pending",
+      "ms": 1608.2973999999995,
+      "requests": 42
+    },
+    {
+      "kind": "insert",
+      "step": "prepare",
+      "phase": "prepare",
+      "ms": 1624.7393999999986,
+      "requests": 144
+    },
+    {
+      "kind": "cancel",
+      "step": "prepare",
+      "phase": "prepare",
+      "ms": 4688.190699999999,
+      "requests": 242
+    },
+    {
+      "kind": "cancel",
+      "step": "action",
+      "phase": "authorize",
+      "ms": 760.084600000002,
+      "requests": 74
+    },
+    {
+      "kind": "cancel",
+      "step": "action",
+      "phase": "signature-to-pending",
+      "ms": 683.5892999999996,
+      "requests": 60
+    },
+    {
+      "kind": "insert",
+      "step": "prepare",
+      "phase": "prepare",
+      "ms": 3684.2891999999993,
+      "requests": 166
+    },
+    {
+      "kind": "insert",
+      "step": "prepare",
+      "phase": "prepare",
+      "ms": 2604.2423000000053,
+      "requests": 180
+    },
+    {
+      "kind": "insert",
+      "step": "action",
+      "phase": "authorize",
+      "ms": 727.7214999999997,
+      "requests": 68
+    },
+    {
+      "kind": "insert",
+      "step": "action",
+      "phase": "signature-to-pending",
+      "ms": 852.7260000000024,
+      "requests": 54
+    },
+    {
+      "kind": "cancel",
+      "step": "prepare",
+      "phase": "prepare",
+      "ms": 4230.359899999996,
+      "requests": 182
+    },
+    {
+      "kind": "cancel",
+      "step": "action",
+      "phase": "authorize",
+      "ms": 1848.7355000000025,
+      "requests": 68
+    },
+    {
+      "kind": "cancel",
+      "step": "action",
+      "phase": "signature-to-pending",
+      "ms": 1412.6133000000045,
+      "requests": 54
+    },
+    {
+      "kind": "claim",
+      "step": "prepare",
+      "phase": "prepare",
+      "ms": 5243.758200000004,
+      "requests": 178
+    },
+    {
+      "kind": "claim",
+      "step": "action",
+      "phase": "authorize",
+      "ms": 2505.955399999999,
+      "requests": 70
+    },
+    {
+      "kind": "claim",
+      "step": "action",
+      "phase": "signature-to-pending",
+      "ms": 3016.8294000000024,
+      "requests": 56
+    },
+    {
+      "kind": "withdraw",
+      "step": "prepare",
+      "phase": "prepare",
+      "ms": 8328.740099999995,
+      "requests": 176
+    },
+    {
+      "kind": "withdraw",
+      "step": "prepare",
+      "phase": "prepare",
+      "ms": 9015.237300000008,
+      "requests": 288
+    },
+    {
+      "kind": "withdraw",
+      "step": "action",
+      "phase": "authorize",
+      "ms": 2046.3736000000063,
+      "requests": 73
+    },
+    {
+      "kind": "withdraw",
+      "step": "action",
+      "phase": "signature-to-pending",
+      "ms": 1991.2403999999951,
+      "requests": 59
+    }
+  ],
+  "costs": [
+    {
+      "kind": "create",
+      "step": "action",
+      "bytes": 732,
+      "fee": "732"
+    },
+    {
+      "kind": "cancel",
+      "step": "action",
+      "bytes": 4895,
+      "fee": "4895"
+    },
+    {
+      "kind": "insert",
+      "step": "action",
+      "bytes": 3613,
+      "fee": "3613"
+    },
+    {
+      "kind": "insert",
+      "step": "action",
+      "bytes": 2355,
+      "fee": "2355"
+    },
+    {
+      "kind": "cancel",
+      "step": "action",
+      "bytes": 3801,
+      "fee": "3801"
+    },
+    {
+      "kind": "claim",
+      "step": "action",
+      "bytes": 4874,
+      "fee": "4874"
+    },
+    {
+      "kind": "withdraw",
+      "step": "action",
+      "bytes": 629,
+      "fee": "629"
+    }
+  ],
+  "creationApprovals": 1,
+  "creationFee": 732
+}

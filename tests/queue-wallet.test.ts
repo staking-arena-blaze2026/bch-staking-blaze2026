@@ -79,12 +79,12 @@ const actionTimings=timings.slice();
  await wallet.discard(changed.id);
  changed=await prepare({kind:'insert',config,terms:{stake:9000n,duration:512,reward:2000n}},keys);
  await rpc('generatetoaddress',[1,miner]);p.headerCache.clear();await p.refresh();
- await assert.rejects(()=>wallet.authorize(changed.id),/Tip changed/);
- await assert.rejects(()=>wallet.beginSigning(changed.id),/Fresh queue authorization/);
+ await wallet.authorize(changed.id);
+ const originalNow=Date.now;try{Date.now=()=>originalNow()+10001;await assert.rejects(()=>wallet.beginSigning(changed.id),/Fresh queue authorization/);}finally{Date.now=originalNow;}
  await wallet.discard(changed.id);
  changed=await prepare({kind:'insert',config,terms:{stake:9000n,duration:512,reward:2000n}},keys);
  const oldTip=await rpc<string>('getbestblockhash');await rpc('invalidateblock',[oldTip]);p.headerCache.clear();await p.refresh();
- await assert.rejects(()=>wallet.authorize(changed.id),/Tip changed|Conflicting/);
+ await assert.rejects(()=>wallet.authorize(changed.id),/Tip changed|Conflicting|reorganized/);
  await wallet.discard(changed.id);await rpc('reconsiderblock',[oldTip]);p.headerCache.clear();await p.refresh();
  const tampered=structuredClone(changed.plan);(tampered.request.transaction as Transaction).outputs.at(-1)!.valueSatoshis++;await assert.rejects(()=>wallet.retain(changed.id,sign(tampered)),/Wallet changed/);
  assert.equal((await wallet.get(changed.id)).signing,'uncertain');assert.ok((await wallet.get(changed.id)).signedEvidence);await assert.rejects(()=>wallet.beginSigning(changed.id),/Fresh/);

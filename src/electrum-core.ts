@@ -60,7 +60,7 @@ export class ElectrumCore implements NetworkProvider {
   /** Public verification category only; never includes wallet scripts or outpoints. */
   readonly requestCounts:Record<string,number>={};
   onStage?:(stage:string)=>void;
-  onTiming?:(timing:{stage:string;milliseconds:number;requests:Record<string,number>;ok:boolean})=>void;
+  onTiming?:(timing:{stage:string;milliseconds:number;requests:Record<string,number>;ok:boolean;addresses?:number;repeatedRequestsAvoided?:number;retries?:number})=>void;
   onVerificationProgress?:(message:string)=>void;
   unresolvedChainPeers=new Set<string>();
   persistChainConflict?:(peers:string[])=>Promise<void>;

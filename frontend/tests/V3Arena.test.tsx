@@ -385,7 +385,7 @@ it.each(['blocked','pending'])('offline claim rechecks %s state before asking th
 it('cancels an offline claim when navigating away and does not revive it on remount',async()=>{
  stub();const t=offlineWallet();localStorage.setItem(v3ConfigStorage,JSON.stringify([config],(_,v)=>typeof v==='bigint'?v.toString():v));window.location.hash='/v3/vault/'+config.genesis;
  const view=render(<WalletTransactionsContext.Provider value={t.client}><V3Arena/></WalletTransactionsContext.Provider>);const claim=await screen.findByRole('button',{name:'Claim reward'});await waitFor(()=>expect(claim).toBeEnabled());fireEvent.click(claim);
- await act(async()=>{window.location.hash='/v3/offers';window.dispatchEvent(new HashChangeEvent('hashchange'));});await waitFor(()=>expect(screen.getAllByRole('status').some(el=>el.textContent?.includes('changed or expired'))).toBe(true));
+ await act(async()=>{window.location.hash='/v3/offers';window.dispatchEvent(new HashChangeEvent('hashchange'));});await waitFor(()=>expect(screen.getAllByRole('status').some(el=>el.textContent?.includes('request changed'))).toBe(true));
  view.unmount();act(()=>t.connect());render(<WalletTransactionsContext.Provider value={t.client}><V3Arena/></WalletTransactionsContext.Provider>);await act(async()=>{await new Promise(resolve=>setTimeout(resolve,150));});expect(t.client.v3).not.toHaveBeenCalled();
 });
 

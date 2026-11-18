@@ -6,7 +6,7 @@ interface Client {
  cancel:(error:Error)=>void;
  pending:Map<number,{resolve:(v:any)=>void;reject:(e:Error)=>void;timer:ReturnType<typeof setTimeout>}>;
 }
-let sequence=0,financial:Client|undefined;
+let sequence=0,financial:Client|undefined,retention:Client|undefined;
 const readers=new Map<string,Client>();
 function client(readOnly:boolean):Client{
  const worker=new Worker(new URL('./queue.worker.ts',import.meta.url),{type:'module',name:activeNetwork+(readOnly?':read':':wallet')});
@@ -26,7 +26,10 @@ function client(readOnly:boolean):Client{
  const startup=setTimeout(()=>fail(Error('Queue worker startup timed out; saved journals are retained')),30000);
  worker.onmessage=e=>{
   if(e.data.type==='ready'){clearTimeout(startup);resolveReady();return;}
+  if(e.data.type==='progress'){if(!readOnly)window.dispatchEvent(new CustomEvent('arena-wallet-progress',{detail:e.data.message}));return;}
+  if(e.data.type==='timing'){if(!readOnly)window.dispatchEvent(new CustomEvent('arena-wallet-timing',{detail:e.data.timing}));return;}
   const job=c.pending.get(e.data.id);if(!job)return;
+  if(e.data.type==='heartbeat'){clearTimeout(job.timer);job.timer=setTimeout(()=>c.cancel(Error('Queue worker stopped responding; reconcile saved operations before retrying')),90000);if(!readOnly)window.dispatchEvent(new CustomEvent('arena-wallet-progress',{detail:e.data.message}));return;}
   clearTimeout(job.timer);c.pending.delete(e.data.id);
   e.data.error?job.reject(Object.assign(Error(e.data.error),{details:e.data.details,summary:e.data.summary})):job.resolve(e.data.result);
  };
@@ -35,21 +38,25 @@ function client(readOnly:boolean):Client{
  return c;
 }
 export function queueCall(intent:Record<string,unknown>,keys:WalletKey[]=[]):Promise<any>{
- if(networkLeaving)return Promise.reject(Error('Network changed; review again'));
+ const retaining=intent.operation==='retain'||intent.operation==='signingFailed';
+ if(networkLeaving&&!retaining)return Promise.reject(Error('Network changed; review again'));
  const readOnly=['list','sync','owned'].includes(String(intent.operation));
  const channel=String(intent.operation)==='list'?'journal':['market','owners'].includes(String(intent.channel))?String(intent.channel):'selected';
  let c:Client;
  if(readOnly){if(!readers.has(channel))readers.set(channel,client(true));c=readers.get(channel)!;}
- else c=financial??=client(false);
+ else c=networkLeaving&&retaining?(retention??=client(false)):(financial??=client(false));
  return c.ready.then(()=>new Promise((resolve,reject)=>{
-  if(networkLeaving){reject(Error('Network changed; review again'));return;}
+  if(networkLeaving&&!retaining){reject(Error('Network changed; review again'));return;}
   const id=++sequence,timer=setTimeout(()=>c.cancel(Error('Queue request timed out; reconcile saved operations before retrying')),90000);
   c.pending.set(id,{resolve,reject,timer});
   try{c.worker.postMessage({id,intent,keys});}catch(e){clearTimeout(timer);c.pending.delete(id);reject(e);}
  }));
 }
 window.addEventListener('arena-network-leaving',()=>{
- for(const c of new Set([financial,...readers.values()]))c?.cancel(Error('Network changed; signed journal retained'));
+ // This worker is permanently bound to the OLD network. Let any returned
+ // signature finish journaling; new authorization/broadcast calls are blocked.
+ retention=financial;retention?.worker.postMessage({id:++sequence,intent:{operation:'invalidate'}});
+ for(const c of readers.values())c.cancel(Error('Network changed; signed journal retained'));
  financial=undefined;readers.clear();
 });
 

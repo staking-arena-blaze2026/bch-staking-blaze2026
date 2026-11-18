@@ -59,7 +59,7 @@ export async function verifiedProviders<T>(p:ElectrumCore,peers:string[],read:(p
    for(const candidate of unavailableLink||differentCurrent||movement?[]:current){if(current.filter(x=>x.result.identity===candidate.result.identity).length>=2)return candidate.result.value;}
    category=good.length>=2||movement||ordinaryLag?'synchronizing':'unavailable';
   }
-  if(attempt+1<(options.attempts??3)){const message=new ProviderVerificationError(category).message;p.onVerificationProgress?.(message);options.onProgress?.(message);}
+  if(attempt+1<(options.attempts??3)){p.onTiming?.({stage:'verification-retry',milliseconds:0,requests:{},ok:false,retries:1});const message=new ProviderVerificationError(category).message;p.onVerificationProgress?.(message);options.onProgress?.(message);}
   if(attempt+1<(options.attempts??3))await (options.sleep??(ms=>new Promise(r=>setTimeout(r,ms))))((attempt+1)*500);
  }
  throw new ProviderVerificationError(category);

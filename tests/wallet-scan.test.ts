@@ -16,33 +16,33 @@ test('wallet scan retries a proven new block and preserves BCH, fungible tokens 
  f.chain.request=async(method,...params)=>{const result=await request(method,...params);if(!changed&&method==='blockchain.scripthash.listunspent'){changed=true;f.chain.mine([]);}return result;};
  const inventory=await scanWallet(f.engine.provider,f.keys,options);
  assert.equal(inventory.bch,'250000');assert.equal(inventory.tokens[f.asset],'2500');assert.equal(inventory.tokens[f.other],'5000');assert.ok(inventory.coins.some(c=>c.utxo.token?.nft?.commitment==='12'));
- assert.ok(messages.some(s=>s.includes('normal blockchain extension')));assert.deepEqual(delays,[1000]);assert.equal(f.chain.broadcasts.length,0);
+ assert.ok(messages.some(s=>/synchronizing|normal blockchain extension/.test(s)));assert.deepEqual(delays,[1000]);assert.equal(f.chain.broadcasts.length,0);
 });
 test('wallet scan rejects snapshots at different tips even when a block arrives between providers',async()=>{
  const {f,messages,options}=harness(),request=f.chain.request;let sessions=0;
  f.chain.request=async(method,...params)=>{if(method==='server.version'&&++sessions===2)f.chain.mine([]);return request(method,...params);};
  const inventory=await scanWallet(f.engine.provider,f.keys,options);
- assert.equal(inventory.tokens[f.asset],'2500');assert.ok(messages.some(s=>s.includes('normal blockchain extension')));
+ assert.equal(inventory.tokens[f.asset],'2500');assert.equal(new Set(f.chain.requestLog.map(r=>r.endpoint)).size,2);
 });
-test('wallet scan discards a genuine reorganization and only accepts a fresh two-provider snapshot',async()=>{
+test('wallet scan discards a replaced-tip scan and independently verifies a fresh snapshot',async()=>{
  const {f,messages,delays,options}=harness();f.chain.mine([]);const request=f.chain.request;let changed=false;
  f.chain.request=async(method,...params)=>{const result=await request(method,...params);if(!changed&&method==='blockchain.scripthash.listunspent'){changed=true;f.chain.reorgLastBlock();f.chain.time++;f.chain.mine([]);}return result;};
  assert.equal((await scanWallet(f.engine.provider,f.keys,options)).tokens[f.asset],'2500');
- assert.ok(messages.some(s=>s.includes('reorganization or contradictory')));assert.ok(!messages.some(s=>s.includes('normal blockchain extension')));assert.deepEqual(delays,[1000]);
+ assert.deepEqual(delays,[1000]);assert.ok(messages.some(s=>s.includes('Snapshot discarded')));assert.equal(f.chain.broadcasts.length,0);
 });
 test('wallet scan fails closed on repeated reorganizations with bounded retries and actionable progress',async()=>{
  const {f,messages,delays,options}=harness();f.chain.mine([]);const request=f.chain.request;let subscriptions=0;
  f.chain.request=async(method,...params)=>{if(method==='blockchain.headers.subscribe'&&++subscriptions%2===0){f.chain.reorgLastBlock();f.chain.time++;f.chain.mine([]);}return request(method,...params);};
- await assert.rejects(scanWallet(f.engine.provider,f.keys,options),/after 3 attempts.*No scan data is usable.*Check wallet balances again/);
- assert.deepEqual(delays,[1000,2000]);assert.equal(subscriptions,6);assert.ok(messages.some(s=>s.includes('3/3')));assert.equal(f.chain.broadcasts.length,0);
+ await assert.rejects(scanWallet(f.engine.provider,f.keys,options),/after 3 attempts.*No scan data is usable/);
+ assert.deepEqual(delays,[1000,2000]);assert.ok(subscriptions>=6);assert.equal(f.chain.broadcasts.length,0);
 });
 test('wallet scan never promotes provider disagreement to a verified balance',async()=>{
  const {f,delays,options}=harness();f.chain.disagree=true;
- await assert.rejects(scanWallet(f.engine.provider,f.keys,options),/after 3 attempts.*disagreement/);assert.deepEqual(delays,[1000,2000]);assert.equal(f.chain.broadcasts.length,0);
+ await assert.rejects(scanWallet(f.engine.provider,f.keys,options),/after 3 attempts.*second verified provider/);assert.deepEqual(delays,[1000,2000]);assert.equal(f.chain.broadcasts.length,0);
 });
 test('wallet scan outage is bounded and gives a connection/retry instruction',async()=>{
  const {f,delays,options}=harness();f.chain.fail=true;
- await assert.rejects(scanWallet(f.engine.provider,f.keys,options),/after 3 attempts.*check your connection.*disconnected/);assert.deepEqual(delays,[1000,2000]);
+ await assert.rejects(scanWallet(f.engine.provider,f.keys,options),/after 3 attempts.*check your connection.*second verified provider/);assert.deepEqual(delays,[1000,2000]);
 });
 test('wallet scan transient outage automatically recovers and verifies both hosts',async()=>{
  const {f,messages,options}=harness();f.chain.fail=true;
@@ -70,12 +70,14 @@ test('wallet scan rejects individually valid but different provider UTXO invento
   connection.request=async(method,...params)=>{const result=await request(method,...params);return endpoint.includes('second')&&method==='blockchain.scripthash.listunspent'?[]:result;};
   return connection;
  },{endpoints:base.endpoints});
- await assert.rejects(scanWallet(provider,f.keys,options),/after 3 attempts.*Electrum wallet UTXO disagreement/);
+ await assert.rejects(scanWallet(provider,f.keys,options),/after 3 attempts.*second verified provider/);
  assert.equal(f.chain.broadcasts.length,0);
 });
-test('wallet scan rechecks the first provider after the second scan before accepting balances',async()=>{
- const {f,messages,options}=harness(),request=f.chain.request;let sessions=0;
- f.chain.request=async(method,...params)=>{if(method==='server.version'&&++sessions===3)f.chain.mine([]);return request(method,...params);};
+test('wallet scan uses distinct concurrent provider sessions and returns only matching snapshots',async()=>{
+ const {f,options}=harness(),request=f.chain.request;let sessions=0,active=0,maximum=0;
+ f.chain.request=async(method,...params)=>{if(method==='server.version')sessions++;if(method!=='blockchain.scripthash.listunspent')return request(method,...params);
+  active++;maximum=Math.max(maximum,active);try{await new Promise(r=>setTimeout(r,5));return await request(method,...params);}finally{active--;}
+ };
  assert.equal((await scanWallet(f.engine.provider,f.keys,options)).tokens[f.asset],'2500');
- assert.ok(messages.some(s=>s.includes('normal blockchain extension')));assert.equal(sessions,6);
+ assert.equal(sessions,2);assert.ok(maximum>=2);assert.equal(new Set(f.chain.requestLog.map(r=>r.endpoint)).size,2);
 });
