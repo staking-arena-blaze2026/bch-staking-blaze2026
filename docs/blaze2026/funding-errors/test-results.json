@@ -1,5 +1,5 @@
 {
-  "at": "2026-11-18T11:53:14.328926+00:00",
+  "at": "2026-11-18T12:01:38.050930+00:00",
   "frontend": {
     "files": 6,
     "passed": 57,
@@ -11,7 +11,8 @@
     "isolatedReservationNetworks": [
       "mainnet",
       "chipnet"
-    ]
+    ],
+    "reorganizationRecovery": "Both isolated network configurations invalidate the competing-spend block, restart without mempool, and prove that reappearing wallet inputs are reserved again without modifying signed bytes."
   },
   "existingIsolatedSuites": [
     "queue-wallet",

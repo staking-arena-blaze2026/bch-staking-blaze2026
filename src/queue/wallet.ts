@@ -51,8 +51,11 @@ export class QueueWallet {
    coins.sort((a,b)=>outpoint(a.utxo).localeCompare(outpoint(b.utxo)));return {value:coins,tip,identity:json({tip:tip.hash,coins})};
   },{parallel:true});
   const list=await this.store.list();
-  for(const op of list)if((!op.network||op.network===this.network())&&op.id!==id&&op.raw&&!['discarded','conflict'].includes(op.stage)&&(!['action','wallet-preparation'].includes(op.step)||op.stage!=='confirmed'))await this.reconcileReservation(op);
-  const active=list.filter(o=>(!o.network||o.network===this.network())&&o.id!==id&&!id.startsWith(o.id+':next')&&!['discarded','conflict'].includes(o.stage)&&(o.stage!=='confirmed'||o.step==='wallet-preparation'&&!o.next||!['action','wallet-preparation'].includes(o.step)&&(o.reservationResolution!=='confirmed'||legacyAnchors(o).length>0)));
+  const live=new Set(coins.map(c=>outpoint(c.utxo)));
+  // A previously confirmed spend can disappear in a reorganization. If a
+  // reserved input reappears, old journal classifications cannot release it.
+  for(const op of list)if((!op.network||op.network===this.network())&&op.id!==id&&op.raw&&op.stage!=='discarded'&&(!['confirmed','conflict'].includes(op.stage)||!['action','wallet-preparation'].includes(op.step)||reservationInputs(op).some(u=>live.has(outpoint(u)))))await this.reconcileReservation(op);
+  const active=list.filter(o=>(!o.network||o.network===this.network())&&o.id!==id&&!id.startsWith(o.id+':next')&&o.stage!=='discarded'&&(o.stage!=='conflict'||o.reservationResolution==='unresolved')&&(o.stage!=='confirmed'||o.reservationResolution==='unresolved'||o.step==='wallet-preparation'&&!o.next||!['action','wallet-preparation'].includes(o.step)&&(o.reservationResolution!=='confirmed'||legacyAnchors(o).length>0)));
   const anchored=list.filter(o=>(!o.network||o.network===this.network())&&legacyAnchors(o).length>0);
   const records=[...new Map([...active,...anchored].map(o=>[o.id,o])).values()];
   const reserved=new Set([...active.flatMap(o=>reservationInputs(o).map(outpoint)),...anchored.flatMap(o=>legacyAnchors(o).map(outpoint))]);
@@ -224,7 +227,7 @@ export class QueueWallet {
   }catch{
    const conflict=await this.knownConflict(op).catch(()=>undefined);
    if(conflict){op.stage='conflict';op.reservationResolution='conflict';op.error='Confirmed competing spend '+conflict+' makes the retained transaction unspendable. Signed evidence retained.';}
-   else {op.reservationResolution='unresolved';op.error='Independent transaction status is inconclusive. Unspent wallet inputs remain reserved. Inspect the transaction ID and inputs with selected-network explorers or restore provider connectivity, then Inspect / resume. No rebroadcast or abandonment was attempted.';}
+   else {op.stage='signed';op.reservationResolution='unresolved';op.error='Independent transaction status is inconclusive. Unspent wallet inputs remain reserved. Inspect the transaction ID and inputs with selected-network explorers or restore provider connectivity, then Inspect / resume. No rebroadcast or abandonment was attempted.';}
   }
   await this.store.save(op);return op;
  }

@@ -9,7 +9,7 @@ import {utxo} from '../src/arena-core.js';
 import {walletAddress} from '../src/transactions-core.js';
 import {QueueWallet,type Operation} from '../src/queue/wallet.js';
 import {ZERO,ownerScript} from '../src/queue/protocol.js';
-for(const network of ['mainnet','chipnet'] as const)test(network+': legacy signed reservations reconcile without broadcasting or destroying evidence',{timeout:120000},async()=>isolatedRegtest(async()=>{
+for(const network of ['mainnet','chipnet'] as const)test(network+': legacy signed reservations reconcile without broadcasting or destroying evidence',{timeout:120000},async()=>isolatedRegtest(async({restartWithoutMempool})=>{
  const p=new RegtestElectrum(await rpc('getblockcount'));p.network=network as typeof p.network;const request=p.request;
  p.request=async(method,...args)=>method==='blockchain.relayfee'?0.00001:request(method,...args);
  const signer=new SignatureTemplate(new Uint8Array(32).fill(83)),key={publicKey:binToHex(signer.publicKey),path:'receive' as const,index:0},keys=[key],address=walletAddress(signer.publicKey,'regtest'),miner=await rpc<string>('getnewaddress');
@@ -42,4 +42,8 @@ for(const network of ['mainnet','chipnet'] as const)test(network+': legacy signe
  const competitor=new TransactionBuilder({provider:p}).addInput(unrelated,signer.unlockP2PKH()).addOutput({to:ownerScript(signer.publicKey),amount:48000n}).build();
  await rpc('sendrawtransaction',[competitor]);await rpc('generatetoaddress',[1,miner]);p.headerCache.clear();await p.refresh();
  const afterConflict=await wallet.prepare({kind:'create',parameters},keys);assert.ok(!afterConflict.sources.some(u=>u.txid===extra.txid&&u.vout===extra.vout));assert.equal(saved.get('competing')!.stage,'conflict');assert.equal(saved.get('competing')!.raw,otherRaw);
+ // Reappearance of a wallet source invalidates a cached conflict classification.
+ await wallet.discard(afterConflict.id);await rpc('invalidateblock',[await rpc('getbestblockhash')]);await restartWithoutMempool();p.headerCache.clear();await p.refresh();
+ const afterReorg=await wallet.prepare({kind:'create',parameters},keys);assert.equal(saved.get('competing')!.stage,'signed');assert.equal(saved.get('competing')!.reservationResolution,'unresolved');assert.equal(saved.get('competing')!.raw,otherRaw);assert.ok(!afterReorg.sources.some(u=>u.txid===unrelated.txid));
+
 },18588,['-expire=0','-upgrade12activationheight=1','-mocktime=1790000000']));
