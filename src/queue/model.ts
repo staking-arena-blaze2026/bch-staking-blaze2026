@@ -25,7 +25,7 @@ export function parameters(p:Parameters){const errors=parameterErrors(p);if(Obje
 export function scoreErrors(s:Score,p:Parameters):Partial<Record<keyof Score,string>>{
  const errors:Partial<Record<keyof Score,string>>={};
  if(s.stake<CARRIER||s.stake>1000000n)errors.stake=p.stakingCategory===ZERO?'Stake must be 0.00001200 to 0.01000000 BCH.':'Stake must be 1,200 to 1,000,000 raw fungible units.';
- if(!Number.isInteger(s.duration)||s.duration<512||s.duration>33553920||s.duration%512)errors.duration='Enter 1 to 65,535 whole 512-second time units.';
+ if(!Number.isInteger(s.duration)||s.duration<512||s.duration>33553920||s.duration%512)errors.duration='Lock duration must be 1 to 65,535 whole 512-second time units.';
  if(s.reward<minimumReward(p.rewardCategory)||s.reward>1000000000n)errors.reward=p.rewardCategory===ZERO?'Requested reward must be at least 0.00001200 BCH and at most 10 BCH.':'Requested reward must be 1 to 1,000,000,000 raw fungible units.';
  return errors;
 }

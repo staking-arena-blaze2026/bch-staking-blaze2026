@@ -34,5 +34,20 @@
   "queueArtifacts": "unchanged; compile-queue --check passed",
   "productionBuild": true,
   "publicBroadcasts": 0,
-  "realWalletApprovals": 0
+  "realWalletApprovals": 0,
+  "isolatedCovenants": {
+    "passed": 7,
+    "failed": 0
+  },
+  "inheritedCiFailures": {
+    "baselineCommit": "a3f82f6507d1b8741c8a73d7ddd05a216cd17fa5",
+    "baselineRun": 44291278222,
+    "suites": [
+      "blaze-chained-genesis",
+      "blaze-public-discovery",
+      "blaze-atomic-offer",
+      "blaze-zero-conf"
+    ],
+    "reason": "Existing V3 duration fixtures reject with Lock duration must be a whole number from 1 to 65,535 time units; identical failures in the preceding commit."
+  }
 }
