@@ -17,7 +17,7 @@ import {QueueIndexer} from '../src/queue/chain.js';
 test('automatic preparation: both public configurations, minimal approvals, recovery, exact fees and isolated P2P',{timeout:600000},async()=>isolatedRegtest(async()=>{
  const relay=await queueRelayPeer();let mocked=1790000000;await relay.peer('setmocktime',[mocked]);const results:unknown[]=[];let seed=100;
  try{
- for(const network of [Network.MAINNET,Network.CHIPNET])for(const scenario of ['normal','one-independent','zero','one-only','bch/token','token/bch','token/token','same-token','token-only']){
+ for(const network of [Network.MAINNET,Network.CHIPNET])for(const scenario of process.env.QUEUE_PREPARATION_SCENARIOS?.split(',')??['normal','one-independent','zero','one-only','bch/token','token/bch','token/token','same-token','token-only','reported-layout']){
   console.log('Testing',network,scenario);
   class Local extends RegtestElectrum {
    lose=false;broadcasts=0;
@@ -40,14 +40,19 @@ test('automatic preparation: both public configurations, minimal approvals, reco
   }
   async function token(only=false){const c=await fund(true),b=new TransactionBuilder({provider:p}).addInput(c,signer.unlockP2PKH()).addOutput({to:minerScript,amount:546n}).addOutput({to:ownerScript(signer.publicKey),amount:only?c.satoshis-1546n:2000n,token:{category:c.txid,amount:1000000n}});if(!only)b.addOutput({to:ownerScript(signer.publicKey),amount:c.satoshis-3546n});await rpc('sendrawtransaction',[b.build()]);await p.refresh();return c.txid;}
   let stake=ZERO,reward=ZERO;
-  if(scenario==='normal'){await fund(true);await fund(true);}
+  if(scenario==='reported-layout'){
+   const a=await fund(true),b=await fund(true);
+   await rpc('sendrawtransaction',[new TransactionBuilder({provider:p}).addInput(a,signer.unlockP2PKH()).addOutput({to:ownerScript(signer.publicKey),amount:1200n}).addOutput({to:ownerScript(signer.publicKey),amount:865001n}).addOutput({to:minerScript,amount:a.satoshis-867201n}).build()]);
+   await rpc('sendrawtransaction',[new TransactionBuilder({provider:p}).addInput(b,signer.unlockP2PKH()).addOutput({to:minerScript,amount:546n}).addOutput({to:ownerScript(signer.publicKey),amount:1500n}).addOutput({to:minerScript,amount:b.satoshis-3046n}).build()]);await p.refresh();
+  }else if(scenario==='normal'){await fund(true);await fund(true);}
   else if(scenario==='one-independent'){await fund(true);await fund(false);}
   else if(scenario==='one-only')await fund(true);
   else if(scenario==='zero')await fund(false);
   else if(scenario==='token-only'){reward=await token(true);}
   else {const a=await token();if(scenario.startsWith('token')||scenario==='same-token')stake=a;if(scenario.endsWith('token')||scenario==='same-token')reward=scenario==='token/token'?await token():a;}
-  const parameters={stakingCategory:stake,rewardCategory:reward,epoch:(await rpc('getblockchaininfo')).mediantime-10000,interval:600,releases:20,cap:2000n};
-  let op=await wallet.prepare({kind:'create',parameters},keys);const quote=op.quote!,expected=scenario==='normal'?1:scenario==='one-independent'?2:3;
+  const parameters={stakingCategory:stake,rewardCategory:reward,epoch:(await rpc('getblockchaininfo')).mediantime-10000,interval:600,releases:scenario==='reported-layout'?8:20,cap:scenario==='reported-layout'?1200n:2000n};
+  let op=await wallet.prepare({kind:'create',parameters},keys);const quote=op.quote!,expected=scenario==='normal'?1:['one-independent','reported-layout'].includes(scenario)?2:3;
+  if(scenario==='reported-layout')assert.equal(BigInt(quote.walletDebit),13000n+BigInt(quote.totalFee));
   assert.equal(quote.transactions,expected,network+' '+scenario);assert.equal(quote.approvals,expected);assert.equal(approvals,0);assert.equal(p.broadcasts,0);
   if(expected>1){await assert.rejects(()=>wallet.authorize(op.id),/Confirm additional/);await wallet.discard(op.id);assert.equal(p.broadcasts,0);op=await wallet.prepare({kind:'create',parameters},keys);await wallet.confirm(op.id);}
   const measured:{bytes:number;fee:string;step:string}[]=[];
@@ -69,11 +74,11 @@ test('automatic preparation: both public configurations, minimal approvals, reco
    const child=await wallet.advance(op.id,keys),same=await wallet.advance(op.id,keys);assert.equal(child.id,same.id,'no duplicate continuation');op=same;
   }
   assert.equal(approvals,expected);assert.equal(p.broadcasts,expected);assert.equal(measured.reduce((n,c)=>n+BigInt(c.fee),0n).toString(),quote.totalFee);
-  assert.notEqual(op.config!.identity.vault,op.config!.identity.queue);assert.equal((await new QueueIndexer(p,op.config!).sync()).state.reserve,40000n);
+  assert.notEqual(op.config!.identity.vault,op.config!.identity.queue);assert.equal((await new QueueIndexer(p,op.config!).sync()).state.reserve,parameters.cap*BigInt(parameters.releases));
   const wrong={...op,network:network===Network.MAINNET?Network.CHIPNET:Network.MAINNET};saved.set(op.id,wrong);await assert.rejects(()=>wallet.get(op.id),/network mismatch/);saved.set(op.id,op);
   console.log('Verified',network,scenario,expected,'transactions/approvals');
   results.push({network,scenario,transactions:expected,approvals,quote,measured,p2pRelayed:true});
  }
- await writeFile('docs/blaze2026/linked-queue/preparation-results.json',JSON.stringify({at:new Date().toISOString(),environment:'isolated BCHN regtest with mainnet/chipnet application configuration and loopback P2P; synthetic Schnorr signer; no public broadcast or real Cashonize',results},null,2)+'\n');
+ await writeFile(process.env.QUEUE_PREPARATION_RESULTS??'docs/blaze2026/linked-queue/preparation-results.json',JSON.stringify({at:new Date().toISOString(),environment:'isolated BCHN regtest with mainnet/chipnet application configuration and loopback P2P; synthetic Schnorr signer; no public broadcast or real Cashonize',results},null,2)+'\n');
  }finally{await relay.close();}
 },18538,['-expire=0','-upgrade12activationheight=1','-mocktime=1790000000']));

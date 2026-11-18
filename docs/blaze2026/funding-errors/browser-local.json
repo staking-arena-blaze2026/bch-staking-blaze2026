@@ -1,0 +1,26 @@
+{
+  "at": "2026-11-18T11:52:23.756Z",
+  "base": "http://127.0.0.1:42799/staking-arena-blaze-site/",
+  "noWallet": true,
+  "publicSocketsBlocked": true,
+  "results": [
+    {
+      "network": "mainnet",
+      "minimumBch": true,
+      "correctedErrorRemoved": true,
+      "rawTokenUnits": true,
+      "unavailableWalletReason": true,
+      "mobile": true,
+      "javascriptErrors": []
+    },
+    {
+      "network": "chipnet",
+      "minimumBch": true,
+      "correctedErrorRemoved": true,
+      "rawTokenUnits": true,
+      "unavailableWalletReason": true,
+      "mobile": true,
+      "javascriptErrors": []
+    }
+  ]
+}

@@ -125,12 +125,13 @@ export function browserWalletClient(manager:DappConnectionManager|null,check:()=
    if(v3Approval||v2Approval)throw Error('Finish the pending wallet approval first');v3Approval=true;
    try{
     const session=JSON.stringify(getManager().getSessionPaths());let descriptors=keys(intent.operation==='resume'?40:v3ScanLimit);
-    let result;try{result=await queueCall(intent,descriptors);}catch(e){if(!/Insufficient|funding is required|funding for|funding propagates|Atomic vault creation needs/i.test(String(e))||v3ScanLimit>=40)throw e;v3ScanLimit=40;descriptors=keys(v3ScanLimit);guard();result=await queueCall(intent,descriptors);}
+    let result;try{result=await queueCall(intent,descriptors);}catch(e){if((!(e as {details?:{code?:string}})?.details?.code?.includes('funding')&&!/Insufficient|funding is required|funding for|funding propagates|Atomic vault creation needs/i.test(String(e)))||v3ScanLimit>=40)throw e;v3ScanLimit=40;descriptors=keys(v3ScanLimit);guard();result=await queueCall(intent,descriptors);}
     // Before proposing extra approvals, search the ordinary bounded wallet
     // descriptor set. Keep the normal atomic case on its short discovery path.
     if(intent.operation==='prepare'&&result?.intent?.kind==='create'&&result.quote?.transactions>1&&v3ScanLimit<40){
      guard();await queueCall({operation:'discard',id:result.id});v3ScanLimit=40;descriptors=keys(v3ScanLimit);guard();result=await queueCall(intent,descriptors);
     }
+    if(typeof result?.step==='string'&&!['action','wallet-preparation'].includes(result.step))return result;
     let approval=(result?.completed??0)+(result?.raw?1:0),total=(result?.completed??0)+(result?.quote?.approvals??1);
     for(;;){
     guard();

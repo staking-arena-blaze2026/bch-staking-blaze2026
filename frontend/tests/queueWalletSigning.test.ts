@@ -60,3 +60,12 @@ it('searches more wallet addresses before offering preparation, preserving one a
  vi.mocked(queueCall).mockImplementation(async(...args)=>{if(args[0].operation==='prepare'){prepares++;return {id:'discovery'+prepares,intent:{kind:'create'},stage:'review',plan,approved:prepares>1,quote:{transactions:prepares===1?3:1,approvals:prepares===1?3:1}};}return original(...args);});window.addEventListener('arena-preparation-confirm',popup);
  try{await wallet.queue!({operation:'prepare',intent:{kind:'create'}});expect(prepares).toBe(2);expect(popup).not.toHaveBeenCalled();expect(manager.signTransaction).toHaveBeenCalledOnce();expect(queueCall).toHaveBeenCalledWith({operation:'discard',id:'discovery1'});}finally{window.removeEventListener('arena-preparation-confirm',popup);wallet.close?.();}
 });
+it('expands descriptor discovery for structured funding failures before signing',async()=>{
+ const {wallet,manager}=setup(),original=vi.mocked(queueCall).getMockImplementation()!;let prepares=0;
+ vi.mocked(queueCall).mockImplementation(async(...args)=>{if(args[0].operation==='prepare'&&++prepares===1)throw Object.assign(Error('Vault creation funding: verified inputs unavailable'),{details:{code:'creation-funding',available:'0'}});return original(...args);});
+ try{await wallet.queue!({operation:'prepare',intent:{kind:'create'}});expect(prepares).toBe(2);expect(vi.mocked(queueCall).mock.calls.filter(c=>c[0].operation==='prepare').map(c=>c[1]?.length)).toEqual([2,40]);expect(manager.signTransaction).toHaveBeenCalledOnce();}finally{wallet.close?.();}
+});
+it('legacy inspection never reaches approval or submission, even if a retained entry is in review',async()=>{
+ const {wallet,manager}=setup();vi.mocked(queueCall).mockResolvedValue({id:'old',stage:'review',step:'seed-funding',plan:{},error:'Unresolved reservation; inspect retained evidence'});
+ try{const result=await wallet.queue!({operation:'resume',id:'old',retry:true});expect(result.step).toBe('seed-funding');expect(manager.signTransaction).not.toHaveBeenCalled();expect(vi.mocked(queueCall).mock.calls.map(c=>c[0].operation)).toEqual(['resume']);}finally{wallet.close?.();}
+});

@@ -1,0 +1,68 @@
+{
+  "at": "2026-11-18T11:45:50.224Z",
+  "environment": "isolated BCHN regtest with mainnet/chipnet application configuration and loopback P2P; synthetic Schnorr signer; no public broadcast or real Cashonize",
+  "results": [
+    {
+      "network": "mainnet",
+      "scenario": "reported-layout",
+      "transactions": 2,
+      "approvals": 2,
+      "quote": {
+        "transactions": 2,
+        "approvals": 2,
+        "preparationFees": [
+          "370"
+        ],
+        "creationFee": "1464",
+        "totalFee": "1834",
+        "walletDebit": "14834",
+        "reserve": "9600",
+        "rewardCategory": "0000000000000000000000000000000000000000000000000000000000000000"
+      },
+      "measured": [
+        {
+          "step": "wallet-preparation",
+          "bytes": 185,
+          "fee": "370"
+        },
+        {
+          "step": "action",
+          "bytes": 732,
+          "fee": "1464"
+        }
+      ],
+      "p2pRelayed": true
+    },
+    {
+      "network": "chipnet",
+      "scenario": "reported-layout",
+      "transactions": 2,
+      "approvals": 2,
+      "quote": {
+        "transactions": 2,
+        "approvals": 2,
+        "preparationFees": [
+          "185"
+        ],
+        "creationFee": "732",
+        "totalFee": "917",
+        "walletDebit": "13917",
+        "reserve": "9600",
+        "rewardCategory": "0000000000000000000000000000000000000000000000000000000000000000"
+      },
+      "measured": [
+        {
+          "step": "wallet-preparation",
+          "bytes": 185,
+          "fee": "185"
+        },
+        {
+          "step": "action",
+          "bytes": 732,
+          "fee": "732"
+        }
+      ],
+      "p2pRelayed": true
+    }
+  ]
+}

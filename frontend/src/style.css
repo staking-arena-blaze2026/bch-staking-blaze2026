@@ -244,3 +244,9 @@ body{
 @media(max-width:650px){.header .brand-artwork{--brand-logo-width:118px}}
 @media(max-width:360px){.header .brand-artwork{--brand-logo-width:98px}}
 @media(min-width:1600px){.header .brand-artwork{--brand-gap:36px}}
+
+/* Keep field and preflight failures visible beside the affected action. */
+.v3-arena .form-grid [role="alert"]{color:#85250c;font-size:12px;font-weight:600}
+.v3-arena .form-grid [aria-invalid="true"]{border:2px solid #85250c}
+.v3-arena .transaction-error{border:2px solid #85250c;border-radius:8px;background:#fff0df;padding:14px;margin:14px 0;color:#692008;overflow-wrap:anywhere}
+.v3-arena .transaction-error button{margin-top:10px}

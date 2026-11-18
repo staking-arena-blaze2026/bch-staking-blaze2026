@@ -18,7 +18,7 @@ afterEach(cleanup);
 async function open(){render(<WalletTransactionsContext.Provider value={wallet}><QueueArena/></WalletTransactionsContext.Provider>);await screen.findByRole('heading',{name:'Make an Offer'});}
 it('validates 512-second units and preserves exact terms in the approval request',async()=>{await open();fireEvent.change(screen.getByLabelText('Lock duration (time units)'),{target:{value:'12'}});expect(screen.getAllByText(/1 hour, 42 minutes, 24 seconds/).length).toBeGreaterThan(0);fireEvent.click(screen.getByRole('button',{name:'Make an Offer'}));await waitFor(()=>expect(wallet.queue).toHaveBeenCalledWith({operation:'prepare',intent:{kind:'insert',config,terms:{stake:3000n,duration:6144,reward:2000n}}},expect.any(Function)));fireEvent.change(screen.getByLabelText('Lock duration (time units)'),{target:{value:'0'}});expect(screen.getByRole('button',{name:'Make an Offer'})).toBeDisabled();});
 it('binds a claim to the reviewed head, and waits for an offline saved pairing',async()=>{live=false;await open();const button=screen.getByRole('button',{name:'Claim reward'});expect(button).toBeEnabled();fireEvent.click(button);expect(wallet.queue).not.toHaveBeenCalled();await waitFor(()=>expect(wallet.restore).toHaveBeenCalled());live=true;await waitFor(()=>expect(wallet.queue).toHaveBeenCalledWith({operation:'prepare',intent:{kind:'claim',config,expectedHead:offer.id}},expect.any(Function)));});
-it('cancels deferred approval when the terms or route change',async()=>{live=false;await open();fireEvent.click(screen.getByRole('button',{name:'Make an Offer'}));await waitFor(()=>expect(wallet.restore).toHaveBeenCalled());fireEvent.change(screen.getByLabelText('Stake amount'),{target:{value:'0.00004000'}});live=true;await waitFor(()=>expect(screen.getByRole('status')).toHaveTextContent('changed or expired'));expect(wallet.queue).not.toHaveBeenCalled();});
+it('cancels deferred approval when the terms or route change',async()=>{live=false;await open();fireEvent.click(screen.getByRole('button',{name:'Make an Offer'}));await waitFor(()=>expect(wallet.restore).toHaveBeenCalled());fireEvent.change(screen.getByLabelText('Stake amount'),{target:{value:'0.00004000'}});live=true;await waitFor(()=>expect(screen.getByRole('alert')).toHaveTextContent('changed or expired'));expect(wallet.queue).not.toHaveBeenCalled();});
 it('shows owner states and enables matured withdrawal on the My Offers route',async()=>{window.location.hash='#/v3/my-offers';rows=[{id:offer.id,offer,status:'Baked',maturesAt:1800001000,checkedMtp:1800001200}];render(<WalletTransactionsContext.Provider value={wallet}><QueueArena/></WalletTransactionsContext.Provider>);const button=await screen.findByRole('button',{name:'Get my stake back'});expect(button).toBeEnabled();fireEvent.click(button);await waitFor(()=>expect(wallet.queue).toHaveBeenCalledWith({operation:'prepare',intent:{kind:'withdraw',config,offerId:offer.id}},expect.any(Function)));});
 it('displays local/MTP release timing and the complete expandable schedule',async()=>{await open();expect(screen.getByText(/Blockchain time \(MTP\):/)).toBeInTheDocument();const summary=screen.getByText('Release schedule and history');await act(async()=>{fireEvent.click(summary);summary.closest('details')!.open=true;fireEvent(summary.closest('details')!,new Event('toggle'));});expect(screen.getByRole('columnheader',{name:'Scheduled local time'})).toBeInTheDocument();expect(screen.getAllByRole('row').length).toBeGreaterThan(10);});
 
@@ -28,5 +28,35 @@ it('cancels the preparation confirmation when creation terms change',async()=>{
  HTMLDialogElement.prototype.showModal=vi.fn(function(this:HTMLDialogElement){this.setAttribute('open','');});window.location.hash='#/create';
  render(<WalletTransactionsContext.Provider value={wallet}><QueueArena/></WalletTransactionsContext.Provider>);
  const respond=vi.fn();await act(async()=>{window.dispatchEvent(new CustomEvent('arena-preparation-confirm',{detail:{respond,quote:{transactions:2,approvals:2,preparationFees:['219'],creationFee:'400',totalFee:'619',walletDebit:'50000',reserve:'40000',rewardCategory:zero}}}));});
- expect(respond).not.toHaveBeenCalled();fireEvent.change(screen.getByLabelText('Reward per release'),{target:{value:'0.00003000'}});await waitFor(()=>expect(respond).toHaveBeenCalledWith(false));
+ expect(respond).not.toHaveBeenCalled();fireEvent.change(screen.getByLabelText('Reward per release (min. 0.00001200 BCH)'),{target:{value:'0.00003000'}});await waitFor(()=>expect(respond).toHaveBeenCalledWith(false));
+});
+
+it('permanently labels the minimum, rejects 1199 sats and accepts exactly 1200',async()=>{
+ window.location.hash='#/create';render(<WalletTransactionsContext.Provider value={wallet}><QueueArena/></WalletTransactionsContext.Provider>);
+ const field=screen.getByLabelText('Reward per release (min. 0.00001200 BCH)');
+ fireEvent.change(field,{target:{value:'0.00001199'}});
+ expect(screen.getByRole('alert',{name:'cap error'})).toHaveTextContent('1,200 satoshis');expect(screen.getByRole('button',{name:'Create Vault'})).toBeDisabled();
+ fireEvent.change(field,{target:{value:'0.00001200'}});expect(screen.queryByRole('alert',{name:'cap error'})).toBeNull();expect(screen.getByRole('button',{name:'Create Vault'})).toBeEnabled();
+ expect(screen.getByLabelText('Reward per release (min. 0.00001200 BCH)')).toHaveValue('0.00001200');
+});
+it('uses raw token units without inventing decimals',async()=>{
+ window.location.hash='#/create';render(<WalletTransactionsContext.Provider value={wallet}><QueueArena/></WalletTransactionsContext.Provider>);
+ fireEvent.change(screen.getByLabelText('Reward asset'),{target:{value:'token'}});fireEvent.change(screen.getByLabelText('Reward token category'),{target:{value:'ab'.repeat(32)}});
+ const field=screen.getByLabelText('Reward per release (min. 1 raw fungible unit)');fireEvent.change(field,{target:{value:'0.5'}});expect(screen.getByRole('alert',{name:'cap error'})).toHaveTextContent('token decimals are not assumed');
+ fireEvent.change(field,{target:{value:'1'}});expect(screen.queryByRole('alert',{name:'cap error'})).toBeNull();expect(screen.getByRole('button',{name:'Create Vault'})).toBeEnabled();
+});
+it.each(['create','offer'])('retains %s preflight errors and values through field corrections and status updates',async(kind)=>{
+ if(kind==='create')window.location.hash='#/create';
+ render(<WalletTransactionsContext.Provider value={wallet}><QueueArena/></WalletTransactionsContext.Provider>);
+ const button=await screen.findByRole('button',{name:kind==='create'?'Create Vault':'Make an Offer'});
+ vi.mocked(wallet.queue!).mockRejectedValueOnce(Object.assign(Error('Error: Error: verified funding is reserved'),{details:{code:'creation-funding',available:'1000'}}));
+ fireEvent.click(button);await waitFor(()=>expect(screen.getByRole('alert')).toHaveTextContent('verified funding is reserved'));
+ expect(screen.getByRole('alert')).not.toHaveTextContent('Error:');
+ const field=screen.getByLabelText(kind==='create'?'Reward per release (min. 0.00001200 BCH)':'Requested reward');expect(field).toHaveValue('0.00002000');
+ fireEvent.change(field,{target:{value:'0.00003000'}});await act(async()=>{window.dispatchEvent(new CustomEvent('arena-wallet-progress',{detail:'Background progress'}));});
+ expect(screen.getByRole('alert')).toHaveTextContent('verified funding is reserved');fireEvent.click(screen.getByRole('button',{name:'Dismiss transaction error'}));expect(screen.queryByText('verified funding is reserved')).toBeNull();
+});
+it('shows each offer validation failure beside its field',async()=>{
+ await open();for(const name of ['Stake amount','Requested reward','Lock duration (time units)'])fireEvent.change(screen.getByLabelText(name),{target:{value:'0'}});
+ expect(screen.getByRole('alert',{name:'stake error'})).toHaveTextContent('Stake must');expect(screen.getByRole('alert',{name:'reward error'})).toHaveTextContent('Requested reward must');expect(screen.getByRole('alert',{name:'duration error'})).toBeVisible();
 });

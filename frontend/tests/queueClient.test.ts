@@ -33,3 +33,8 @@ it('discards session review evidence while leaving the signature journal worker 
  const retained=queueCall({operation:'retain',id:'review',raw:'signed'});await Promise.resolve();worker.respond('retained');
  await expect(retained).resolves.toBe('retained');
 });
+it('preserves structured preflight evidence without adding another error prefix',async()=>{
+ vi.stubGlobal('Worker',WorkerMock);const pending=queueCall({operation:'prepare'}),worker=WorkerMock.instances[0]!;
+ const rejected=expect(pending).rejects.toMatchObject({message:'Verified funding is reserved',details:{code:'creation-funding',available:'1000',reserved:'850000'}});
+ worker.ready();await Promise.resolve();worker.onmessage?.({data:{id:worker.postMessage.mock.calls.at(-1)![0].id,error:'Verified funding is reserved',details:{code:'creation-funding',available:'1000',reserved:'850000'}}});await rejected;
+});

@@ -1,3 +1,4 @@
+import {BchFundingError} from './funding.js';
 import {Buffer} from '../bytes.js';
 import {Contract,TransactionBuilder,type NetworkProvider,type SpendableUtxo,type SignatureTemplate,type Unlocker} from 'cashscript';
 import {binToHex,hash160,hexToBin,decodeTransaction,createVirtualMachineBch2026,type Transaction} from '@bitauth/libauth';
@@ -25,18 +26,24 @@ export function nodeOutput(c:Context,o:Offer){return {to:node(c).tokenAddress,am
 export function source(u:SpendableUtxo){if(!u.lockingBytecode)throw Error('Missing source script');return {valueSatoshis:u.satoshis,lockingBytecode:hexToBin(u.lockingBytecode),...(u.token?{token:{category:hexToBin(u.token.category),amount:u.token.amount,...(u.token.nft?{nft:{capability:u.token.nft.capability,commitment:hexToBin(u.token.nft.commitment)}}:{})}}:{})};}
 export function readNode(c:Context,u:SpendableUtxo){if(u.lockingBytecode!==node(c).lockingBytecode||u.token?.category!==c.identity.queue||u.token.amount!==0n||u.token.nft?.capability!=='minting')throw Error('Unauthenticated node');const o=decodeOffer(hexToBin(u.token.nft.commitment));validateScore(o,c.p);if(o.id===ZERO||u.satoshis!==CARRIER+(c.p.stakingCategory===ZERO?o.stake:0n))throw Error('Incorrect node collateral');return o;}
 export function readState(c:Context,u:SpendableUtxo){if(u.lockingBytecode!==arena(c).lockingBytecode||u.token?.category!==c.identity.vault||u.token.amount!==0n||u.token.nft?.capability!=='mutable')throw Error('Unauthenticated vault');const s=decodeState(hexToBin(u.token.nft.commitment));if(s.reserve>BigInt(c.p.releases)*c.p.cap||u.satoshis!==CARRIER+(c.p.rewardCategory===ZERO?s.reserve:0n))throw Error('Incorrect reserve');return s;}
-function change(builder:TransactionBuilder,funding:Funding[],category:string,required:bigint,owner:Uint8Array,fee:bigint,protectedDelta:bigint){
+const fundingFailures=new WeakMap<TransactionBuilder,BchFundingError>();
+export function fundingRemainder(builder:TransactionBuilder,available:bigint,required:bigint,fee:bigint,phase='creation',allowZero=true){
+ const amount=available-required-fee;
+ if(amount<546n&&(amount!==0n||!allowZero)){fundingFailures.set(builder,new BchFundingError(required+fee+546n,available,fee,phase));return 546n;}
+ return amount;
+}
+function change(builder:TransactionBuilder,funding:Funding[],category:string,required:bigint,owner:Uint8Array,fee:bigint,protectedDelta:bigint,phase='creation'){
  let bch=0n,tokens=0n;
  for(const {input,unlocker}of funding){if(input.token&&(input.token.nft||category===ZERO||input.token.category!==category))throw Error('Unrelated funding token or NFT');bch+=input.satoshis;tokens+=input.token?.amount??0n;builder.addInput(input,unlocker);}
- const remainder=tokens-(category===ZERO?0n:required);if(remainder<0n)throw Error('Insufficient tokens');
+ const remainder=tokens-(category===ZERO?0n:required);if(remainder<0n)throw Error('Insufficient tokens: '+required+' raw units required; '+tokens+' available in selected inputs');
  if(remainder>0n){builder.addOutput({to:ownerScript(owner),...asset(category,remainder)});protectedDelta+=CARRIER;}
- const amount=bch-protectedDelta-fee;if(amount<0n)throw Error('Insufficient BCH');if(amount>0n){if(amount<546n)throw Error('BCH change is dust; select more funding');builder.addOutput({to:ownerScript(owner),amount});}
+ const amount=fundingRemainder(builder,bch,protectedDelta,fee,phase);if(amount>0n)builder.addOutput({to:ownerScript(owner),amount});
 }
 /** Rebuild before approval until the fee equals signed byte count × policy rate.
  * Schnorr signatures have fixed size. The returned signed bytes are immutable. */
 export function priced(make:(fee:bigint)=>TransactionBuilder,sources:SpendableUtxo[],satPerByte=1n){
  if(satPerByte<1n||satPerByte>100n)throw Error('Invalid fee policy');let fee=0n;
- for(let i=0;i<6;i++){const builder=make(fee),next=builder.getTransactionSize()*satPerByte;if(next===fee){const raw=builder.build(),tx=decodeTransaction(hexToBin(raw));if(typeof tx==='string')throw Error(tx);const actual=sources.reduce((n,u)=>n+u.satoshis,0n)-tx.outputs.reduce((n,o)=>n+o.valueSatoshis,0n);if(actual!==fee)throw Error('Fee conservation failure');return {builder,raw,fee,bytes:Number(builder.getTransactionSize()),sources};}fee=next;}
+ for(let i=0;i<6;i++){const builder=make(fee),next=builder.getTransactionSize()*satPerByte;if(next===fee){const failure=fundingFailures.get(builder);if(failure)throw failure;const raw=builder.build(),tx=decodeTransaction(hexToBin(raw));if(typeof tx==='string')throw Error(tx);const actual=sources.reduce((n,u)=>n+u.satoshis,0n)-tx.outputs.reduce((n,o)=>n+o.valueSatoshis,0n);if(actual!==fee)throw Error('Fee conservation failure');return {builder,raw,fee,bytes:Number(builder.getTransactionSize()),sources};}fee=next;}
  throw Error('Signed fee did not converge');
 }
 export function verify(plan:{raw:string;sources:SpendableUtxo[]}){const tx=decodeTransaction(hexToBin(plan.raw));if(typeof tx==='string')throw Error(tx);const result=createVirtualMachineBch2026().verify({transaction:tx,sourceOutputs:plan.sources.map(source)});if(result!==true)throw Error(String(result));return tx;}
@@ -65,7 +72,7 @@ export function insert(c:Context,controller:SpendableUtxo,authority:SpendableUtx
  else builder.addOutput(nodeOutput(c,{...pred!,next:o}));
  builder.addOutput(nodeOutput(c,o));let delta=CARRIER+(c.p.stakingCategory===ZERO?terms.stake:CARRIER);
  if(c.p.stakingCategory!==ZERO)builder.addOutput({to:gate(c,id).tokenAddress,...asset(c.p.stakingCategory,terms.stake)});
- change(builder,funding,c.p.stakingCategory,terms.stake,owner.publicKey,fee,delta);return builder;},inputs,rate);
+ change(builder,funding,c.p.stakingCategory,terms.stake,owner.publicKey,fee,delta,'offer registration');return builder;},inputs,rate);
  return {...plan,offer:o};
 }
 export function remove(c:Context,controller:SpendableUtxo,removed:SpendableUtxo,action:1|2|3,payer:Funding|Funding[],owner?:Authorization,escrow?:SpendableUtxo,reserve?:SpendableUtxo,locktime=0,rate=1n){

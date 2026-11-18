@@ -1,0 +1,200 @@
+{
+  "verification": "read-only mainnet; broadcast disabled; wallet descriptors and local journals unavailable",
+  "reportedLegacyStage": "signed (wallet owner report)",
+  "observations": [
+    {
+      "at": "2026-11-18T11:44:02.236Z",
+      "peer": "ssl://bch.loping.net:50002",
+      "tip": {
+        "height": 977880,
+        "hash": "000000000000000001da981cbd03a0695bf9a3305c8e5238f18f74c6d4047bbd"
+      },
+      "verifiedAddressUtxos": [],
+      "bch": "0",
+      "old": {
+        "txid": "f78da01290029f135ddd7a37df125ba5843327363970905d484c9e31790b0c67",
+        "height": 977833,
+        "confirmations": 48,
+        "inputs": [
+          {
+            "txid": "f358645f32813a0f94eded4f3f8379fd4c4252b114fdf59b3acf9de746feefab",
+            "vout": 5,
+            "satoshis": "866420",
+            "stillUnspent": false
+          }
+        ],
+        "outputs": [
+          {
+            "vout": 0,
+            "satoshis": "1200",
+            "script": "76a9149176390383309145eaddd346988ecb2373bd110a88ac",
+            "currentUtxos": [
+              {
+                "txid": "0365de35ea47894bafc6515d1d4eca48d67c1d645a3ce54496c51a8e42606243",
+                "vout": 3,
+                "satoshis": "1500",
+                "lockingBytecode": "76a9149176390383309145eaddd346988ecb2373bd110a88ac",
+                "height": 977810
+              },
+              {
+                "txid": "f78da01290029f135ddd7a37df125ba5843327363970905d484c9e31790b0c67",
+                "vout": 0,
+                "satoshis": "1200",
+                "lockingBytecode": "76a9149176390383309145eaddd346988ecb2373bd110a88ac",
+                "height": 977833
+              },
+              {
+                "txid": "f78da01290029f135ddd7a37df125ba5843327363970905d484c9e31790b0c67",
+                "vout": 1,
+                "satoshis": "865001",
+                "lockingBytecode": "76a9149176390383309145eaddd346988ecb2373bd110a88ac",
+                "height": 977833
+              }
+            ]
+          },
+          {
+            "vout": 1,
+            "satoshis": "865001",
+            "script": "76a9149176390383309145eaddd346988ecb2373bd110a88ac",
+            "currentUtxos": [
+              {
+                "txid": "0365de35ea47894bafc6515d1d4eca48d67c1d645a3ce54496c51a8e42606243",
+                "vout": 3,
+                "satoshis": "1500",
+                "lockingBytecode": "76a9149176390383309145eaddd346988ecb2373bd110a88ac",
+                "height": 977810
+              },
+              {
+                "txid": "f78da01290029f135ddd7a37df125ba5843327363970905d484c9e31790b0c67",
+                "vout": 0,
+                "satoshis": "1200",
+                "lockingBytecode": "76a9149176390383309145eaddd346988ecb2373bd110a88ac",
+                "height": 977833
+              },
+              {
+                "txid": "f78da01290029f135ddd7a37df125ba5843327363970905d484c9e31790b0c67",
+                "vout": 1,
+                "satoshis": "865001",
+                "lockingBytecode": "76a9149176390383309145eaddd346988ecb2373bd110a88ac",
+                "height": 977833
+              }
+            ]
+          }
+        ],
+        "projection": {
+          "assumption": "matching public key must be exposed by the live wallet descriptor; path/index here are sizing placeholders, not verified derivation evidence",
+          "rate": "1",
+          "quote": {
+            "transactions": 2,
+            "approvals": 2,
+            "preparationFees": [
+              "185"
+            ],
+            "creationFee": "732",
+            "totalFee": "917",
+            "walletDebit": "13917",
+            "reserve": "9600",
+            "rewardCategory": "0000000000000000000000000000000000000000000000000000000000000000"
+          }
+        }
+      }
+    },
+    {
+      "at": "2026-11-18T11:44:14.113Z",
+      "peer": "ssl://bch.imaginary.cash:50002",
+      "tip": {
+        "height": 977880,
+        "hash": "000000000000000001da981cbd03a0695bf9a3305c8e5238f18f74c6d4047bbd"
+      },
+      "verifiedAddressUtxos": [],
+      "bch": "0",
+      "old": {
+        "txid": "f78da01290029f135ddd7a37df125ba5843327363970905d484c9e31790b0c67",
+        "height": 977833,
+        "confirmations": 48,
+        "inputs": [
+          {
+            "txid": "f358645f32813a0f94eded4f3f8379fd4c4252b114fdf59b3acf9de746feefab",
+            "vout": 5,
+            "satoshis": "866420",
+            "stillUnspent": false
+          }
+        ],
+        "outputs": [
+          {
+            "vout": 0,
+            "satoshis": "1200",
+            "script": "76a9149176390383309145eaddd346988ecb2373bd110a88ac",
+            "currentUtxos": [
+              {
+                "txid": "0365de35ea47894bafc6515d1d4eca48d67c1d645a3ce54496c51a8e42606243",
+                "vout": 3,
+                "satoshis": "1500",
+                "lockingBytecode": "76a9149176390383309145eaddd346988ecb2373bd110a88ac",
+                "height": 977810
+              },
+              {
+                "txid": "f78da01290029f135ddd7a37df125ba5843327363970905d484c9e31790b0c67",
+                "vout": 0,
+                "satoshis": "1200",
+                "lockingBytecode": "76a9149176390383309145eaddd346988ecb2373bd110a88ac",
+                "height": 977833
+              },
+              {
+                "txid": "f78da01290029f135ddd7a37df125ba5843327363970905d484c9e31790b0c67",
+                "vout": 1,
+                "satoshis": "865001",
+                "lockingBytecode": "76a9149176390383309145eaddd346988ecb2373bd110a88ac",
+                "height": 977833
+              }
+            ]
+          },
+          {
+            "vout": 1,
+            "satoshis": "865001",
+            "script": "76a9149176390383309145eaddd346988ecb2373bd110a88ac",
+            "currentUtxos": [
+              {
+                "txid": "0365de35ea47894bafc6515d1d4eca48d67c1d645a3ce54496c51a8e42606243",
+                "vout": 3,
+                "satoshis": "1500",
+                "lockingBytecode": "76a9149176390383309145eaddd346988ecb2373bd110a88ac",
+                "height": 977810
+              },
+              {
+                "txid": "f78da01290029f135ddd7a37df125ba5843327363970905d484c9e31790b0c67",
+                "vout": 0,
+                "satoshis": "1200",
+                "lockingBytecode": "76a9149176390383309145eaddd346988ecb2373bd110a88ac",
+                "height": 977833
+              },
+              {
+                "txid": "f78da01290029f135ddd7a37df125ba5843327363970905d484c9e31790b0c67",
+                "vout": 1,
+                "satoshis": "865001",
+                "lockingBytecode": "76a9149176390383309145eaddd346988ecb2373bd110a88ac",
+                "height": 977833
+              }
+            ]
+          }
+        ],
+        "projection": {
+          "assumption": "matching public key must be exposed by the live wallet descriptor; path/index here are sizing placeholders, not verified derivation evidence",
+          "rate": "1",
+          "quote": {
+            "transactions": 2,
+            "approvals": 2,
+            "preparationFees": [
+              "185"
+            ],
+            "creationFee": "732",
+            "totalFee": "917",
+            "walletDebit": "13917",
+            "reserve": "9600",
+            "rewardCategory": "0000000000000000000000000000000000000000000000000000000000000000"
+          }
+        }
+      }
+    }
+  ]
+}

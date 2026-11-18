@@ -1,0 +1,36 @@
+# Reward validation and verified funding diagnostics
+
+Post-baseline hackathon work. No category, authenticated list, covenant bytecode or wallet approval design changed. Public RPC inspection was read-only; all signing and relay tests used fresh isolated BCHN data directories and synthetic keys.
+
+## What the supplied mainnet evidence proves
+
+Both configured providers (`bch.loping.net`, `bch.imaginary.cash`) independently verified the same tip, block 977880, and the following data on 2026-11-18. See [retained public observations](public-mainnet-evidence.json).
+
+- Transaction `f78da01290029f135ddd7a37df125ba5843327363970905d484c9e31790b0c67` is confirmed in block 977833, with 48 confirmations at inspection. The owner reports that its local legacy `seed-funding` entry still displays **signed**. That journal status is stale.
+- Its 866,420-satoshi input at `f358645f32813a0f94eded4f3f8379fd4c4252b114fdf59b3acf9de746feefab:5` is spent. A reservation of that input alone cannot exclude today's unspent outputs.
+- Its output zero contains 1,200 satoshis; output one contains 865,001. A third wallet output, `0365de35ea47894bafc6515d1d4eca48d67c1d645a3ce54496c51a8e42606243:3`, contains 1,500. Their verified total is exactly **867,701 satoshis**. All three are token-free P2PKH outputs to the same script, whose public key is recoverable from the old confirmed transaction. None is a covenant output.
+- The supplied receive address currently has no UTXOs. The funds are at another wallet address. This does not establish whether the live Cashonize descriptor exposes the funded key.
+- There is **one**, rather than two, eligible output-zero origins. The complete modeled plan is an ordinary self-send followed by atomic creation: **two transactions and two explicit approvals**. At both providers' observed 1 sat/byte policy, the projected fees are 185 + 732 = **917 satoshis**. Reward reserve 9,600 + covenant carriers 2,400 + discovery listing 1,000 + fees 917 = **13,917 satoshis committed**. Wallet change remains wallet-owned. This is a size projection conditional on the live wallet exposing the corresponding key; it is not evidence of wallet approval or a public broadcast.
+
+The historical failing descriptor and exact local reservation set were not supplied. The prior planner also succeeds when given the complete public UTXO layout. Therefore the public evidence **does not establish the exact cause of the original generic error**. It rules out a genuine total BCH shortage for this layout, but does not distinguish omitted live wallet derivations from another unresolved local operation. The stale legacy status is confirmed; blaming its already-spent input for the entire missing balance would be unsupported.
+
+## Repairs
+
+Creation and offer constraints now share protocol validation and field-specific messages. The BCH minimum is permanently beside the reward label, with immediate correction feedback. CashTokens use exact raw fungible units (minimum one for rewards); token decimals are never inferred. Disabled form actions explain field, wallet, busy and verification reasons. Preflight failures remain next to the action until success or dismissal, retain form values and survive progress/list refreshes. Worker failures preserve structured evidence and display a single message without repeated `Error:` prefixes.
+
+Funding failures retain verified/unreserved/reserved totals, supplied descriptor count, eligible genesis count, relevant reservation IDs, measured candidate requirements and fees when available, and the preparation result. An incomplete preparation quote is explicitly distinguished from a complete sequence quote; unknown fee totals are not invented. The sufficient candidate requirement includes a non-dust wallet-change output and is not presented as a universal theoretical minimum. BCH on NFTs is never selected. The 16-input bound and heavily fragmented funding corrective path remain explicit.
+
+A reproduced planning bug affected BCH attached to unrelated **fungible** token categories: the direct planner excluded these inputs even when their BCH could fund creation. A fully quoted wallet-only consolidation fallback preserves every fungible token category, prepares independent origins and then uses the existing atomic transaction. NFTs and covenant outputs are never consolidation candidates. A direct funded atomic plan still takes priority.
+
+Every relevant signed journal is reconciled against independently verified transaction bytes/status or a confirmed competing input spend before reservations are released. Signed bytes and historical fields remain intact. An inconclusive status keeps its unspent inputs reserved and explains how to inspect them. A confirmed ordinary legacy self-send no longer leaves a stale signed classification. Legacy covenant/non-wallet outputs keep continuation reservations; explicitly named `queueCoin`/`seed` anchors remain protected even after confirmation. Legacy Inspect / resume never signs, rebroadcasts or advances a legacy covenant. The UI does not offer Retry identical transaction for legacy entries. Ordinary preparation continuation reservations also survive parent confirmation until the child is recorded.
+
+## Verification
+
+- Focused frontend: **57 passing tests in six files**: QueueArena, queue client, wallet signing/approval, preparation dialog, shared form validation and derivation checks on both networks.
+- Focused backend: **13 passing tests**, `npm run test:queue:funding` (11 sizing/model cases plus two isolated mainnet/chipnet reservation/reconciliation cases).
+- Existing isolated queue wallet and all 18 preparation asset/network configurations passed, including exact signed-size fees, refusal/reconnection, recovery and loopback P2P relay. Retained [preparation measurements](preparation-regtest.json) and [wallet measurements](wallet-regtest.json).
+- Additional isolated **reported-layout** test reconstructs 1,200 + 865,001 + 1,500 satoshis with one genesis input and successfully signs, validates and relays the two-step sequence under both public-network application configurations. See [measured results](reported-layout-regtest.json).
+- Fresh-profile production [browser checks](browser-local.json) exercise permanent minimum display, below-minimum/corrected amounts, raw token minimum, the disconnected-wallet reason and mobile layout on mainnet and chipnet with all public sockets blocked.
+- Covenant artifact check, root/frontend type checks, Pages production build and post-deployment revision/SHA-256 verification.
+
+The public-wallet owner must still retry with the live wallet to establish which descriptor/reservation evidence applies to their original failed attempt. No physical Cashonize approval or public spending is claimed.

@@ -1,0 +1,38 @@
+{
+  "at": "2026-11-18T11:53:14.328926+00:00",
+  "frontend": {
+    "files": 6,
+    "passed": 57,
+    "failed": 0
+  },
+  "funding": {
+    "passed": 13,
+    "failed": 0,
+    "isolatedReservationNetworks": [
+      "mainnet",
+      "chipnet"
+    ]
+  },
+  "existingIsolatedSuites": [
+    "queue-wallet",
+    "queue-preparation (18 network/asset combinations)"
+  ],
+  "reportedLayout": {
+    "networks": [
+      "mainnet",
+      "chipnet"
+    ],
+    "transactions": 2,
+    "approvals": 2,
+    "signedSizeFeesVerified": true,
+    "loopbackP2P": true
+  },
+  "typechecks": [
+    "root",
+    "frontend"
+  ],
+  "queueArtifacts": "unchanged; compile-queue --check passed",
+  "productionBuild": true,
+  "publicBroadcasts": 0,
+  "realWalletApprovals": 0
+}

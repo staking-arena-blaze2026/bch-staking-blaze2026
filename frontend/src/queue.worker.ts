@@ -1,3 +1,4 @@
+import {errorMessage} from '../../src/queue/funding';
 /// <reference lib="webworker" />
 import {BrowserElectrumProvider} from '../../src/electrum-wss';
 import {QueueIndexer} from '../../src/queue/chain';
@@ -34,6 +35,6 @@ scope.onmessage=event=>{pending=pending.catch(()=>{}).then(async()=>{const {id,i
  if(!reading&&!scope.navigator.locks)throw Error('Queue transactions require Web Locks');
  const result=reading?await run():await scope.navigator.locks.request('arena-'+options.network+'-queue',{ifAvailable:true},async lock=>{if(!lock)throw Error('Another tab is updating this queue wallet');return run();});
  scope.postMessage({id,result});
- }catch(error){scope.postMessage({id,error:String(error)});}});};
+ }catch(error){scope.postMessage({id,error:errorMessage(error),details:(error as {details?:unknown})?.details});}});};
 
 scope.postMessage({type:'ready'});

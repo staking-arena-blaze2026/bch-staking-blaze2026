@@ -13,7 +13,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        suite: [blaze-public-discovery, blaze-zero-conf, blaze-chained-genesis, blaze-atomic-offer, blaze-tip-verification, queue-covenants, queue-indexer, queue-wallet, queue-relay]
+        suite: [blaze-public-discovery, blaze-zero-conf, blaze-chained-genesis, blaze-atomic-offer, blaze-tip-verification, queue-covenants, queue-indexer, queue-wallet, queue-relay, queue-preparation, queue-funding, queue-reservations]
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
