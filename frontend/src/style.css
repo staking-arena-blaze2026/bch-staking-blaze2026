@@ -250,3 +250,15 @@ body{
 .v3-arena .form-grid [aria-invalid="true"]{border:2px solid #85250c}
 .v3-arena .transaction-error{border:2px solid #85250c;border-radius:8px;background:#fff0df;padding:14px;margin:14px 0;color:#692008;overflow-wrap:anywhere}
 .v3-arena .transaction-error button{margin-top:10px}
+
+/* Persistent community link, with room for mobile safe areas and footer content. */
+body{padding-bottom:calc(80px + env(safe-area-inset-bottom,0px))}
+.telegram-link{
+ position:fixed;left:calc(16px + env(safe-area-inset-left,0px));bottom:calc(16px + env(safe-area-inset-bottom,0px));z-index:4;
+ display:flex;align-items:center;justify-content:center;width:48px;height:48px;
+ color:#ffedcf;background:linear-gradient(180deg,#633919,#42220e);
+ border:1px solid #b18a5b;border-radius:50%;box-shadow:0 3px 8px #39230d40;
+ text-decoration:none;
+}
+.telegram-link:hover{background:#7e451f}
+.telegram-link:focus-visible{outline:3px solid #ffedcf;outline-offset:4px}

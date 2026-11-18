@@ -55,6 +55,8 @@ These are existing capabilities and experiments, **not hackathon contributions**
 
 ## Work developed during BCH Blaze 2026
 
+Telegram community link: a bottom-left paper-plane icon links to Be the Change on Telegram in a new tab, with the site's brown/parchment styling, an accessible label and mobile-safe spacing. This is post-baseline presentation work.
+
 Website cleanup: removed legacy header navigation, linked the logo to v3, and removed the v3 introduction, expandable warning and visible network controls. The page starts with creation/offer tabs. Automatic provider verification and protocol/wallet checks remain in place. This is a presentation change developed in the fork; existing staking capabilities remain baseline work.
 
 Fast v3 vault creation: adaptive bounded funding discovery, verified unconfirmed genesis inputs, provisional pending lineage replay for offers/claims, visible preparation stages, and an explicit two-approval fallback without a confirmation wait. See [implementation and wallet capability evidence](blaze2026/fast-vault-creation.md) and [isolated BCHN results](blaze2026/zero-conf-results.json). No covenant bytecode changes. This is post-baseline work; the original direct creation and funded-action designs remain pre-hackathon capabilities.
