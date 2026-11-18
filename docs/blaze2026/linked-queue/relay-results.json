@@ -1,13 +1,13 @@
 {
-  "at": "2026-11-18T08:41:57.970Z",
+  "at": "2026-11-18T11:03:15.175Z",
   "node": "/Bitcoin Cash Node:29.2.0/",
   "chain": {
     "chain": "regtest",
     "blocks": 166,
     "headers": 166,
-    "bestblockhash": "12340dd37419bd3824a8542421b05a615f424765160f051de1483c72fbb46706",
+    "bestblockhash": "182645e93d582d27e293d68bbe4ba497a7ce91d3b95f1b62450be20a15785d5b",
     "difficulty": 4.656542373906925e-10,
-    "mediantime": 1794996990,
+    "mediantime": 1795005600,
     "verificationprogress": 1,
     "initialblockdownload": false,
     "chainwork": "000000000000000000000000000000000000000000000000000000000000014e",

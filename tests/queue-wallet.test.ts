@@ -30,15 +30,15 @@ test('queue wallet: public-key plans, explicit signing, durable recovery and own
  function sign(plan:BrowserPlan){const tx=structuredClone(plan.request.transaction) as Transaction;for(const [i]of plan.inputPaths){const signer=plan.signers?.[i]===binToHex(changeKey.publicKey)?changeKey:key,s=plan.request.sourceOutputs[i]!,sig=signer.generateSignature(hash256(generateSigningSerializationBch({transaction:tx,sourceOutputs:plan.request.sourceOutputs,inputIndex:i},{coveredBytecode:s.contract?.redeemScript??s.lockingBytecode,signingSerializationType:Uint8Array.of(0x61)})));sig[64]=0x61;tx.inputs[i]!.unlockingBytecode=s.contract?hexToBin(binToHex(s.unlockingBytecode).replace('41'+'00'.repeat(65),'41'+binToHex(sig))):new Uint8Array([...encodeDataPush(sig),...encodeDataPush(signer.publicKey)]);}return binToHex(encodeTransaction(tx));}
  const costs:{kind:string;step:string;bytes:number;fee:string}[]=[];let approvals=0;
  async function approve(op:Operation){const reviewed=structuredClone(op.plan),auth=await measured(op.intent.kind,op.step,'authorize',()=>wallet.authorize(op.id));assert.deepEqual(auth.plan,reviewed,'authorization must preserve the reviewed body');approvals++;await wallet.beginSigning(op.id);const raw=sign(auth.plan);const sinceSignature=performance.now(),count=requests;await wallet.retain(op.id,raw);costs.push({kind:op.intent.kind,step:op.step,bytes:raw.length/2,fee:auth.plan.fee!});const pending=await wallet.broadcast(op.id);timings.push({kind:op.intent.kind,step:op.step,phase:'signature-to-pending',ms:performance.now()-sinceSignature,requests:requests-count});return pending;}
- // A wallet holding only nonzero outputs cannot initialize categories.
+ // An empty verified inventory cannot fund preparation.
  const initialUtxos=p.getUtxosForLockingBytecode.bind(p);
  p.getUtxosForLockingBytecode=async script=>(await initialUtxos(script)).filter(u=>u.vout!==0);
  const noGenesisParams={stakingCategory:ZERO,rewardCategory:ZERO,epoch:(await rpc('getblockchaininfo')).mediantime-10000,interval:60,releases:20,cap:2000n};
- await assert.rejects(()=>prepare({kind:'create',parameters:noGenesisParams},keys),/Found 0/);assert.equal(saved.size,0);assert.equal(approvals,0);
+ await assert.rejects(()=>prepare({kind:'create',parameters:noGenesisParams},keys),/Insufficient/);assert.equal(approvals,0);
  p.getUtxosForLockingBytecode=initialUtxos;
  const params={stakingCategory:ZERO,rewardCategory:ZERO,epoch:(await rpc('getblockchaininfo')).mediantime-10000,interval:60,releases:20,cap:2000n};
- // One/no eligible output-zero sets fail without creating a journal or broadcast.
- await assert.rejects(()=>prepare({kind:'create',parameters:params},keys),/Found 1/);assert.equal(saved.size,0);assert.equal(approvals,0);
+ // One origin without independent funding requires two safe self-sends.
+ const onePlan=await prepare({kind:'create',parameters:params},keys);assert.equal(onePlan.quote?.transactions,3);await wallet.discard(onePlan.id);assert.equal(approvals,0);
  const more=await rpc('createrawtransaction',[[],{[ownerAddress(changeKey.publicKey,p)]:0.03}]),mf=await rpc('fundrawtransaction',[more,{changePosition:1}]),ms=await rpc('signrawtransactionwithwallet',[mf.hex]);await rpc('sendrawtransaction',[ms.hex]);await p.refresh();
  let creation=await prepare({kind:'create',parameters:params},keys);assert.equal(creation.step,'action');assert.deepEqual(creation.plan.inputPaths,[[0,'receive',0],[1,'change',0]]);await wallet.authorize(creation.id);await wallet.beginSigning(creation.id);await assert.rejects(()=>wallet.beginSigning(creation.id),/Fresh/);await wallet.signingFailed(creation.id,true);creation=await wallet.resume(creation.id,keys);creation=await approve(creation);assert.equal(approvals,1);
  const config=creation.config!,index=new QueueIndexer(p,config);const genesis=await p.transactionStatus(creation.txid!),announcement=announcementIn(genesis);assert.ok(announcement);assert.deepEqual(await resolveAnnouncement(p,genesis.txid,announcement),config);const initial=await index.sync();assert.equal(initial.ordered.length,0);assert.equal(initial.state.reserve,40000n);
@@ -52,7 +52,7 @@ test('queue wallet: public-key plans, explicit signing, durable recovery and own
  // Remove the competing offer to restore the fixture's empty queue.
  await approve(await prepare({kind:'cancel',config,offerId:competitor.offer.id},keys));
  const first=await prepare({kind:'insert',config,terms:{stake:10000n,duration:512,reward:2000n}},keys),authorized=await wallet.authorize(first.id),before=approvals;
- const tampered=structuredClone(authorized.plan);(tampered.request.transaction as Transaction).outputs.at(-1)!.valueSatoshis++;await assert.rejects(()=>wallet.retain(first.id,sign(tampered)),/Wallet changed/);
+
  await wallet.beginSigning(first.id);
  await wallet.signingFailed(first.id,false);
  await assert.rejects(()=>wallet.authorize(first.id),/Uncertain/);
@@ -86,5 +86,7 @@ const actionTimings=timings.slice();
  const oldTip=await rpc<string>('getbestblockhash');await rpc('invalidateblock',[oldTip]);p.headerCache.clear();await p.refresh();
  await assert.rejects(()=>wallet.authorize(changed.id),/Tip changed|Conflicting/);
  await wallet.discard(changed.id);await rpc('reconsiderblock',[oldTip]);p.headerCache.clear();await p.refresh();
+ const tampered=structuredClone(changed.plan);(tampered.request.transaction as Transaction).outputs.at(-1)!.valueSatoshis++;await assert.rejects(()=>wallet.retain(changed.id,sign(tampered)),/Wallet changed/);
+ assert.equal((await wallet.get(changed.id)).signing,'uncertain');assert.ok((await wallet.get(changed.id)).signedEvidence);await assert.rejects(()=>wallet.beginSigning(changed.id),/Fresh/);
 await mkdir('docs/blaze2026/linked-queue',{recursive:true});await writeFile(process.env.QUEUE_WALLET_RESULTS??'docs/blaze2026/linked-queue/wallet-results.json',JSON.stringify({at:new Date().toISOString(),syntheticWallet:true,realBchn:true,requestMethod:'Electrum facade request invocations; excludes direct BCHN RPC in the fixture and warm cache hits are counted',timings:actionTimings,costs,creationApprovals:1,creationFee:costs.filter(c=>c.kind==='create').reduce((n,c)=>n+Number(c.fee),0)},null,2)+'\n');
 },18488,['-expire=0','-upgrade12activationheight=1']));

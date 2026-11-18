@@ -4,6 +4,7 @@ import {checkedWalletKey,walletChains} from './walletDerivation';
 import {walletDiagnostic} from './usePersistentWallet';
 import {v3Call} from './v3Client';
 import {queueCall} from './queueClient';
+import {confirmPreparation} from './QueuePreparationDialog';
 import type {DappConnectionManager} from '@wizardconnect/dapp';
 import {binToHex} from '@bitauth/libauth';
 import type {WalletOperation} from '../../src/browser-wallet';
@@ -123,14 +124,33 @@ export function browserWalletClient(manager:DappConnectionManager|null,check:()=
    const live=authorizationCheck(),guard=()=>{live();requestCheck?.();};guard();
    if(v3Approval||v2Approval)throw Error('Finish the pending wallet approval first');v3Approval=true;
    try{
-    const session=JSON.stringify(getManager().getSessionPaths());let descriptors=keys(v3ScanLimit);
+    const session=JSON.stringify(getManager().getSessionPaths());let descriptors=keys(intent.operation==='resume'?40:v3ScanLimit);
     let result;try{result=await queueCall(intent,descriptors);}catch(e){if(!/Insufficient|funding is required|funding for|funding propagates|Atomic vault creation needs/i.test(String(e))||v3ScanLimit>=40)throw e;v3ScanLimit=40;descriptors=keys(v3ScanLimit);guard();result=await queueCall(intent,descriptors);}
+    // Before proposing extra approvals, search the ordinary bounded wallet
+    // descriptor set. Keep the normal atomic case on its short discovery path.
+    if(intent.operation==='prepare'&&result?.intent?.kind==='create'&&result.quote?.transactions>1&&v3ScanLimit<40){
+     guard();await queueCall({operation:'discard',id:result.id});v3ScanLimit=40;descriptors=keys(v3ScanLimit);guard();result=await queueCall(intent,descriptors);
+    }
+    let approval=(result?.completed??0)+(result?.raw?1:0),total=(result?.completed??0)+(result?.quote?.approvals??1);
+    for(;;){
+    guard();
+    if(result?.raw&&result.step==='wallet-preparation'&&['pending','confirmed'].includes(result.stage)&&!result.error){
+     approval=Math.max(approval,(result.completed??0)+1);
+     window.dispatchEvent(new CustomEvent('arena-wallet-progress',{detail:'Verifying prepared output…'}));
+     result=await queueCall({operation:'advance',id:result.id},descriptors);guard();continue;
+    }
     if(result?.stage!=='review'||!result.plan)return result;
+    if(result.quote&&!result.approved){
+     window.dispatchEvent(new CustomEvent('arena-queue-review',{detail:result}));
+     const proceed=await confirmPreparation(result.quote,signing.signal,approval,result.spentFees??'0');guard();
+     if(!proceed){await queueCall({operation:'discard',id:result.id});throw Error('Vault creation cancelled. No new transaction was signed or broadcast.');}
+     result=await queueCall({operation:'confirm',id:result.id});guard();total=approval+result.quote.approvals;
+    }
     const authorized=await queueCall({operation:'authorize',id:result.id});guard();
     if(authorized.owner.publicKey!==binToHex(getManager().getPubkey(0,0n)??new Uint8Array())||JSON.stringify(getManager().getSessionPaths())!==session)throw Error('Wallet changed before queue approval');
     if(authorized.plan.request.broadcast!==false||Date.now()-authorized.verifiedAt>10000)throw Error('Queue approval requires fresh verified inputs');
     window.dispatchEvent(new CustomEvent('arena-queue-review',{detail:{...result,...authorized}}));
-    window.dispatchEvent(new CustomEvent('arena-wallet-progress',{detail:'Signing 1 transaction · 1 Cashonize approval · '+authorized.plan.label}));
+    window.dispatchEvent(new CustomEvent('arena-wallet-progress',{detail:(result.step==='wallet-preparation'?'Preparing wallet':result.intent?.kind==='create'?'Creating vault':'Submitting action')+' — approval '+(++approval)+' of '+total+' · '+authorized.plan.label}));
     await queueCall({operation:'beginSigning',id:result.id});
     try{guard();if(JSON.stringify(getManager().getSessionPaths())!==session)throw Error('Wallet changed before queue signing');}catch(error){await queueCall({operation:'signingFailed',id:result.id,rejected:true,notRequested:true}).catch(()=>{});throw error;}
     let signed;try{signed=await signWithRefusalEvidence(getManager(),{transaction:wizardWireTransaction(authorized.plan.request),inputPaths:authorized.plan.inputPaths},{signal:signing.signal});}catch(error){await queueCall({operation:'signingFailed',id:result.id,rejected:error instanceof ExplicitWalletRefusal}).catch(()=>{});throw error;}
@@ -139,7 +159,9 @@ export function browserWalletClient(manager:DappConnectionManager|null,check:()=
     await queueCall({operation:'retain',id:result.id,raw:signed.signedTransaction});guard();
     if(JSON.stringify(getManager().getSessionPaths())!==session)throw Error('Wallet changed during queue approval; signed bytes retained');
     window.dispatchEvent(new CustomEvent('arena-wallet-progress',{detail:'Broadcasting the signed transaction…'}));
-    return queueCall({operation:'submit',id:result.id});
+    result=await queueCall({operation:'submit',id:result.id});guard();
+    if(result.step!=='wallet-preparation')return result;
+    }
    }finally{v3Approval=false;}
   },publicKey(){check();const key=getManager().getPubkey(0,0n);if(!key)throw Error('Wallet receive key unavailable');return binToHex(key);},async inventory(limit=40){if(![40,200].includes(limit))throw Error("Unsupported scan bound");scanLimit=limit;await startup;return rpc('scan',keys());},async operations(){await startup;const list=await rpc('list') as WalletOperation[];list.forEach(rememberGenesis);return list;},async inspect(id){await startup;const op=await rpc('get',id) as WalletOperation;if(op.step==='complete')await finish(op);return op;},async importVault(config){await startup;const result=await rpc('importVault',config,true);saveLocalVault(result.config,result.category);return result;},async execute(intent){
   const check=authorizationCheck();

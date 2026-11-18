@@ -1,0 +1,634 @@
+{
+  "at": "2026-11-18T10:59:13.493Z",
+  "environment": "isolated BCHN regtest with mainnet/chipnet application configuration and loopback P2P; synthetic Schnorr signer; no public broadcast or real Cashonize",
+  "results": [
+    {
+      "network": "mainnet",
+      "scenario": "normal",
+      "transactions": 1,
+      "approvals": 1,
+      "quote": {
+        "transactions": 1,
+        "approvals": 1,
+        "preparationFees": [],
+        "creationFee": "1464",
+        "totalFee": "1464",
+        "walletDebit": "44864",
+        "reserve": "40000",
+        "rewardCategory": "0000000000000000000000000000000000000000000000000000000000000000"
+      },
+      "measured": [
+        {
+          "step": "action",
+          "bytes": 732,
+          "fee": "1464"
+        }
+      ],
+      "p2pRelayed": true
+    },
+    {
+      "network": "mainnet",
+      "scenario": "one-independent",
+      "transactions": 2,
+      "approvals": 2,
+      "quote": {
+        "transactions": 2,
+        "approvals": 2,
+        "preparationFees": [
+          "370"
+        ],
+        "creationFee": "1464",
+        "totalFee": "1834",
+        "walletDebit": "45234",
+        "reserve": "40000",
+        "rewardCategory": "0000000000000000000000000000000000000000000000000000000000000000"
+      },
+      "measured": [
+        {
+          "step": "wallet-preparation",
+          "bytes": 185,
+          "fee": "370"
+        },
+        {
+          "step": "action",
+          "bytes": 732,
+          "fee": "1464"
+        }
+      ],
+      "p2pRelayed": true
+    },
+    {
+      "network": "mainnet",
+      "scenario": "zero",
+      "transactions": 3,
+      "approvals": 3,
+      "quote": {
+        "transactions": 3,
+        "approvals": 3,
+        "preparationFees": [
+          "438",
+          "370"
+        ],
+        "creationFee": "1464",
+        "totalFee": "2272",
+        "walletDebit": "45672",
+        "reserve": "40000",
+        "rewardCategory": "0000000000000000000000000000000000000000000000000000000000000000"
+      },
+      "measured": [
+        {
+          "step": "wallet-preparation",
+          "bytes": 219,
+          "fee": "438"
+        },
+        {
+          "step": "wallet-preparation",
+          "bytes": 185,
+          "fee": "370"
+        },
+        {
+          "step": "action",
+          "bytes": 732,
+          "fee": "1464"
+        }
+      ],
+      "p2pRelayed": true
+    },
+    {
+      "network": "mainnet",
+      "scenario": "one-only",
+      "transactions": 3,
+      "approvals": 3,
+      "quote": {
+        "transactions": 3,
+        "approvals": 3,
+        "preparationFees": [
+          "438",
+          "370"
+        ],
+        "creationFee": "1464",
+        "totalFee": "2272",
+        "walletDebit": "45672",
+        "reserve": "40000",
+        "rewardCategory": "0000000000000000000000000000000000000000000000000000000000000000"
+      },
+      "measured": [
+        {
+          "step": "wallet-preparation",
+          "bytes": 219,
+          "fee": "438"
+        },
+        {
+          "step": "wallet-preparation",
+          "bytes": 185,
+          "fee": "370"
+        },
+        {
+          "step": "action",
+          "bytes": 732,
+          "fee": "1464"
+        }
+      ],
+      "p2pRelayed": true
+    },
+    {
+      "network": "mainnet",
+      "scenario": "bch/token",
+      "transactions": 3,
+      "approvals": 3,
+      "quote": {
+        "transactions": 3,
+        "approvals": 3,
+        "preparationFees": [
+          "438",
+          "370"
+        ],
+        "creationFee": "2054",
+        "totalFee": "2862",
+        "walletDebit": "7462",
+        "reserve": "40000",
+        "rewardCategory": "5c362dc7f4eec801d9113f699831e0c0f948ccdc79f3432fa04c1bf8c39ce74d"
+      },
+      "measured": [
+        {
+          "step": "wallet-preparation",
+          "bytes": 219,
+          "fee": "438"
+        },
+        {
+          "step": "wallet-preparation",
+          "bytes": 185,
+          "fee": "370"
+        },
+        {
+          "step": "action",
+          "bytes": 1027,
+          "fee": "2054"
+        }
+      ],
+      "p2pRelayed": true
+    },
+    {
+      "network": "mainnet",
+      "scenario": "token/bch",
+      "transactions": 3,
+      "approvals": 3,
+      "quote": {
+        "transactions": 3,
+        "approvals": 3,
+        "preparationFees": [
+          "438",
+          "370"
+        ],
+        "creationFee": "1464",
+        "totalFee": "2272",
+        "walletDebit": "45672",
+        "reserve": "40000",
+        "rewardCategory": "0000000000000000000000000000000000000000000000000000000000000000"
+      },
+      "measured": [
+        {
+          "step": "wallet-preparation",
+          "bytes": 219,
+          "fee": "438"
+        },
+        {
+          "step": "wallet-preparation",
+          "bytes": 185,
+          "fee": "370"
+        },
+        {
+          "step": "action",
+          "bytes": 732,
+          "fee": "1464"
+        }
+      ],
+      "p2pRelayed": true
+    },
+    {
+      "network": "mainnet",
+      "scenario": "token/token",
+      "transactions": 3,
+      "approvals": 3,
+      "quote": {
+        "transactions": 3,
+        "approvals": 3,
+        "preparationFees": [
+          "438",
+          "370"
+        ],
+        "creationFee": "2054",
+        "totalFee": "2862",
+        "walletDebit": "7462",
+        "reserve": "40000",
+        "rewardCategory": "e488153401d5aee48b9ae44eb1a3cd057d7c030e7c0df238715058f69490344e"
+      },
+      "measured": [
+        {
+          "step": "wallet-preparation",
+          "bytes": 219,
+          "fee": "438"
+        },
+        {
+          "step": "wallet-preparation",
+          "bytes": 185,
+          "fee": "370"
+        },
+        {
+          "step": "action",
+          "bytes": 1027,
+          "fee": "2054"
+        }
+      ],
+      "p2pRelayed": true
+    },
+    {
+      "network": "mainnet",
+      "scenario": "same-token",
+      "transactions": 3,
+      "approvals": 3,
+      "quote": {
+        "transactions": 3,
+        "approvals": 3,
+        "preparationFees": [
+          "438",
+          "370"
+        ],
+        "creationFee": "2054",
+        "totalFee": "2862",
+        "walletDebit": "7462",
+        "reserve": "40000",
+        "rewardCategory": "29766d27f97ce6ff2b6046d73c28dfafd752bbeb158c10d627647b5fa5b92650"
+      },
+      "measured": [
+        {
+          "step": "wallet-preparation",
+          "bytes": 219,
+          "fee": "438"
+        },
+        {
+          "step": "wallet-preparation",
+          "bytes": 185,
+          "fee": "370"
+        },
+        {
+          "step": "action",
+          "bytes": 1027,
+          "fee": "2054"
+        }
+      ],
+      "p2pRelayed": true
+    },
+    {
+      "network": "mainnet",
+      "scenario": "token-only",
+      "transactions": 3,
+      "approvals": 3,
+      "quote": {
+        "transactions": 3,
+        "approvals": 3,
+        "preparationFees": [
+          "584",
+          "370"
+        ],
+        "creationFee": "2054",
+        "totalFee": "3008",
+        "walletDebit": "7608",
+        "reserve": "40000",
+        "rewardCategory": "3cb62f3c090e06295a75bc7f9b95e6083c498e6d63ee2d4867e545d548356249"
+      },
+      "measured": [
+        {
+          "step": "wallet-preparation",
+          "bytes": 292,
+          "fee": "584"
+        },
+        {
+          "step": "wallet-preparation",
+          "bytes": 185,
+          "fee": "370"
+        },
+        {
+          "step": "action",
+          "bytes": 1027,
+          "fee": "2054"
+        }
+      ],
+      "p2pRelayed": true
+    },
+    {
+      "network": "chipnet",
+      "scenario": "normal",
+      "transactions": 1,
+      "approvals": 1,
+      "quote": {
+        "transactions": 1,
+        "approvals": 1,
+        "preparationFees": [],
+        "creationFee": "732",
+        "totalFee": "732",
+        "walletDebit": "44132",
+        "reserve": "40000",
+        "rewardCategory": "0000000000000000000000000000000000000000000000000000000000000000"
+      },
+      "measured": [
+        {
+          "step": "action",
+          "bytes": 732,
+          "fee": "732"
+        }
+      ],
+      "p2pRelayed": true
+    },
+    {
+      "network": "chipnet",
+      "scenario": "one-independent",
+      "transactions": 2,
+      "approvals": 2,
+      "quote": {
+        "transactions": 2,
+        "approvals": 2,
+        "preparationFees": [
+          "185"
+        ],
+        "creationFee": "732",
+        "totalFee": "917",
+        "walletDebit": "44317",
+        "reserve": "40000",
+        "rewardCategory": "0000000000000000000000000000000000000000000000000000000000000000"
+      },
+      "measured": [
+        {
+          "step": "wallet-preparation",
+          "bytes": 185,
+          "fee": "185"
+        },
+        {
+          "step": "action",
+          "bytes": 732,
+          "fee": "732"
+        }
+      ],
+      "p2pRelayed": true
+    },
+    {
+      "network": "chipnet",
+      "scenario": "zero",
+      "transactions": 3,
+      "approvals": 3,
+      "quote": {
+        "transactions": 3,
+        "approvals": 3,
+        "preparationFees": [
+          "219",
+          "185"
+        ],
+        "creationFee": "732",
+        "totalFee": "1136",
+        "walletDebit": "44536",
+        "reserve": "40000",
+        "rewardCategory": "0000000000000000000000000000000000000000000000000000000000000000"
+      },
+      "measured": [
+        {
+          "step": "wallet-preparation",
+          "bytes": 219,
+          "fee": "219"
+        },
+        {
+          "step": "wallet-preparation",
+          "bytes": 185,
+          "fee": "185"
+        },
+        {
+          "step": "action",
+          "bytes": 732,
+          "fee": "732"
+        }
+      ],
+      "p2pRelayed": true
+    },
+    {
+      "network": "chipnet",
+      "scenario": "one-only",
+      "transactions": 3,
+      "approvals": 3,
+      "quote": {
+        "transactions": 3,
+        "approvals": 3,
+        "preparationFees": [
+          "219",
+          "185"
+        ],
+        "creationFee": "732",
+        "totalFee": "1136",
+        "walletDebit": "44536",
+        "reserve": "40000",
+        "rewardCategory": "0000000000000000000000000000000000000000000000000000000000000000"
+      },
+      "measured": [
+        {
+          "step": "wallet-preparation",
+          "bytes": 219,
+          "fee": "219"
+        },
+        {
+          "step": "wallet-preparation",
+          "bytes": 185,
+          "fee": "185"
+        },
+        {
+          "step": "action",
+          "bytes": 732,
+          "fee": "732"
+        }
+      ],
+      "p2pRelayed": true
+    },
+    {
+      "network": "chipnet",
+      "scenario": "bch/token",
+      "transactions": 3,
+      "approvals": 3,
+      "quote": {
+        "transactions": 3,
+        "approvals": 3,
+        "preparationFees": [
+          "219",
+          "185"
+        ],
+        "creationFee": "1027",
+        "totalFee": "1431",
+        "walletDebit": "6031",
+        "reserve": "40000",
+        "rewardCategory": "4eb26bbce25850df0d54902c95212673c2fe502be2654e7fb0d8f590251a9b15"
+      },
+      "measured": [
+        {
+          "step": "wallet-preparation",
+          "bytes": 219,
+          "fee": "219"
+        },
+        {
+          "step": "wallet-preparation",
+          "bytes": 185,
+          "fee": "185"
+        },
+        {
+          "step": "action",
+          "bytes": 1027,
+          "fee": "1027"
+        }
+      ],
+      "p2pRelayed": true
+    },
+    {
+      "network": "chipnet",
+      "scenario": "token/bch",
+      "transactions": 3,
+      "approvals": 3,
+      "quote": {
+        "transactions": 3,
+        "approvals": 3,
+        "preparationFees": [
+          "219",
+          "185"
+        ],
+        "creationFee": "732",
+        "totalFee": "1136",
+        "walletDebit": "44536",
+        "reserve": "40000",
+        "rewardCategory": "0000000000000000000000000000000000000000000000000000000000000000"
+      },
+      "measured": [
+        {
+          "step": "wallet-preparation",
+          "bytes": 219,
+          "fee": "219"
+        },
+        {
+          "step": "wallet-preparation",
+          "bytes": 185,
+          "fee": "185"
+        },
+        {
+          "step": "action",
+          "bytes": 732,
+          "fee": "732"
+        }
+      ],
+      "p2pRelayed": true
+    },
+    {
+      "network": "chipnet",
+      "scenario": "token/token",
+      "transactions": 3,
+      "approvals": 3,
+      "quote": {
+        "transactions": 3,
+        "approvals": 3,
+        "preparationFees": [
+          "219",
+          "185"
+        ],
+        "creationFee": "1027",
+        "totalFee": "1431",
+        "walletDebit": "6031",
+        "reserve": "40000",
+        "rewardCategory": "b088aa32b066c83b5c204f21b486f3bbea6ece962cae770c78ace6863407a873"
+      },
+      "measured": [
+        {
+          "step": "wallet-preparation",
+          "bytes": 219,
+          "fee": "219"
+        },
+        {
+          "step": "wallet-preparation",
+          "bytes": 185,
+          "fee": "185"
+        },
+        {
+          "step": "action",
+          "bytes": 1027,
+          "fee": "1027"
+        }
+      ],
+      "p2pRelayed": true
+    },
+    {
+      "network": "chipnet",
+      "scenario": "same-token",
+      "transactions": 3,
+      "approvals": 3,
+      "quote": {
+        "transactions": 3,
+        "approvals": 3,
+        "preparationFees": [
+          "219",
+          "185"
+        ],
+        "creationFee": "1027",
+        "totalFee": "1431",
+        "walletDebit": "6031",
+        "reserve": "40000",
+        "rewardCategory": "d1b979992fe6afdb4a24dd7af7a6c191297f433a805608264ea3cf2ce5014aaa"
+      },
+      "measured": [
+        {
+          "step": "wallet-preparation",
+          "bytes": 219,
+          "fee": "219"
+        },
+        {
+          "step": "wallet-preparation",
+          "bytes": 185,
+          "fee": "185"
+        },
+        {
+          "step": "action",
+          "bytes": 1027,
+          "fee": "1027"
+        }
+      ],
+      "p2pRelayed": true
+    },
+    {
+      "network": "chipnet",
+      "scenario": "token-only",
+      "transactions": 3,
+      "approvals": 3,
+      "quote": {
+        "transactions": 3,
+        "approvals": 3,
+        "preparationFees": [
+          "292",
+          "185"
+        ],
+        "creationFee": "1027",
+        "totalFee": "1504",
+        "walletDebit": "6104",
+        "reserve": "40000",
+        "rewardCategory": "d986df59c8c4653880156483cdc5cae347a308fb4f182f83d142ab56333acf7d"
+      },
+      "measured": [
+        {
+          "step": "wallet-preparation",
+          "bytes": 292,
+          "fee": "292"
+        },
+        {
+          "step": "wallet-preparation",
+          "bytes": 185,
+          "fee": "185"
+        },
+        {
+          "step": "action",
+          "bytes": 1027,
+          "fee": "1027"
+        }
+      ],
+      "p2pRelayed": true
+    }
+  ]
+}

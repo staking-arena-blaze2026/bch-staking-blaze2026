@@ -3,7 +3,7 @@ import { Network } from 'cashscript';
 import { ElectrumCore, decodeRawTransaction, scriptHash, hash256 } from '../../src/electrum-core.js';
 import { rpc, assertRegtest } from '../../src/rpc.js';
 export class RegtestElectrum extends ElectrumCore {
-  override network = Network.REGTEST;
+  override network: Network = Network.REGTEST;
   rows = new Map<string, { tx: any; height: number }>();
   headerCache = new Map<number,string>();
   rawParents = new Map<string,any>();

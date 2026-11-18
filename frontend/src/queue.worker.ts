@@ -20,6 +20,8 @@ scope.onmessage=event=>{pending=pending.catch(()=>{}).then(async()=>{const {id,i
  else if(operation==='sync')result=await new QueueIndexer(provider,intent.config).sync();
  else if(operation==='owned')result=await new QueueIndexer(provider,intent.config).owned(intent.owner);
  else if(operation==='prepare')result=await wallet.prepare(intent.intent,keys);
+ else if(operation==='advance')result=await wallet.advance(intent.id,keys);
+ else if(operation==='confirm')result=await wallet.confirm(intent.id);
  else if(operation==='authorize')result=await wallet.authorize(intent.id);
  else if(operation==='retain')result=await wallet.retain(intent.id,intent.raw);
  else if(operation==='beginSigning')result=await wallet.beginSigning(intent.id);
