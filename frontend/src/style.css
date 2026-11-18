@@ -228,22 +228,28 @@ body{
  body{background-image:url('/assets/brand/stake-arena-landscape-mobile-v1.webp')}
 }
 
-/* Center the logo/banner group and halve the banner's previous rendered width. */
+/* Stack a scalable, single-line ribbon above the centered original logo. */
 .header .brand-artwork{
- --brand-logo-width:clamp(240px,24vw,370px);--brand-gap:24px;
- display:flex;align-items:center;justify-content:center;gap:var(--brand-gap);
- margin-inline:auto;
+ display:flex;flex-direction:column;align-items:center;justify-content:center;
+ width:calc(100% - 32px);max-width:1280px;min-height:0;
+ gap:clamp(4px,.8vw,12px);margin:clamp(12px,1.8vw,26px) auto 0;
 }
-.header .brand-artwork>.brand{flex:0 0 var(--brand-logo-width);width:var(--brand-logo-width)}
+.header .brand-artwork>.brand{
+ flex:0 0 auto;width:clamp(110px,18vw,320px);max-width:100%;
+}
+.header .brand-artwork .brand-logo{width:100%;height:auto;transform:none}
 .header .brand-artwork img.brand-slogan{
- flex:0 0 auto;width:calc((100% - var(--brand-logo-width) - var(--brand-gap))/2);
- margin:0;
+ order:-1;flex:0 0 auto;width:clamp(0px,calc(64vw + 160px),1200px);max-width:100%;
+ height:auto;margin:0;filter:drop-shadow(0 4px 3px #4e38154d);
 }
-@media(max-width:1100px){.header .brand-artwork{--brand-logo-width:230px;--brand-gap:20px}}
-@media(max-width:800px){.header .brand-artwork{--brand-logo-width:190px;--brand-gap:8px}}
-@media(max-width:650px){.header .brand-artwork{--brand-logo-width:118px}}
-@media(max-width:360px){.header .brand-artwork{--brand-logo-width:98px}}
-@media(min-width:1600px){.header .brand-artwork{--brand-gap:36px}}
+
+/* The active vault tab is light brown; the other tab is dark brown. */
+.v3-tabs a,.v3-tabs .create-vault-tab{
+ background:linear-gradient(#8b5830,#633817);color:#fff1d8;
+}
+.v3-tabs a[aria-current=page],.v3-tabs .create-vault-tab[aria-current=page]{
+ background:linear-gradient(#e6c28e,#c99b63);color:#361900;
+}
 
 /* Keep field and preflight failures visible beside the affected action. */
 .v3-arena .form-grid [role="alert"]{color:#85250c;font-size:12px;font-weight:600}
@@ -254,7 +260,7 @@ body{
 /* Persistent community link, with room for mobile safe areas and footer content. */
 body{padding-bottom:calc(80px + env(safe-area-inset-bottom,0px))}
 .telegram-link{
- position:fixed;left:calc(16px + env(safe-area-inset-left,0px));bottom:calc(16px + env(safe-area-inset-bottom,0px));z-index:4;
+ position:fixed;right:calc(16px + env(safe-area-inset-right,0px));bottom:calc(16px + env(safe-area-inset-bottom,0px));z-index:4;
  display:flex;align-items:center;justify-content:center;width:48px;height:48px;
  color:#ffedcf;background:linear-gradient(180deg,#633919,#42220e);
  border:1px solid #b18a5b;border-radius:50%;box-shadow:0 3px 8px #39230d40;

@@ -1,6 +1,6 @@
 import {brandArtworkMarkup} from './brandArtwork';
 
-/** Both images embed the user's original JPEG bytes, with display-only masks. */
+/** Shared original logo and single-line vector ribbon for every page. */
 export default function Brand() {
   return <div className="brand-artwork" dangerouslySetInnerHTML={{__html:brandArtworkMarkup}}/>;
 }

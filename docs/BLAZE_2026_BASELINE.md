@@ -55,7 +55,7 @@ These are existing capabilities and experiments, **not hackathon contributions**
 
 ## Work developed during BCH Blaze 2026
 
-Telegram community link: a bottom-left paper-plane icon links to Be the Change on Telegram in a new tab, with the site's brown/parchment styling, an accessible label and mobile-safe spacing. This is post-baseline presentation work.
+Telegram community link: a bottom-right paper-plane icon links to Be the Change on Telegram in a new tab, with the site's brown/parchment styling, an accessible label and mobile-safe spacing. This is post-baseline presentation work.
 
 Website cleanup: removed legacy header navigation, linked the logo to v3, and removed the v3 introduction, expandable warning and visible network controls. The page starts with creation/offer tabs. Automatic provider verification and protocol/wallet checks remain in place. This is a presentation change developed in the fork; existing staking capabilities remain baseline work.
 
