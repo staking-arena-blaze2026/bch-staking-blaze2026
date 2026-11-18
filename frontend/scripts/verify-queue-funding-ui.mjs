@@ -29,7 +29,15 @@ try{
   await page.getByLabel('Reward asset',{exact:true}).selectOption('token');await page.getByLabel('Reward token category',{exact:true}).fill('ab'.repeat(32));
   const token=page.getByLabel('Reward per release (min. 1 raw fungible unit)',{exact:true});await token.fill('0.1');await page.getByRole('alert',{name:'cap error',exact:true}).waitFor();await token.fill('1');await page.getByRole('alert',{name:'cap error',exact:true}).waitFor({state:'detached'});
   assert.equal(await page.getByRole('alert',{name:'cap error',exact:true}).count(),0);assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);assert.deepEqual(errors,[]);
-  results.push({network,minimumBch:true,correctedErrorRemoved:true,rawTokenUnits:true,unavailableWalletReason:true,mobile:true,javascriptErrors:errors});await context.close();
+  // A synthetic dialog event exercises compiled recovery UI without a wallet.
+  const openRecovery=()=>page.evaluate(()=>{window.__recoveryDecision=undefined;window.dispatchEvent(new CustomEvent('arena-preparation-confirm',{detail:{quote:{transactions:1,approvals:1,preparationFees:[],creationFee:'0',totalFee:'185',walletDebit:'185',reserve:'0',rewardCategory:'0'.repeat(64),recovery:{operationId:'synthetic-old-request',transactionId:'aa'.repeat(32),reservedBch:'866201',returnedBch:'864816'}},respond:value=>{window.__recoveryDecision=value;}}}));});
+  await openRecovery();await page.getByRole('heading',{name:'Resolve old signed request',exact:true}).waitFor();await page.getByText(/does not create your new vault/).waitFor();
+  assert.equal(await page.getByText('185 satoshis',{exact:true}).isVisible(),true);
+  for(const width of [320,390]){await page.setViewportSize({width,height:844});assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);}
+  await page.getByRole('button',{name:'Resolve with 1 wallet approval',exact:true}).click();assert.equal(await page.evaluate(()=>window.__recoveryDecision),true);await page.evaluate(()=>window.dispatchEvent(new Event('arena-preparation-close')));
+  await openRecovery();await page.getByRole('button',{name:'Cancel',exact:true}).click();assert.equal(await page.evaluate(()=>window.__recoveryDecision),false);await page.evaluate(()=>window.dispatchEvent(new Event('arena-preparation-close')));
+  assert.deepEqual(errors,[]);
+  results.push({network,minimumBch:true,correctedErrorRemoved:true,rawTokenUnits:true,unavailableWalletReason:true,mobile:true,syntheticRecoveryDialog:true,recoveryIsSeparateFromNewVault:true,recoveryFeeDisclosed:true,recoveryConsentAndCancel:true,javascriptErrors:errors});await context.close();
  }
  console.log(JSON.stringify({at:new Date().toISOString(),base,noWallet:true,publicSocketsBlocked:true,results},null,2));
 }finally{await browser.close();if(server)await new Promise(done=>server.close(done));}

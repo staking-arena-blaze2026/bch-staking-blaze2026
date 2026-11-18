@@ -28,7 +28,7 @@ function client(readOnly:boolean):Client{
   if(e.data.type==='ready'){clearTimeout(startup);resolveReady();return;}
   const job=c.pending.get(e.data.id);if(!job)return;
   clearTimeout(job.timer);c.pending.delete(e.data.id);
-  e.data.error?job.reject(Object.assign(Error(e.data.error),{details:e.data.details})):job.resolve(e.data.result);
+  e.data.error?job.reject(Object.assign(Error(e.data.error),{details:e.data.details,summary:e.data.summary})):job.resolve(e.data.result);
  };
  worker.onerror=()=>fail(Error('Queue worker failed; signed journals are retained'));
  worker.onmessageerror=()=>fail(Error('Queue worker could not deserialize its response; check recovery'));

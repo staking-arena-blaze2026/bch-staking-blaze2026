@@ -1,5 +1,5 @@
 import {BchFundingError,errorMessage} from './funding.js';
-import {placeholderP2PKHUnlocker,placeholderSignature,type SpendableUtxo} from 'cashscript';
+import {TransactionBuilder,placeholderP2PKHUnlocker,placeholderSignature,type SpendableUtxo} from 'cashscript';
 import {binToHex,hexToBin,decodeTransaction,hashTransaction,type Transaction} from '@bitauth/libauth';
 import type {ElectrumCore} from '../electrum-core.js';
 import {verifyCoins,verifyCoinsAcrossPeers,confirmedWalletTransaction,walletPeers} from '../electrum-wallet.js';
@@ -15,19 +15,22 @@ import {insertionPoint,cancellationPoint} from './indexer.js';
 import {policyRate} from './fees.js';
 import * as q from './protocol.js';
 import {creationSequence,type CreationQuote} from './preparation.js';
-export type Intent={kind:'create';parameters:q.Parameters}|{kind:'insert';config:Config;terms:q.Score}|{kind:'cancel'|'withdraw';config:Config;offerId:string}|{kind:'claim';config:Config;expectedHead?:string};
+export type Intent={kind:'recover';operationId:string}|{kind:'create';parameters:q.Parameters}|{kind:'insert';config:Config;terms:q.Score}|{kind:'cancel'|'withdraw';config:Config;offerId:string}|{kind:'claim';config:Config;expectedHead?:string};
 export interface Operation {
  id:string;intent:Intent;owner:WalletKey;keys:WalletKey[];stage:'review'|'signed'|'pending'|'confirmed'|'conflict'|'discarded';
  queueCoin?:SpendableUtxo;seed?:SpendableUtxo;
+ history?:{step:string;raw:string;txid:string}[];
+ recovery?:{operationId:string;transactionId:string;seal:string};recoveryResolved?:boolean;supersededBy?:string;
  reservationEvidence?:{kind:'verified-unspent-inputs';tip:string;inputCount:number;bch:string};
  network?:'mainnet'|'chipnet'|'regtest';reservationResolution?:'confirmed'|'conflict'|'unresolved';
- step:'action'|'wallet-preparation';quote?:CreationQuote;completed?:number;spentFees?:string;parent?:string;next?:string;approved?:boolean;reservations?:SpendableUtxo[];plan:BrowserPlan;sources:SpendableUtxo[];rate:bigint;signedEvidence?:string;raw?:string;txid?:string;verifiedAt?:number;error?:string;
+ step:'action'|'wallet-preparation'|'wallet-recovery';quote?:CreationQuote;completed?:number;spentFees?:string;parent?:string;next?:string;approved?:boolean;reservations?:SpendableUtxo[];plan:BrowserPlan;sources:SpendableUtxo[];rate:bigint;signedEvidence?:string;raw?:string;txid?:string;verifiedAt?:number;error?:string;
  config?:Config;offerId?:string;walletDebit?:string;
  signing:'unsigned'|'requested'|'rejected'|'uncertain'|'signed';
 }
 export interface Store {list():Promise<Operation[]>;save(op:Operation):Promise<void>}
 export interface FundingEvidence {verified:string;available:string;reserved:string;restricted:string;eligibleGenesis:number;addresses:number;reservations:{id:string;step:string;txid?:string;satoshis:string;reason:string}[]}
 const legacyAnchors=(op:Operation)=>{
+ if(op.supersededBy&&op.stage==='conflict'&&op.reservationResolution==='conflict')return [];
  const refs=[...(op.queueCoin?[op.queueCoin]:[]),...(op.seed?[op.seed]:[])];
  // A proven ordinary wallet self-send has no covenant continuation to protect.
  // Unknown scripts/status and any non-wallet seed retain every linked anchor.
@@ -41,14 +44,14 @@ const outpoint=(u:SpendableUtxo)=>u.txid+':'+u.vout;
 export class QueueWallet {
  private readonly reviewed=new Map<string,{seal:string;tip:string}>();
  invalidateReviews(){this.reviewed.clear();}
- private seal(op:Operation){return json({intent:op.intent,owner:op.owner,keys:op.keys,step:op.step,plan:op.plan,sources:op.sources,rate:op.rate,config:op.config,offerId:op.offerId,network:op.network,quote:op.quote,completed:op.completed,spentFees:op.spentFees,parent:op.parent,reservations:op.reservations});}
+ private seal(op:Operation){return json({intent:op.intent,owner:op.owner,keys:op.keys,step:op.step,plan:op.plan,sources:op.sources,rate:op.rate,config:op.config,offerId:op.offerId,network:op.network,quote:op.quote,completed:op.completed,spentFees:op.spentFees,parent:op.parent,reservations:op.reservations,recovery:op.recovery});}
  constructor(readonly provider:ElectrumCore,readonly store:Store){}
- async get(id:string){const op=(await this.store.list()).find(o=>o.id===id);if(!op)throw Error('Unknown queue operation');if(op.network&&op.network!==this.network())throw Error('Queue journal network mismatch');if(op.step!=='action'&&op.step!=='wallet-preparation')throw Error('Legacy transaction evidence requires manual inspection');return op;}
+ async get(id:string){const op=(await this.store.list()).find(o=>o.id===id);if(!op)throw Error('Unknown queue operation');if(op.network&&op.network!==this.network())throw Error('Queue journal network mismatch');if(!['action','wallet-preparation','wallet-recovery'].includes(op.step))throw Error('Legacy transaction evidence requires manual inspection');return op;}
  private funding(coin:WalletCoin):q.Funding{return {input:coin.utxo,unlocker:placeholderP2PKHUnlocker(walletAddress(hexToBin(coin.publicKey),this.network()))};}
  private network(){const network=String(this.provider.network);if(!['mainnet','chipnet','regtest'].includes(network))throw Error('Unsupported queue network');return network as 'mainnet'|'chipnet'|'regtest';}
  private authorization(owner:WalletKey){return {publicKey:hexToBin(owner.publicKey),authorization:placeholderSignature()};}
  private async rate(){return verifiedProviders(this.provider,walletPeers(this.provider),async(_peer,p)=>{const tip=await p.tip(),rate=policyRate(await p.request('blockchain.relayfee'));return {value:{rate,tip:tip.hash},tip,identity:tip.hash+':'+rate};});}
- private async inventory(keys:WalletKey[],id:string){
+ private async inventory(keys:WalletKey[],id:string,ignoreReservation?:string){
   if(!keys.length||keys.length>600||new Set(keys.map(k=>k.path+':'+k.index)).size!==keys.length)throw Error('Invalid wallet descriptor');
   const coins=await verifiedProviders(this.provider,walletPeers(this.provider),async(peer,p)=>{
    const tip=await p.tip(),coins:WalletCoin[]=[];
@@ -57,14 +60,16 @@ export class QueueWallet {
    await verifyCoins(p,coins.map(c=>c.utxo),peer,true);if((await p.tip()).hash!==tip.hash)throw Error('Tip changed during funding discovery');
    coins.sort((a,b)=>outpoint(a.utxo).localeCompare(outpoint(b.utxo)));return {value:coins,tip,identity:json({tip:tip.hash,coins})};
   },{parallel:true});
-  const list=await this.store.list();
+  let list=await this.store.list();
   for(const op of list)if(!op.network||op.network===this.network())this.reservePreparationOutputs(op);
   const live=new Set(coins.map(c=>outpoint(c.utxo)));
   // A previously confirmed spend can disappear in a reorganization. If a
   // reserved input reappears, old journal classifications cannot release it.
-  for(const op of list)if((!op.network||op.network===this.network())&&op.id!==id&&op.raw&&op.stage!=='discarded'&&(!['confirmed','conflict'].includes(op.stage)||!['action','wallet-preparation'].includes(op.step)||reservationInputs(op).some(u=>live.has(outpoint(u)))))await this.reconcileReservation(op);
-  const active=list.filter(o=>(!o.network||o.network===this.network())&&o.id!==id&&!id.startsWith(o.id+':next')&&o.stage!=='discarded'&&(o.stage!=='conflict'||o.reservationResolution==='unresolved')&&(o.stage!=='confirmed'||o.reservationResolution==='unresolved'||o.step==='wallet-preparation'&&!o.next||!['action','wallet-preparation'].includes(o.step)&&(o.reservationResolution!=='confirmed'||legacyAnchors(o).length>0)));
-  const anchored=list.filter(o=>(!o.network||o.network===this.network())&&legacyAnchors(o).length>0);
+  for(const op of list.filter(o=>o.step!=='wallet-recovery'))if((!op.network||op.network===this.network())&&op.id!==id&&op.raw&&op.stage!=='discarded'&&(!['confirmed','conflict'].includes(op.stage)||!['action','wallet-preparation'].includes(op.step)||reservationInputs(op).some(u=>live.has(outpoint(u)))))await this.reconcileReservation(op);
+  for(const op of list.filter(o=>o.step==='wallet-recovery'&&o.raw))if(!op.network||op.network===this.network())await this.reconcileReservation(op);
+  list=await this.store.list();
+  const active=list.filter(o=>(!o.network||o.network===this.network())&&o.id!==id&&o.id!==ignoreReservation&&!id.startsWith(o.id+':next')&&o.stage!=='discarded'&&(o.stage!=='conflict'||o.reservationResolution==='unresolved')&&(o.stage!=='confirmed'||o.reservationResolution==='unresolved'||o.step==='wallet-preparation'&&!o.next||!['action','wallet-preparation'].includes(o.step)&&(o.reservationResolution!=='confirmed'||legacyAnchors(o).length>0)));
+  const anchored=list.filter(o=>o.id!==ignoreReservation&&(!o.network||o.network===this.network())&&legacyAnchors(o).length>0);
   const records=[...new Map([...active,...anchored].map(o=>[o.id,o])).values()];
   const reserved=new Set([...active.flatMap(o=>reservationInputs(o).map(outpoint)),...anchored.flatMap(o=>legacyAnchors(o).map(outpoint))]);
   const available=coins.filter(c=>!reserved.has(outpoint(c.utxo))).sort((a,b)=>a.utxo.satoshis>b.utxo.satoshis?-1:1),sum=(cs:WalletCoin[])=>cs.reduce((n,c)=>n+c.utxo.satoshis,0n).toString();
@@ -73,7 +78,7 @@ export class QueueWallet {
  /** Reserve real self-send outputs as soon as their immutable signed txid is
   * known. Original inputs alone cannot protect continuation after broadcast. */
  private reservePreparationOutputs(op:Operation){
-  if(op.step!=='wallet-preparation'||!op.raw||!op.txid||hashTransaction(hexToBin(op.raw))!==op.txid)return;
+  if((op.step!=='wallet-preparation'&&op.step!=='wallet-recovery')||op.step==='wallet-recovery'&&op.recoveryResolved||!op.raw||!op.txid||hashTransaction(hexToBin(op.raw))!==op.txid)return;
   const tx=decodeTransaction(hexToBin(op.raw));if(typeof tx==='string')return;
   const script=binToHex(q.ownerScript(hexToBin(op.owner.publicKey)));
   const outputs:SpendableUtxo[]=tx.outputs.flatMap((o,vout)=>binToHex(o.lockingBytecode)===script?[{txid:op.txid!,vout,satoshis:o.valueSatoshis,lockingBytecode:script,...(o.token?{token:{category:binToHex(o.token.category),amount:o.token.amount}}:{})}]:[]);
@@ -93,10 +98,76 @@ export class QueueWallet {
   for(const coin of eligible){if(selected.length===limit)break;selected.push(coin);tokens+=coin.utxo.token?.amount??0n;if(asset!==q.ZERO&&tokens<amount)continue;try{return build(selected);}catch(e){if(!/Insufficient BCH|dust|minimum|negative|lower than/i.test(String(e)))throw e;last=e;}}
   throw last??Error('Insufficient wallet funding for the selected assets and measured fee');
  }
+ private legacySeal(op:Operation){return json({id:op.id,owner:op.owner,intent:op.intent,raw:op.raw,txid:op.txid,sources:op.sources,queueCoin:op.queueCoin,seed:op.seed,history:op.history,reservations:op.reservations});}
+ private async recoveryTarget(id:string,owner:WalletKey){
+  const op=(await this.store.list()).find(o=>o.id===id);
+  if(!op||op.network&&op.network!==this.network())throw Error('Old request is not in this network journal');
+  if(op.owner.publicKey!==owner.publicKey)throw Error('Connect the original wallet to resolve this old request');
+  if(op.intent.kind!=='create'||!['seed-funding','queue-funding'].includes(op.step))throw Error('This request needs manual recovery; automatic resolution supports old wallet funding requests only');
+  if(!op.raw||!op.txid||hashTransaction(hexToBin(op.raw))!==op.txid)throw Error('Old signed bytes are unavailable or inconsistent. Inspect the old request before recovery');
+  const tx=decodeTransaction(hexToBin(op.raw)),points=new Set(op.sources.map(outpoint));
+  if(typeof tx==='string'||!op.sources.length||points.size!==op.sources.length||tx.inputs.length!==points.size||tx.inputs.some(i=>!points.has(binToHex(i.outpointTransactionHash)+':'+i.outpointIndex)))throw Error('Old signed inputs do not match its journal. Manual inspection is required');
+  const refs=[...new Map([...op.sources,...(op.reservations??[]),...(op.queueCoin?[op.queueCoin]:[]),...(op.seed?[op.seed]:[])].map(u=>[outpoint(u),u])).values()];
+  if(refs.some(u=>u.token||!u.lockingBytecode||!/^76a914[a-f0-9]{40}88ac$/.test(u.lockingBytecode)))throw Error('This old request references covenant, token or unknown funds. Use manual inspection; automatic resolution will not spend or abandon them');
+  for(const h of op.history??[]){const t=decodeTransaction(hexToBin(h.raw));if(typeof t==='string'||hashTransaction(hexToBin(h.raw))!==h.txid||t.outputs.some(o=>o.token||!/^76a914[a-f0-9]{40}88ac$/.test(binToHex(o.lockingBytecode))&&o.lockingBytecode[0]!==0x6a))throw Error('Old transaction history may contain covenant funds. Manual inspection is required');}
+  return {op,refs};
+ }
+ private async assertNoExistingCovenantFunds(op:Operation){
+  const tx=decodeTransaction(hexToBin(op.raw!));if(typeof tx==='string')throw Error('Cannot inspect old signed outputs');
+  const scripts=[...new Set(tx.outputs.filter(o=>!/^76a914[a-f0-9]{40}88ac$/.test(binToHex(o.lockingBytecode))&&o.lockingBytecode[0]!==0x6a).map(o=>binToHex(o.lockingBytecode)))];
+  if(!scripts.length)return;
+  const found=await verifiedProviders(this.provider,walletPeers(this.provider),async(peer,p)=>{
+   const tip=await p.tip(),coins:SpendableUtxo[]=[];for(const script of scripts)coins.push(...await p.getUtxosForLockingBytecode(script));coins.sort((a,b)=>outpoint(a).localeCompare(outpoint(b)));
+   if(coins.length)await verifyCoins(p,coins,peer,true);if((await p.tip()).hash!==tip.hash)throw Error('Tip changed during old covenant inspection');
+   return {value:coins.length,tip,identity:json({tip:tip.hash,coins})};
+  },{parallel:true});
+  if(found)throw Error('The old request address already holds covenant funds. Automatic wallet-only resolution is unavailable; inspect those funds before changing its continuation inputs');
+ }
+ private async prepareRecovery(targetId:string,keys:WalletKey[],previous?:Operation):Promise<Operation>{
+  const owner=keys.find(k=>k.path==='receive'&&k.index===0);if(!owner)throw Error('Connect the original wallet to resolve this request');
+  const target=await this.recoveryTarget(targetId,owner);
+  const existing=(await this.store.list()).find(o=>o.recovery?.operationId===targetId&&!['discarded','conflict'].includes(o.stage));
+  if(existing?.raw)return this.reconcileRecovery(existing.id);
+  if(existing&&!['unsigned','rejected'].includes(existing.signing))throw Error('A resolution approval is already unresolved. Inspect that recovery before starting another');
+  const id=previous?.id??existing?.id??crypto.randomUUID();
+  const inventory=await this.inventory(keys,id,targetId),current=await this.recoveryTarget(targetId,owner);
+  if(current.op.supersededBy&&current.op.reservationResolution==='conflict')throw Error('This old request is already resolved. Continue creating your new vault');
+  if(current.op.stage==='confirmed'||current.op.stage==='pending')throw Error('The old transaction is already on the network. Inspect its outputs before recovery');
+  const byPoint=new Map(inventory.coins.map(c=>[outpoint(c.utxo),c]));
+  for(const ref of current.refs){const coin=byPoint.get(outpoint(ref));if(!coin||json(coin.utxo.token??null)!==json(ref.token??null)||coin.utxo.satoshis!==ref.satoshis||coin.utxo.lockingBytecode!==ref.lockingBytecode)throw Error('Old funding is spent, reserved by another request, or not verified in this wallet. Inspect recovery before continuing');}
+  await verifyCoinsAcrossPeers(this.provider,current.refs,true);
+  await this.assertNoExistingCovenantFunds(current.op);
+  const policy=await this.rate(),selected=current.op.sources.map(u=>byPoint.get(outpoint(u))!);
+  if(selected.length>16)throw Error('Too many old signed inputs for automatic resolution. Manual inspection is required');
+  const extras=inventory.coins.filter(c=>!c.utxo.token&&!selected.some(s=>outpoint(s.utxo)===outpoint(c.utxo)));
+  let built:ReturnType<typeof q.priced>;
+  for(;;){try{built=q.priced(fee=>{const b=new TransactionBuilder({provider:this.provider});for(const c of selected){const f=this.funding(c);b.addInput(f.input,f.unlocker);}const total=selected.reduce((n,c)=>n+c.utxo.satoshis,0n);return b.addOutput({to:q.ownerScript(hexToBin(owner.publicKey)),amount:q.fundingRemainder(b,total,0n,fee,'legacy resolution',false)});},selected.map(c=>c.utxo),policy.rate);break;}catch(e){if(!(e instanceof BchFundingError)||!extras.length||selected.length>=16)throw e;selected.push(extras.shift()!);}}
+  const total=selected.reduce((n,c)=>n+c.utxo.satoshis,0n),recovery={operationId:targetId,transactionId:current.op.txid!,seal:this.legacySeal(current.op)},quote:CreationQuote={transactions:1,approvals:1,preparationFees:[],creationFee:'0',totalFee:built.fee.toString(),walletDebit:built.fee.toString(),reserve:'0',rewardCategory:q.ZERO,recovery:{operationId:targetId,transactionId:current.op.txid!,reservedBch:current.refs.reduce((n,u)=>n+u.satoshis,0n).toString(),returnedBch:(total-built.fee).toString()}};
+  const op:Operation={id,intent:{kind:'recover',operationId:targetId},owner,keys,network:this.network(),step:'wallet-recovery',stage:'review',signing:'unsigned',approved:false,recovery,quote,rate:policy.rate,sources:built.sources,reservations:[...new Map([...current.refs,...built.sources].map(u=>[outpoint(u),u])).values()],plan:this.plan(built,selected,owner,false,'Resolve old signed request: send BCH back to this wallet; fee '+built.fee+' sats; wait for confirmation before releasing the old reservation'),walletDebit:built.fee.toString()};
+  await this.store.save(op);this.reviewed.set(id,{seal:this.seal(op),tip:policy.tip});return op;
+ }
+ private async checkRecoveryTarget(op:Operation){
+  const target=await this.recoveryTarget(op.recovery!.operationId,op.owner);
+  if(this.legacySeal(target.op)!==op.recovery!.seal)throw Error('Old request changed. Inspect it and review resolution again');
+  if(!target.op.sources.every(u=>op.sources.some(s=>outpoint(s)===outpoint(u))))throw Error('Resolution does not invalidate the old signed inputs');
+  await verifyCoinsAcrossPeers(this.provider,target.refs,true);
+  await this.assertNoExistingCovenantFunds(target.op);
+ }
+ private async finishRecovery(op:Operation){
+  const target=await this.recoveryTarget(op.recovery!.operationId,op.owner);
+  if(this.legacySeal(target.op)!==op.recovery!.seal)throw Error('Old request changed; retain resolution bytes and inspect both requests');
+  if(!target.op.sources.every(u=>op.sources.some(s=>outpoint(s)===outpoint(u))))throw Error('Recovery input identity mismatch');
+  try{await this.assertNoExistingCovenantFunds(target.op);}catch(error){if(target.op.supersededBy===op.txid){target.op.supersededBy=undefined;await this.store.save(target.op);}throw error;}
+  target.op.stage='conflict';target.op.reservationResolution='conflict';target.op.supersededBy=op.txid;
+  target.op.error='Resolved by confirmed wallet self-send '+op.txid+'. Old signed bytes and history retained.';
+  await this.store.save(target.op);op.recoveryResolved=true;op.reservationResolution='confirmed';op.error=undefined;
+ }
+ async reconcileRecovery(id:string){const op=await this.get(id);if(op.step!=='wallet-recovery'||!op.raw)throw Error('No signed resolution to inspect');return this.reconcileReservation(op);}
  async prepare(intent:Intent,keys:WalletKey[],previous?:Operation,continuation?:{id:string;parent:string;completed:number;spentFees:string}):Promise<Operation>{
   if(previous?.network&&previous.network!==this.network())throw Error('Queue journal network mismatch');
   if(previous&&(previous.raw||!['unsigned','rejected'].includes(previous.signing)))throw Error('Uncertain or signed operations cannot be rebuilt');
   if(previous)this.reviewed.delete(previous.id);
+  if(intent.kind==='recover')return this.prepareRecovery(intent.operationId,keys,previous);
   const owner=keys.find(k=>k.path==='receive'&&k.index===0);if(!owner||previous&&previous.owner.publicKey!==owner.publicKey)throw Error('Resume with the original wallet');
   const id=previous?.id??continuation?.id??crypto.randomUUID(),inventory=await this.inventory(keys,id),coins=inventory.coins,policy=await this.rate(),rate=policy.rate,authorization=this.authorization(owner);
   let step:Operation['step']='action',built:ReturnType<typeof q.priced>,authorize=true,selected:WalletCoin[]=[],config=previous?.config,offerId=previous?.offerId;let label:string=intent.kind;let quote:CreationQuote|undefined;let reservations:SpendableUtxo[]|undefined;
@@ -111,7 +182,7 @@ export class QueueWallet {
     e.restricted=coins.filter(c=>c.utxo.token&&c.utxo.token.category!==p.rewardCategory).reduce((n,c)=>n+c.utxo.satoshis,0n).toString();
     const required=error instanceof BchFundingError?error.required.toString():undefined;
     const detail={cause:errorMessage(error),code:'creation-funding',inputLimit:16,...e,required,fee:error instanceof BchFundingError?(error.fee+error.preparationFees).toString():undefined,automaticPreparation:'No complete sequence could be funded with the current verified, unreserved inputs.'};
-    const failure=Object.assign(new Error(`Vault creation funding: ${!(error instanceof BchFundingError)?errorMessage(error)+'. ':''}${required?`the tested ${error instanceof BchFundingError?error.phase:'sequence'} requires ${required} satoshis (including ${detail.fee} satoshis in measured fees, carriers and non-dust change${error instanceof BchFundingError&&error.phase==='wallet preparation'?'; the later creation fee has not yet been quoted':''}). `:`The reserve and creation carriers alone require at least ${(p.rewardCategory===q.ZERO?p.cap*BigInt(p.releases):q.CARRIER)+2n*q.CARRIER+1000n} satoshis; a complete fee quote is unavailable. `}${e.available} satoshis are available in verified, unreserved wallet inputs across ${e.addresses} supplied addresses; ${e.reserved} satoshis are excluded by unresolved transaction reservations. ${e.eligibleGenesis} eligible genesis UTXOs. ${detail.automaticPreparation} ${e.restricted} satoshis are attached to other fungible token categories and require token-preserving preparation. ${e.reservations.length?'Inspect Transaction recovery: '+e.reservations.map(r=>r.id+' ('+r.step+', '+r.satoshis+' sats): '+r.reason).join('; ')+'. Signed bytes are retained; no automatic rebroadcast or covenant abandonment is performed. ':''}Check that Cashonize exposes the funded wallet addresses, inspect unresolved reservations, or add BCH to this wallet and retry. Plans use at most 16 funding inputs per transaction; consolidate heavily fragmented funds in the wallet if needed. No new transaction was signed during this preflight.`),{details:detail});throw failure;
+    const failure=Object.assign(new Error(`Vault creation funding: ${!(error instanceof BchFundingError)?errorMessage(error)+'. ':''}${required?`the tested ${error instanceof BchFundingError?error.phase:'sequence'} requires ${required} satoshis (including ${detail.fee} satoshis in measured fees, carriers and non-dust change${error instanceof BchFundingError&&error.phase==='wallet preparation'?'; the later creation fee has not yet been quoted':''}). `:`The reserve and creation carriers alone require at least ${(p.rewardCategory===q.ZERO?p.cap*BigInt(p.releases):q.CARRIER)+2n*q.CARRIER+1000n} satoshis; a complete fee quote is unavailable. `}${e.available} satoshis are available in verified, unreserved wallet inputs across ${e.addresses} supplied addresses; ${e.reserved} satoshis are excluded by unresolved transaction reservations. ${e.eligibleGenesis} eligible genesis UTXOs. ${detail.automaticPreparation} ${e.restricted} satoshis are attached to other fungible token categories and require token-preserving preparation. ${e.reservations.length?'Inspect Transaction recovery: '+e.reservations.map(r=>r.id+' ('+r.step+', '+r.satoshis+' sats): '+r.reason).join('; ')+'. Signed bytes are retained; no automatic rebroadcast or covenant abandonment is performed. ':''}Check that Cashonize exposes the funded wallet addresses, inspect unresolved reservations, or add BCH to this wallet and retry. Plans use at most 16 funding inputs per transaction; consolidate heavily fragmented funds in the wallet if needed. No new transaction was signed during this preflight.`),{details:detail,summary:e.reservations.length?`An old request reserves ${e.reserved} satoshis. Resolve that request to continue creating this new vault.`:`Wallet preparation needs more usable BCH. ${e.available} satoshis are available.`});throw failure;
    }quote=sequence.quote;reservations=coins.filter(c=>sequence.preparations.some(s=>s.selected.includes(c))||sequence.selected.includes(c)).map(c=>c.utxo);
    const first=sequence.preparations[0];authorize=false;
    if(first){built=first.built;selected=first.selected;step='wallet-preparation';config=undefined;label='Prepare wallet with a BCH self-send';}
@@ -175,13 +246,14 @@ export class QueueWallet {
  async authorize(id:string){
   const op=await this.get(id);
   if(op.raw||op.stage!=='review'||!['unsigned','rejected'].includes(op.signing))throw Error('Uncertain or signed operations cannot be rebuilt');
-  if(op.quote&&!op.approved)throw Error('Confirm additional wallet approvals before signing');
+  if(op.quote&&!op.approved)throw Error(op.recovery?'Confirm resolution before signing':'Confirm additional wallet approvals before signing');
   const evidence=this.reviewed.get(id);
   if(!evidence||evidence.seal!==this.seal(op)){this.reviewed.delete(id);throw Error('Transaction intent or wallet session changed; prepare and review again');}
   // Never rediscover funding, traverse the queue, or change the reviewed body.
   // Live availability, ancestry/conflicts and policy still come from both peers.
   op.verifiedAt=undefined;await this.store.save(op);
   try{
+   if(op.recovery)await this.checkRecoveryTarget(op);
    const clock=await verifyCoinsAcrossPeers(this.provider,op.sources,true),policy=await this.rate();
    if(clock.hash!==evidence.tip||policy.tip!==clock.hash)throw Error('Tip changed; prepare and review again');
    if(policy.rate!==op.rate)throw Error('Fee policy changed; prepare and review again');
@@ -223,6 +295,7 @@ export class QueueWallet {
  }
  async broadcast(id:string){const op=await this.get(id);if(!op.raw||!op.txid)throw Error('Sign the reviewed operation first');
   try{
+   if(op.recovery)await this.checkRecoveryTarget(op);
    const clock=await verifyCoinsAcrossPeers(this.provider,op.sources,true),tx=decodeTransaction(hexToBin(op.raw));if(typeof tx==='string')throw Error(tx);
    await this.finality(op,tx,clock,async()=>{
     const sent=await this.provider.sendRawTransaction(op.raw!);if(sent!==op.txid)throw Error('Broadcast identity mismatch');
@@ -233,6 +306,7 @@ export class QueueWallet {
  /** Status reconciliation only: never signs, broadcasts or touches covenant funds. */
  private async reconcileReservation(op:Operation){
   op.reservationEvidence=undefined;
+  if(op.step==='wallet-recovery')op.recoveryResolved=false;
   if(!op.raw||!op.txid||hashTransaction(hexToBin(op.raw))!==op.txid){op.reservationResolution='unresolved';op.error='Transaction identity is unresolved; inspect retained signed evidence. Reservations retained.';await this.store.save(op);return op;}
   const signed=decodeTransaction(hexToBin(op.raw)),sourcePoints=new Set(op.sources.map(outpoint));
   if(typeof signed==='string'||sourcePoints.size!==op.sources.length||signed.inputs.length!==sourcePoints.size||signed.inputs.some(i=>!sourcePoints.has(binToHex(i.outpointTransactionHash)+':'+i.outpointIndex))){
@@ -240,12 +314,13 @@ export class QueueWallet {
   }
   try{
    const tx=await confirmedWalletTransaction(this.provider,op.txid);
-   if(tx.hex!==op.raw)throw Error('Signed transaction evidence mismatch');
+   if(tx.hex.toLowerCase()!==op.raw.toLowerCase())throw Error('Signed transaction evidence mismatch');
    op.stage=tx.confirmations>0?'confirmed':'pending';op.reservationResolution=tx.confirmations>0?'confirmed':'unresolved';
+   if(op.step==='wallet-recovery'&&tx.confirmations>0){try{await this.finishRecovery(op);}catch(error){op.recoveryResolved=false;op.error=errorMessage(error);}await this.store.save(op);return op;}
    const decoded=decodeTransaction(hexToBin(op.raw));
    const protectedLegacy=!['action','wallet-preparation'].includes(op.step)&&typeof decoded!=='string'&&decoded.outputs.some(o=>!!o.token?.nft||!/^76a914[a-f0-9]{40}88ac$/.test(binToHex(o.lockingBytecode))&&o.lockingBytecode[0]!==0x6a);
    if(protectedLegacy){op.reservationResolution='unresolved';op.error='Legacy transaction contains covenant, NFT, or other non-wallet outputs. Continuation inputs remain reserved; inspect the retained transaction and legacy continuation before taking further action.';await this.store.save(op);return op;}
-   op.error=!['action','wallet-preparation'].includes(op.step)?(tx.confirmations>0?'Legacy transaction independently confirmed. Historical signed bytes retained; covenant outputs require separate inspection.':'Legacy transaction is pending. Unspent reserved inputs remain protected.'):undefined;
+   op.error=!['action','wallet-preparation','wallet-recovery'].includes(op.step)?(tx.confirmations>0?'Legacy transaction independently confirmed. Historical signed bytes retained; covenant outputs require separate inspection.':'Legacy transaction is pending. Unspent reserved inputs remain protected.'):undefined;
   }catch{
    const conflict=await this.knownConflict(op).catch(()=>undefined);
    if(conflict){op.stage='conflict';op.reservationResolution='conflict';op.error='Confirmed competing spend '+conflict+' makes the retained transaction unspendable. Signed evidence retained.';}
@@ -258,6 +333,7 @@ export class QueueWallet {
     }else op.error='Independent transaction and input status remain inconclusive. Reservations and signed bytes are retained. Inspect the transaction ID and actual signed inputs with selected-network explorers or restore provider connectivity, then Inspect / resume. No rebroadcast or abandonment was attempted.';
    }
   }
+  if(op.step==='wallet-recovery'&&!op.recoveryResolved)op.error=op.stage==='conflict'?'The old transaction spent the inputs first. Inspect the old request; this resolution did not release its funds.':op.stage==='pending'?undefined:'Resolution is not confirmed. Its signed bytes and reserved inputs are retained; inspect its status before retrying.';
   await this.store.save(op);return op;
  }
  private async knownConflict(op:Operation){
@@ -273,7 +349,8 @@ export class QueueWallet {
    const value=[...conflicts].sort()[0];return {value,tip,identity:json({tip:tip.hash,conflicts:[...conflicts].sort()})};
   },{parallel:true});
  }
- async resume(id:string,keys:WalletKey[],retry=false){const stored=(await this.store.list()).find(o=>o.id===id);if(stored&&!['action','wallet-preparation'].includes(stored.step)){if(stored.network&&stored.network!==this.network())throw Error('Queue journal network mismatch');if(stored.owner.publicKey!==keys.find(k=>k.path==='receive'&&k.index===0)?.publicKey)throw Error('Resume with the original wallet');return this.reconcileReservation(stored);}const op=await this.get(id);if(op.owner.publicKey!==keys.find(k=>k.path==='receive'&&k.index===0)?.publicKey)throw Error('Resume with the original wallet');if(!op.raw){if(!['unsigned','rejected'].includes(op.signing))throw Error('Signing status unknown; retain the journal and inspect the wallet before retrying');return this.prepare(op.intent,keys,op);}let tx:any;try{tx=await confirmedWalletTransaction(this.provider,op.txid!);}catch(e){const conflict=await this.knownConflict(op).catch(()=>undefined);if(conflict){op.stage='conflict';op.error='Confirmed competing spend '+conflict+'; signed bytes retained. Start a new request for the current queue position.';await this.store.save(op);return op;}if(retry)return this.broadcast(id);op.error='Signed transaction retained; independent status unavailable';await this.store.save(op);return op;}
+ async resume(id:string,keys:WalletKey[],retry=false){const stored=(await this.store.list()).find(o=>o.id===id);if(stored?.step==='wallet-recovery'&&stored.raw){if(stored.owner.publicKey!==keys.find(k=>k.path==='receive'&&k.index===0)?.publicKey)throw Error('Resume with the original wallet');if(stored.network&&stored.network!==this.network())throw Error('Queue journal network mismatch');const checked=await this.reconcileRecovery(id);if(retry&&checked.stage==='signed')return this.broadcast(id);return checked;}
+ if(stored&&!['action','wallet-preparation'].includes(stored.step)){if(stored.network&&stored.network!==this.network())throw Error('Queue journal network mismatch');if(stored.owner.publicKey!==keys.find(k=>k.path==='receive'&&k.index===0)?.publicKey)throw Error('Resume with the original wallet');return this.reconcileReservation(stored);}const op=await this.get(id);if(op.owner.publicKey!==keys.find(k=>k.path==='receive'&&k.index===0)?.publicKey)throw Error('Resume with the original wallet');if(!op.raw){if(!['unsigned','rejected'].includes(op.signing))throw Error('Signing status unknown; retain the journal and inspect the wallet before retrying');return this.prepare(op.intent,keys,op);}let tx:any;try{tx=await confirmedWalletTransaction(this.provider,op.txid!);}catch(e){const conflict=await this.knownConflict(op).catch(()=>undefined);if(conflict){op.stage='conflict';op.error='Confirmed competing spend '+conflict+'; signed bytes retained. Start a new request for the current queue position.';await this.store.save(op);return op;}if(retry)return this.broadcast(id);op.error='Signed transaction retained; independent status unavailable';await this.store.save(op);return op;}
   op.stage=tx.confirmations>0?'confirmed':'pending';op.error=undefined;await this.store.save(op);return op;
  }
  async discard(id:string){const op=await this.get(id);if(op.raw||!['unsigned','rejected'].includes(op.signing))throw Error('Signed or uncertain operations remain recoverable');op.stage='discarded';await this.store.save(op);this.reviewed.delete(id);return op;}

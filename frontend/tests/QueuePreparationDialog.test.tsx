@@ -15,3 +15,8 @@ it('aborts a pending confirmation when the wallet/network authorization changes'
  const control=new AbortController(),close=vi.fn();window.addEventListener('arena-preparation-close',close);
  const waiting=confirmPreparation({} as any,control.signal);control.abort();expect(await waiting).toBe(false);expect(close).toHaveBeenCalledOnce();window.removeEventListener('arena-preparation-close',close);
 });
+it('clearly separates legacy resolution from the new vault and discloses its fee',()=>{
+ const respond=vi.fn();render(<QueuePreparationDialog request={{respond,quote:{transactions:1,approvals:1,preparationFees:[],creationFee:'0',totalFee:'185',walletDebit:'185',reserve:'0',rewardCategory:'0'.repeat(64),recovery:{operationId:'old-request',transactionId:'aa'.repeat(32),reservedBch:'866201',returnedBch:'864816'}}}}/>);
+ expect(screen.getByRole('heading',{name:'Resolve old signed request'})).toBeVisible();expect(screen.getByText(/does not create your new vault/)).toBeVisible();expect(screen.getByText('185 satoshis')).toBeVisible();expect(screen.getByText('864816 satoshis')).toBeVisible();expect(screen.getByText(/Wait for confirmation/)).toBeVisible();
+ expect(respond).not.toHaveBeenCalled();fireEvent.click(screen.getByRole('button',{name:'Resolve with 1 wallet approval'}));expect(respond).toHaveBeenCalledWith(true);
+});

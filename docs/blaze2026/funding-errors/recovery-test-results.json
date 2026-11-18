@@ -1,0 +1,84 @@
+{
+  "at": "2026-11-18T15:15:13.763027+00:00",
+  "environment": "Fresh isolated BCHN regtest, configured separately as mainnet and chipnet; synthetic signing; no public broadcast",
+  "frontend": {
+    "files": 6,
+    "passed": 65
+  },
+  "backend": {
+    "cases": 21,
+    "passed": 21,
+    "existingFundingAndReservationCases": 15,
+    "newRecoveryCases": 6,
+    "note": "Focused runs combined; final covenant-during-confirmation cases rerun after the last backend change."
+  },
+  "existingQueueWalletPassed": true,
+  "recoveryScenarios": [
+    {
+      "network": "mainnet",
+      "recoveryFee": "185",
+      "returned": "864816",
+      "oldBytesPreserved": true,
+      "newReserve": "9600",
+      "broadcasts": 2,
+      "reorgProtection": true,
+      "oldTransactionWinsProtected": true
+    },
+    {
+      "network": "mainnet",
+      "existingCovenantProtected": true,
+      "untrackedCovenantDetected": true,
+      "oldBytesPreserved": true
+    },
+    {
+      "network": "mainnet",
+      "lateCovenantProtected": true,
+      "ordinaryFundsRemainUsable": true,
+      "confirmedResolution": true,
+      "oldBytesPreserved": true
+    },
+    {
+      "network": "chipnet",
+      "recoveryFee": "185",
+      "returned": "864816",
+      "oldBytesPreserved": true,
+      "newReserve": "9600",
+      "broadcasts": 2,
+      "reorgProtection": true,
+      "oldTransactionWinsProtected": true
+    },
+    {
+      "network": "chipnet",
+      "existingCovenantProtected": true,
+      "untrackedCovenantDetected": true,
+      "oldBytesPreserved": true
+    },
+    {
+      "network": "chipnet",
+      "lateCovenantProtected": true,
+      "ordinaryFundsRemainUsable": true,
+      "confirmedResolution": true,
+      "oldBytesPreserved": true
+    }
+  ],
+  "confirmedBeforeRelease": true,
+  "retainsOldSignedBytesAndHistory": true,
+  "networkIsolationChecked": true,
+  "publicFundsBroadcast": false,
+  "finalTargetedRecheck": [
+    {
+      "network": "mainnet",
+      "lateCovenantProtected": true,
+      "ordinaryFundsRemainUsable": true,
+      "confirmedResolution": true,
+      "oldBytesPreserved": true
+    },
+    {
+      "network": "chipnet",
+      "lateCovenantProtected": true,
+      "ordinaryFundsRemainUsable": true,
+      "confirmedResolution": true,
+      "oldBytesPreserved": true
+    }
+  ]
+}

@@ -5,7 +5,7 @@ import {walletAddress,type WalletCoin,type WalletKey} from '../transactions-core
 import * as q from './protocol.js';
 import type {ElectrumCore} from '../electrum-core.js';
 import {addAnnouncement} from './discovery.js';
-export interface CreationQuote {transactions:number;approvals:number;preparationFees:string[];creationFee:string;totalFee:string;walletDebit:string;reserve:string;rewardCategory:string}
+export interface CreationQuote {transactions:number;approvals:number;preparationFees:string[];creationFee:string;totalFee:string;walletDebit:string;reserve:string;rewardCategory:string;recovery?:{operationId:string;transactionId:string;reservedBch:string;returnedBch:string}}
 function sequence(p:q.Parameters,coins:WalletCoin[],owner:WalletKey,provider:ElectrumCore,rate:bigint,consolidate=false){
  const network=String(provider.network) as 'mainnet'|'chipnet'|'regtest';
  const funding=(c:WalletCoin):q.Funding=>({input:c.utxo,unlocker:placeholderP2PKHUnlocker(walletAddress(hexToBin(c.publicKey),network))});

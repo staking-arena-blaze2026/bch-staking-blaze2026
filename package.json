@@ -52,13 +52,14 @@
     "test:review": "node scripts/test-review.mjs",
     "test:atomic": "node scripts/compile-v3.mjs --check && ARENA_NETWORK=regtest tsx --test --test-concurrency=1 tests/blaze-atomic-*.test.ts",
     "compile:queue": "node scripts/compile-queue.mjs",
-    "test:queue": "node scripts/compile-queue.mjs --check && ARENA_NETWORK=regtest tsx --test --test-concurrency=1 tests/queue-covenants.test.ts tests/queue-indexer.test.ts tests/queue-wallet.test.ts tests/queue-relay.test.ts tests/queue-preparation.test.ts tests/queue-funding.test.ts tests/queue-reservations.test.ts",
+    "test:queue": "node scripts/compile-queue.mjs --check && ARENA_NETWORK=regtest tsx --test --test-concurrency=1 tests/queue-covenants.test.ts tests/queue-indexer.test.ts tests/queue-wallet.test.ts tests/queue-relay.test.ts tests/queue-preparation.test.ts tests/queue-funding.test.ts tests/queue-reservations.test.ts tests/queue-recovery.test.ts",
     "test:queue:preparation": "node scripts/compile-queue.mjs --check && ARENA_NETWORK=regtest tsx --test tests/queue-preparation.test.ts",
     "benchmark:queue": "tsx scripts/benchmark-queue.ts",
     "benchmark:queue:wallet": "ARENA_NETWORK=regtest QUEUE_PERFORMANCE_RESULTS=docs/blaze2026/linked-queue/wallet-performance.json tsx --test tests/queue-performance.test.ts",
     "test:queue:atomic-assets": "ARENA_NETWORK=regtest QUEUE_ATOMIC_ONLY=1 QUEUE_PERFORMANCE_RESULTS=docs/blaze2026/linked-queue/atomic-performance.json tsx --test tests/queue-performance.test.ts",
     "benchmark:queue:phase2": "tsx scripts/compare-queue-phase2.ts",
-    "test:queue:funding": "ARENA_NETWORK=regtest tsx --test --test-concurrency=1 tests/queue-funding.test.ts tests/queue-reservations.test.ts"
+    "test:queue:funding": "ARENA_NETWORK=regtest tsx --test --test-concurrency=1 tests/queue-funding.test.ts tests/queue-reservations.test.ts tests/queue-recovery.test.ts",
+    "test:queue:recovery": "ARENA_NETWORK=regtest tsx --test --test-concurrency=1 tests/queue-recovery.test.ts"
   },
   "keywords": [],
   "author": "",

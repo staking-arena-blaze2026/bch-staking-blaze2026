@@ -22,6 +22,7 @@ scope.onmessage=event=>{pending=pending.catch(()=>{}).then(async()=>{const {id,i
  else if(operation==='owned')result=await new QueueIndexer(provider,intent.config).owned(intent.owner);
  else if(operation==='prepare')result=await wallet.prepare(intent.intent,keys);
  else if(operation==='advance')result=await wallet.advance(intent.id,keys);
+ else if(operation==='reconcileRecovery')result=await wallet.reconcileRecovery(intent.id);
  else if(operation==='confirm')result=await wallet.confirm(intent.id);
  else if(operation==='authorize')result=await wallet.authorize(intent.id);
  else if(operation==='retain')result=await wallet.retain(intent.id,intent.raw);
@@ -35,6 +36,6 @@ scope.onmessage=event=>{pending=pending.catch(()=>{}).then(async()=>{const {id,i
  if(!reading&&!scope.navigator.locks)throw Error('Queue transactions require Web Locks');
  const result=reading?await run():await scope.navigator.locks.request('arena-'+options.network+'-queue',{ifAvailable:true},async lock=>{if(!lock)throw Error('Another tab is updating this queue wallet');return run();});
  scope.postMessage({id,result});
- }catch(error){scope.postMessage({id,error:errorMessage(error),details:(error as {details?:unknown})?.details});}});};
+ }catch(error){scope.postMessage({id,error:errorMessage(error),summary:(error as {summary?:string})?.summary,details:(error as {details?:unknown})?.details});}});};
 
 scope.postMessage({type:'ready'});

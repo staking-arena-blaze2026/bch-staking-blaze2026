@@ -69,3 +69,16 @@ it('legacy inspection never reaches approval or submission, even if a retained e
  const {wallet,manager}=setup();vi.mocked(queueCall).mockResolvedValue({id:'old',stage:'review',step:'seed-funding',plan:{},error:'Unresolved reservation; inspect retained evidence'});
  try{const result=await wallet.queue!({operation:'resume',id:'old',retry:true});expect(result.step).toBe('seed-funding');expect(manager.signTransaction).not.toHaveBeenCalled();expect(vi.mocked(queueCall).mock.calls.map(c=>c[0].operation)).toEqual(['resume']);}finally{wallet.close?.();}
 });
+for(const selected of ['mainnet','chipnet'])it(selected+': resolving an old request requires explicit review and signs only the new self-send',async()=>{
+ const {wallet,manager,plan}=setup(selected);let approved=false;const calls:string[]=[];
+ const quote={transactions:1,approvals:1,preparationFees:[],creationFee:'0',totalFee:'185',walletDebit:'185',reserve:'0',rewardCategory:'0'.repeat(64),recovery:{operationId:'old-request',transactionId:'aa'.repeat(32),reservedBch:'866201',returnedBch:'864816'}};
+ const op=()=>({id:'recovery',intent:{kind:'recover',operationId:'old-request'},step:'wallet-recovery',stage:'review',approved,recovery:{operationId:'old-request'},quote,plan,owner:{publicKey:binToHex(manager.getPubkey(0,0n))},verifiedAt:Date.now()});
+ vi.mocked(queueCall).mockImplementation(async i=>{calls.push(String(i.operation));if(i.operation==='confirm')approved=true;if(i.operation==='submit')return {...op(),raw:'new-signed-self-send',stage:'pending'};return op();});
+ const decide=(e:Event)=>{expect(manager.signTransaction).not.toHaveBeenCalled();expect((e as CustomEvent).detail.quote.recovery.operationId).toBe('old-request');(e as CustomEvent).detail.respond(true);};window.addEventListener('arena-preparation-confirm',decide);
+ try{const result=await wallet.queue!({operation:'prepare',intent:{kind:'recover',operationId:'old-request'}});expect(result.stage).toBe('pending');expect(manager.signTransaction).toHaveBeenCalledOnce();expect(calls).toEqual(['prepare','confirm','authorize','beginSigning','retain','submit']);expect(calls).not.toContain('advance');}finally{window.removeEventListener('arena-preparation-confirm',decide);wallet.close?.();}
+});
+it('cancelling resolution never signs, submits or discards the old request',async()=>{
+ const {wallet,manager,plan}=setup();const calls:any[]=[];vi.mocked(queueCall).mockImplementation(async i=>{calls.push(i);return {id:'new-recovery',intent:{kind:'recover'},step:'wallet-recovery',stage:'review',plan,recovery:{operationId:'old'},approved:false,quote:{transactions:1,approvals:1,recovery:{operationId:'old'}}};});
+ const decide=(e:Event)=>(e as CustomEvent).detail.respond(false);window.addEventListener('arena-preparation-confirm',decide);
+ try{await expect(wallet.queue!({operation:'prepare',intent:{kind:'recover',operationId:'old'}})).rejects.toThrow('resolution cancelled');expect(manager.signTransaction).not.toHaveBeenCalled();expect(calls).toEqual([{operation:'prepare',intent:{kind:'recover',operationId:'old'}},{operation:'discard',id:'new-recovery'}]);}finally{window.removeEventListener('arena-preparation-confirm',decide);wallet.close?.();}
+});

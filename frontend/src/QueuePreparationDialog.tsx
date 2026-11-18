@@ -8,6 +8,15 @@ export function confirmPreparation(quote:CreationQuote,signal:AbortSignal,comple
 export function QueuePreparationDialog({request}:{request:PreparationConfirmation}){
  const ref=useRef<HTMLDialogElement>(null);useEffect(()=>{ref.current?.showModal();},[]);
  const completed=request.completed??0,paid=BigInt(request.spentFees??'0'),q=request.quote,n=q.transactions-1,extra=q.preparationFees.reduce((sum,s)=>sum+BigInt(s),0n);
+ if(q.recovery)return <dialog ref={ref} className="wallet-dialog" aria-labelledby="preparation-heading" onCancel={e=>{e.preventDefault();request.respond(false);}}>
+  <h2 id="preparation-heading">Resolve old signed request</h2>
+  <p>This resolves the old request that reserves {q.recovery.reservedBch} satoshis. It does not create your new vault.</p>
+  <p>Approve one transaction sending BCH back to your own wallet. Only the network fee leaves your wallet. Once confirmed, this invalidates the old signed spend and releases its wallet-only reservations.</p>
+  <dl><dt>BCH returned to your wallet</dt><dd>{q.recovery.returnedBch} satoshis</dd><dt>Network fee</dt><dd>{q.totalFee} satoshis</dd><dt>Wallet approvals</dt><dd>1</dd></dl>
+  <p>Wait for confirmation, then continue Create Vault. Its approvals and fees will be quoted separately. Old signed bytes and history are retained.</p>
+  <details><summary>Old request details</summary><p>Request: {q.recovery.operationId}</p><p>Signed transaction: {q.recovery.transactionId}</p></details>
+  <div className="wallet-dialog-actions"><button onClick={()=>request.respond(true)}>Resolve with 1 wallet approval</button><button onClick={()=>request.respond(false)}>Cancel</button></div>
+ </dialog>;
  return <dialog ref={ref} className="wallet-dialog" aria-labelledby="preparation-heading" onCancel={e=>{e.preventDefault();request.respond(false);}}>
   <h2 id="preparation-heading">{n?'Additional wallet '+(n===1?'approval':'approvals')+' needed':'Review updated creation costs'}</h2>
   {completed>0&&<p>{completed} wallet approvals have already completed. The estimates below include {paid.toString()} satoshis in fees already paid.</p>}

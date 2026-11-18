@@ -60,3 +60,30 @@ it('shows each offer validation failure beside its field',async()=>{
  await open();for(const name of ['Stake amount','Requested reward','Lock duration (time units)'])fireEvent.change(screen.getByLabelText(name),{target:{value:'0'}});
  expect(screen.getByRole('alert',{name:'stake error'})).toHaveTextContent('Stake must');expect(screen.getByRole('alert',{name:'reward error'})).toHaveTextContent('Requested reward must');expect(screen.getByRole('alert',{name:'duration error'})).toBeVisible();
 });
+it('shows a concise old-request blocker and a resolution action while preserving the 9600-satoshi form',async()=>{
+ window.location.hash='#/create';render(<WalletTransactionsContext.Provider value={wallet}><QueueArena/></WalletTransactionsContext.Provider>);
+ fireEvent.change(screen.getByLabelText('Reward per release (min. 0.00001200 BCH)'),{target:{value:'0.00001200'}});fireEvent.change(screen.getByLabelText('Number of releases'),{target:{value:'8'}});
+ const detail='Very long independently verified transaction diagnostic';vi.mocked(wallet.queue!).mockRejectedValueOnce(Object.assign(Error(detail),{summary:'An old request reserves 866201 satoshis. Resolve that request to continue creating this new vault.',details:{code:'creation-funding',reserved:'866201',reservations:[{id:'old',step:'seed-funding'}]}}));
+ fireEvent.click(screen.getByRole('button',{name:'Create Vault'}));await screen.findByRole('button',{name:'Resolve old request'});
+ expect(screen.getByText(detail)).not.toBeVisible();expect(screen.getByText('Technical details')).toBeVisible();expect(screen.getByRole('alert')).toHaveTextContent('An old request reserves 866201');
+ let submitted=false,confirmed=false;const rec={id:'recovery',intent:{kind:'recover',operationId:'old'},recovery:{operationId:'old'},owner:{publicKey:owner},step:'wallet-recovery',stage:'pending',raw:'new',txid:'ff'.repeat(32)};
+ vi.mocked(queueCall).mockImplementation(async i=>{if(i.operation==='list')return submitted?[{...rec,stage:confirmed?'confirmed':'pending',recoveryResolved:confirmed}]:[];if(i.operation==='reconcileRecovery'){confirmed=true;return {...rec,stage:'confirmed',recoveryResolved:true};}return [];});
+ vi.mocked(wallet.queue!).mockImplementationOnce(async()=>{submitted=true;return rec;});
+ fireEvent.click(screen.getByRole('button',{name:'Resolve old request'}));await waitFor(()=>expect(wallet.queue).toHaveBeenLastCalledWith({operation:'prepare',intent:{kind:'recover',operationId:'old'}},expect.any(Function)));
+ expect(screen.getByLabelText('Reward per release (min. 0.00001200 BCH)')).toHaveValue('0.00001200');expect(screen.getByLabelText('Number of releases')).toHaveValue(8);expect(screen.getByText('0.00009600 BCH (9600 satoshis)')).toBeVisible();await screen.findByRole('button',{name:'Continue Create Vault'});expect(screen.getByRole('status')).toHaveTextContent('Old request resolved');
+});
+it('offers Continue Create Vault only after confirmed resolution',async()=>{
+ window.location.hash='#/create';const recovery={id:'r',intent:{kind:'recover',operationId:'old'},step:'wallet-recovery',stage:'pending',raw:'new',txid:'ff'.repeat(32),owner:{publicKey:owner},recovery:{operationId:'old'},recoveryResolved:false};let confirmed=false;
+ vi.mocked(queueCall).mockImplementation(async i=>{if(i.operation==='list')return [{...recovery,stage:confirmed?'confirmed':'pending',recoveryResolved:confirmed}];if(i.operation==='reconcileRecovery'){confirmed=true;return {...recovery,stage:'confirmed',recoveryResolved:true};}return [];});
+ render(<WalletTransactionsContext.Provider value={wallet}><QueueArena/></WalletTransactionsContext.Provider>);await screen.findByRole('button',{name:'Continue Create Vault'});expect(confirmed).toBe(true);expect(wallet.queue).not.toHaveBeenCalled();
+});
+it('distinguishes a confirmed self-send from covenant references that still need inspection',async()=>{
+ window.location.hash='#/create';vi.mocked(queueCall).mockImplementation(async i=>i.operation==='list'?[{id:'r',intent:{kind:'recover',operationId:'old'},step:'wallet-recovery',stage:'confirmed',raw:'new',owner:{publicKey:owner},recoveryResolved:false,error:'The old request address already holds covenant funds.'}]:[]);
+ render(<WalletTransactionsContext.Provider value={wallet}><QueueArena/></WalletTransactionsContext.Provider>);
+ expect(await screen.findByText(/wallet self-send confirmed/)).toBeVisible();expect(screen.queryByRole('button',{name:'Continue Create Vault'})).toBeNull();expect(screen.getByRole('button',{name:'Create Vault'})).toBeEnabled();expect(wallet.queue).not.toHaveBeenCalled();
+});
+it('provides an explicit retry for an interrupted signed resolution without retrying the old transaction',async()=>{
+ window.location.hash='#/create';const rec={id:'new-resolution',intent:{kind:'recover',operationId:'old'},step:'wallet-recovery',stage:'signed',raw:'new-signed-self-send',owner:{publicKey:owner},recovery:{operationId:'old'}};
+ vi.mocked(queueCall).mockImplementation(async i=>i.operation==='list'?[rec]:i.operation==='reconcileRecovery'?rec:[]);
+ render(<WalletTransactionsContext.Provider value={wallet}><QueueArena/></WalletTransactionsContext.Provider>);fireEvent.click(await screen.findByRole('button',{name:'Retry signed resolution'}));await waitFor(()=>expect(wallet.queue).toHaveBeenCalledWith({operation:'resume',id:'new-resolution',retry:true},expect.any(Function)));
+});
