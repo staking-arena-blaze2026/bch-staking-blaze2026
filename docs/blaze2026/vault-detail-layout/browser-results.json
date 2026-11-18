@@ -1,0 +1,46 @@
+{
+  "at": "2026-11-18T19:37:38.476Z",
+  "synthetic": true,
+  "hosts": [
+    "127.0.0.1:4177",
+    "localhost:4177"
+  ],
+  "methods": [
+    "server.version",
+    "blockchain.block.header",
+    "blockchain.headers.subscribe",
+    "blockchain.transaction.get",
+    "blockchain.scripthash.get_history",
+    "blockchain.transaction.get_merkle",
+    "blockchain.block.headers",
+    "blockchain.scripthash.listunspent"
+  ],
+  "errors": [],
+  "viewports": [
+    {
+      "width": 320,
+      "overflow": false,
+      "sideBySide": false
+    },
+    {
+      "width": 390,
+      "overflow": false,
+      "sideBySide": false
+    },
+    {
+      "width": 768,
+      "overflow": false,
+      "sideBySide": false
+    },
+    {
+      "width": 1024,
+      "overflow": false,
+      "sideBySide": true
+    },
+    {
+      "width": 1672,
+      "overflow": false,
+      "sideBySide": true
+    }
+  ]
+}

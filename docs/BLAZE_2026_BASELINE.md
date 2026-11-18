@@ -81,6 +81,8 @@ Whole-unit staking and local release timing: offers use whole 512-second time un
 
 Illustrated arena landscape and navigation stripe: generated responsive scenery adds soft hills, grass and atmospheric arena flags/walls, with all primary navigation and wallet controls in a brown top bar. See [visual changes, prompts and browser evidence](blaze2026/landscape/README.md). This is post-baseline visual work; financial and contract logic is unchanged.
 
+Compact vault details and queue presentation: the claim action is part of Vault details, Make an Offer sits beside Queue on desktop, My Offers uses compact horizontal buttons, and the displayed Baked label is renamed Matured. See [layout and focused browser evidence](blaze2026/vault-detail-layout/README.md). This is post-baseline presentation work; contract transitions, ranking, wallet authorization and actual allocation maturity checks are unchanged.
+
 ## How judges can compare versions
 
 1. Inspect the original source and website `pre-blaze-2026` tags and exact commit links; annotated tag timestamps are intentionally later than the referenced commits.

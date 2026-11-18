@@ -268,3 +268,27 @@ body{padding-bottom:calc(80px + env(safe-area-inset-bottom,0px))}
 }
 .telegram-link:hover{background:#7e451f}
 .telegram-link:focus-visible{outline:3px solid #ffedcf;outline-offset:4px}
+
+/* Vault details hold the claim action; offer entry and the queue share a row. */
+.queue-vault-layout{display:grid;grid-template-columns:minmax(300px,.85fr) minmax(0,1.15fr);gap:20px;align-items:start;margin-top:20px}
+.queue-vault-layout>.panel,.queue-vault-layout>.form-panel{margin:0;min-width:0}
+.queue-vault-details,.queue-vault-layout>.queue-my-offers{grid-column:1 / -1}
+.queue-vault-summary-grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:28px;align-items:start}
+.queue-vault-data{min-width:0}
+.queue-vault-data .terms{padding:0;gap:18px 20px;grid-template-columns:repeat(2,minmax(0,1fr))}
+.queue-vault-data .terms dd{margin:4px 0 0}
+.queue-claim{margin-top:22px;padding-top:16px;border-top:1px solid #d1ae77}
+.v3-arena .queue-claim p{margin:0 0 10px}
+.v3-arena .queue-claim button{margin:0}
+.queue-offer-panel .form-grid{grid-template-columns:1fr}
+.queue-queue-panel .queue-ranking-table{width:100%;min-width:520px;border-collapse:collapse;font-size:13px}
+.queue-queue-panel .queue-ranking-table th{background:#633817;color:#fff1d8;text-align:left;white-space:nowrap}
+.queue-queue-panel .queue-ranking-table td{vertical-align:top;overflow-wrap:normal}
+.queue-offer-filters{display:flex;flex-wrap:wrap;gap:6px;margin:12px 0 18px}
+.v3-arena .queue-my-offers button{display:inline-flex;align-items:center;justify-content:center;flex:0 0 auto;width:auto;max-width:100%;min-height:30px;margin:0;padding:5px 12px;font-size:12px;line-height:1.35;white-space:nowrap;word-break:normal;overflow-wrap:normal;writing-mode:horizontal-tb}
+.v3-arena .queue-offer-filters button[aria-pressed=true]{background:linear-gradient(#8b5830,#633817);color:#fff1d8;border-color:#593217}
+@media(max-width:850px){
+ .queue-vault-layout,.queue-vault-summary-grid{grid-template-columns:minmax(0,1fr)}
+ .queue-vault-layout{gap:18px}
+ .queue-vault-data .terms{gap:16px}
+}
