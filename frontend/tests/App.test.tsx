@@ -96,7 +96,7 @@ it('resolves the confirmed genesis ID as an alias without confusing it with the 
  expect(screen.queryByText('Vault not found')).not.toBeInTheDocument();
 });
 
-it('opens About directly without starting data requests or wallet controls',()=>{
+it('opens About directly with the shared top navigation and wallet controls',()=>{
  const fetcher=vi.fn(()=>new Promise(()=>{}));vi.stubGlobal('fetch',fetcher);
  window.location.hash='#/about';render(<App/>);
  expect(screen.getByRole('heading',{name:'Stake Arena'})).toBeInTheDocument();
@@ -104,7 +104,8 @@ it('opens About directly without starting data requests or wallet controls',()=>
  expect(screen.getByRole('heading',{name:'Core Use Cases'})).toBeInTheDocument();
  expect(screen.getByText('PvP staking protocol').tagName).toBe('EM');
  expect(screen.getByRole('link',{name:'← Back to marketplace'})).toHaveAttribute('href','#/v3/offers');
- expect(screen.queryByRole('button',{name:/connect wallet/i})).not.toBeInTheDocument();
+ expect(screen.getByRole('button',{name:/connect wallet/i})).toBeInTheDocument();
+ expect(screen.getByRole('combobox',{name:'Network'})).toBeInTheDocument();
  expect(fetcher).not.toHaveBeenCalled();
 });
 

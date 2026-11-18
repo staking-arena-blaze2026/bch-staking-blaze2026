@@ -77,6 +77,8 @@ Minute-based v3 creation and offer forms: new release intervals and offer durati
 
 Whole-unit staking and local release timing: offers use whole 512-second time units, release intervals retain network-specific minute steps, and local-time schedules distinguish verified MTP availability from wall-clock timing. See [representation, consensus boundaries and focused validation](blaze2026/time-units/README.md). This is post-baseline application work, without new covenant versions or migration logic.
 
+Illustrated arena landscape and navigation stripe: generated responsive scenery adds soft hills, grass and atmospheric arena flags/walls, with all primary navigation and wallet controls in a brown top bar. See [visual changes, prompts and browser evidence](blaze2026/landscape/README.md). This is post-baseline visual work; financial and contract logic is unchanged.
+
 ## How judges can compare versions
 
 1. Inspect the original source and website `pre-blaze-2026` tags and exact commit links; annotated tag timestamps are intentionally later than the referenced commits.

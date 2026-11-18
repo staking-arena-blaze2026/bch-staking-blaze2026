@@ -26,7 +26,7 @@ export function startPublicPreview(){
   if(!rows.size)return;
   const header=el('header','');header.className='header';header.append(createBrandArtwork());
   const nav=el('nav','');nav.setAttribute('aria-label','Main navigation');
-  for(const [label,href]of [['My Offers','#/v3/my-offers'],['About','#/about']]){const link=el('a',label) as HTMLAnchorElement;link.href=href;nav.append(link);}header.append(nav);
+  for(const [label,href]of [['About','#/about'],['My Offers','#/v3/my-offers']]){const link=el('a',label) as HTMLAnchorElement;link.href=href;nav.append(link);}header.append(nav);
   const main=el('main',''),arena=el('div','');arena.className='v3-arena';
   const tabs=el('nav','');tabs.className='v3-tabs';tabs.setAttribute('aria-label','V3 actions');
   for(const [label,href]of [['Create Vault','#/v3'],['Browse All Vaults','#/v3/offers']]){const link=el('a',label) as HTMLAnchorElement;link.href=href;if(href==='#/v3')link.className='create-vault-tab';else link.setAttribute('aria-current','page');tabs.append(link);}
