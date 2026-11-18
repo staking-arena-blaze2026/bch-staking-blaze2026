@@ -1,18 +1,21 @@
 {
-  "at": "2026-11-18T12:01:38.050930+00:00",
+  "at": "2026-11-18T12:13:56.916252+00:00",
   "frontend": {
     "files": 6,
     "passed": 57,
     "failed": 0
   },
   "funding": {
-    "passed": 13,
+    "passed": 15,
     "failed": 0,
     "isolatedReservationNetworks": [
       "mainnet",
       "chipnet"
     ],
-    "reorganizationRecovery": "Both isolated network configurations invalidate the competing-spend block, restart without mempool, and prove that reappearing wallet inputs are reserved again without modifying signed bytes."
+    "reorganizationRecovery": "Both isolated network configurations invalidate the competing-spend block, restart without mempool, and prove that reappearing wallet inputs are reserved again without modifying signed bytes.",
+    "confirmedWalletOnlyReferencesReleased": true,
+    "nonWalletSeedReferencesProtected": true,
+    "fragmentedBchConsolidation": true
   },
   "existingIsolatedSuites": [
     "queue-wallet",
@@ -26,7 +29,8 @@
     "transactions": 2,
     "approvals": 2,
     "signedSizeFeesVerified": true,
-    "loopbackP2P": true
+    "loopbackP2P": true,
+    "signedPreparationOutputsReservedUntilContinuation": true
   },
   "typechecks": [
     "root",

@@ -71,6 +71,10 @@ test('automatic preparation: both public configurations, minimal approvals, reco
    if(scenario==='one-independent'){
     advertised=rate+1n;const changed=await wallet.advance(op.id,keys);assert.equal(changed.approved,false);await assert.rejects(()=>wallet.authorize(changed.id),/Confirm additional/);advertised=rate;
    }
+   if(scenario==='reported-layout'&&approvals===1){
+    const broadcasts:number=p.broadcasts;
+    await assert.rejects(()=>wallet.prepare({kind:'create',parameters},keys),(e:any)=>{assert.equal(e.details.available,'1500');assert.ok(BigInt(e.details.reserved)>800000n);assert.match(e.message,/confirmation alone does not release/);return true;});assert.equal(p.broadcasts,broadcasts,'another creation cannot consume reserved self-send outputs');
+   }
    const child=await wallet.advance(op.id,keys),same=await wallet.advance(op.id,keys);assert.equal(child.id,same.id,'no duplicate continuation');op=same;
   }
   assert.equal(approvals,expected);assert.equal(p.broadcasts,expected);assert.equal(measured.reduce((n,c)=>n+BigInt(c.fee),0n).toString(),quote.totalFee);

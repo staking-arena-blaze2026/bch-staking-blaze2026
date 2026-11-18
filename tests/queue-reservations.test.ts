@@ -8,7 +8,7 @@ import {rpc} from '../src/rpc.js';
 import {utxo} from '../src/arena-core.js';
 import {walletAddress} from '../src/transactions-core.js';
 import {QueueWallet,type Operation} from '../src/queue/wallet.js';
-import {ZERO,ownerScript} from '../src/queue/protocol.js';
+import {ZERO,ownerScript,root} from '../src/queue/protocol.js';
 for(const network of ['mainnet','chipnet'] as const)test(network+': legacy signed reservations reconcile without broadcasting or destroying evidence',{timeout:120000},async()=>isolatedRegtest(async({restartWithoutMempool})=>{
  const p=new RegtestElectrum(await rpc('getblockcount'));p.network=network as typeof p.network;const request=p.request;
  p.request=async(method,...args)=>method==='blockchain.relayfee'?0.00001:request(method,...args);
@@ -33,9 +33,15 @@ for(const network of ['mainnet','chipnet'] as const)test(network+': legacy signe
  // The fixture explicitly broadcasts; reconciliation itself only reads.
  await rpc('sendrawtransaction',[raw]);await rpc('generatetoaddress',[1,miner]);p.headerCache.clear();await p.refresh();
  const confirmed=await wallet.prepare({kind:'create',parameters},keys);assert.equal(saved.get('legacy')!.stage,'confirmed');assert.equal(saved.get('legacy')!.reservationResolution,'confirmed');assert.equal(saved.get('legacy')!.raw,raw);await wallet.discard(confirmed.id);
- // Named legacy continuation anchors remain protected even after confirmation.
+ // Independently confirmed ordinary wallet self-sends release wallet-only
+ // continuation references without erasing those historical fields.
  saved.get('legacy')!.queueCoin=extra;
- const anchored=await wallet.prepare({kind:'create',parameters},keys);assert.ok(!anchored.sources.some(u=>u.txid===extra.txid&&u.vout===extra.vout));assert.equal(saved.get('legacy')!.raw,raw);await wallet.discard(anchored.id);delete saved.get('legacy')!.queueCoin;
+ const released=await wallet.prepare({kind:'create',parameters},keys);assert.ok(released.sources.some(u=>u.txid===extra.txid&&u.vout===extra.vout));assert.deepEqual(saved.get('legacy')!.queueCoin,extra);await wallet.discard(released.id);
+ // A real isolated non-wallet seed output keeps its linked wallet anchor held.
+ const seedSource=await fund(4000),seedScript=root({p:parameters,identity:{vault:'11'.repeat(32),queue:'22'.repeat(32)},provider:p}).lockingBytecode;
+ const seedRaw=new TransactionBuilder({provider:p}).addInput(seedSource,signer.unlockP2PKH()).addOutput({to:hexToBin(seedScript),amount:3000n}).build(),seedId=await rpc<string>('sendrawtransaction',[seedRaw]);await p.refresh();
+ saved.get('legacy')!.seed=utxo(await p.transactionStatus(seedId),0);
+ const anchored=await wallet.prepare({kind:'create',parameters},keys);assert.ok(!anchored.sources.some(u=>u.txid===extra.txid&&u.vout===extra.vout));assert.equal(saved.get('legacy')!.raw,raw);await wallet.discard(anchored.id);delete saved.get('legacy')!.queueCoin;delete saved.get('legacy')!.seed;
  // A confirmed competing spend proves another retained signed candidate cannot execute.
  const otherRaw=new TransactionBuilder({provider:p}).addInput(unrelated,signer.unlockP2PKH()).addOutput({to:ownerScript(signer.publicKey),amount:49000n}).build();
  saved.set('competing',{...legacy,id:'competing',queueCoin:extra,sources:[unrelated],reservations:[unrelated],raw:otherRaw,txid:hashTransaction(hexToBin(otherRaw))});

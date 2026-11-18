@@ -25,6 +25,10 @@ for(const network of ['mainnet','chipnet'] as const){
   const s=creationSequence(parameters,[coin('a',0,1200n),coin('b',0,1500n),coin('c',1,865001n,{category:'dd'.repeat(32),amount:20n})],owner,p,1n);
   assert.equal(s.quote.transactions,3);assert.ok(s.preparations[0]!.built.raw);assert.equal(s.preparations[0]!.selected.length,3);
  });
+ test(network+': sufficient fragmented BCH is consolidated within the input bound',()=>{
+  const coins=Array.from({length:20},(_,i)=>coin((i+1).toString(16).padStart(64,'0'),1,1000n));
+  const s=creationSequence(parameters,coins,owner,p,1n);assert.equal(s.quote.transactions,3);assert.ok(s.preparations.every(p=>p.selected.length<=16));assert.ok(s.selected.length<=16);assert.equal(BigInt(s.quote.walletDebit),13000n+BigInt(s.quote.totalFee));
+ });
  test(network+': genuine insufficiency sizes fees and carriers',()=>{
   assert.throws(()=>creationSequence(parameters,[coin('a',0,1200n),coin('b',0,1500n)],owner,p,2n),(e:unknown)=>{
    assert.ok(e instanceof BchFundingError);assert.equal(e.available,2700n);assert.equal(e.required,13000n+e.fee+546n);assert.ok(e.fee>0n);return true;

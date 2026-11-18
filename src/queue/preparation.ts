@@ -57,12 +57,13 @@ function sequence(p:q.Parameters,coins:WalletCoin[],owner:WalletKey,provider:Ele
  return {quote,preparations,created,selected};
 }
 
-/** Preserve the direct path. If BCH is attached to unrelated fungible tokens,
- * a wallet-only self-send can release it while returning every token category.
+/** Preserve the direct path. If BCH is attached to unrelated fungible tokens
+ * or spread across too many inputs, quote wallet-only consolidation that
+ * returns every token category.
  * Quote the complete sequence before asking for any signatures. */
 export function creationSequence(p:q.Parameters,coins:WalletCoin[],owner:WalletKey,provider:ElectrumCore,rate:bigint){
  try{return sequence(p,coins,owner,provider,rate);}catch(error){
-  if(!(error instanceof BchFundingError)||!coins.some(c=>c.utxo.token&&!c.utxo.token.nft&&c.utxo.token.category!==p.rewardCategory))throw error;
+  if(!(error instanceof BchFundingError)||coins.length<=16&&!coins.some(c=>c.utxo.token&&!c.utxo.token.nft&&c.utxo.token.category!==p.rewardCategory))throw error;
   return sequence(p,coins,owner,provider,rate,true);
  }
 }

@@ -25,8 +25,14 @@ export interface Operation {
  signing:'unsigned'|'requested'|'rejected'|'uncertain'|'signed';
 }
 export interface Store {list():Promise<Operation[]>;save(op:Operation):Promise<void>}
-export interface FundingEvidence {verified:string;available:string;reserved:string;restricted:string;eligibleGenesis:number;addresses:number;reservations:{id:string;step:string;txid?:string;satoshis:string}[]}
-const legacyAnchors=(op:Operation)=>[...(op.queueCoin?[op.queueCoin]:[]),...(op.seed?[op.seed]:[])];
+export interface FundingEvidence {verified:string;available:string;reserved:string;restricted:string;eligibleGenesis:number;addresses:number;reservations:{id:string;step:string;txid?:string;satoshis:string;reason:string}[]}
+const legacyAnchors=(op:Operation)=>{
+ const refs=[...(op.queueCoin?[op.queueCoin]:[]),...(op.seed?[op.seed]:[])];
+ // A proven ordinary wallet self-send has no covenant continuation to protect.
+ // Unknown scripts/status and any non-wallet seed retain every linked anchor.
+ if(op.raw&&op.reservationResolution==='confirmed'&&refs.every(u=>!u.token?.nft&&!!u.lockingBytecode&&/^76a914[a-f0-9]{40}88ac$/.test(u.lockingBytecode)))return [];
+ return refs;
+};
 const reservationInputs=(op:Operation)=>[...(op.reservations??op.sources),...legacyAnchors(op)];
 const outpoint=(u:SpendableUtxo)=>u.txid+':'+u.vout;
 /** Plans, public derivation paths and signed bytes are durable; private keys
@@ -51,6 +57,7 @@ export class QueueWallet {
    coins.sort((a,b)=>outpoint(a.utxo).localeCompare(outpoint(b.utxo)));return {value:coins,tip,identity:json({tip:tip.hash,coins})};
   },{parallel:true});
   const list=await this.store.list();
+  for(const op of list)if(!op.network||op.network===this.network())this.reservePreparationOutputs(op);
   const live=new Set(coins.map(c=>outpoint(c.utxo)));
   // A previously confirmed spend can disappear in a reorganization. If a
   // reserved input reappears, old journal classifications cannot release it.
@@ -60,7 +67,16 @@ export class QueueWallet {
   const records=[...new Map([...active,...anchored].map(o=>[o.id,o])).values()];
   const reserved=new Set([...active.flatMap(o=>reservationInputs(o).map(outpoint)),...anchored.flatMap(o=>legacyAnchors(o).map(outpoint))]);
   const available=coins.filter(c=>!reserved.has(outpoint(c.utxo))).sort((a,b)=>a.utxo.satoshis>b.utxo.satoshis?-1:1),sum=(cs:WalletCoin[])=>cs.reduce((n,c)=>n+c.utxo.satoshis,0n).toString();
-  return {coins:available,evidence:{verified:sum(coins),available:sum(available),reserved:sum(coins.filter(c=>reserved.has(outpoint(c.utxo)))),restricted:'0',eligibleGenesis:0,addresses:keys.length,reservations:records.map(o=>({id:o.id,step:o.step,txid:o.txid,satoshis:sum(coins.filter(c=>reservationInputs(o).some(u=>outpoint(u)===outpoint(c.utxo))))})).filter(o=>o.satoshis!=='0')} satisfies FundingEvidence};
+  return {coins:available,evidence:{verified:sum(coins),available:sum(available),reserved:sum(coins.filter(c=>reserved.has(outpoint(c.utxo)))),restricted:'0',eligibleGenesis:0,addresses:keys.length,reservations:records.map(o=>({id:o.id,step:o.step,txid:o.txid,reason:o.step==='wallet-preparation'?'Self-send outputs and funding are reserved for the approved creation continuation. Inspect / resume this sequence; confirmation alone does not release its continuation inputs.':legacyAnchors(o).length?'Legacy seed/queue continuation references require manual inspection before release; historical fields and signed bytes are retained.':o.error??(!o.raw&&['unsigned','rejected'].includes(o.signing)?'Unsigned reviewed request. Discard it in Transaction recovery if no longer needed.':'Signed or uncertain wallet request. Inspect its independent transaction status and check Cashonize before retrying.'),satoshis:sum(coins.filter(c=>reservationInputs(o).some(u=>outpoint(u)===outpoint(c.utxo))))})).filter(o=>o.satoshis!=='0')} satisfies FundingEvidence};
+ }
+ /** Reserve real self-send outputs as soon as their immutable signed txid is
+  * known. Original inputs alone cannot protect continuation after broadcast. */
+ private reservePreparationOutputs(op:Operation){
+  if(op.step!=='wallet-preparation'||!op.raw||!op.txid||hashTransaction(hexToBin(op.raw))!==op.txid)return;
+  const tx=decodeTransaction(hexToBin(op.raw));if(typeof tx==='string')return;
+  const script=binToHex(q.ownerScript(hexToBin(op.owner.publicKey)));
+  const outputs:SpendableUtxo[]=tx.outputs.flatMap((o,vout)=>binToHex(o.lockingBytecode)===script?[{txid:op.txid!,vout,satoshis:o.valueSatoshis,lockingBytecode:script,...(o.token?{token:{category:binToHex(o.token.category),amount:o.token.amount}}:{})}]:[]);
+  op.reservations=[...new Map([...(op.reservations??op.sources),...outputs].map(u=>[outpoint(u),u])).values()];
  }
  private plan(built:ReturnType<typeof q.priced>,coins:WalletCoin[],owner:WalletKey,authorize:boolean,label:string):BrowserPlan{
   const request=built.builder.generateWcTransactionObject({broadcast:false,userPrompt:label}),inputPaths:BrowserPlan['inputPaths']=[],signers:Record<number,string>={};
@@ -94,7 +110,7 @@ export class QueueWallet {
     e.restricted=coins.filter(c=>c.utxo.token&&c.utxo.token.category!==p.rewardCategory).reduce((n,c)=>n+c.utxo.satoshis,0n).toString();
     const required=error instanceof BchFundingError?error.required.toString():undefined;
     const detail={cause:errorMessage(error),code:'creation-funding',inputLimit:16,...e,required,fee:error instanceof BchFundingError?(error.fee+error.preparationFees).toString():undefined,automaticPreparation:'No complete sequence could be funded with the current verified, unreserved inputs.'};
-    const failure=Object.assign(new Error(`Vault creation funding: ${!(error instanceof BchFundingError)?errorMessage(error)+'. ':''}${required?`the tested ${error instanceof BchFundingError?error.phase:'sequence'} requires ${required} satoshis (including ${detail.fee} satoshis in measured fees, carriers and non-dust change${error instanceof BchFundingError&&error.phase==='wallet preparation'?'; the later creation fee has not yet been quoted':''}). `:`The reserve and creation carriers alone require at least ${(p.rewardCategory===q.ZERO?p.cap*BigInt(p.releases):q.CARRIER)+2n*q.CARRIER+1000n} satoshis; a complete fee quote is unavailable. `}${e.available} satoshis are available in verified, unreserved wallet inputs across ${e.addresses} supplied addresses; ${e.reserved} satoshis are excluded by unresolved transaction reservations. ${e.eligibleGenesis} eligible genesis UTXOs. ${detail.automaticPreparation} ${e.restricted} satoshis are attached to other fungible token categories and require token-preserving preparation. ${e.reservations.length?'Inspect Transaction recovery: '+e.reservations.map(r=>r.id+' ('+r.step+', '+r.satoshis+' sats)').join('; ')+'. Signed or uncertain inputs remain reserved until independent confirmation or a confirmed competing spend is proven. ':''}Check that Cashonize exposes the funded wallet addresses, inspect unresolved reservations, or add BCH to this wallet and retry. Plans use at most 16 funding inputs per transaction; consolidate heavily fragmented funds in the wallet if needed. No new transaction was signed during this preflight.`),{details:detail});throw failure;
+    const failure=Object.assign(new Error(`Vault creation funding: ${!(error instanceof BchFundingError)?errorMessage(error)+'. ':''}${required?`the tested ${error instanceof BchFundingError?error.phase:'sequence'} requires ${required} satoshis (including ${detail.fee} satoshis in measured fees, carriers and non-dust change${error instanceof BchFundingError&&error.phase==='wallet preparation'?'; the later creation fee has not yet been quoted':''}). `:`The reserve and creation carriers alone require at least ${(p.rewardCategory===q.ZERO?p.cap*BigInt(p.releases):q.CARRIER)+2n*q.CARRIER+1000n} satoshis; a complete fee quote is unavailable. `}${e.available} satoshis are available in verified, unreserved wallet inputs across ${e.addresses} supplied addresses; ${e.reserved} satoshis are excluded by unresolved transaction reservations. ${e.eligibleGenesis} eligible genesis UTXOs. ${detail.automaticPreparation} ${e.restricted} satoshis are attached to other fungible token categories and require token-preserving preparation. ${e.reservations.length?'Inspect Transaction recovery: '+e.reservations.map(r=>r.id+' ('+r.step+', '+r.satoshis+' sats): '+r.reason).join('; ')+'. Signed bytes are retained; no automatic rebroadcast or covenant abandonment is performed. ':''}Check that Cashonize exposes the funded wallet addresses, inspect unresolved reservations, or add BCH to this wallet and retry. Plans use at most 16 funding inputs per transaction; consolidate heavily fragmented funds in the wallet if needed. No new transaction was signed during this preflight.`),{details:detail});throw failure;
    }quote=sequence.quote;reservations=coins.filter(c=>sequence.preparations.some(s=>s.selected.includes(c))||sequence.selected.includes(c)).map(c=>c.utxo);
    const first=sequence.preparations[0];authorize=false;
    if(first){built=first.built;selected=first.selected;step='wallet-preparation';config=undefined;label='Prepare wallet with a BCH self-send';}
@@ -184,7 +200,7 @@ export class QueueWallet {
    const result=validateWalletSigned(op.plan,raw,{height:0xffffffff,mtp:0xffffffff},(raw,_sources,_clock,fee)=>{const tx=q.verify({raw,sources:op.sources});if(BigInt(raw.length/2)*op.rate!==fee)throw Error('Signed fee differs from network policy');return {txid:hashTransaction(hexToBin(raw)),fee:fee!,transaction:tx};});
    op.raw=raw;op.txid=result.txid;op.stage='signed';op.signing='signed';op.error=undefined;
    if(op.intent.kind==='create'&&op.step==='action'&&op.config)op.config.anchor.genesis=result.txid;
-   await this.store.save(op);this.reviewed.delete(id);return op;
+   this.reservePreparationOutputs(op);await this.store.save(op);this.reviewed.delete(id);return op;
   }catch(e){op.error='Returned signed bytes retained; validation failed: '+String(e);await this.store.save(op);this.reviewed.delete(id);throw e;}
  }
 
@@ -221,8 +237,8 @@ export class QueueWallet {
    if(tx.hex!==op.raw)throw Error('Signed transaction evidence mismatch');
    op.stage=tx.confirmations>0?'confirmed':'pending';op.reservationResolution=tx.confirmations>0?'confirmed':'unresolved';
    const decoded=decodeTransaction(hexToBin(op.raw));
-   const protectedLegacy=!['action','wallet-preparation'].includes(op.step)&&typeof decoded!=='string'&&decoded.outputs.some(o=>!/^76a914[a-f0-9]{40}88ac$/.test(binToHex(o.lockingBytecode))&&o.lockingBytecode[0]!==0x6a);
-   if(protectedLegacy){op.reservationResolution='unresolved';op.error='Legacy transaction contains covenant or other non-wallet outputs. Continuation inputs remain reserved; inspect the retained transaction and legacy continuation before taking further action.';await this.store.save(op);return op;}
+   const protectedLegacy=!['action','wallet-preparation'].includes(op.step)&&typeof decoded!=='string'&&decoded.outputs.some(o=>!!o.token?.nft||!/^76a914[a-f0-9]{40}88ac$/.test(binToHex(o.lockingBytecode))&&o.lockingBytecode[0]!==0x6a);
+   if(protectedLegacy){op.reservationResolution='unresolved';op.error='Legacy transaction contains covenant, NFT, or other non-wallet outputs. Continuation inputs remain reserved; inspect the retained transaction and legacy continuation before taking further action.';await this.store.save(op);return op;}
    op.error=!['action','wallet-preparation'].includes(op.step)?(tx.confirmations>0?'Legacy transaction independently confirmed. Historical signed bytes retained; covenant outputs require separate inspection.':'Legacy transaction is pending. Unspent reserved inputs remain protected.'):undefined;
   }catch{
    const conflict=await this.knownConflict(op).catch(()=>undefined);
