@@ -16,3 +16,5 @@ The full-width brown navigation stripe places About, My Offers, network selectio
 Validation: 15 focused App/startup-preview tests passed; production build with frontend TypeScript checks passed. Browser inspection covered 1440px, 390px and 320px widths plus About. Checks verified the navigation starts at the top, contains its controls, stays above the artwork, loads the background and causes no horizontal overflow. Screenshots are stored alongside this document.
 
 No transaction, contract, ranking, funding or blockchain-time logic changed. Publication uses only the Blaze source and website forks.
+
+Follow-up layout: the slogan banner is rendered at half its former width (and proportional height). The logo and smaller banner are centered together across desktop, tablet and phone layouts, exposing both side flags. The original image files are unchanged; this adjustment uses CSS only.

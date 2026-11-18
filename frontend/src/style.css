@@ -227,3 +227,20 @@ body{
 @media(max-width:650px){
  body{background-image:url('/assets/brand/stake-arena-landscape-mobile-v1.webp')}
 }
+
+/* Center the logo/banner group and halve the banner's previous rendered width. */
+.header .brand-artwork{
+ --brand-logo-width:clamp(240px,24vw,370px);--brand-gap:24px;
+ display:flex;align-items:center;justify-content:center;gap:var(--brand-gap);
+ margin-inline:auto;
+}
+.header .brand-artwork>.brand{flex:0 0 var(--brand-logo-width);width:var(--brand-logo-width)}
+.header .brand-artwork img.brand-slogan{
+ flex:0 0 auto;width:calc((100% - var(--brand-logo-width) - var(--brand-gap))/2);
+ margin:0;
+}
+@media(max-width:1100px){.header .brand-artwork{--brand-logo-width:230px;--brand-gap:20px}}
+@media(max-width:800px){.header .brand-artwork{--brand-logo-width:190px;--brand-gap:8px}}
+@media(max-width:650px){.header .brand-artwork{--brand-logo-width:118px}}
+@media(max-width:360px){.header .brand-artwork{--brand-logo-width:98px}}
+@media(min-width:1600px){.header .brand-artwork{--brand-gap:36px}}
