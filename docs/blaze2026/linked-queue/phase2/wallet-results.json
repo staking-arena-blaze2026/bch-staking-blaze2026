@@ -1,0 +1,241 @@
+{
+  "at": "2026-11-18T03:28:04.801Z",
+  "syntheticWallet": true,
+  "realBchn": true,
+  "requestMethod": "Electrum facade request invocations; excludes direct BCHN RPC in the fixture and warm cache hits are counted",
+  "timings": [
+    {
+      "kind": "create",
+      "step": "prepare",
+      "phase": "prepare",
+      "ms": 484.00194399999964,
+      "requests": 82
+    },
+    {
+      "kind": "create",
+      "step": "queue-funding",
+      "phase": "authorize",
+      "ms": 234.68990699999995,
+      "requests": 52
+    },
+    {
+      "kind": "create",
+      "step": "queue-funding",
+      "phase": "signature-to-pending",
+      "ms": 312.50986999999986,
+      "requests": 38
+    },
+    {
+      "kind": "create",
+      "step": "seed-funding",
+      "phase": "authorize",
+      "ms": 257.083756,
+      "requests": 54
+    },
+    {
+      "kind": "create",
+      "step": "seed-funding",
+      "phase": "signature-to-pending",
+      "ms": 379.6459360000008,
+      "requests": 40
+    },
+    {
+      "kind": "create",
+      "step": "action",
+      "phase": "authorize",
+      "ms": 234.97796800000106,
+      "requests": 56
+    },
+    {
+      "kind": "create",
+      "step": "action",
+      "phase": "signature-to-pending",
+      "ms": 342.58411400000114,
+      "requests": 42
+    },
+    {
+      "kind": "insert",
+      "step": "prepare",
+      "phase": "prepare",
+      "ms": 1307.3628179999996,
+      "requests": 118
+    },
+    {
+      "kind": "cancel",
+      "step": "prepare",
+      "phase": "prepare",
+      "ms": 3347.6094010000015,
+      "requests": 154
+    },
+    {
+      "kind": "cancel",
+      "step": "action",
+      "phase": "authorize",
+      "ms": 729.1650640000007,
+      "requests": 74
+    },
+    {
+      "kind": "cancel",
+      "step": "action",
+      "phase": "signature-to-pending",
+      "ms": 681.715830000001,
+      "requests": 60
+    },
+    {
+      "kind": "insert",
+      "step": "prepare",
+      "phase": "prepare",
+      "ms": 1471.7223870000016,
+      "requests": 146
+    },
+    {
+      "kind": "insert",
+      "step": "prepare",
+      "phase": "prepare",
+      "ms": 1903.628779999999,
+      "requests": 142
+    },
+    {
+      "kind": "insert",
+      "step": "action",
+      "phase": "authorize",
+      "ms": 446.28688899999906,
+      "requests": 68
+    },
+    {
+      "kind": "insert",
+      "step": "action",
+      "phase": "signature-to-pending",
+      "ms": 545.3360949999987,
+      "requests": 54
+    },
+    {
+      "kind": "cancel",
+      "step": "prepare",
+      "phase": "prepare",
+      "ms": 1455.4319299999988,
+      "requests": 144
+    },
+    {
+      "kind": "cancel",
+      "step": "action",
+      "phase": "authorize",
+      "ms": 520.928906000001,
+      "requests": 68
+    },
+    {
+      "kind": "cancel",
+      "step": "action",
+      "phase": "signature-to-pending",
+      "ms": 563.8363750000062,
+      "requests": 54
+    },
+    {
+      "kind": "claim",
+      "step": "prepare",
+      "phase": "prepare",
+      "ms": 1587.0152299999972,
+      "requests": 140
+    },
+    {
+      "kind": "claim",
+      "step": "action",
+      "phase": "authorize",
+      "ms": 481.4282600000006,
+      "requests": 70
+    },
+    {
+      "kind": "claim",
+      "step": "action",
+      "phase": "signature-to-pending",
+      "ms": 1489.4472920000044,
+      "requests": 56
+    },
+    {
+      "kind": "withdraw",
+      "step": "prepare",
+      "phase": "prepare",
+      "ms": 1417.6682,
+      "requests": 120
+    },
+    {
+      "kind": "withdraw",
+      "step": "prepare",
+      "phase": "prepare",
+      "ms": 1256.100486999996,
+      "requests": 220
+    },
+    {
+      "kind": "withdraw",
+      "step": "action",
+      "phase": "authorize",
+      "ms": 288.35351299999456,
+      "requests": 73
+    },
+    {
+      "kind": "withdraw",
+      "step": "action",
+      "phase": "signature-to-pending",
+      "ms": 353.9248879999941,
+      "requests": 59
+    }
+  ],
+  "costs": [
+    {
+      "kind": "create",
+      "step": "queue-funding",
+      "bytes": 219,
+      "fee": "219"
+    },
+    {
+      "kind": "create",
+      "step": "seed-funding",
+      "bytes": 428,
+      "fee": "428"
+    },
+    {
+      "kind": "create",
+      "step": "action",
+      "bytes": 5685,
+      "fee": "5685"
+    },
+    {
+      "kind": "cancel",
+      "step": "action",
+      "bytes": 4895,
+      "fee": "4895"
+    },
+    {
+      "kind": "insert",
+      "step": "action",
+      "bytes": 3613,
+      "fee": "3613"
+    },
+    {
+      "kind": "insert",
+      "step": "action",
+      "bytes": 2355,
+      "fee": "2355"
+    },
+    {
+      "kind": "cancel",
+      "step": "action",
+      "bytes": 3801,
+      "fee": "3801"
+    },
+    {
+      "kind": "claim",
+      "step": "action",
+      "bytes": 4874,
+      "fee": "4874"
+    },
+    {
+      "kind": "withdraw",
+      "step": "action",
+      "bytes": 629,
+      "fee": "629"
+    }
+  ],
+  "creationApprovals": 3,
+  "creationFee": 6332
+}

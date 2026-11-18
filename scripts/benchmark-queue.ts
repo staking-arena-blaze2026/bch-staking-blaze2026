@@ -26,7 +26,7 @@ for(const [stake,reward]of [[q.ZERO,q.ZERO],[q.ZERO,'aa'.repeat(32)],['bb'.repea
  const locked=outputs(claim.builder.build())[4]!,withdraw=v.withdrawalBuilder(locked,claim.terms!,signer,fund(coin(10000n)),provider);
  const before={create:measure(creation.builder,coins.map(c=>c.utxo)),register:measure(offer.builder,offer.sources),cancel:measure(cancelled.builder,cancelled.sources),refund:measure(refund.builder,refund.sources),claim:measure(claim.builder,claim.sources),withdraw:measure(withdraw,[locked,withdraw.inputs[1]!])};
 
- const params:q.Parameters={stakingCategory:stake!,rewardCategory:reward!,epoch:1800000000,interval:60,releases:20,cap:2000n},seed={...coin(),lockingBytecode:q.genesis(params,signer.publicKey,provider).lockingBytecode};
+ const params:q.Parameters={stakingCategory:stake!,rewardCategory:reward!,epoch:1800000000,interval:60,releases:20,cap:2000n},seed=fund();
  const created=q.create(params,seed,fund(),reward===q.ZERO?[]:[fund(coin(1200n,{category:reward!,amount:40000n}))],signer,provider),c=created.context,[vault,root,reserve]=outputs(created.raw);
  const first=q.insert(c,vault!,root!,terms,signer,[fund(coin(3000000n,stake===q.ZERO?undefined:{category:stake!,amount:10000n}))]),[vault1,root1,a,escrow]=outputs(first.raw);
  const ordinary=q.insert(c,a!,undefined,{...terms,stake:9000n},signer,[fund(coin(3000000n,stake===q.ZERO?undefined:{category:stake!,amount:10000n}))]),[a1,b,escrowB]=outputs(ordinary.raw);

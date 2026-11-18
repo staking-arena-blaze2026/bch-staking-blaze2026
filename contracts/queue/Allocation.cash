@@ -14,21 +14,18 @@ contract Allocation(bytes33 owner, bytes32 asset, int amount, int duration) {
         require(tx.inputs[0].tokenCategory == tx.outputs[0].tokenCategory);
         require(tx.inputs[0].tokenAmount == tx.outputs[0].tokenAmount);
         if (asset == 0x0000000000000000000000000000000000000000000000000000000000000000) {
-            require(tx.inputs[0].tokenCategory == 0x && tx.inputs[0].tokenAmount == 0 && tx.inputs[0].value == amount);
+            require(tx.inputs[0].tokenCategory == 0x && tx.inputs[0].value == amount);
         } else {
             require(tx.inputs[0].tokenCategory == asset && tx.inputs[0].tokenAmount == amount && tx.inputs[0].value == 1200);
         }
-        int fundingValue = 0;
         for (int f = 1; f < 17; f++) {
             if (f < tx.inputs.length) {
-                require(tx.inputs[f].tokenCategory == 0x && tx.inputs[f].tokenAmount == 0);
-                fundingValue = fundingValue + tx.inputs[f].value;
+                require(tx.inputs[f].tokenCategory == 0x);
             }
         }
         if (tx.outputs.length == 2) {
             require(tx.outputs[1].lockingBytecode == tx.inputs[1].lockingBytecode);
-            require(tx.outputs[1].tokenCategory == 0x && tx.outputs[1].tokenAmount == 0);
-            require(tx.outputs[1].value <= fundingValue);
+            require(tx.outputs[1].tokenCategory == 0x);
         }
     }
 }

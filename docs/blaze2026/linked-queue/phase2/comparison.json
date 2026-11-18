@@ -1,0 +1,1264 @@
+{
+  "at": "2026-11-18T08:48:50.296Z",
+  "baseline": "9726d5d",
+  "method": "See README measurement boundary. VM costs are summed across inputs; per-input limits remain in cost-comparison.json. Complete action runtime includes preparation transactions. Insert row sums two actions.",
+  "vmRows": [
+    {
+      "pair": "BCH/BCH",
+      "action": "create",
+      "before": {
+        "bytes": 5906,
+        "fee": 5906,
+        "inputs": 2,
+        "outputs": 3,
+        "operationCost": 279536,
+        "hashIterations": 265
+      },
+      "after": {
+        "bytes": 5544,
+        "fee": 5544,
+        "inputs": 2,
+        "outputs": 3,
+        "operationCost": 275489,
+        "hashIterations": 246
+      }
+    },
+    {
+      "pair": "BCH/BCH",
+      "action": "emptyInsertion",
+      "before": {
+        "bytes": 3955,
+        "fee": 3955,
+        "inputs": 3,
+        "outputs": 4,
+        "operationCost": 385399,
+        "hashIterations": 121
+      },
+      "after": {
+        "bytes": 3613,
+        "fee": 3613,
+        "inputs": 3,
+        "outputs": 4,
+        "operationCost": 370765,
+        "hashIterations": 109
+      }
+    },
+    {
+      "pair": "BCH/BCH",
+      "action": "ordinaryInsertion",
+      "before": {
+        "bytes": 2447,
+        "fee": 2447,
+        "inputs": 2,
+        "outputs": 3,
+        "operationCost": 304908,
+        "hashIterations": 73
+      },
+      "after": {
+        "bytes": 2355,
+        "fee": 2355,
+        "inputs": 2,
+        "outputs": 3,
+        "operationCost": 298166,
+        "hashIterations": 70
+      }
+    },
+    {
+      "pair": "BCH/BCH",
+      "action": "highestInsertion",
+      "before": {
+        "bytes": 5593,
+        "fee": 5593,
+        "inputs": 3,
+        "outputs": 4,
+        "operationCost": 499734,
+        "hashIterations": 139
+      },
+      "after": {
+        "bytes": 5306,
+        "fee": 5306,
+        "inputs": 3,
+        "outputs": 4,
+        "operationCost": 486360,
+        "hashIterations": 132
+      }
+    },
+    {
+      "pair": "BCH/BCH",
+      "action": "cancel",
+      "before": {
+        "bytes": 3985,
+        "fee": 3985,
+        "inputs": 3,
+        "outputs": 3,
+        "operationCost": 379837,
+        "hashIterations": 99
+      },
+      "after": {
+        "bytes": 3801,
+        "fee": 3801,
+        "inputs": 3,
+        "outputs": 3,
+        "operationCost": 341184,
+        "hashIterations": 95
+      }
+    },
+    {
+      "pair": "BCH/BCH",
+      "action": "claim",
+      "before": {
+        "bytes": 5161,
+        "fee": 5161,
+        "inputs": 3,
+        "outputs": 4,
+        "operationCost": 418285,
+        "hashIterations": 92
+      },
+      "after": {
+        "bytes": 4874,
+        "fee": 4874,
+        "inputs": 3,
+        "outputs": 4,
+        "operationCost": 379894,
+        "hashIterations": 87
+      }
+    },
+    {
+      "pair": "BCH/BCH",
+      "action": "withdraw",
+      "before": {
+        "bytes": 659,
+        "fee": 659,
+        "inputs": 2,
+        "outputs": 2,
+        "operationCost": 130905,
+        "hashIterations": 26
+      },
+      "after": {
+        "bytes": 629,
+        "fee": 629,
+        "inputs": 2,
+        "outputs": 2,
+        "operationCost": 108265,
+        "hashIterations": 24
+      }
+    },
+    {
+      "pair": "BCH/token",
+      "action": "create",
+      "before": {
+        "bytes": 6128,
+        "fee": 6128,
+        "inputs": 3,
+        "outputs": 4,
+        "operationCost": 310853,
+        "hashIterations": 279
+      },
+      "after": {
+        "bytes": 5766,
+        "fee": 5766,
+        "inputs": 3,
+        "outputs": 4,
+        "operationCost": 306804,
+        "hashIterations": 260
+      }
+    },
+    {
+      "pair": "BCH/token",
+      "action": "emptyInsertion",
+      "before": {
+        "bytes": 3955,
+        "fee": 3955,
+        "inputs": 3,
+        "outputs": 4,
+        "operationCost": 385379,
+        "hashIterations": 121
+      },
+      "after": {
+        "bytes": 3613,
+        "fee": 3613,
+        "inputs": 3,
+        "outputs": 4,
+        "operationCost": 370745,
+        "hashIterations": 109
+      }
+    },
+    {
+      "pair": "BCH/token",
+      "action": "ordinaryInsertion",
+      "before": {
+        "bytes": 2447,
+        "fee": 2447,
+        "inputs": 2,
+        "outputs": 3,
+        "operationCost": 304902,
+        "hashIterations": 73
+      },
+      "after": {
+        "bytes": 2355,
+        "fee": 2355,
+        "inputs": 2,
+        "outputs": 3,
+        "operationCost": 298159,
+        "hashIterations": 70
+      }
+    },
+    {
+      "pair": "BCH/token",
+      "action": "highestInsertion",
+      "before": {
+        "bytes": 5593,
+        "fee": 5593,
+        "inputs": 3,
+        "outputs": 4,
+        "operationCost": 499714,
+        "hashIterations": 139
+      },
+      "after": {
+        "bytes": 5306,
+        "fee": 5306,
+        "inputs": 3,
+        "outputs": 4,
+        "operationCost": 486340,
+        "hashIterations": 132
+      }
+    },
+    {
+      "pair": "BCH/token",
+      "action": "cancel",
+      "before": {
+        "bytes": 3985,
+        "fee": 3985,
+        "inputs": 3,
+        "outputs": 3,
+        "operationCost": 379837,
+        "hashIterations": 99
+      },
+      "after": {
+        "bytes": 3801,
+        "fee": 3801,
+        "inputs": 3,
+        "outputs": 3,
+        "operationCost": 341183,
+        "hashIterations": 95
+      }
+    },
+    {
+      "pair": "BCH/token",
+      "action": "claim",
+      "before": {
+        "bytes": 5591,
+        "fee": 5591,
+        "inputs": 4,
+        "outputs": 5,
+        "operationCost": 434900,
+        "hashIterations": 106
+      },
+      "after": {
+        "bytes": 5304,
+        "fee": 5304,
+        "inputs": 4,
+        "outputs": 5,
+        "operationCost": 396482,
+        "hashIterations": 101
+      }
+    },
+    {
+      "pair": "BCH/token",
+      "action": "withdraw",
+      "before": {
+        "bytes": 659,
+        "fee": 659,
+        "inputs": 2,
+        "outputs": 2,
+        "operationCost": 130905,
+        "hashIterations": 26
+      },
+      "after": {
+        "bytes": 629,
+        "fee": 629,
+        "inputs": 2,
+        "outputs": 2,
+        "operationCost": 108265,
+        "hashIterations": 24
+      }
+    },
+    {
+      "pair": "token/BCH",
+      "action": "create",
+      "before": {
+        "bytes": 5906,
+        "fee": 5906,
+        "inputs": 2,
+        "outputs": 3,
+        "operationCost": 279536,
+        "hashIterations": 265
+      },
+      "after": {
+        "bytes": 5544,
+        "fee": 5544,
+        "inputs": 2,
+        "outputs": 3,
+        "operationCost": 275489,
+        "hashIterations": 246
+      }
+    },
+    {
+      "pair": "token/BCH",
+      "action": "emptyInsertion",
+      "before": {
+        "bytes": 4036,
+        "fee": 4036,
+        "inputs": 3,
+        "outputs": 5,
+        "operationCost": 388868,
+        "hashIterations": 128
+      },
+      "after": {
+        "bytes": 3694,
+        "fee": 3694,
+        "inputs": 3,
+        "outputs": 5,
+        "operationCost": 374234,
+        "hashIterations": 116
+      }
+    },
+    {
+      "pair": "token/BCH",
+      "action": "ordinaryInsertion",
+      "before": {
+        "bytes": 2599,
+        "fee": 2599,
+        "inputs": 2,
+        "outputs": 5,
+        "operationCost": 308772,
+        "hashIterations": 82
+      },
+      "after": {
+        "bytes": 2507,
+        "fee": 2507,
+        "inputs": 2,
+        "outputs": 5,
+        "operationCost": 302030,
+        "hashIterations": 79
+      }
+    },
+    {
+      "pair": "token/BCH",
+      "action": "highestInsertion",
+      "before": {
+        "bytes": 5674,
+        "fee": 5674,
+        "inputs": 3,
+        "outputs": 5,
+        "operationCost": 502881,
+        "hashIterations": 146
+      },
+      "after": {
+        "bytes": 5387,
+        "fee": 5387,
+        "inputs": 3,
+        "outputs": 5,
+        "operationCost": 489507,
+        "hashIterations": 139
+      }
+    },
+    {
+      "pair": "token/BCH",
+      "action": "cancel",
+      "before": {
+        "bytes": 4334,
+        "fee": 4334,
+        "inputs": 4,
+        "outputs": 3,
+        "operationCost": 395401,
+        "hashIterations": 113
+      },
+      "after": {
+        "bytes": 4150,
+        "fee": 4150,
+        "inputs": 4,
+        "outputs": 3,
+        "operationCost": 356751,
+        "hashIterations": 109
+      }
+    },
+    {
+      "pair": "token/BCH",
+      "action": "claim",
+      "before": {
+        "bytes": 5510,
+        "fee": 5510,
+        "inputs": 4,
+        "outputs": 4,
+        "operationCost": 434177,
+        "hashIterations": 106
+      },
+      "after": {
+        "bytes": 5223,
+        "fee": 5223,
+        "inputs": 4,
+        "outputs": 4,
+        "operationCost": 395789,
+        "hashIterations": 101
+      }
+    },
+    {
+      "pair": "token/BCH",
+      "action": "withdraw",
+      "before": {
+        "bytes": 696,
+        "fee": 696,
+        "inputs": 2,
+        "outputs": 2,
+        "operationCost": 131040,
+        "hashIterations": 26
+      },
+      "after": {
+        "bytes": 666,
+        "fee": 666,
+        "inputs": 2,
+        "outputs": 2,
+        "operationCost": 108594,
+        "hashIterations": 25
+      }
+    },
+    {
+      "pair": "token/token",
+      "action": "create",
+      "before": {
+        "bytes": 6128,
+        "fee": 6128,
+        "inputs": 3,
+        "outputs": 4,
+        "operationCost": 310853,
+        "hashIterations": 279
+      },
+      "after": {
+        "bytes": 5766,
+        "fee": 5766,
+        "inputs": 3,
+        "outputs": 4,
+        "operationCost": 306804,
+        "hashIterations": 260
+      }
+    },
+    {
+      "pair": "token/token",
+      "action": "emptyInsertion",
+      "before": {
+        "bytes": 4036,
+        "fee": 4036,
+        "inputs": 3,
+        "outputs": 5,
+        "operationCost": 388848,
+        "hashIterations": 128
+      },
+      "after": {
+        "bytes": 3694,
+        "fee": 3694,
+        "inputs": 3,
+        "outputs": 5,
+        "operationCost": 374214,
+        "hashIterations": 116
+      }
+    },
+    {
+      "pair": "token/token",
+      "action": "ordinaryInsertion",
+      "before": {
+        "bytes": 2599,
+        "fee": 2599,
+        "inputs": 2,
+        "outputs": 5,
+        "operationCost": 308766,
+        "hashIterations": 82
+      },
+      "after": {
+        "bytes": 2507,
+        "fee": 2507,
+        "inputs": 2,
+        "outputs": 5,
+        "operationCost": 302023,
+        "hashIterations": 79
+      }
+    },
+    {
+      "pair": "token/token",
+      "action": "highestInsertion",
+      "before": {
+        "bytes": 5674,
+        "fee": 5674,
+        "inputs": 3,
+        "outputs": 5,
+        "operationCost": 502861,
+        "hashIterations": 146
+      },
+      "after": {
+        "bytes": 5387,
+        "fee": 5387,
+        "inputs": 3,
+        "outputs": 5,
+        "operationCost": 489487,
+        "hashIterations": 139
+      }
+    },
+    {
+      "pair": "token/token",
+      "action": "cancel",
+      "before": {
+        "bytes": 4334,
+        "fee": 4334,
+        "inputs": 4,
+        "outputs": 3,
+        "operationCost": 395401,
+        "hashIterations": 113
+      },
+      "after": {
+        "bytes": 4150,
+        "fee": 4150,
+        "inputs": 4,
+        "outputs": 3,
+        "operationCost": 356750,
+        "hashIterations": 109
+      }
+    },
+    {
+      "pair": "token/token",
+      "action": "claim",
+      "before": {
+        "bytes": 5940,
+        "fee": 5940,
+        "inputs": 5,
+        "outputs": 5,
+        "operationCost": 450792,
+        "hashIterations": 120
+      },
+      "after": {
+        "bytes": 5653,
+        "fee": 5653,
+        "inputs": 5,
+        "outputs": 5,
+        "operationCost": 412377,
+        "hashIterations": 115
+      }
+    },
+    {
+      "pair": "token/token",
+      "action": "withdraw",
+      "before": {
+        "bytes": 696,
+        "fee": 696,
+        "inputs": 2,
+        "outputs": 2,
+        "operationCost": 131040,
+        "hashIterations": 26
+      },
+      "after": {
+        "bytes": 666,
+        "fee": 666,
+        "inputs": 2,
+        "outputs": 2,
+        "operationCost": 108594,
+        "hashIterations": 25
+      }
+    },
+    {
+      "pair": "same token",
+      "action": "create",
+      "before": {
+        "bytes": 6128,
+        "fee": 6128,
+        "inputs": 3,
+        "outputs": 4,
+        "operationCost": 310853,
+        "hashIterations": 279
+      },
+      "after": {
+        "bytes": 5766,
+        "fee": 5766,
+        "inputs": 3,
+        "outputs": 4,
+        "operationCost": 306804,
+        "hashIterations": 260
+      }
+    },
+    {
+      "pair": "same token",
+      "action": "emptyInsertion",
+      "before": {
+        "bytes": 4036,
+        "fee": 4036,
+        "inputs": 3,
+        "outputs": 5,
+        "operationCost": 388848,
+        "hashIterations": 128
+      },
+      "after": {
+        "bytes": 3694,
+        "fee": 3694,
+        "inputs": 3,
+        "outputs": 5,
+        "operationCost": 374214,
+        "hashIterations": 116
+      }
+    },
+    {
+      "pair": "same token",
+      "action": "ordinaryInsertion",
+      "before": {
+        "bytes": 2599,
+        "fee": 2599,
+        "inputs": 2,
+        "outputs": 5,
+        "operationCost": 308766,
+        "hashIterations": 82
+      },
+      "after": {
+        "bytes": 2507,
+        "fee": 2507,
+        "inputs": 2,
+        "outputs": 5,
+        "operationCost": 302023,
+        "hashIterations": 79
+      }
+    },
+    {
+      "pair": "same token",
+      "action": "highestInsertion",
+      "before": {
+        "bytes": 5674,
+        "fee": 5674,
+        "inputs": 3,
+        "outputs": 5,
+        "operationCost": 502861,
+        "hashIterations": 146
+      },
+      "after": {
+        "bytes": 5387,
+        "fee": 5387,
+        "inputs": 3,
+        "outputs": 5,
+        "operationCost": 489487,
+        "hashIterations": 139
+      }
+    },
+    {
+      "pair": "same token",
+      "action": "cancel",
+      "before": {
+        "bytes": 4334,
+        "fee": 4334,
+        "inputs": 4,
+        "outputs": 3,
+        "operationCost": 395401,
+        "hashIterations": 113
+      },
+      "after": {
+        "bytes": 4150,
+        "fee": 4150,
+        "inputs": 4,
+        "outputs": 3,
+        "operationCost": 356750,
+        "hashIterations": 109
+      }
+    },
+    {
+      "pair": "same token",
+      "action": "claim",
+      "before": {
+        "bytes": 5940,
+        "fee": 5940,
+        "inputs": 5,
+        "outputs": 5,
+        "operationCost": 450792,
+        "hashIterations": 120
+      },
+      "after": {
+        "bytes": 5653,
+        "fee": 5653,
+        "inputs": 5,
+        "outputs": 5,
+        "operationCost": 412377,
+        "hashIterations": 115
+      }
+    },
+    {
+      "pair": "same token",
+      "action": "withdraw",
+      "before": {
+        "bytes": 696,
+        "fee": 696,
+        "inputs": 2,
+        "outputs": 2,
+        "operationCost": 131040,
+        "hashIterations": 26
+      },
+      "after": {
+        "bytes": 666,
+        "fee": 666,
+        "inputs": 2,
+        "outputs": 2,
+        "operationCost": 108594,
+        "hashIterations": 25
+      }
+    }
+  ],
+  "runtimeRows": [
+    {
+      "pair": "BCH/BCH",
+      "action": "create",
+      "before": {
+        "bytes": 6694,
+        "fee": 6694,
+        "approvals": 3,
+        "calls": 632,
+        "authorizeCalls": 272,
+        "readinessMs": 6190.198465999998,
+        "signatureToPendingMs": 1631.7573110000012
+      },
+      "after": {
+        "bytes": 6332,
+        "fee": 6332,
+        "approvals": 3,
+        "calls": 524,
+        "authorizeCalls": 164,
+        "readinessMs": 2656.3430910000025,
+        "signatureToPendingMs": 1126.9488229999988
+      }
+    },
+    {
+      "pair": "BCH/BCH",
+      "action": "insert",
+      "note": "Sum of empty and ordinary insertion; two separate one-approval actions",
+      "before": {
+        "bytes": 6402,
+        "fee": 6402,
+        "approvals": 2,
+        "calls": 672,
+        "authorizeCalls": 328,
+        "readinessMs": 9336.753869,
+        "signatureToPendingMs": 1508.8142869999974
+      },
+      "after": {
+        "bytes": 5968,
+        "fee": 5968,
+        "approvals": 2,
+        "calls": 466,
+        "authorizeCalls": 122,
+        "readinessMs": 4300.652081,
+        "signatureToPendingMs": 858.3176229999954
+      }
+    },
+    {
+      "pair": "BCH/BCH",
+      "action": "cancel",
+      "before": {
+        "bytes": 3985,
+        "fee": 3985,
+        "approvals": 1,
+        "calls": 360,
+        "authorizeCalls": 176,
+        "readinessMs": 9287.85875,
+        "signatureToPendingMs": 770.3218300000008
+      },
+      "after": {
+        "bytes": 3801,
+        "fee": 3801,
+        "approvals": 1,
+        "calls": 248,
+        "authorizeCalls": 64,
+        "readinessMs": 1933.1564839999992,
+        "signatureToPendingMs": 770.8708389999993
+      }
+    },
+    {
+      "pair": "BCH/BCH",
+      "action": "claim",
+      "before": {
+        "bytes": 5161,
+        "fee": 5161,
+        "approvals": 1,
+        "calls": 364,
+        "authorizeCalls": 178,
+        "readinessMs": 8974.805972000002,
+        "signatureToPendingMs": 852.5227919999961
+      },
+      "after": {
+        "bytes": 4874,
+        "fee": 4874,
+        "approvals": 1,
+        "calls": 248,
+        "authorizeCalls": 66,
+        "readinessMs": 4246.039567,
+        "signatureToPendingMs": 678.4367649999986
+      }
+    },
+    {
+      "pair": "BCH/BCH",
+      "action": "withdraw",
+      "before": {
+        "bytes": 659,
+        "fee": 659,
+        "approvals": 1,
+        "calls": 701,
+        "authorizeCalls": 328,
+        "readinessMs": 14231.922195999992,
+        "signatureToPendingMs": 919.1558020000084
+      },
+      "after": {
+        "bytes": 629,
+        "fee": 629,
+        "approvals": 1,
+        "calls": 314,
+        "authorizeCalls": 65,
+        "readinessMs": 1147.920917000003,
+        "signatureToPendingMs": 390.29571000000215
+      }
+    },
+    {
+      "pair": "BCH/token",
+      "action": "create",
+      "before": {
+        "bytes": 6989,
+        "fee": 6989,
+        "approvals": 3,
+        "calls": 605,
+        "authorizeCalls": 272,
+        "readinessMs": 4607.896838000001,
+        "signatureToPendingMs": 1911.9788750000007
+      },
+      "after": {
+        "bytes": 6627,
+        "fee": 6627,
+        "approvals": 3,
+        "calls": 497,
+        "authorizeCalls": 164,
+        "readinessMs": 1845.6222330000055,
+        "signatureToPendingMs": 1502.616313000006
+      }
+    },
+    {
+      "pair": "BCH/token",
+      "action": "insert",
+      "note": "Sum of empty and ordinary insertion; two separate one-approval actions",
+      "before": {
+        "bytes": 6402,
+        "fee": 6402,
+        "approvals": 2,
+        "calls": 672,
+        "authorizeCalls": 328,
+        "readinessMs": 9027.35006099999,
+        "signatureToPendingMs": 1280.8868220000004
+      },
+      "after": {
+        "bytes": 5968,
+        "fee": 5968,
+        "approvals": 2,
+        "calls": 466,
+        "authorizeCalls": 122,
+        "readinessMs": 3542.560186999988,
+        "signatureToPendingMs": 2115.3635949999953
+      }
+    },
+    {
+      "pair": "BCH/token",
+      "action": "cancel",
+      "before": {
+        "bytes": 3985,
+        "fee": 3985,
+        "approvals": 1,
+        "calls": 360,
+        "authorizeCalls": 176,
+        "readinessMs": 5163.388337000011,
+        "signatureToPendingMs": 1392.0673359999928
+      },
+      "after": {
+        "bytes": 3801,
+        "fee": 3801,
+        "approvals": 1,
+        "calls": 248,
+        "authorizeCalls": 64,
+        "readinessMs": 2041.781044000003,
+        "signatureToPendingMs": 600.0167539999966
+      }
+    },
+    {
+      "pair": "BCH/token",
+      "action": "claim",
+      "before": {
+        "bytes": 5591,
+        "fee": 5591,
+        "approvals": 1,
+        "calls": 444,
+        "authorizeCalls": 218,
+        "readinessMs": 6721.934869000019,
+        "signatureToPendingMs": 743.8985850000026
+      },
+      "after": {
+        "bytes": 5304,
+        "fee": 5304,
+        "approvals": 1,
+        "calls": 290,
+        "authorizeCalls": 68,
+        "readinessMs": 2678.655617999997,
+        "signatureToPendingMs": 2034.923176999997
+      }
+    },
+    {
+      "pair": "BCH/token",
+      "action": "withdraw",
+      "before": {
+        "bytes": 659,
+        "fee": 659,
+        "approvals": 1,
+        "calls": 749,
+        "authorizeCalls": 352,
+        "readinessMs": 10816.853223999991,
+        "signatureToPendingMs": 408.8502640000079
+      },
+      "after": {
+        "bytes": 629,
+        "fee": 629,
+        "approvals": 1,
+        "calls": 338,
+        "authorizeCalls": 69,
+        "readinessMs": 2022.9480790000089,
+        "signatureToPendingMs": 642.8306419999935
+      }
+    },
+    {
+      "pair": "token/BCH",
+      "action": "create",
+      "before": {
+        "bytes": 6694,
+        "fee": 6694,
+        "approvals": 3,
+        "calls": 605,
+        "authorizeCalls": 272,
+        "readinessMs": 2883.57935,
+        "signatureToPendingMs": 2781.171646999981
+      },
+      "after": {
+        "bytes": 6332,
+        "fee": 6332,
+        "approvals": 3,
+        "calls": 497,
+        "authorizeCalls": 164,
+        "readinessMs": 1801.5107330000174,
+        "signatureToPendingMs": 1286.735440000004
+      }
+    },
+    {
+      "pair": "token/BCH",
+      "action": "insert",
+      "note": "Sum of empty and ordinary insertion; two separate one-approval actions",
+      "before": {
+        "bytes": 6992,
+        "fee": 6992,
+        "approvals": 2,
+        "calls": 672,
+        "authorizeCalls": 328,
+        "readinessMs": 9646.156390999997,
+        "signatureToPendingMs": 1286.878682999988
+      },
+      "after": {
+        "bytes": 6558,
+        "fee": 6558,
+        "approvals": 2,
+        "calls": 466,
+        "authorizeCalls": 122,
+        "readinessMs": 3035.6416439999957,
+        "signatureToPendingMs": 1171.4653109999927
+      }
+    },
+    {
+      "pair": "token/BCH",
+      "action": "cancel",
+      "before": {
+        "bytes": 4334,
+        "fee": 4334,
+        "approvals": 1,
+        "calls": 452,
+        "authorizeCalls": 222,
+        "readinessMs": 5352.986833000032,
+        "signatureToPendingMs": 936.1586740000057
+      },
+      "after": {
+        "bytes": 4150,
+        "fee": 4150,
+        "approvals": 1,
+        "calls": 296,
+        "authorizeCalls": 66,
+        "readinessMs": 1856.0096550000017,
+        "signatureToPendingMs": 565.0712150000036
+      }
+    },
+    {
+      "pair": "token/BCH",
+      "action": "claim",
+      "before": {
+        "bytes": 5510,
+        "fee": 5510,
+        "approvals": 1,
+        "calls": 464,
+        "authorizeCalls": 228,
+        "readinessMs": 5885.177392999991,
+        "signatureToPendingMs": 1923.0147659999784
+      },
+      "after": {
+        "bytes": 5223,
+        "fee": 5223,
+        "approvals": 1,
+        "calls": 302,
+        "authorizeCalls": 70,
+        "readinessMs": 2201.123145000005,
+        "signatureToPendingMs": 647.8919240000032
+      }
+    },
+    {
+      "pair": "token/BCH",
+      "action": "withdraw",
+      "before": {
+        "bytes": 696,
+        "fee": 696,
+        "approvals": 1,
+        "calls": 733,
+        "authorizeCalls": 344,
+        "readinessMs": 11650.049436000001,
+        "signatureToPendingMs": 1649.063718999998
+      },
+      "after": {
+        "bytes": 666,
+        "fee": 666,
+        "approvals": 1,
+        "calls": 334,
+        "authorizeCalls": 69,
+        "readinessMs": 1397.7172500000015,
+        "signatureToPendingMs": 572.9644879999978
+      }
+    },
+    {
+      "pair": "token/token",
+      "action": "create",
+      "before": {
+        "bytes": 6989,
+        "fee": 6989,
+        "approvals": 3,
+        "calls": 658,
+        "authorizeCalls": 296,
+        "readinessMs": 3925.0179070000013,
+        "signatureToPendingMs": 1916.0440560000134
+      },
+      "after": {
+        "bytes": 6627,
+        "fee": 6627,
+        "approvals": 3,
+        "calls": 532,
+        "authorizeCalls": 170,
+        "readinessMs": 2288.9225000000006,
+        "signatureToPendingMs": 2109.7982800000027
+      }
+    },
+    {
+      "pair": "token/token",
+      "action": "insert",
+      "note": "Sum of empty and ordinary insertion; two separate one-approval actions",
+      "before": {
+        "bytes": 6992,
+        "fee": 6992,
+        "approvals": 2,
+        "calls": 768,
+        "authorizeCalls": 376,
+        "readinessMs": 8340.76258400004,
+        "signatureToPendingMs": 1646.0270489999966
+      },
+      "after": {
+        "bytes": 6558,
+        "fee": 6558,
+        "approvals": 2,
+        "calls": 526,
+        "authorizeCalls": 134,
+        "readinessMs": 3941.662812999988,
+        "signatureToPendingMs": 1498.9070329999959
+      }
+    },
+    {
+      "pair": "token/token",
+      "action": "cancel",
+      "before": {
+        "bytes": 4334,
+        "fee": 4334,
+        "approvals": 1,
+        "calls": 512,
+        "authorizeCalls": 252,
+        "readinessMs": 4486.086023999989,
+        "signatureToPendingMs": 573.0216059999948
+      },
+      "after": {
+        "bytes": 4150,
+        "fee": 4150,
+        "approvals": 1,
+        "calls": 332,
+        "authorizeCalls": 72,
+        "readinessMs": 2304.4694660000096,
+        "signatureToPendingMs": 743.1779700000043
+      }
+    },
+    {
+      "pair": "token/token",
+      "action": "claim",
+      "before": {
+        "bytes": 5940,
+        "fee": 5940,
+        "approvals": 1,
+        "calls": 616,
+        "authorizeCalls": 304,
+        "readinessMs": 10917.240283000021,
+        "signatureToPendingMs": 1638.8589619999984
+      },
+      "after": {
+        "bytes": 5653,
+        "fee": 5653,
+        "approvals": 1,
+        "calls": 386,
+        "authorizeCalls": 78,
+        "readinessMs": 2732.297397000002,
+        "signatureToPendingMs": 963.4979460000031
+      }
+    },
+    {
+      "pair": "token/token",
+      "action": "withdraw",
+      "before": {
+        "bytes": 696,
+        "fee": 696,
+        "approvals": 1,
+        "calls": 789,
+        "authorizeCalls": 372,
+        "readinessMs": 4704.03495099998,
+        "signatureToPendingMs": 798.0804129999888
+      },
+      "after": {
+        "bytes": 666,
+        "fee": 666,
+        "approvals": 1,
+        "calls": 366,
+        "authorizeCalls": 77,
+        "readinessMs": 1791.0361269999994,
+        "signatureToPendingMs": 743.0470020000066
+      }
+    },
+    {
+      "pair": "same token",
+      "action": "create",
+      "before": {
+        "bytes": 6989,
+        "fee": 6989,
+        "approvals": 3,
+        "calls": 605,
+        "authorizeCalls": 272,
+        "readinessMs": 2538.5003570000117,
+        "signatureToPendingMs": 2307.8306470000243
+      },
+      "after": {
+        "bytes": 6627,
+        "fee": 6627,
+        "approvals": 3,
+        "calls": 497,
+        "authorizeCalls": 164,
+        "readinessMs": 1879.6929189999937,
+        "signatureToPendingMs": 1744.3483219999907
+      }
+    },
+    {
+      "pair": "same token",
+      "action": "insert",
+      "note": "Sum of empty and ordinary insertion; two separate one-approval actions",
+      "before": {
+        "bytes": 6992,
+        "fee": 6992,
+        "approvals": 2,
+        "calls": 672,
+        "authorizeCalls": 328,
+        "readinessMs": 5015.162952999992,
+        "signatureToPendingMs": 1402.5568119999953
+      },
+      "after": {
+        "bytes": 6558,
+        "fee": 6558,
+        "approvals": 2,
+        "calls": 466,
+        "authorizeCalls": 122,
+        "readinessMs": 2974.3743609999947,
+        "signatureToPendingMs": 1624.432793999993
+      }
+    },
+    {
+      "pair": "same token",
+      "action": "cancel",
+      "before": {
+        "bytes": 4334,
+        "fee": 4334,
+        "approvals": 1,
+        "calls": 452,
+        "authorizeCalls": 222,
+        "readinessMs": 3630.6696910000173,
+        "signatureToPendingMs": 697.0409250000084
+      },
+      "after": {
+        "bytes": 4150,
+        "fee": 4150,
+        "approvals": 1,
+        "calls": 296,
+        "authorizeCalls": 66,
+        "readinessMs": 1778.6111749999982,
+        "signatureToPendingMs": 695.6321870000102
+      }
+    },
+    {
+      "pair": "same token",
+      "action": "claim",
+      "before": {
+        "bytes": 5940,
+        "fee": 5940,
+        "approvals": 1,
+        "calls": 544,
+        "authorizeCalls": 268,
+        "readinessMs": 5525.8817670000135,
+        "signatureToPendingMs": 835.1981999999844
+      },
+      "after": {
+        "bytes": 5653,
+        "fee": 5653,
+        "approvals": 1,
+        "calls": 344,
+        "authorizeCalls": 72,
+        "readinessMs": 2603.6331329999957,
+        "signatureToPendingMs": 963.0763069999957
+      }
+    },
+    {
+      "pair": "same token",
+      "action": "withdraw",
+      "before": {
+        "bytes": 696,
+        "fee": 696,
+        "approvals": 1,
+        "calls": 749,
+        "authorizeCalls": 352,
+        "readinessMs": 4549.600945999991,
+        "signatureToPendingMs": 1074.8106810000027
+      },
+      "after": {
+        "bytes": 666,
+        "fee": 666,
+        "approvals": 1,
+        "calls": 338,
+        "authorizeCalls": 69,
+        "readinessMs": 1260.862889000011,
+        "signatureToPendingMs": 678.3085690000007
+      }
+    }
+  ]
+}

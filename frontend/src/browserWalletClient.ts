@@ -24,7 +24,7 @@ export function browserWalletClient(manager:DappConnectionManager|null,check:()=
  // A transport interruption invalidates all in-flight preparation/approval contexts,
  // including work that completes after the same wallet reconnects. Journals remain intact.
  let authorizationRevision=0;
- const invalidate=()=>{authorizationRevision++; signing.abort();};
+ const invalidate=()=>{authorizationRevision++; signing.abort();window.dispatchEvent(new Event('arena-queue-wallet-invalidated'));};
  window.addEventListener('arena-network-leaving',invalidate);
  manager?.on?.('reconnecting',invalidate);
  manager?.on?.('disconnect',invalidate);
@@ -124,18 +124,21 @@ export function browserWalletClient(manager:DappConnectionManager|null,check:()=
    if(v3Approval||v2Approval)throw Error('Finish the pending wallet approval first');v3Approval=true;
    try{
     const session=JSON.stringify(getManager().getSessionPaths());let descriptors=keys(v3ScanLimit);
-    let result;try{result=await queueCall(intent,descriptors);}catch(e){if(!/Insufficient|funding is required|funding for|funding propagates/i.test(String(e))||v3ScanLimit>=40)throw e;v3ScanLimit=40;descriptors=keys(v3ScanLimit);guard();result=await queueCall(intent,descriptors);}
+    let result;try{result=await queueCall(intent,descriptors);}catch(e){if(!/Insufficient|funding is required|funding for|funding propagates|Atomic vault creation needs/i.test(String(e))||v3ScanLimit>=40)throw e;v3ScanLimit=40;descriptors=keys(v3ScanLimit);guard();result=await queueCall(intent,descriptors);}
     if(result?.stage!=='review'||!result.plan)return result;
     const authorized=await queueCall({operation:'authorize',id:result.id});guard();
     if(authorized.owner.publicKey!==binToHex(getManager().getPubkey(0,0n)??new Uint8Array())||JSON.stringify(getManager().getSessionPaths())!==session)throw Error('Wallet changed before queue approval');
     if(authorized.plan.request.broadcast!==false||Date.now()-authorized.verifiedAt>10000)throw Error('Queue approval requires fresh verified inputs');
-    window.dispatchEvent(new CustomEvent('arena-wallet-progress',{detail:'Requesting Cashonize approval… '+authorized.plan.label}));
+    window.dispatchEvent(new CustomEvent('arena-queue-review',{detail:{...result,...authorized}}));
+    window.dispatchEvent(new CustomEvent('arena-wallet-progress',{detail:'Signing 1 transaction · 1 Cashonize approval · '+authorized.plan.label}));
     await queueCall({operation:'beginSigning',id:result.id});
     try{guard();if(JSON.stringify(getManager().getSessionPaths())!==session)throw Error('Wallet changed before queue signing');}catch(error){await queueCall({operation:'signingFailed',id:result.id,rejected:true,notRequested:true}).catch(()=>{});throw error;}
     let signed;try{signed=await signWithRefusalEvidence(getManager(),{transaction:wizardWireTransaction(authorized.plan.request),inputPaths:authorized.plan.inputPaths},{signal:signing.signal});}catch(error){await queueCall({operation:'signingFailed',id:result.id,rejected:error instanceof ExplicitWalletRefusal}).catch(()=>{});throw error;}
     if(!signed.signedTransaction)throw Error('Signing status unknown; check transaction recovery');
+    window.dispatchEvent(new CustomEvent('arena-wallet-progress',{detail:'Verifying signed transaction…'}));
     await queueCall({operation:'retain',id:result.id,raw:signed.signedTransaction});guard();
     if(JSON.stringify(getManager().getSessionPaths())!==session)throw Error('Wallet changed during queue approval; signed bytes retained');
+    window.dispatchEvent(new CustomEvent('arena-wallet-progress',{detail:'Broadcasting the signed transaction…'}));
     return queueCall({operation:'submit',id:result.id});
    }finally{v3Approval=false;}
   },publicKey(){check();const key=getManager().getPubkey(0,0n);if(!key)throw Error('Wallet receive key unavailable');return binToHex(key);},async inventory(limit=40){if(![40,200].includes(limit))throw Error("Unsupported scan bound");scanLimit=limit;await startup;return rpc('scan',keys());},async operations(){await startup;const list=await rpc('list') as WalletOperation[];list.forEach(rememberGenesis);return list;},async inspect(id){await startup;const op=await rpc('get',id) as WalletOperation;if(op.step==='complete')await finish(op);return op;},async importVault(config){await startup;const result=await rpc('importVault',config,true);saveLocalVault(result.config,result.category);return result;},async execute(intent){
@@ -163,5 +166,5 @@ export function browserWalletClient(manager:DappConnectionManager|null,check:()=
    op=await rpc('submit',op.id,signed.signedTransaction,publicKeys);
   }
   return finish(op);
- },close(){if(closed)return;closed=true;window.removeEventListener('arena-network-leaving',invalidate);manager?.off?.('reconnecting',invalidate);manager?.off?.('disconnect',invalidate);walletDiagnostic('Wallet worker stopped; journals preserved');clearTimeout(startupTimer);startupReject(Error('Wallet worker closed'));signing.abort();worker.terminate();for(const t of pending.values())t.reject(Error('Wallet disconnected; operation journal preserved'));pending.clear();}};
+ },close(){if(closed)return;closed=true;invalidate();window.removeEventListener('arena-network-leaving',invalidate);manager?.off?.('reconnecting',invalidate);manager?.off?.('disconnect',invalidate);walletDiagnostic('Wallet worker stopped; journals preserved');clearTimeout(startupTimer);startupReject(Error('Wallet worker closed'));signing.abort();worker.terminate();for(const t of pending.values())t.reject(Error('Wallet disconnected; operation journal preserved'));pending.clear();}};
 }

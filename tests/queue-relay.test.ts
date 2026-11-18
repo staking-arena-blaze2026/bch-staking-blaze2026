@@ -8,7 +8,7 @@ import {queueRelayPeer} from './fixtures/queue-relay-peer.js';
 import {RegtestElectrum} from './fixtures/regtest-electrum.js';
 import {rpc} from '../src/rpc.js';
 import {utxo} from '../src/arena-core.js';
-import {create,insert,remove,withdraw,genesis,node,gate,ownerScript,verify,ZERO,CARRIER,type Parameters,type Funding} from '../src/queue/protocol.js';
+import {create,insert,remove,withdraw,node,gate,ownerScript,verify,ZERO,CARRIER,type Parameters,type Funding} from '../src/queue/protocol.js';
 import {ownerAddress} from '../src/v3/protocol.js';
 
 test('queue: isolated activated BCHN standard-policy relay lifecycle',{timeout:600000},async()=>isolatedRegtest(async()=>{
@@ -21,9 +21,7 @@ test('queue: isolated activated BCHN standard-policy relay lifecycle',{timeout:6
  async function reject(label:string,plan:ReturnType<typeof insert>|ReturnType<typeof create>|ReturnType<typeof remove>,mutate:()=>void){const saved=structuredClone(plan.builder.outputs),inputs=plan.builder.inputs.map(i=>({...i}));try{mutate();plan.builder.outputs.at(-1)!.amount-=10000n;const tx=(plan.builder as unknown as {buildLibauthTransaction:(skip:boolean)=>Transaction}).buildLibauthTransaction(true),raw=binToHex(encodeTransaction(tx));const [result]=await rpc('testmempoolaccept',[[raw]]);rows.push({label,expected:'rejected',allowed:result.allowed,reason:result['reject-reason']});assert.equal(result.allowed,false,label);assert.match(result['reject-reason'],/script|token/i,label+' must fail authorization, not fee or value policy');}finally{plan.builder.outputs=saved;plan.builder.inputs=inputs;}}
  async function submit(label:string,plan:{raw:string;fee:bigint;bytes:number;sources:SpendableUtxo[]}){verify(plan);await relay.until(async()=>await relay.peer('getbestblockhash')===await rpc('getbestblockhash'),'current chain');const [accept]=await rpc('testmempoolaccept',[[plan.raw]]);const row={label,bytes:plan.bytes,fee:Number(plan.fee),allowed:accept.allowed,reason:accept['reject-reason'],p2pRelayed:false};rows.push(row);assert.equal(accept.allowed,true,JSON.stringify(accept));const id=await rpc<string>('sendrawtransaction',[plan.raw]);try{await relay.until(async()=>{if((await relay.peer('getrawmempool')).includes(id))return true;if(mocked)await setClock(mocked+2);return false;},'transaction '+label);}catch(e){throw Error(String(e)+'; receiving peer admission '+JSON.stringify(await relay.peer('testmempoolaccept',[[plan.raw]])));}row.p2pRelayed=true;await p.refresh();const tx=await p.transactionStatus(id);return tx.vout.map((_:unknown,i:number)=>utxo(tx,i));}
  const params:Parameters={stakingCategory:ZERO,rewardCategory:ZERO,epoch:(await rpc('getblockchaininfo')).mediantime-10000,interval:60,releases:20,cap:2000n};
- const seed=await fund(genesis(params,key.publicKey,p).address),created=create(params,seed,await funding(),[],key,p),c=created.context;
- await reject('genesis extra minting authority',created,()=>{created.builder.outputs.at(-1)!.token=structuredClone(created.builder.outputs[1]!.token!);});
- await reject('genesis minting vault',created,()=>{created.builder.outputs[0]!.token!.nft!.capability='minting';});
+ const seed=await funding(),created=create(params,seed,await funding(),[],key,p),c=created.context;
  const [v,r]=await submit('create',created);
  const first=insert(c,v!,r!,{stake:10000n,duration:512,reward:2000n},key,[await funding()]);
  await reject('unbacked BCH node',first,()=>{first.builder.outputs[2]!.amount--;first.builder.outputs.at(-1)!.amount++;});
@@ -67,7 +65,7 @@ test('queue: isolated activated BCHN standard-policy relay lifecycle',{timeout:6
  await submit('equal score follows previous registration',insert(c,bb1!,undefined,{stake:8000n,duration:512,reward:2000n},key,[await funding()]));
  const [conflicted]=await rpc('testmempoolaccept',[[conflict.raw]]);assert.equal(conflicted.allowed,false);rows.push({label:'concurrency: same predecessor conflict',allowed:conflicted.allowed,reason:conflicted['reject-reason']});
  // Worst-case 75-bit score products under the activated BigInt rules.
- const maxParams={...params,releases:1000,cap:1000000n},maxSeed=await fund(genesis(maxParams,key.publicKey,p).address,20),maxCreated=create(maxParams,maxSeed,await funding(),[],key,p),mc=maxCreated.context;
+ const maxParams={...params,releases:1000,cap:1000000n},maxSeed={input:await fund(owner,20),unlocker:key.unlockP2PKH()},maxCreated=create(maxParams,maxSeed,await funding(),[],key,p),mc=maxCreated.context;
  const [mv,mr]=await submit('maximum operands: genesis',maxCreated);
  const maxFirst=insert(mc,mv!,mr!,{stake:1000000n,duration:33553920,reward:1200n},key,[await funding()]),[,,mn]=await submit('maximum operands: highest score',maxFirst);
  await submit('maximum operands: 75-bit comparison',insert(mc,mn!,undefined,{stake:1000000n,duration:33553920,reward:1000000000n},key,[await funding()]));
@@ -79,7 +77,7 @@ test('queue: isolated activated BCHN standard-policy relay lifecycle',{timeout:6
   const assetParams={...params,stakingCategory:stakeCat!,rewardCategory:rewardCat!};
   async function exactToken(category:string,amount:bigint){let input=category===tokenA.token!.category?tokenA:tokenB;const b=new TransactionBuilder({provider:p}).addInput(input,key.unlockP2PKH()).addOutput({to:owner,amount:1200n,token:{category,amount}}).addOutput({to:owner,amount:input.satoshis-2200n,token:{category,amount:input.token!.amount-amount}});const id=await rpc<string>('sendrawtransaction',[b.build()]);await p.refresh();const tx=await p.transactionStatus(id),change=utxo(tx,1);Object.assign(input,change);return {input:utxo(tx,0),unlocker:key.unlockP2PKH()};}
   const rewardFunds=rewardCat===ZERO?[]:[await exactToken(rewardCat!,40000n)];
-  const prep=await fund(genesis(assetParams,key.publicKey,p).address),creation=create(assetParams,prep,await funding(),rewardFunds,key,p),ctx=creation.context;
+  const prep=await funding(),creation=create(assetParams,prep,await funding(),rewardFunds,key,p),ctx=creation.context;
   const [v,r,res]=await submit(`tokens ${++tokenCounter}: create`,creation);
   const funds=stakeCat===ZERO?[await funding()]:[await exactToken(stakeCat!,10000n),await funding()];
   const reg=insert(ctx,v!,r!,{stake:10000n,duration:512,reward:2000n},key,funds);

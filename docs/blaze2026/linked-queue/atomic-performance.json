@@ -1,0 +1,236 @@
+{
+  "at": "2026-11-18T08:47:12.496Z",
+  "method": "Synthetic Schnorr wallet; isolated standard-policy BCHN. Electrum facade request calls include header cache hits and exclude direct fixture BCHN RPC. Timings are single local samples, not real wallet or public-network latency.",
+  "rows": [
+    {
+      "pair": "bch/bch",
+      "actions": [
+        {
+          "kind": "create",
+          "step": "action",
+          "bytes": 732,
+          "fee": 732,
+          "approvals": 1,
+          "prepareMs": 2728.5867,
+          "authorizeMs": 1184.8793000000005,
+          "signatureToPendingMs": 1563.0178000000014,
+          "prepareCalls": 94,
+          "authorizeCalls": 56,
+          "signatureToPendingCalls": 42
+        },
+        {
+          "kind": "insert",
+          "step": "action",
+          "bytes": 3613,
+          "fee": 3613,
+          "approvals": 1,
+          "prepareMs": 4191.887699999999,
+          "authorizeMs": 623.1000000000022,
+          "signatureToPendingMs": 933.3212999999996,
+          "prepareCalls": 126,
+          "authorizeCalls": 62,
+          "signatureToPendingCalls": 48
+        },
+        {
+          "kind": "insert",
+          "step": "action",
+          "bytes": 2355,
+          "fee": 2355,
+          "approvals": 1,
+          "prepareMs": 4175.201399999998,
+          "authorizeMs": 1463.076399999998,
+          "signatureToPendingMs": 1781.4805999999953,
+          "prepareCalls": 136,
+          "authorizeCalls": 64,
+          "signatureToPendingCalls": 50
+        }
+      ],
+      "creationFee": 732,
+      "creationApprovals": 1
+    },
+    {
+      "pair": "bch/token",
+      "actions": [
+        {
+          "kind": "create",
+          "step": "action",
+          "bytes": 1027,
+          "fee": 1027,
+          "approvals": 1,
+          "prepareMs": 1315.3174,
+          "authorizeMs": 765.9948999999979,
+          "signatureToPendingMs": 2671.0713000000032,
+          "prepareCalls": 73,
+          "authorizeCalls": 64,
+          "signatureToPendingCalls": 50
+        },
+        {
+          "kind": "insert",
+          "step": "action",
+          "bytes": 3613,
+          "fee": 3613,
+          "approvals": 1,
+          "prepareMs": 4537.950699999994,
+          "authorizeMs": 1063.477700000003,
+          "signatureToPendingMs": 800.0947000000015,
+          "prepareCalls": 144,
+          "authorizeCalls": 68,
+          "signatureToPendingCalls": 54
+        },
+        {
+          "kind": "insert",
+          "step": "action",
+          "bytes": 2355,
+          "fee": 2355,
+          "approvals": 1,
+          "prepareMs": 2945.638899999998,
+          "authorizeMs": 877.9954999999973,
+          "signatureToPendingMs": 1406.0121,
+          "prepareCalls": 154,
+          "authorizeCalls": 70,
+          "signatureToPendingCalls": 56
+        }
+      ],
+      "creationFee": 1027,
+      "creationApprovals": 1
+    },
+    {
+      "pair": "token/bch",
+      "actions": [
+        {
+          "kind": "create",
+          "step": "action",
+          "bytes": 732,
+          "fee": 732,
+          "approvals": 1,
+          "prepareMs": 1230.9617999999973,
+          "authorizeMs": 1214.890499999994,
+          "signatureToPendingMs": 904.6203999999998,
+          "prepareCalls": 79,
+          "authorizeCalls": 68,
+          "signatureToPendingCalls": 54
+        },
+        {
+          "kind": "insert",
+          "step": "action",
+          "bytes": 3908,
+          "fee": 3908,
+          "approvals": 1,
+          "prepareMs": 3297.5862999999954,
+          "authorizeMs": 873.9542999999976,
+          "signatureToPendingMs": 1239.3456999999908,
+          "prepareCalls": 162,
+          "authorizeCalls": 74,
+          "signatureToPendingCalls": 60
+        },
+        {
+          "kind": "insert",
+          "step": "action",
+          "bytes": 2650,
+          "fee": 2650,
+          "approvals": 1,
+          "prepareMs": 3743.541100000002,
+          "authorizeMs": 1551.4428000000044,
+          "signatureToPendingMs": 4067.21179999999,
+          "prepareCalls": 172,
+          "authorizeCalls": 76,
+          "signatureToPendingCalls": 62
+        }
+      ],
+      "creationFee": 732,
+      "creationApprovals": 1
+    },
+    {
+      "pair": "token/token",
+      "actions": [
+        {
+          "kind": "create",
+          "step": "action",
+          "bytes": 1027,
+          "fee": 1027,
+          "approvals": 1,
+          "prepareMs": 3467.2965000000113,
+          "authorizeMs": 2432.8478999999934,
+          "signatureToPendingMs": 5794.314699999988,
+          "prepareCalls": 90,
+          "authorizeCalls": 78,
+          "signatureToPendingCalls": 64
+        },
+        {
+          "kind": "insert",
+          "step": "action",
+          "bytes": 3908,
+          "fee": 3908,
+          "approvals": 1,
+          "prepareMs": 7656.944300000003,
+          "authorizeMs": 2516.1161999999895,
+          "signatureToPendingMs": 5678.084000000003,
+          "prepareCalls": 186,
+          "authorizeCalls": 82,
+          "signatureToPendingCalls": 68
+        },
+        {
+          "kind": "insert",
+          "step": "action",
+          "bytes": 2650,
+          "fee": 2650,
+          "approvals": 1,
+          "prepareMs": 8902.597500000003,
+          "authorizeMs": 1952.3315999999904,
+          "signatureToPendingMs": 2222.2342000000062,
+          "prepareCalls": 196,
+          "authorizeCalls": 84,
+          "signatureToPendingCalls": 70
+        }
+      ],
+      "creationFee": 1027,
+      "creationApprovals": 1
+    },
+    {
+      "pair": "same-token",
+      "actions": [
+        {
+          "kind": "create",
+          "step": "action",
+          "bytes": 1027,
+          "fee": 1027,
+          "approvals": 1,
+          "prepareMs": 4586.123000000007,
+          "authorizeMs": 3158.3542000000016,
+          "signatureToPendingMs": 2083.8991000000096,
+          "prepareCalls": 93,
+          "authorizeCalls": 84,
+          "signatureToPendingCalls": 70
+        },
+        {
+          "kind": "insert",
+          "step": "action",
+          "bytes": 3908,
+          "fee": 3908,
+          "approvals": 1,
+          "prepareMs": 4221.446100000001,
+          "authorizeMs": 1164.7754999999888,
+          "signatureToPendingMs": 1877.080500000011,
+          "prepareCalls": 204,
+          "authorizeCalls": 88,
+          "signatureToPendingCalls": 74
+        },
+        {
+          "kind": "insert",
+          "step": "action",
+          "bytes": 2650,
+          "fee": 2650,
+          "approvals": 1,
+          "prepareMs": 4865.305099999998,
+          "authorizeMs": 1172.9600999999966,
+          "signatureToPendingMs": 2225.690799999982,
+          "prepareCalls": 214,
+          "authorizeCalls": 90,
+          "signatureToPendingCalls": 76
+        }
+      ],
+      "creationFee": 1027,
+      "creationApprovals": 1
+    }
+  ]
+}

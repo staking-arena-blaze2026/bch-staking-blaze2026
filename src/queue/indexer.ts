@@ -1,6 +1,9 @@
-import {binToHex,decodeTransaction,hexToBin,hashTransaction} from '@bitauth/libauth';
+import {payload} from './discovery.js';
+import {discoveryScript,DISCOVERY_CARRIER} from '../v3/discovery.js';
+import {v3Network} from '../v3/network.js';
+import {encodeDataPush,binToHex,decodeTransaction,hexToBin,hashTransaction} from '@bitauth/libauth';
 import type {SpendableUtxo} from 'cashscript';
-import {arena,root as rootContract,gate,genesis,readNode,readState,source,verify,type Context} from './protocol.js';
+import {arena,root as rootContract,gate,ownerScript,readNode,readState,verify,type Context} from './protocol.js';
 import {CARRIER,ZERO,compare,emptyLink,sameLink,type Offer} from './model.js';
 export interface Anchor {genesis:string;creator:string}
 /** Sources must be fetched and authenticated against the selected chain, not
@@ -8,11 +11,32 @@ export interface Anchor {genesis:string;creator:string}
 export function authenticateGenesis(c:Context,anchor:Anchor,raw:string,sources:SpendableUtxo[]){
  if(hashTransaction(hexToBin(raw))!==anchor.genesis)throw Error('Genesis transaction hash mismatch');
  const tx=decodeTransaction(hexToBin(raw));if(typeof tx==='string')throw Error(tx);
+ if(tx.version!==2||tx.inputs.length<2||tx.inputs.length>16||!/^(02|03)[a-f0-9]{64}$/.test(anchor.creator))throw Error('Noncanonical genesis transaction');
  if(tx.inputs.length!==sources.length||sources.some((u,i)=>u.txid!==binToHex(tx.inputs[i]!.outpointTransactionHash)||u.vout!==tx.inputs[i]!.outpointIndex))throw Error('Genesis source identity mismatch');
- if(sources[0]?.txid!==c.identity.vault||sources[1]?.txid!==c.identity.queue||sources[0]?.vout!==0||sources[1]?.vout!==0||sources[0]?.lockingBytecode!==genesis(c.p,hexToBin(anchor.creator),c.provider).lockingBytecode)throw Error('Noncanonical genesis');
- verify({raw,sources});
- if(sources.slice(2).some(u=>u.token?.nft)||tx.outputs.slice(2).some(o=>o.token?.nft))throw Error('Noncanonical genesis asset NFT');
- // The genesis covenant constrains all outputs, supplies and capabilities.
+ if(sources[0]?.txid!==c.identity.vault||sources[1]?.txid!==c.identity.queue||sources[0]?.vout!==0||sources[1]?.vout!==0||sources[0]?.token||sources[1]?.token)throw Error('Noncanonical genesis');
+ // Authentication establishes the unique non-minting vault origin. Queue
+ // minting authority is confined to its distinct category and covenant roles.
+ arena(c);verify({raw,sources});
+ const outputs=tx.outputs.map((o,vout)=>({txid:anchor.genesis,vout,satoshis:o.valueSatoshis,lockingBytecode:binToHex(o.lockingBytecode),...(o.token?{token:{category:binToHex(o.token.category),amount:o.token.amount,...(o.token.nft?{nft:{capability:o.token.nft.capability,commitment:binToHex(o.token.nft.commitment)}}:{})}}:{})}));
+ const initial=snapshot(c,outputs.slice(0,2)),s=readState(c,initial.vault),reserve=BigInt(c.p.releases)*c.p.cap;
+ if(initial.vault!==outputs[0]||initial.root!==outputs[1]||s.head.id!==ZERO||!sameLink(s.head,emptyLink())||s.reserve!==reserve)throw Error('Noncanonical initial state');
+ let at=2;
+ if(c.p.rewardCategory!==ZERO){const u=outputs[at++];if(!u||u.lockingBytecode!==gate(c).lockingBytecode||u.satoshis!==CARRIER||u.token?.category!==c.p.rewardCategory||u.token.amount!==reserve||u.token.nft)throw Error('Missing full reward reserve');}
+ // A public listing is optional for protocol-only callers; if present it must
+ // be the exact marker and canonical payload in this same transaction.
+ if(outputs[at]?.lockingBytecode===discoveryScript(v3Network(c.provider))){
+  if(outputs[at]!.satoshis!==DISCOVERY_CARRIER||outputs[at]!.token)throw Error('Invalid discovery carrier');at++;
+  const expected='6a'+binToHex(encodeDataPush(payload({parameters:c.p,creator:anchor.creator,queue:c.identity.queue})));
+  if(outputs[at]?.lockingBytecode!==expected||outputs[at]!.satoshis!==0n||outputs[at]!.token)throw Error('Invalid genesis announcement');at++;
+ }
+ if(outputs.length>at+2)throw Error('Unexpected genesis outputs');
+ let tokenIn=0n,tokenOut=0n;
+ for(const u of sources){if(u.token){if(u.token.nft||c.p.rewardCategory===ZERO||u.token.category!==c.p.rewardCategory)throw Error('Noncanonical genesis funding');tokenIn+=u.token.amount;}}
+ for(const u of outputs.slice(at)){
+  if(u.lockingBytecode!==binToHex(ownerScript(hexToBin(anchor.creator))))throw Error('Noncanonical genesis change');
+  if(u.token){if(u.token.nft||c.p.rewardCategory===ZERO||u.token.category!==c.p.rewardCategory)throw Error('Extra genesis authority or token');tokenOut+=u.token.amount;}
+ }
+ if(c.p.rewardCategory!==ZERO&&tokenIn!==reserve+tokenOut)throw Error('Genesis token conservation failure');
  return {context:c,anchor};
 }
 export interface Snapshot {vault:SpendableUtxo;root:SpendableUtxo;nodes:Map<string,{offer:Offer;utxo:SpendableUtxo}>;ordered:Offer[]}

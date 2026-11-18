@@ -1,17 +1,17 @@
 {
-  "at": "2026-11-17T23:46:39.212Z",
+  "at": "2026-11-18T08:41:57.970Z",
   "node": "/Bitcoin Cash Node:29.2.0/",
   "chain": {
     "chain": "regtest",
     "blocks": 166,
     "headers": 166,
-    "bestblockhash": "46cd5dda9897f0a2f796772c6d0568e094344f910774e545d65b27f46507c7be",
+    "bestblockhash": "12340dd37419bd3824a8542421b05a615f424765160f051de1483c72fbb46706",
     "difficulty": 4.656542373906925e-10,
-    "mediantime": 1794964919,
+    "mediantime": 1794996990,
     "verificationprogress": 1,
     "initialblockdownload": false,
     "chainwork": "000000000000000000000000000000000000000000000000000000000000014e",
-    "size_on_disk": 196939,
+    "size_on_disk": 158571,
     "pruned": false,
     "upgrade_status": {
       "name": "May 2027 Upgrade (regtestnet)",
@@ -27,21 +27,9 @@
   },
   "rows": [
     {
-      "label": "genesis extra minting authority",
-      "expected": "rejected",
-      "allowed": false,
-      "reason": "16: mandatory-script-verify-flag-failed (Script failed an OP_EQUALVERIFY operation)"
-    },
-    {
-      "label": "genesis minting vault",
-      "expected": "rejected",
-      "allowed": false,
-      "reason": "16: mandatory-script-verify-flag-failed (Script failed an OP_VERIFY operation)"
-    },
-    {
       "label": "create",
-      "bytes": 5906,
-      "fee": 5906,
+      "bytes": 533,
+      "fee": 533,
       "allowed": true,
       "p2pRelayed": true
     },
@@ -77,22 +65,22 @@
     },
     {
       "label": "empty insertion",
-      "bytes": 3955,
-      "fee": 3955,
+      "bytes": 3613,
+      "fee": 3613,
       "allowed": true,
       "p2pRelayed": true
     },
     {
       "label": "ordinary insertion",
-      "bytes": 2447,
-      "fee": 2447,
+      "bytes": 2355,
+      "fee": 2355,
       "allowed": true,
       "p2pRelayed": true
     },
     {
       "label": "highest insertion",
-      "bytes": 5593,
-      "fee": 5593,
+      "bytes": 5306,
+      "fee": 5306,
       "allowed": true,
       "p2pRelayed": true
     },
@@ -116,8 +104,8 @@
     },
     {
       "label": "ordinary cancellation",
-      "bytes": 3985,
-      "fee": 3985,
+      "bytes": 3801,
+      "fee": 3801,
       "allowed": true,
       "p2pRelayed": true
     },
@@ -141,78 +129,78 @@
     },
     {
       "label": "head claim",
-      "bytes": 5161,
-      "fee": 5161,
+      "bytes": 4874,
+      "fee": 4874,
       "allowed": true,
       "p2pRelayed": true
     },
     {
       "label": "matured withdrawal",
-      "bytes": 659,
-      "fee": 659,
+      "bytes": 629,
+      "fee": 629,
       "allowed": true,
       "p2pRelayed": true
     },
     {
       "label": "head cancellation to empty",
-      "bytes": 5182,
-      "fee": 5182,
+      "bytes": 4895,
+      "fee": 4895,
       "allowed": true,
       "p2pRelayed": true
     },
     {
       "label": "empty reinitialization using persistent root",
-      "bytes": 3955,
-      "fee": 3955,
+      "bytes": 3613,
+      "fee": 3613,
       "allowed": true,
       "p2pRelayed": true
     },
     {
       "label": "return permanently unfundable head",
-      "bytes": 5117,
-      "fee": 5117,
+      "bytes": 4830,
+      "fee": 4830,
       "allowed": true,
       "p2pRelayed": true
     },
     {
       "label": "concurrency: first node",
-      "bytes": 3955,
-      "fee": 3955,
+      "bytes": 3613,
+      "fee": 3613,
       "allowed": true,
       "p2pRelayed": true
     },
     {
       "label": "concurrency: second node",
-      "bytes": 2447,
-      "fee": 2447,
+      "bytes": 2355,
+      "fee": 2355,
       "allowed": true,
       "p2pRelayed": true
     },
     {
       "label": "concurrency: third node",
-      "bytes": 2447,
-      "fee": 2447,
+      "bytes": 2355,
+      "fee": 2355,
       "allowed": true,
       "p2pRelayed": true
     },
     {
       "label": "concurrency: left insertion",
-      "bytes": 2447,
-      "fee": 2447,
+      "bytes": 2355,
+      "fee": 2355,
       "allowed": true,
       "p2pRelayed": true
     },
     {
       "label": "concurrency: independent right insertion",
-      "bytes": 2447,
-      "fee": 2447,
+      "bytes": 2355,
+      "fee": 2355,
       "allowed": true,
       "p2pRelayed": true
     },
     {
       "label": "equal score follows previous registration",
-      "bytes": 2447,
-      "fee": 2447,
+      "bytes": 2355,
+      "fee": 2355,
       "allowed": true,
       "p2pRelayed": true
     },
@@ -223,36 +211,36 @@
     },
     {
       "label": "maximum operands: genesis",
-      "bytes": 5906,
-      "fee": 5906,
+      "bytes": 533,
+      "fee": 533,
       "allowed": true,
       "p2pRelayed": true
     },
     {
       "label": "maximum operands: highest score",
-      "bytes": 3955,
-      "fee": 3955,
+      "bytes": 3613,
+      "fee": 3613,
       "allowed": true,
       "p2pRelayed": true
     },
     {
       "label": "maximum operands: 75-bit comparison",
-      "bytes": 2447,
-      "fee": 2447,
+      "bytes": 2355,
+      "fee": 2355,
       "allowed": true,
       "p2pRelayed": true
     },
     {
       "label": "tokens 1: create",
-      "bytes": 6128,
-      "fee": 6128,
+      "bytes": 755,
+      "fee": 755,
       "allowed": true,
       "p2pRelayed": true
     },
     {
       "label": "tokens 1: empty insertion",
-      "bytes": 3955,
-      "fee": 3955,
+      "bytes": 3613,
+      "fee": 3613,
       "allowed": true,
       "p2pRelayed": true
     },
@@ -264,22 +252,22 @@
     },
     {
       "label": "tokens 1: head claim",
-      "bytes": 5591,
-      "fee": 5591,
+      "bytes": 5304,
+      "fee": 5304,
       "allowed": true,
       "p2pRelayed": true
     },
     {
       "label": "tokens 1: withdrawal",
-      "bytes": 659,
-      "fee": 659,
+      "bytes": 629,
+      "fee": 629,
       "allowed": true,
       "p2pRelayed": true
     },
     {
       "label": "tokens 2: create",
-      "bytes": 5906,
-      "fee": 5906,
+      "bytes": 533,
+      "fee": 533,
       "allowed": true,
       "p2pRelayed": true
     },
@@ -291,8 +279,8 @@
     },
     {
       "label": "tokens 2: empty insertion",
-      "bytes": 4177,
-      "fee": 4177,
+      "bytes": 3835,
+      "fee": 3835,
       "allowed": true,
       "p2pRelayed": true
     },
@@ -304,22 +292,22 @@
     },
     {
       "label": "tokens 2: head claim",
-      "bytes": 5510,
-      "fee": 5510,
+      "bytes": 5223,
+      "fee": 5223,
       "allowed": true,
       "p2pRelayed": true
     },
     {
       "label": "tokens 2: withdrawal",
-      "bytes": 696,
-      "fee": 696,
+      "bytes": 666,
+      "fee": 666,
       "allowed": true,
       "p2pRelayed": true
     },
     {
       "label": "tokens 3: create",
-      "bytes": 6128,
-      "fee": 6128,
+      "bytes": 755,
+      "fee": 755,
       "allowed": true,
       "p2pRelayed": true
     },
@@ -331,8 +319,8 @@
     },
     {
       "label": "tokens 3: empty insertion",
-      "bytes": 4177,
-      "fee": 4177,
+      "bytes": 3835,
+      "fee": 3835,
       "allowed": true,
       "p2pRelayed": true
     },
@@ -350,22 +338,22 @@
     },
     {
       "label": "tokens 3: head claim",
-      "bytes": 5940,
-      "fee": 5940,
+      "bytes": 5653,
+      "fee": 5653,
       "allowed": true,
       "p2pRelayed": true
     },
     {
       "label": "tokens 3: withdrawal",
-      "bytes": 696,
-      "fee": 696,
+      "bytes": 666,
+      "fee": 666,
       "allowed": true,
       "p2pRelayed": true
     },
     {
       "label": "tokens 4: create",
-      "bytes": 6128,
-      "fee": 6128,
+      "bytes": 755,
+      "fee": 755,
       "allowed": true,
       "p2pRelayed": true
     },
@@ -377,8 +365,8 @@
     },
     {
       "label": "tokens 4: empty insertion",
-      "bytes": 4177,
-      "fee": 4177,
+      "bytes": 3835,
+      "fee": 3835,
       "allowed": true,
       "p2pRelayed": true
     },
@@ -402,15 +390,15 @@
     },
     {
       "label": "tokens 4: head claim",
-      "bytes": 5940,
-      "fee": 5940,
+      "bytes": 5653,
+      "fee": 5653,
       "allowed": true,
       "p2pRelayed": true
     },
     {
       "label": "tokens 4: withdrawal",
-      "bytes": 696,
-      "fee": 696,
+      "bytes": 666,
+      "fee": 666,
       "allowed": true,
       "p2pRelayed": true
     }

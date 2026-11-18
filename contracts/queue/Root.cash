@@ -1,15 +1,10 @@
 pragma cashscript ^0.14.0;
-// Dormant whenever the list is nonempty. Cannot be destroyed or transferred.
-contract Root(bytes32 vault, bytes32 queue) {
+// Only the canonical, unique vault NFT can authorize this dormant root.
+// Its Global transition validates the root and recreates it exactly. Every
+// non-insertion Global path requires a node at input1, excluding this root.
+contract Root(bytes32 vault) {
     function initialize() {
         require(this.activeInputIndex == 1);
         require(tx.inputs[0].tokenCategory == vault + 0x01);
-        require(tx.inputs[0].nftCommitment.length == 48);
-        require(tx.inputs[0].nftCommitment.slice(0,44) == 0x0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000);
-        require(tx.inputs[1].tokenCategory == queue + 0x02 && tx.inputs[1].tokenAmount == 0);
-        require(tx.inputs[1].nftCommitment == 0x00 && tx.inputs[1].value == 1200);
-        require(tx.outputs[1].lockingBytecode == tx.inputs[1].lockingBytecode);
-        require(tx.outputs[1].tokenCategory == queue + 0x02 && tx.outputs[1].tokenAmount == 0);
-        require(tx.outputs[1].nftCommitment == 0x00 && tx.outputs[1].value == 1200);
     }
 }

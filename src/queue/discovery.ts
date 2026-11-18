@@ -7,8 +7,7 @@ import {ancestryVerifier} from '../zero-conf.js';
 import {tickContext} from '../consensus-clock.js';
 import {discoveryScript,DISCOVERY_CARRIER} from '../v3/discovery.js';
 import {v3Network} from '../v3/network.js';
-import {parameters,category,ZERO,type Parameters,type Identity} from './model.js';
-import {genesis} from './protocol.js';
+import {parameters,category,type Parameters} from './model.js';
 import {authenticateGenesis} from './indexer.js';
 import type {Config} from './chain.js';
 const MAGIC=Buffer.from('ARENAQUEUE','ascii');
@@ -20,18 +19,16 @@ export function parsePayload(hex:string):Announcement{
  const p:Parameters={stakingCategory:c(at),rewardCategory:c(at+32),epoch:b.readUInt32LE(at+64),interval:b.readUInt32LE(at+68),releases:b.readUInt32LE(at+72),cap:BigInt(b.readUInt32LE(at+76))};parameters(p);
  const result={parameters:p,creator:b.subarray(at+80,at+113).toString('hex'),queue:c(at+113)};if(!payload(result).equals(b))throw Error('Noncanonical queue announcement');return result;
 }
-/** Announce the seed preparation, using the existing public Electrum marker.
+/** Announce atomic genesis, using the existing public Electrum marker.
  * There is no additional action/approval and no new registry UTXO. */
 export function addAnnouncement(builder:TransactionBuilder,p:ElectrumCore,a:Announcement){builder.addOutput({to:hexToBin(discoveryScript(v3Network(p))),amount:DISCOVERY_CARRIER}).addOpReturnOutput(['0x'+payload(a).toString('hex')]);}
 export function announcementIn(tx:any):Announcement|undefined{for(const out of tx.vout){try{const instructions=decodeAuthenticationInstructions(hexToBin(out.scriptPubKey.hex));if(instructions.length!==2||instructions[0]!.opcode!==106||!('data' in instructions[1]!))continue;return parsePayload(binToHex(instructions[1]!.data!));}catch{}}return undefined;}
-/** Resolve only a canonical spend of this seed. Announcements remain untrusted
- * routing hints until the complete genesis and its sources authenticate. */
-export async function resolveAnnouncement(p:ElectrumCore,seedId:string,a:Announcement,deadline=Infinity):Promise<Config|undefined>{
- const tip=await p.tip(),mtp=await p.medianTime(tip.height,tip.hash),ticks=await tickContext(p,tip),ancestry=ancestryVerifier(p,{height:tip.height,mtp,...ticks}),seed=await ancestry(seedId),factory=genesis(a.parameters,hexToBin(a.creator),p);
- if(seed.vout[0]?.scriptPubKey.hex!==factory.lockingBytecode||seed.vout[0]?.tokenData)throw Error('Announcement seed mismatch');
- const candidates=[];const checkBudget=()=>{if(Date.now()>=deadline)throw Error('Queue discovery time budget exhausted');};checkBudget();
- for(const row of await p.history(factory.lockingBytecode)){checkBudget();if(row.tx_hash===seedId)continue;const tx=await p.transaction(row.tx_hash);if(tx.vin[0]?.txid!==seedId||tx.vin[0]?.vout!==0||tx.vin[1]?.txid!==a.queue||tx.vin[1]?.vout!==0)continue;const checked=await ancestry(row.tx_hash,row),sources=[];for(const i of checked.vin){checkBudget();sources.push(utxo(await ancestry(i.txid),i.vout));}const config:Config={parameters:a.parameters,identity:{vault:seedId,queue:a.queue},anchor:{genesis:checked.txid,creator:a.creator}};
-  try{authenticateGenesis({p:a.parameters,identity:config.identity,provider:p},config.anchor,checked.hex,sources);candidates.push(config);}catch{/* A refund or malformed candidate cannot become a vault. */}
- }
- if(candidates.length>1)throw Error('Conflicting queue genesis candidates');return candidates[0];
+/** The announcement is carried by genesis itself. Authenticate its entire
+ * ancestry and output set before accepting an untrusted discovery hint. */
+export async function resolveAnnouncement(p:ElectrumCore,genesisId:string,a:Announcement,deadline=Infinity):Promise<Config|undefined>{
+ const checkBudget=()=>{if(Date.now()>=deadline)throw Error('Queue discovery time budget exhausted');};checkBudget();
+ const tip=await p.tip(),mtp=await p.medianTime(tip.height,tip.hash),ticks=await tickContext(p,tip),ancestry=ancestryVerifier(p,{height:tip.height,mtp,...ticks}),created=await ancestry(genesisId),sources=[];
+ for(const i of created.vin){checkBudget();sources.push(utxo(await ancestry(i.txid),i.vout));}
+ const config:Config={parameters:a.parameters,identity:{vault:created.vin[0]?.txid,queue:a.queue},anchor:{genesis:genesisId,creator:a.creator}};
+ authenticateGenesis({p:a.parameters,identity:config.identity,provider:p},config.anchor,created.hex,sources);return config;
 }

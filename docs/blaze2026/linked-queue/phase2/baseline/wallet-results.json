@@ -1,0 +1,63 @@
+{
+  "at": "2026-11-17T23:54:17.003Z",
+  "syntheticWallet": true,
+  "realBchn": true,
+  "costs": [
+    {
+      "kind": "create",
+      "step": "queue-funding",
+      "bytes": 219,
+      "fee": "219"
+    },
+    {
+      "kind": "create",
+      "step": "seed-funding",
+      "bytes": 428,
+      "fee": "428"
+    },
+    {
+      "kind": "create",
+      "step": "action",
+      "bytes": 6047,
+      "fee": "6047"
+    },
+    {
+      "kind": "cancel",
+      "step": "action",
+      "bytes": 5182,
+      "fee": "5182"
+    },
+    {
+      "kind": "insert",
+      "step": "action",
+      "bytes": 3955,
+      "fee": "3955"
+    },
+    {
+      "kind": "insert",
+      "step": "action",
+      "bytes": 2447,
+      "fee": "2447"
+    },
+    {
+      "kind": "cancel",
+      "step": "action",
+      "bytes": 3985,
+      "fee": "3985"
+    },
+    {
+      "kind": "claim",
+      "step": "action",
+      "bytes": 5161,
+      "fee": "5161"
+    },
+    {
+      "kind": "withdraw",
+      "step": "action",
+      "bytes": 659,
+      "fee": "659"
+    }
+  ],
+  "creationApprovals": 3,
+  "creationFee": 6694
+}

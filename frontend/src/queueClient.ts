@@ -52,3 +52,9 @@ window.addEventListener('arena-network-leaving',()=>{
  for(const c of new Set([financial,...readers.values()]))c?.cancel(Error('Network changed; signed journal retained'));
  financial=undefined;readers.clear();
 });
+
+// Session changes discard only reusable approval evidence. Returned signatures
+// must still reach retain() and the durable journal, including after reconnect.
+window.addEventListener('arena-queue-wallet-invalidated',()=>{
+ financial?.worker.postMessage({id:++sequence,intent:{operation:'invalidate'}});
+});

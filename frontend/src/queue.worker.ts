@@ -15,7 +15,8 @@ scope.onmessage=event=>{pending=pending.catch(()=>{}).then(async()=>{const {id,i
  if(readOnly&&!reading)throw Error('Read-only queue worker cannot sign, journal or broadcast');
  if(failure&&operation!=='list')throw Error('Provider conflict evidence is unavailable');
  const run=async()=>{let result;
- if(operation==='list')result=await store.list();
+ if(operation==='invalidate')result=wallet.invalidateReviews();
+ else if(operation==='list')result=await store.list();
  else if(operation==='sync')result=await new QueueIndexer(provider,intent.config).sync();
  else if(operation==='owned')result=await new QueueIndexer(provider,intent.config).owned(intent.owner);
  else if(operation==='prepare')result=await wallet.prepare(intent.intent,keys);

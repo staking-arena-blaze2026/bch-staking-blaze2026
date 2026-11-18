@@ -22,3 +22,14 @@ it('terminates timed-out financial workers and creates a fresh worker for recove
 it('keeps journal and discovery readers independent of financial work',async()=>{
  vi.stubGlobal('Worker',WorkerMock);const requests=[queueCall({operation:'prepare'}),queueCall({operation:'list'}),queueCall({operation:'sync',channel:'market'})];expect(WorkerMock.instances).toHaveLength(3);for(const w of WorkerMock.instances)w.ready();await Promise.resolve();for(const w of WorkerMock.instances)w.respond('done');await expect(Promise.all(requests)).resolves.toEqual(['done','done','done']);
 });
+
+it('discards session review evidence while leaving the signature journal worker available',async()=>{
+ vi.stubGlobal('Worker',WorkerMock);
+ const prepared=queueCall({operation:'prepare'}),worker=WorkerMock.instances[0]!;
+ worker.ready();await Promise.resolve();worker.respond('review');await prepared;
+ window.dispatchEvent(new Event('arena-queue-wallet-invalidated'));
+ expect(worker.postMessage.mock.calls.at(-1)![0].intent.operation).toBe('invalidate');
+ expect(worker.terminate).not.toHaveBeenCalled();
+ const retained=queueCall({operation:'retain',id:'review',raw:'signed'});await Promise.resolve();worker.respond('retained');
+ await expect(retained).resolves.toBe('retained');
+});

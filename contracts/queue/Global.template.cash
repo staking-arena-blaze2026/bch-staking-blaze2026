@@ -48,7 +48,7 @@ contract Global(bytes128 config, bytes16 schedule, bytes35 nodeScript) {
             require(tx.inputs.length >= fundingIndex + 1 && tx.inputs.length <= fundingIndex + 16);
             require(tx.inputs[1].tokenCategory == queue + 0x02 && tx.inputs[1].tokenAmount == 0);
             if (link.slice(0,32) == zero) {
-                require(tx.inputs[1].lockingBytecode == new LockingBytecodeP2SH32(hash256(0x20 + queue + 0x20 + vault + 0x__ROOT_BODY__)));
+                require(tx.inputs[1].lockingBytecode == new LockingBytecodeP2SH32(hash256(0x20 + vault + 0x__ROOT_BODY__)));
                 require(link == zero + 0x000000000000000000000000);
                 require(tx.inputs[1].nftCommitment == 0x00 && tx.inputs[1].value == 1200);
             } else {
@@ -144,11 +144,11 @@ contract Global(bytes128 config, bytes16 schedule, bytes35 nodeScript) {
                 bytes allocation = tPush + sPush + 0x20 + stake + 0x21 + owner + 0x__ALLOCATION_BODY__;
                 require(tx.outputs[2].lockingBytecode == new LockingBytecodeP2SH32(hash256(allocation)));
                 require(tx.outputs[2].nftCommitment == 0x);
-                if (stake == zero) { require(tx.outputs[2].value == s && tx.outputs[2].tokenCategory == 0x && tx.outputs[2].tokenAmount == 0); }
+                if (stake == zero) { require(tx.outputs[2].value == s && tx.outputs[2].tokenCategory == 0x); }
                 else { require(tx.outputs[2].value == 1200 && tx.outputs[2].tokenCategory == stake && tx.outputs[2].tokenAmount == s); }
                 changeIndex = 3;
                 if (reward == zero) {
-                    require(tx.outputs[1].value == 1200 + r && tx.outputs[1].tokenCategory == 0x && tx.outputs[1].tokenAmount == 0);
+                    require(tx.outputs[1].value == 1200 + r && tx.outputs[1].tokenCategory == 0x);
                     nextValue = nextValue - r;
                 } else {
                     require(tx.outputs[1].value == 1200 && tx.outputs[1].tokenCategory == reward && tx.outputs[1].tokenAmount == r);
@@ -166,23 +166,20 @@ contract Global(bytes128 config, bytes16 schedule, bytes35 nodeScript) {
             } else {
                 if (action == 1) { require(checkSig(authorization, pubkey(owner))); }
                 else { require(r > reserve); }
-                if (stake == zero) { require(tx.outputs[1].value == 1200 + s && tx.outputs[1].tokenCategory == 0x && tx.outputs[1].tokenAmount == 0); }
+                if (stake == zero) { require(tx.outputs[1].value == 1200 + s && tx.outputs[1].tokenCategory == 0x); }
                 else { require(tx.outputs[1].value == 2400 && tx.outputs[1].tokenCategory == stake && tx.outputs[1].tokenAmount == s); }
                 changeIndex = 2;
             }
             require(tx.inputs.length >= fundingIndex + 1 && tx.inputs.length <= fundingIndex + 16);
-            int fundingValue = 0;
             for (int f = 2; f < 20; f++) {
                 if (f >= fundingIndex && f < tx.inputs.length) {
-                    require(tx.inputs[f].tokenCategory == 0x && tx.inputs[f].tokenAmount == 0);
-                    fundingValue = fundingValue + tx.inputs[f].value;
+                    require(tx.inputs[f].tokenCategory == 0x);
                 }
             }
             require(tx.outputs.length == changeIndex || tx.outputs.length == changeIndex + 1);
             if (tx.outputs.length > changeIndex) {
                 require(tx.outputs[changeIndex].lockingBytecode == tx.inputs[fundingIndex].lockingBytecode);
-                require(tx.outputs[changeIndex].tokenCategory == 0x && tx.outputs[changeIndex].tokenAmount == 0);
-                require(tx.outputs[changeIndex].value <= fundingValue);
+                require(tx.outputs[changeIndex].tokenCategory == 0x);
             }
         }
         require(tx.outputs[0].value == nextValue);

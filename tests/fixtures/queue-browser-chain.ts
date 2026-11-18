@@ -16,7 +16,7 @@ export function queueBrowserChain(){
  function coin(amount:bigint,script=binToHex(q.ownerScript(key.publicKey))){return utxo(add(binToHex(encodeTransaction({version:2,locktime:0,inputs:[{outpointTransactionHash:hexToBin((++counter).toString(16).padStart(64,'0')),outpointIndex:1,sequenceNumber:0xfffffffe,unlockingBytecode:new Uint8Array()}],outputs:[{valueSatoshis:amount,lockingBytecode:hexToBin(script)}]}))),0);}
  const funding=()=>({input:coin(100000n),unlocker:key.unlockP2PKH()});
  const p={stakingCategory:q.ZERO,rewardCategory:q.ZERO,epoch:chain.clock().mtp-10000,interval:60,releases:10,cap:2000n};
- const created=q.create(p,coin(1200n,q.genesis(p,key.publicKey,provider).lockingBytecode),funding(),[],key,provider),tx=add(created.raw),c=created.context;
+ const created=q.create(p,funding(),funding(),[],key,provider),tx=add(created.raw),c=created.context;
  const first=q.insert(c,utxo(tx,0),utxo(tx,1),{stake:3000n,duration:512,reward:2000n},key,[funding()]),registered=add(first.raw);
  return {chain,key,config:{parameters:p,identity:c.identity,anchor:{genesis:tx.txid,creator:binToHex(key.publicKey)}},claim(){const claimed=q.remove(c,utxo(registered,0),utxo(registered,2),2,funding(),undefined,undefined,undefined,chain.clock().mtp-1);chain.permittedFees.add(claimed.fee);return chain.request('blockchain.transaction.broadcast',claimed.raw);}};
 }

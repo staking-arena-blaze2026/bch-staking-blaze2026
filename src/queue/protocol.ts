@@ -4,7 +4,6 @@ import {binToHex,hash160,hexToBin,decodeTransaction,createVirtualMachineBch2026,
 import Arena from '../../artifacts/queue/Global.json' with {type:'json'};
 import Node from '../../artifacts/queue/Node.json' with {type:'json'};
 import Root from '../../artifacts/queue/Root.json' with {type:'json'};
-import Genesis from '../../artifacts/queue/Genesis.json' with {type:'json'};
 import AssetGate from '../../artifacts/queue/AssetGate.json' with {type:'json'};
 import Allocation from '../../artifacts/queue/Allocation.json' with {type:'json'};
 import {CARRIER,ZERO,parameters,category,validateScore,identifier,compare,emptyLink,record,score,state,decodeOffer,decodeState,type Identity,type Parameters,type Score,type Offer,type State} from './model.js';
@@ -14,9 +13,8 @@ export type Authorization=SignatureTemplate|{publicKey:Uint8Array;authorization:
 const signature=(owner:Authorization)=>'authorization' in owner?owner.authorization:owner;
 export interface Context {p:Parameters;identity:Identity;provider:NetworkProvider}
 export function arena(c:Context){const {assets,schedule}=parameters(c.p),v=category(c.identity.vault),q=category(c.identity.queue);if(v.equals(q)||[c.p.stakingCategory,c.p.rewardCategory,ZERO].includes(c.identity.vault)||[c.p.stakingCategory,c.p.rewardCategory,ZERO].includes(c.identity.queue))throw Error('Category collision');return new Contract(Arena,[Buffer.concat([v,q,assets]),schedule,hexToBin(node(c).lockingBytecode)],{provider:c.provider,contractType:'p2sh32'});}
-export function node(c:Context){const {assets}=parameters(c.p);return new Contract(Node,[Buffer.concat([category(c.identity.vault),category(c.identity.queue),assets])],{provider:c.provider,contractType:'p2sh32'});}
-export function root(c:Context){return new Contract(Root,[category(c.identity.vault),category(c.identity.queue)],{provider:c.provider,contractType:'p2sh32'});}
-export function genesis(p:Parameters,owner:Uint8Array,provider:NetworkProvider){const {assets,schedule}=parameters(p);return new Contract(Genesis,[assets,schedule,owner],{provider,contractType:'p2sh32'});}
+export function node(c:Context){const {assets}=parameters(c.p);return new Contract(Node,[Buffer.concat([category(c.identity.vault),category(c.identity.queue),assets.subarray(0,32),Buffer.from([c.p.rewardCategory===ZERO?1:0])])],{provider:c.provider,contractType:'p2sh32'});}
+export function root(c:Context){return new Contract(Root,[category(c.identity.vault)],{provider:c.provider,contractType:'p2sh32'});}
 export function gate(c:Context,id=ZERO){return new Contract(AssetGate,[category(c.identity.vault),category(c.identity.queue),hexToBin(node(c).lockingBytecode),Buffer.from(id,'hex')],{provider:c.provider,contractType:'p2sh32'});}
 export function allocation(c:Context,o:Offer){return new Contract(Allocation,[Buffer.from(o.owner,'hex'),category(c.p.stakingCategory),o.stake,BigInt(o.duration)],{provider:c.provider,contractType:'p2sh32'});}
 export const ownerScript=(owner:Uint8Array)=>hexToBin('76a914'+binToHex(hash160(owner))+'88ac');
@@ -42,15 +40,19 @@ export function priced(make:(fee:bigint)=>TransactionBuilder,sources:SpendableUt
  throw Error('Signed fee did not converge');
 }
 export function verify(plan:{raw:string;sources:SpendableUtxo[]}){const tx=decodeTransaction(hexToBin(plan.raw));if(typeof tx==='string')throw Error(tx);const result=createVirtualMachineBch2026().verify({transaction:tx,sourceOutputs:plan.sources.map(source)});if(result!==true)throw Error(String(result));return tx;}
-export function create(p:Parameters,seed:SpendableUtxo,queue:Funding,funding:Funding[],owner:Authorization,provider:NetworkProvider,rate=1n){
- if(seed.vout!==0||queue.input.vout!==0||seed.txid===queue.input.txid||seed.token||queue.input.token||seed.lockingBytecode!==genesis(p,owner.publicKey,provider).lockingBytecode)throw Error('Invalid genesis inputs');
- const c={p,identity:{vault:seed.txid,queue:queue.input.txid},provider},a=arena(c),s={head:emptyLink(),reserve:BigInt(p.releases)*p.cap};
- const inputs=[seed,queue.input,...funding.map(f=>f.input)];
- const plan=priced(fee=>{const builder=new TransactionBuilder({provider}).addInput(seed,genesis(p,owner.publicKey,provider).unlock.create(signature(owner))).addInput(queue.input,queue.unlocker)
+/** Both category genesis authorities are ordinary wallet output-zero coins.
+ * The immutable origin is authenticated in full by authenticateGenesis(). */
+export function create(p:Parameters,vault:Funding,queue:Funding,funding:Funding[],owner:Authorization,provider:NetworkProvider,rate=1n,listing?:{cost:bigint;add:(b:TransactionBuilder,c:Context)=>void}){
+ parameters(p);
+ if(vault.input.vout!==0||queue.input.vout!==0||vault.input.txid===queue.input.txid||vault.input.token||queue.input.token)throw Error('Atomic creation requires two distinct token-free wallet output-zero UTXOs');
+ const c={p,identity:{vault:vault.input.txid,queue:queue.input.txid},provider},s={head:emptyLink(),reserve:BigInt(p.releases)*p.cap};arena(c);
+ const all=[vault,queue,...funding],inputs=all.map(f=>f.input);
+ if(inputs.length>16||new Set(inputs.map(u=>u.txid+':'+u.vout)).size!==inputs.length)throw Error('Invalid genesis funding');
+ const plan=priced(fee=>{const builder=new TransactionBuilder({provider})
  .addOutput(stateOutput(c,s)).addOutput({to:root(c).tokenAddress,amount:CARRIER,token:nft(c.identity.queue,Uint8Array.of(0),'minting')});
- let delta=CARRIER*2n+(p.rewardCategory===ZERO?s.reserve:CARRIER)-seed.satoshis-queue.input.satoshis;
  if(p.rewardCategory!==ZERO)builder.addOutput({to:gate(c).tokenAddress,...asset(p.rewardCategory,s.reserve)});
- change(builder,funding,p.rewardCategory,s.reserve,owner.publicKey,fee,delta);return builder;},inputs,rate);
+ listing?.add(builder,c);
+ change(builder,all,p.rewardCategory,s.reserve,owner.publicKey,fee,CARRIER*2n+(p.rewardCategory===ZERO?s.reserve:CARRIER)+(listing?.cost??0n));return builder;},inputs,rate);
  return {...plan,context:c};
 }
 export function insert(c:Context,controller:SpendableUtxo,authority:SpendableUtxo|undefined,terms:Score,owner:Authorization,funding:Funding[],rate=1n){

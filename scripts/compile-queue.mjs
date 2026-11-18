@@ -1,8 +1,8 @@
 import {readFile,writeFile,mkdir} from 'node:fs/promises';
 import {compileString,utils} from 'cashc';
 const bodies={};
-for(const name of ['AssetGate','Allocation','Root','Node','Global','Genesis']){
- let source=await readFile(`contracts/queue/${name}${['Node','Global','Genesis'].includes(name)?'.template':''}.cash`,'utf8');
+for(const name of ['AssetGate','Allocation','Root','Node','Global']){
+ let source=await readFile(`contracts/queue/${name}${['Node','Global'].includes(name)?'.template':''}.cash`,'utf8');
  for(const [key,body]of Object.entries(bodies))source=source.replaceAll(`__${key.toUpperCase()}_BODY__`,body);
  if(/__[A-Z0-9_]+__/.test(source))throw Error('Unresolved queue template');
  const artifact=compileString(source);bodies[name]=Buffer.from(utils.asmToBytecode(artifact.bytecode)).toString('hex');

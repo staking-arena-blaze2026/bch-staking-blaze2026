@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {MockNetworkProvider,Network,SignatureTemplate,type SpendableUtxo} from 'cashscript';
 import {binToHex,hexToBin,hashTransaction,encodeTransaction,type Transaction} from '@bitauth/libauth';
-import {create,insert,remove,withdraw,genesis,arena,node,gate,ownerScript,verify,ZERO,decodeOffer,readState,rewardStatus,type Parameters,type Funding,type Context} from '../src/queue/protocol.js';
+import {create,insert,remove,withdraw,arena,node,gate,ownerScript,verify,ZERO,decodeOffer,readState,rewardStatus,type Parameters,type Funding,type Context} from '../src/queue/protocol.js';
 import {snapshot,insertionPoint,cancellationPoint,authenticateGenesis} from '../src/queue/indexer.js';
 import {acceptSigned,submit,refreshCancellation,type Operation} from '../src/queue/recovery.js';
 const provider=new MockNetworkProvider();provider.network=Network.REGTEST;
@@ -12,7 +12,7 @@ const coin=(n=10000000n,key=alice):Funding=>({input:{txid:(++serial).toString(16
 function outputs(plan:{raw:string;sources:SpendableUtxo[]}){const tx=verify(plan),id=hashTransaction(hexToBin(plan.raw));return tx.outputs.map((o,vout)=>({txid:id,vout,satoshis:o.valueSatoshis,lockingBytecode:binToHex(o.lockingBytecode),...(o.token?{token:{category:binToHex(o.token.category),amount:o.token.amount,...(o.token.nft?{nft:{capability:o.token.nft.capability,commitment:binToHex(o.token.nft.commitment)}}:{})}}:{})}));}
 test('queue: signed genesis, empty/highest/ordinary insertion, cancellation and head claim',()=>{
  const p:Parameters={stakingCategory:ZERO,rewardCategory:ZERO,epoch:1800000000,interval:60,releases:1000,cap:2000n};
- const seed={...coin().input,lockingBytecode:genesis(p,alice.publicKey,provider).lockingBytecode};
+ const seed=coin();
  const created=create(p,seed,coin(),[],alice,provider),c=created.context;
  const [vault,root]=outputs(created);
  const first=insert(c,vault!,root!,{stake:10000n,duration:512,reward:2000n},alice,[coin()]);
@@ -29,9 +29,9 @@ test('queue: signed genesis, empty/highest/ordinary insertion, cancellation and 
 });
 
 const p:Parameters={stakingCategory:ZERO,rewardCategory:ZERO,epoch:1800000000,interval:60,releases:2,cap:2000n};
-function setup(params=p){const seed={...coin().input,lockingBytecode:genesis(params,alice.publicKey,provider).lockingBytecode},q=coin(),fund:Funding[]=[];if(params.rewardCategory!==ZERO)fund.push({...coin(),input:{...coin().input,token:{category:params.rewardCategory,amount:4000n}}});const created=create(params,seed,q,fund,alice,provider),[vault,root]=outputs(created);return {created,c:created.context,vault:vault!,root:root!,seed,q,fund};}
+function setup(params=p){const seed=coin(),q=coin(),fund:Funding[]=[];if(params.rewardCategory!==ZERO)fund.push({...coin(),input:{...coin().input,token:{category:params.rewardCategory,amount:4000n}}});const created=create(params,seed,q,fund,alice,provider),[vault,root]=outputs(created);return {created,c:created.context,vault:vault!,root:root!,seed,q,fund};}
 function rejection(plan:ReturnType<typeof insert>|ReturnType<typeof remove>|ReturnType<typeof create>,mutate:()=>void){
- const saved=structuredClone(plan.builder.outputs),inputs=plan.builder.inputs.map(i=>({...i,...(i.token?{token:structuredClone(i.token)}:{})}));try{mutate();const tx=(plan.builder as unknown as {buildLibauthTransaction:(skip:boolean)=>Transaction}).buildLibauthTransaction(true);assert.throws(()=>verify({raw:binToHex(encodeTransaction(tx)),sources:plan.sources}));}finally{plan.builder.outputs=saved;plan.builder.inputs=inputs;}
+ const saved=structuredClone(plan.builder.outputs),inputs=plan.builder.inputs.map(i=>({...i,...(i.token?{token:structuredClone(i.token)}:{})}));try{mutate();const tx=(plan.builder as unknown as {buildLibauthTransaction:(skip:boolean)=>Transaction}).buildLibauthTransaction(true);const raw=binToHex(encodeTransaction(tx));assert.throws(()=>'context' in plan?authenticateGenesis(plan.context,{genesis:hashTransaction(hexToBin(raw)),creator:binToHex(alice.publicKey)},raw,plan.sources):verify({raw,sources:plan.sources}));}finally{plan.builder.outputs=saved;plan.builder.inputs=inputs;}
 }
 test('queue: every BCH/token asset combination, independent escrow and independent withdrawal',()=>{
  for(const [stake,reward]of [[ZERO,ZERO],[ZERO,'aa'.repeat(32)],['bb'.repeat(32),ZERO],['bb'.repeat(32),'aa'.repeat(32)],['bb'.repeat(32),'bb'.repeat(32)]]){
@@ -124,4 +124,22 @@ test('queue: insertion cannot consume a live token escrow or reward reserve',()=
  // The legitimate highest insertion retains both backed asset gates.
  const funded=coin();funded.input.token={category:token,amount:10000n};
  verify(insert(c,v!,head!,{stake:10000n,duration:1024,reward:2000n},alice,[funded]));
+});
+
+test('atomic genesis: consensus-valid forged origins fail authentication',()=>{
+ const mutations=[
+  (plan:ReturnType<typeof create>)=>{plan.builder.outputs[0]!.token!.nft!.capability='minting';},
+  (plan:ReturnType<typeof create>)=>{plan.builder.outputs.at(-1)!.token=structuredClone(plan.builder.outputs[1]!.token!);},
+  (plan:ReturnType<typeof create>)=>{plan.builder.outputs[0]!.token!.nft!.commitment='00'.repeat(48);},
+  (plan:ReturnType<typeof create>)=>{plan.builder.outputs[0]!.amount--;plan.builder.outputs.at(-1)!.amount++;},
+  (plan:ReturnType<typeof create>)=>{plan.builder.outputs[1]!.to=ownerScript(alice.publicKey);},
+ ];
+ for(const mutate of mutations){const {created,c}=setup();mutate(created);created.builder.outputs.at(-1)!.amount-=1000n;const raw=created.builder.build();verify({raw,sources:created.sources});assert.throws(()=>authenticateGenesis(c,{genesis:hashTransaction(hexToBin(raw)),creator:binToHex(alice.publicKey)},raw,created.sources));}
+ const {created,c}=setup({...p,rewardCategory:'ab'.repeat(32)});created.builder.outputs[2]!.token!.amount--;created.builder.outputs.at(-1)!.token={category:c.p.rewardCategory,amount:1n};created.builder.outputs.at(-1)!.amount-=1000n;const raw=created.builder.build();verify({raw,sources:created.sources});assert.throws(()=>authenticateGenesis(c,{genesis:hashTransaction(hexToBin(raw)),creator:binToHex(alice.publicKey)},raw,created.sources),/reserve/);
+});
+test('atomic genesis rejects ineligible, duplicate or shared-category inputs',()=>{
+ const a=coin(),b=coin();assert.throws(()=>create(p,{...a,input:{...a.input,vout:1}},b,[],alice,provider),/output-zero/);
+ assert.throws(()=>create(p,a,a,[],alice,provider),/distinct/);
+ assert.throws(()=>create(p,a,b,[a],alice,provider),/funding/);
+ assert.throws(()=>arena({p,identity:{vault:a.input.txid,queue:a.input.txid},provider}),/collision/);
 });
