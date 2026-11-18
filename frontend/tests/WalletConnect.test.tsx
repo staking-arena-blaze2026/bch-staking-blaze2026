@@ -74,6 +74,7 @@ it('handles a real SDK wallet-ready handshake, persists the session and disconne
   await walletReady();
   expect(screen.getByText('Connected to Cashonize')).toBeInTheDocument();
   expect(document.querySelector('.wallet-network-note')).toBeNull();
+  expect(screen.queryByText(/The wallet has not declared an exact supported blockchain network/)).toBeNull();
   expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
   expect(JSON.parse(localStorage.getItem(sessionKey)!)).toMatchObject({ walletName: 'Test BCH Wallet', walletPublicKey: '0102' });
   fireEvent.click(screen.getByRole('button', { name: 'Disconnect' }));

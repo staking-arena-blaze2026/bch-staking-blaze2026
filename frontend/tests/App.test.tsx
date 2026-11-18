@@ -17,6 +17,7 @@ it('shows indexed vault terms with a v3 home link and no legacy navigation',asyn
  expect(screen.getByText('Every minute')).toBeInTheDocument();
  expect(fetcher.mock.calls[0]).toBeDefined();
  expect(within(screen.getByRole('navigation')).getByRole('link',{name:'About'})).toHaveAttribute('href','#/about');
+ expect(screen.getByRole('navigation')).not.toHaveTextContent('CHIPNET — TEST FUNDS ONLY');
  expect(screen.getByRole('link',{name:'Stake Arena home'})).toHaveAttribute('href','#/v3/offers');
  expect(screen.queryByText('Native BCH reserves')).not.toBeInTheDocument();
 });

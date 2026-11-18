@@ -119,6 +119,8 @@ export default function WalletConnect({ browser=false, getRequiredNetwork = defa
     return () => {lifetime.abort();onTransactions(null);};
   }, [wallet.manager, networkSession, onTransactions,browser]);
   const compatibility = transactions.check();
+  const declaredNetwork = networkSession.read().network;
+  const hideChipnetUndeclaredNote = requirement.current()?.network === 'chipnet' && declaredNetwork.source !== 'invalid' && (declaredNetwork.network === 'unknown' || declaredNetwork.network === 'testnet');
   const [closing, setClosing] = useState(false);
   const [error, setError] = useState('');
   const active = wallet.state === 'connected' || wallet.state === 'connecting' || wallet.state === 'reconnecting' || wallet.state === 'restoring';
@@ -154,7 +156,7 @@ export default function WalletConnect({ browser=false, getRequiredNetwork = defa
         <button type="button" className="refresh" onClick={() => { void disconnect(); }}>Disconnect</button>
       </> : <button type="button" className="refresh" onClick={() => { setError(''); wallet.connect(); }}>Connect Wallet</button>}
     </div>
-    {wallet.state === 'connected' && !compatibility.matches && <small className="wallet-error" role="alert">{compatibility.reason.split('. ')[0]}.</small>}
+    {wallet.state === 'connected' && !compatibility.matches && !hideChipnetUndeclaredNote && <small className="wallet-error" role="alert">{compatibility.reason.split('. ')[0]}.</small>}
     {(error || wallet.error) && <small className="wallet-error" role="alert">{error || wallet.error}</small>}
     {wallet.state === 'connecting' && wallet.uri && wallet.qrUri && <PairingDialog uri={wallet.uri} qrUri={wallet.qrUri} onClose={() => { void disconnect(); }}/>}
   </div>;
