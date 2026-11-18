@@ -28,11 +28,14 @@ for(const network of ['mainnet','chipnet'] as const)test(network+': legacy signe
  });
  assert.equal(saved.get('legacy')!.raw,raw);assert.equal(saved.get('legacy')!.stage,'signed');assert.deepEqual((await rpc<string[]>('getrawmempool')).sort(),before);
  // Safe inspection never rebroadcasts, even when retry was requested.
- await wallet.resume('legacy',keys,true);assert.deepEqual((await rpc<string[]>('getrawmempool')).sort(),before);
+ const inspected=await wallet.resume('legacy',keys,true);assert.equal(inspected.reservationEvidence?.kind,'verified-unspent-inputs');assert.equal(inspected.reservationEvidence?.bch,'866420');assert.match(inspected.error!,/actual signed input/);assert.deepEqual((await rpc<string[]>('getrawmempool')).sort(),before);
  const unrelated=await fund(50000),newOp=await wallet.prepare({kind:'create',parameters},keys);assert.ok(newOp.sources.some(u=>u.txid===unrelated.txid));assert.ok(!newOp.sources.some(u=>u.txid===source.txid));await wallet.discard(newOp.id);
  // The fixture explicitly broadcasts; reconciliation itself only reads.
  await rpc('sendrawtransaction',[raw]);await rpc('generatetoaddress',[1,miner]);p.headerCache.clear();await p.refresh();
  const confirmed=await wallet.prepare({kind:'create',parameters},keys);assert.equal(saved.get('legacy')!.stage,'confirmed');assert.equal(saved.get('legacy')!.reservationResolution,'confirmed');assert.equal(saved.get('legacy')!.raw,raw);await wallet.discard(confirmed.id);
+ // A confirmed parent cannot clear reservations for different child inputs.
+ const intact=structuredClone(saved.get('legacy')!);saved.get('legacy')!.sources=[extra];
+ const mismatch=await wallet.resume('legacy',keys);assert.equal(mismatch.reservationResolution,'unresolved');assert.match(mismatch.error!,/inputs disagree/);assert.equal(mismatch.raw,raw);saved.set('legacy',intact);
  // Independently confirmed ordinary wallet self-sends release wallet-only
  // continuation references without erasing those historical fields.
  saved.get('legacy')!.queueCoin=extra;

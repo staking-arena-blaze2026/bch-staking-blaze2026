@@ -15,7 +15,9 @@
     "reorganizationRecovery": "Both isolated network configurations invalidate the competing-spend block, restart without mempool, and prove that reappearing wallet inputs are reserved again without modifying signed bytes.",
     "confirmedWalletOnlyReferencesReleased": true,
     "nonWalletSeedReferencesProtected": true,
-    "fragmentedBchConsolidation": true
+    "fragmentedBchConsolidation": true,
+    "signedInputIdentityChecked": true,
+    "unspentSignedInputEvidence": true
   },
   "existingIsolatedSuites": [
     "queue-wallet",
@@ -54,5 +56,13 @@
       "blaze-zero-conf"
     ],
     "reason": "Existing V3 duration fixtures reject with Lock duration must be a whole number from 1 to 65,535 time units; identical failures in the preceding commit."
+  },
+  "observedFailure": {
+    "cause": "legacy signed child input/continuation reservation",
+    "reserved": "866201",
+    "unreserved": "1500",
+    "totalVerified": "867701",
+    "signedChild": "fcfe15444eea8a0fd0c941e40de17769d4acc28d2206840235c1885fed9174c2",
+    "resolution": "protected; child status unavailable on both configured providers"
   }
 }

@@ -19,6 +19,7 @@ export type Intent={kind:'create';parameters:q.Parameters}|{kind:'insert';config
 export interface Operation {
  id:string;intent:Intent;owner:WalletKey;keys:WalletKey[];stage:'review'|'signed'|'pending'|'confirmed'|'conflict'|'discarded';
  queueCoin?:SpendableUtxo;seed?:SpendableUtxo;
+ reservationEvidence?:{kind:'verified-unspent-inputs';tip:string;inputCount:number;bch:string};
  network?:'mainnet'|'chipnet'|'regtest';reservationResolution?:'confirmed'|'conflict'|'unresolved';
  step:'action'|'wallet-preparation';quote?:CreationQuote;completed?:number;spentFees?:string;parent?:string;next?:string;approved?:boolean;reservations?:SpendableUtxo[];plan:BrowserPlan;sources:SpendableUtxo[];rate:bigint;signedEvidence?:string;raw?:string;txid?:string;verifiedAt?:number;error?:string;
  config?:Config;offerId?:string;walletDebit?:string;
@@ -67,7 +68,7 @@ export class QueueWallet {
   const records=[...new Map([...active,...anchored].map(o=>[o.id,o])).values()];
   const reserved=new Set([...active.flatMap(o=>reservationInputs(o).map(outpoint)),...anchored.flatMap(o=>legacyAnchors(o).map(outpoint))]);
   const available=coins.filter(c=>!reserved.has(outpoint(c.utxo))).sort((a,b)=>a.utxo.satoshis>b.utxo.satoshis?-1:1),sum=(cs:WalletCoin[])=>cs.reduce((n,c)=>n+c.utxo.satoshis,0n).toString();
-  return {coins:available,evidence:{verified:sum(coins),available:sum(available),reserved:sum(coins.filter(c=>reserved.has(outpoint(c.utxo)))),restricted:'0',eligibleGenesis:0,addresses:keys.length,reservations:records.map(o=>({id:o.id,step:o.step,txid:o.txid,reason:o.step==='wallet-preparation'?'Self-send outputs and funding are reserved for the approved creation continuation. Inspect / resume this sequence; confirmation alone does not release its continuation inputs.':legacyAnchors(o).length?'Legacy seed/queue continuation references require manual inspection before release; historical fields and signed bytes are retained.':o.error??(!o.raw&&['unsigned','rejected'].includes(o.signing)?'Unsigned reviewed request. Discard it in Transaction recovery if no longer needed.':'Signed or uncertain wallet request. Inspect its independent transaction status and check Cashonize before retrying.'),satoshis:sum(coins.filter(c=>reservationInputs(o).some(u=>outpoint(u)===outpoint(c.utxo))))})).filter(o=>o.satoshis!=='0')} satisfies FundingEvidence};
+  return {coins:available,evidence:{verified:sum(coins),available:sum(available),reserved:sum(coins.filter(c=>reserved.has(outpoint(c.utxo)))),restricted:'0',eligibleGenesis:0,addresses:keys.length,reservations:records.map(o=>({id:o.id,step:o.step,txid:o.txid,reason:o.step==='wallet-preparation'?'Self-send outputs and funding are reserved for the approved creation continuation. Inspect / resume this sequence; confirmation alone does not release its continuation inputs.':legacyAnchors(o).length?(o.error?o.error+' ':'')+'Legacy seed/queue continuation references require manual inspection before release; historical fields and signed bytes are retained.':o.error??(!o.raw&&['unsigned','rejected'].includes(o.signing)?'Unsigned reviewed request. Discard it in Transaction recovery if no longer needed.':'Signed or uncertain wallet request. Inspect its independent transaction status and check Cashonize before retrying.'),satoshis:sum(coins.filter(c=>reservationInputs(o).some(u=>outpoint(u)===outpoint(c.utxo))))})).filter(o=>o.satoshis!=='0')} satisfies FundingEvidence};
  }
  /** Reserve real self-send outputs as soon as their immutable signed txid is
   * known. Original inputs alone cannot protect continuation after broadcast. */
@@ -231,7 +232,12 @@ export class QueueWallet {
  }
  /** Status reconciliation only: never signs, broadcasts or touches covenant funds. */
  private async reconcileReservation(op:Operation){
+  op.reservationEvidence=undefined;
   if(!op.raw||!op.txid||hashTransaction(hexToBin(op.raw))!==op.txid){op.reservationResolution='unresolved';op.error='Transaction identity is unresolved; inspect retained signed evidence. Reservations retained.';await this.store.save(op);return op;}
+  const signed=decodeTransaction(hexToBin(op.raw)),sourcePoints=new Set(op.sources.map(outpoint));
+  if(typeof signed==='string'||sourcePoints.size!==op.sources.length||signed.inputs.length!==sourcePoints.size||signed.inputs.some(i=>!sourcePoints.has(binToHex(i.outpointTransactionHash)+':'+i.outpointIndex))){
+   op.reservationResolution='unresolved';op.error='Retained signed transaction inputs disagree with the journal sources. A funding parent must not be mistaken for its signed child. Reservations and bytes retained; inspect the original journal before recovery.';await this.store.save(op);return op;
+  }
   try{
    const tx=await confirmedWalletTransaction(this.provider,op.txid);
    if(tx.hex!==op.raw)throw Error('Signed transaction evidence mismatch');
@@ -243,7 +249,14 @@ export class QueueWallet {
   }catch{
    const conflict=await this.knownConflict(op).catch(()=>undefined);
    if(conflict){op.stage='conflict';op.reservationResolution='conflict';op.error='Confirmed competing spend '+conflict+' makes the retained transaction unspendable. Signed evidence retained.';}
-   else {op.stage='signed';op.reservationResolution='unresolved';op.error='Independent transaction status is inconclusive. Unspent wallet inputs remain reserved. Inspect the transaction ID and inputs with selected-network explorers or restore provider connectivity, then Inspect / resume. No rebroadcast or abandonment was attempted.';}
+   else {
+    op.stage='signed';op.reservationResolution='unresolved';
+    const inputs=op.sources.length?await verifyCoinsAcrossPeers(this.provider,op.sources,true).catch(()=>undefined):undefined;
+    if(inputs){
+     const bch=op.sources.reduce((n,u)=>n+u.satoshis,0n).toString();op.reservationEvidence={kind:'verified-unspent-inputs',tip:inputs.hash,inputCount:op.sources.length,bch};
+     op.error=`Signed transaction ${op.txid} is not independently confirmed. At least two selected-network providers verify its ${op.sources.length} actual signed input(s), totaling ${bch} satoshis, as unspent. Retained signatures could still spend these inputs; a missing transaction response does not cancel them. Reservations remain protected. Inspect the retained legacy request before choosing a recovery; new vault creation needs separate unreserved funding while this request is unresolved. No signing, rebroadcast or abandonment was attempted.`;
+    }else op.error='Independent transaction and input status remain inconclusive. Reservations and signed bytes are retained. Inspect the transaction ID and actual signed inputs with selected-network explorers or restore provider connectivity, then Inspect / resume. No rebroadcast or abandonment was attempted.';
+   }
   }
   await this.store.save(op);return op;
  }

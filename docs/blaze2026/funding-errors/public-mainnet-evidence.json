@@ -1,6 +1,5 @@
 {
   "verification": "read-only mainnet; broadcast disabled; wallet descriptors and local journals unavailable",
-  "reportedLegacyStage": "signed (wallet owner report)",
   "observations": [
     {
       "at": "2026-11-18T11:44:02.236Z",
@@ -196,5 +195,10 @@
         }
       }
     }
-  ]
+  ],
+  "initialUserReport": {
+    "stage": "signed (wallet owner report)",
+    "idInitiallyProvided": "f78da01290029f135ddd7a37df125ba5843327363970905d484c9e31790b0c67",
+    "clarification": "Later recovery-row inspection identified signed child fcfe15444eea8a0fd0c941e40de17769d4acc28d2206840235c1885fed9174c2. The initial ID belongs to its confirmed funding parent; no stale-child conclusion follows from parent confirmation."
+  }
 }

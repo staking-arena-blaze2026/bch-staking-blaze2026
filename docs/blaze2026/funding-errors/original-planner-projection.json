@@ -1,0 +1,20 @@
+{
+  "at": "2026-11-18T12:20:06.260Z",
+  "sourceCommit": "a3f82f6507d1b8741c8a73d7ddd05a216cd17fa5",
+  "originalProtocolAndModel": true,
+  "noNetworkTransportOpened": true,
+  "noWalletSigning": true,
+  "derivationIsPlaceholder": true,
+  "quote": {
+    "transactions": 2,
+    "approvals": 2,
+    "preparationFees": [
+      "185"
+    ],
+    "creationFee": "732",
+    "totalFee": "917",
+    "walletDebit": "13917",
+    "reserve": "9600",
+    "rewardCategory": "0000000000000000000000000000000000000000000000000000000000000000"
+  }
+}
