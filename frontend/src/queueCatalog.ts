@@ -1,7 +1,9 @@
 /** Lightweight discovery transport; imported by the startup view before covenants. */
-async function fetchQueuePage(network:string,path='index.json',signal?:AbortSignal){
+async function fetchQueuePage(network:string,path='index.json',signal?:AbortSignal,fresh=false){
  if(!['mainnet','chipnet','regtest'].includes(network)||!/^(index\.json|pages\/[a-f0-9]{64}\.json)$/.test(path))throw Error('Invalid queue index request');
- const response=await fetch(new URL(`public-index/queue/${network}/${path}`,document.baseURI),{signal:AbortSignal.any([signal??new AbortController().signal,AbortSignal.timeout(8000)]),cache:path==='index.json'?'no-cache':'force-cache'});
+ const url=new URL(`public-index/queue/${network}/${path}`,document.baseURI);
+ if(fresh&&path==='index.json')url.searchParams.set('refresh',String(Date.now()));
+ const response=await fetch(url,{signal:AbortSignal.any([signal??new AbortController().signal,AbortSignal.timeout(8000)]),cache:path==='index.json'?'no-store':'force-cache'});
  if(!response.ok)throw Error('Public queue index temporarily unavailable');
  const reader=response.body?.getReader();if(!reader)throw Error('Empty queue index');const chunks=[];let bytes=0;
  for(;;){const r=await reader.read();if(r.done)break;bytes+=r.value.byteLength;if(bytes>262144){await reader.cancel();throw Error('Oversized queue index');}chunks.push(r.value);}
@@ -13,7 +15,7 @@ async function fetchQueuePage(network:string,path='index.json',signal?:AbortSign
 
 let warmed:{network:string;promise:Promise<any>;used:boolean}|undefined;
 export function warmQueuePage(network:string){warmed={network,used:false,promise:fetchQueuePage(network)};return warmed.promise;}
-export function loadQueuePage(network:string,path='index.json',signal?:AbortSignal):Promise<any>{
- if(path==='index.json'&&warmed?.network===network&&!warmed.used){warmed.used=true;return warmed.promise;}
- return fetchQueuePage(network,path,signal);
+export function loadQueuePage(network:string,path='index.json',signal?:AbortSignal,fresh=false):Promise<any>{
+ if(!fresh&&path==='index.json'&&warmed?.network===network&&!warmed.used){warmed.used=true;return warmed.promise;}
+ return fetchQueuePage(network,path,signal,fresh);
 }

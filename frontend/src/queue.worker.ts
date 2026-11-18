@@ -2,6 +2,8 @@ import {timed} from '../../src/operation-timing';
 import {errorMessage} from '../../src/queue/funding';
 /// <reference lib="webworker" />
 import {BrowserElectrumProvider} from '../../src/electrum-wss';
+import {emptyQueueIndex,scanQueueIndex} from '../../src/queue/public-index';
+import {confirmedWalletTransaction} from '../../src/electrum-wallet';
 import {QueueIndexer} from '../../src/queue/chain';
 import {QueueWallet,BrowserQueueStore} from '../../src/queue/wallet';
 import {v3Config} from './v3Config';
@@ -10,6 +12,7 @@ const workerEnv:Record<string,string|undefined>=import.meta.env;
 const options=v3Config({...workerEnv,VITE_V3_NETWORK:self.name.split(':')[0]}),readOnly=self.name.endsWith(':read');
 if(readOnly)options.allowBroadcast=false;
 const provider=new BrowserElectrumProvider(options),store=new BrowserQueueStore(options.network),wallet=new QueueWallet(provider,store),scope=self as unknown as DedicatedWorkerGlobalScope;
+const publicScan=emptyQueueIndex(options.network);
 let failure=false;
 const messages:Record<string,string>={'preparation-planning':'Calculating the fastest vault-creation path','wallet-input-verification':'Checking wallet inputs and ancestry','prepare':'Calculating the fastest vault-creation path','wallet-address-discovery':'Finding available wallet funds','independent-provider-verification':'Verifying blockchain information on independent providers','legacy-reservation-reconciliation':'Checking relevant old wallet requests','fee-policy':'Checking current verified fee policy','authorize':'Checking wallet inputs before signing','retain':'Verifying signed transaction','submit':'Broadcasting transaction','advance':'Verifying preparation and preparing the next transaction'};
 let stage='Verifying blockchain information';
@@ -18,12 +21,20 @@ provider.onTiming=timing=>scope.postMessage({type:'timing',timing});
 provider.onVerificationProgress=message=>scope.postMessage({type:'progress',message});
 let pending=providerConflictStore(options.network).then(async s=>{provider.unresolvedChainPeers=new Set(await s.read());provider.persistChainConflict=async peers=>{try{await s.save(peers);}catch(e){failure=true;throw e;}};}).catch(()=>{failure=true;});
 scope.onmessage=event=>{pending=pending.catch(()=>{}).then(async()=>{const {id,intent,keys=[]}=event.data;const heartbeat=setInterval(()=>scope.postMessage({type:'heartbeat',id,message:'Still checking blockchain information: '+stage}),5000);try{
- const operation=String(intent.operation),reading=['list','sync','owned'].includes(operation);
+ const operation=String(intent.operation),reading=['list','sync','owned','discover','creationStatus'].includes(operation);
  if(readOnly&&!reading)throw Error('Read-only queue worker cannot sign, journal or broadcast');
- if(failure&&operation!=='list')throw Error('Provider conflict evidence is unavailable');
+ if(failure&&!['list','discover'].includes(operation))throw Error('Provider conflict evidence is unavailable');
  const run=async()=>{let result;
  if(operation==='invalidate')result=wallet.invalidateReviews();
  else if(operation==='list')result=await store.list();
+ else if(operation==='discover'){
+  const summary=await scanQueueIndex(publicScan,provider,12000,new Set<string>(intent.published));
+  result={...summary,vaults:Object.values(publicScan.vaults)};
+ }
+ else if(operation==='creationStatus'){
+  const tx=await confirmedWalletTransaction(provider,intent.txid);
+  result={confirmed:tx.confirmations>0};
+ }
  else if(operation==='sync')result=await new QueueIndexer(provider,intent.config).sync();
  else if(operation==='owned')result=await new QueueIndexer(provider,intent.config).owned(intent.owner);
  else if(operation==='prepare')result=await wallet.prepare(intent.intent,keys,undefined,undefined,intent.discoveryId);

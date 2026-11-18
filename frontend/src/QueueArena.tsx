@@ -28,9 +28,16 @@ export function parseQueueConfig(value:unknown):Config{
 }
 function saved(){try{return JSON.parse(localStorage.getItem(storage)??'[]').flatMap((v:unknown)=>{try{return [parseQueueConfig(v)];}catch{return [];}});}catch{return [];} }
 const id=(c:Config)=>c.anchor.genesis;
+const publishedStorage='staking-arena-queue-published-'+activeNetwork;
+function savedPublicIds():Set<string>{
+ try{return new Set(JSON.parse(localStorage.getItem(publishedStorage)??'[]').filter((v:unknown)=>typeof v==='string'&&/^[a-f0-9]{64}$/.test(v)));}catch{return new Set();}
+}
 export default function QueueArena(){
  const [route,setRoute]=useState(location.hash),creating=route==='#/v3'||route==='#/create',myOffers=route==='#/v3/my-offers'||route==='#/my-offers',selectedId=route.match(/^#\/(?:v3\/)?vault\/([a-f0-9]{64})$/)?.[1];
  const [configs,setConfigs]=useState<Config[]>(saved),[pages,setPages]=useState<string[]>([]),[page,setPage]=useState(0),[ready,setReady]=useState(false),[catalogError,setCatalogError]=useState('');
+ const [publication,setPublication]=useState<{updatedAt:string;online?:number;pending?:Record<string,string>;errors?:string[]}>(),[publicIds,setPublicIds]=useState(savedPublicIds);
+ const [refreshing,setRefreshing]=useState(false),[chainStatus,setChainStatus]=useState<Record<string,{confirmed?:boolean;error?:string}>>({});
+ const catalogRequest=useRef(0),publishedPages=useRef(new Set<string>()),publicIdsRef=useRef(new Set(publicIds)),liveScan=useRef(false);
  const [listings,setListings]=useState<Record<string,{snapshot?:Snapshot;error?:string;at:number}>>({}),[selected,setSelected]=useState<Snapshot>(),[selectedError,setSelectedError]=useState(''),[ownerRows,setOwnerRows]=useState<Record<string,Owned>>({}),[ownerErrors,setOwnerErrors]=useState<Record<string,string>>({});
  const [verifiedAt,setVerifiedAt]=useState(0);
  const [ops,setOps]=useState<Operation[]>([]),[busy,setBusy]=useState(false),[message,setMessage]=useState(''),[review,setReview]=useState<Operation>(),[now,setNow]=useState(Date.now());
@@ -47,13 +54,116 @@ export default function QueueArena(){
  const formFingerprint=fingerprint.current;useEffect(()=>{setReview(undefined);confirmationRef.current?.respond(false);},[formFingerprint]);
  const selectedConfig=configs.find(c=>id(c)===selectedId),snapshot=selected?.config.anchor.genesis===selectedId?selected:undefined;
  const current=useRef({configs,selectedConfig});current.current={configs,selectedConfig};
- function retain(values:Config[]){setConfigs(old=>{const merged=[...new Map([...old,...values].map(c=>[id(c),c])).values()];try{localStorage.setItem(storage,encode(merged));}catch{}return merged;});}
- async function operations(){const list:Operation[]=await queueCall({operation:'list'});setOps(list);retain(list.filter(o=>o.intent.kind==='create'&&o.step==='action'&&o.raw&&o.config?.anchor.genesis).flatMap(o=>{try{return [parseQueueConfig(o.config)];}catch{return [];}}));return list;}
- async function discover(path='index.json'){try{const data=await loadQueuePage(activeNetwork,path);retain(data.vaults.flatMap((v:unknown)=>{try{return [parseQueueConfig(v)];}catch{return [];}}));if(path==='index.json')setPages(data.pages??[]);else setPages(old=>old.filter(p=>p!==path));setCatalogError('');}catch(e){setCatalogError(String(e));}finally{setReady(true);}}
+ function retain(values:Config[],replace=true){
+  if(!values.length)return;
+  setConfigs(old=>{
+   const byId=new Map(old.map(c=>[id(c),c]));
+   let changed=false;
+   for(const c of values){
+    const previous=byId.get(id(c));
+    if(previous&&(!replace||encode(previous)===encode(c)))continue;
+    byId.set(id(c),c);
+    changed=true;
+   }
+   if(!changed)return old;
+   const merged=[...byId.values()];
+   try{localStorage.setItem(storage,encode(merged));}catch{}
+   return merged;
+  });
+ }
+ async function operations(){const list:Operation[]=await queueCall({operation:'list'});setOps(list);retain(list.filter(o=>o.intent.kind==='create'&&o.step==='action'&&o.raw&&o.config?.anchor.genesis).flatMap(o=>{try{return [parseQueueConfig(o.config)];}catch{return [];}}),false);return list;}
+ function acceptPublished(data:{vaults:unknown[]}){
+  const values=data.vaults.flatMap(v=>{try{return [parseQueueConfig(v)];}catch{return [];}});
+  for(const c of values)publicIdsRef.current.add(id(c));
+  setPublicIds(new Set(publicIdsRef.current));
+  try{localStorage.setItem(publishedStorage,JSON.stringify([...publicIdsRef.current]));}catch{}
+  retain(values);
+ }
+ async function discover(path='index.json',fresh=false){
+  const main=path==='index.json',request=main?++catalogRequest.current:catalogRequest.current;
+  if(main)setRefreshing(true);
+  try{
+   const data=await loadQueuePage(activeNetwork,path,lifetime.current.signal,fresh);
+   if(request!==catalogRequest.current)return;
+   acceptPublished(data);
+   if(main){
+    setPublication(data);
+    setPages((data.pages??[]).filter((p:string)=>!publishedPages.current.has(p)));
+    setCatalogError('');
+   }else {
+    publishedPages.current.add(path);
+    setPages(old=>old.filter(p=>p!==path));
+   }
+   return true;
+  }catch(e){
+   if(request===catalogRequest.current)setCatalogError(String(e));
+  }finally{
+   if(request===catalogRequest.current){
+    if(main)setRefreshing(false);
+    setReady(true);
+   }
+  }
+ }
+ async function discoverOnChain(){
+  if(liveScan.current||activeNetwork==='regtest')return;
+  liveScan.current=true;
+  try{
+   const result=await queueCall({operation:'discover',channel:'discovery',published:[...publicIdsRef.current]});
+   if(!lifetime.current.signal.aborted)retain(result.vaults.map(parseQueueConfig));
+  }catch{/* The published and locally retained catalog stays available. */}
+  finally{liveScan.current=false;}
+ }
  async function refresh(c:Config){try{const value:Snapshot=await queueCall({operation:'sync',config:c});if(current.current.selectedConfig&&id(current.current.selectedConfig)===id(c)){setSelected(value);setVerifiedAt(Date.now());setSelectedError('');}setListings(old=>({...old,[id(c)]:{snapshot:value,at:Date.now()}}));return value;}catch(e){if(current.current.selectedConfig&&id(current.current.selectedConfig)===id(c))setSelectedError(String(e));throw e;}}
  useEffect(()=>{const change=()=>setRoute(location.hash);window.addEventListener('hashchange',change);const clock=window.setInterval(()=>{setNow(Date.now());setRoute(location.hash);},1000);return()=>{window.removeEventListener('hashchange',change);clearInterval(clock);};},[]);
  useEffect(()=>{const interrupt=()=>{lifetime.current.abort();confirmationRef.current?.respond(false);};const restore=()=>{if(lifetime.current.signal.aborted)lifetime.current=new AbortController();};window.addEventListener('pagehide',interrupt);window.addEventListener('pageshow',restore);return()=>{window.removeEventListener('pagehide',interrupt);window.removeEventListener('pageshow',restore);};},[]);
- useEffect(()=>{lifetime.current=new AbortController();void discover();void operations().catch(e=>setMessage(String(e)));const timer=setInterval(()=>{void operations().catch(()=>{});},5000);return()=>{lifetime.current.abort();clearInterval(timer);};},[]);
+ useEffect(()=>{
+  lifetime.current=new AbortController();
+  void discover().then(discoverOnChain);
+  void operations().catch(e=>setMessage(String(e)));
+  const journalTimer=setInterval(()=>{void operations().catch(()=>{});},5000);
+  const catalogTimer=setInterval(()=>{void discover('index.json',true).then(discoverOnChain);},60000);
+  return()=>{lifetime.current.abort();clearInterval(journalTimer);clearInterval(catalogTimer);};
+ },[]);
+ const creations=ops.filter(o=>o.intent.kind==='create'&&o.step==='action'&&o.raw&&o.txid&&o.config?.anchor.genesis===o.txid&&o.stage!=='discarded');
+ const creationIds=creations.filter(o=>o.stage!=='conflict').map(o=>o.txid!).join(',');
+ useEffect(()=>{
+  if(!creationIds)return;
+  let active=true,running=false;
+  const check=async()=>{
+   if(running)return;
+   running=true;
+   try{
+    for(const txid of creationIds.split(',')){
+     if(!active)break;
+     try{
+      const status=await queueCall({operation:'creationStatus',channel:'creation',txid});
+      if(active)setChainStatus(old=>({...old,[txid]:status}));
+     }catch(e){
+      if(active)setChainStatus(old=>({...old,[txid]:{...old[txid],error:errorMessage(e)}}));
+     }
+    }
+   }finally{running=false;}
+  };
+  void check();
+  const timer=setInterval(()=>void check(),30000);
+  return()=>{active=false;clearInterval(timer);};
+ },[creationIds]);
+ const awaitingPublication=creations.some(o=>!publicIds.has(o.txid!));
+ useEffect(()=>{
+  if(!awaitingPublication||!publication)return;
+  let active=true;
+  const check=async()=>{
+   for(const path of pages){
+    if(!active||creations.every(o=>publicIdsRef.current.has(o.txid!)))break;
+    try{
+     const data=await loadQueuePage(activeNetwork,path,lifetime.current.signal);
+     if(active)acceptPublished(data);
+    }catch{break;}
+   }
+  };
+  void check();
+  return()=>{active=false;};
+ },[awaitingPublication,creationIds,publication]);
  useLayoutEffect(()=>{if(ready||creating||myOffers||selectedId)document.getElementById('arena-public-preview')?.remove();},[ready,creating,myOffers,selectedId]);
  useEffect(()=>{if(liveOwner&&/^(02|03)[a-f0-9]{64}$/.test(liveOwner)){setLastOwner(liveOwner);try{localStorage.setItem(ownerStorage,liveOwner);}catch{}}},[liveOwner]);
  useEffect(()=>{if((myOffers||selectedId&&!selectedConfig)&&pages.length)void discover(pages[0]);},[myOffers,selectedId,!!selectedConfig,pages.join(',')]);
@@ -110,16 +220,33 @@ export default function QueueArena(){
   {visibleOwners.map(({config:c,row:o})=><article key={id(c)+o.id}><h3><a href={'#/v3/vault/'+id(c)}>Vault {id(c).slice(0,12)}</a> · Offer {o.id.slice(0,12)}</h3><p><strong>{o.status==='Baked'?'Matured':o.status}</strong>{ownerErrors[id(c)]?' · Verification temporarily unavailable':''}</p><p>Stake: {assetAmount(asset(c.parameters.stakingCategory),o.offer.stake)} · Reward: {assetAmount(asset(c.parameters.rewardCategory),o.offer.reward)}</p><DurationSummary seconds={o.offer.duration}/>{o.status==='Waiting'&&<button disabled={!canRequest||busy} onClick={()=>void prepare({kind:'cancel',config:c,offerId:o.id})}>Cancel</button>}{o.status==='Baked'&&<><p>Reward paid. {o.maturesAt?`Stake matures at blockchain MTP ${localTimestamp(o.maturesAt)}.`:'Awaiting allocation confirmation.'}</p><button disabled={!canRequest||busy||o.maturesAt===undefined||o.checkedMtp<o.maturesAt} onClick={()=>void prepare({kind:'withdraw',config:c,offerId:o.id})}>Get my stake back</button></>}</article>)}
   {ops.filter(o=>o.intent.kind==='insert'&&o.owner.publicKey===owner&&o.raw&&o.offerId&&!offerIds.has(o.offerId)&&!['discarded','conflict'].includes(o.stage)).map(o=><p key={o.id}>Submitted offer {o.offerId?.slice(0,12)} · Awaiting independent queue verification · {o.txid}</p>)}
  </>}</section>;
+ const discoveryControls=<>
+  <button type="button" disabled={refreshing} onClick={()=>void discover('index.json',true).then(discoverOnChain)}>Refresh public discovery</button>
+  <p role="status">{publication?.updatedAt&&Number.isFinite(Date.parse(publication.updatedAt))?<>Public index updated <time dateTime={publication.updatedAt}>{new Date(publication.updatedAt).toLocaleString(undefined,{timeZoneName:'short'})}</time>.</>:'Public index update time unavailable.'} {refreshing?'Checking for an update…':catalogError}{publication?.online===0&&' Index providers were unavailable during the last scan.'}</p>
+ </>;
+ const creationStatus=(o:Operation)=>{
+  const txid=o.txid!,chain=chainStatus[txid],listed=publicIds.has(txid);
+  const confirmed=o.stage!=='conflict'&&(chain?.confirmed??(o.stage==='confirmed'));
+  const submitted=confirmed||chain?.confirmed===false||['pending','confirmed'].includes(o.stage);
+  const reason=catalogError?'The published index could not be loaded.':
+   publication?.pending?.[txid]??(publication?.online===0?'Index providers were unavailable during the last publication.':
+   publication?'The latest checked public index has no listing for this transaction yet.':'The published index has not been checked yet.');
+  return <article key={o.id}>
+   <p><a href={'#/v3/vault/'+txid}>Vault {txid.slice(0,12)}</a> · Locally saved · {submitted?'Submitted':'Submission unverified'} · {confirmed?'Confirmed on-chain':'Confirmation unverified'} · {listed?'Publicly listed':'Public listing pending'}</p>
+   {confirmed&&!listed&&<p role="alert">This vault is confirmed and its listing in the published index is pending. {reason}</p>}
+   {chain?.error&&<p role="status">Latest on-chain check unavailable. {chain.error}</p>}
+  </article>;
+ };
  return <div className="v3-arena">{confirmation&&<QueuePreparationDialog request={confirmation}/>}<nav className="v3-tabs" aria-label="Vault actions"><a className="create-vault-tab" aria-current={creating?'page':undefined} href="#/v3">Create Vault</a><a aria-current={!creating&&!myOffers?'page':undefined} href="#/v3/offers">Browse All Vaults</a></nav>
- <p role="status" aria-live="polite">{message}</p>{recoveryPanel}{!creating&&!snapshot&&actionFeedback}
+ <p role="status" aria-live="polite">{message}</p>{recoveryPanel}{creating&&creations.length>0&&<section className="panel"><h2>Vault creation status</h2>{discoveryControls}{creations.map(creationStatus)}</section>}{!creating&&!snapshot&&actionFeedback}
  {creating?<form className="form-panel" noValidate onSubmit={e=>{e.preventDefault();create();}}><h1>Create Vault</h1><p>Create the vault, queue and complete reward reserve together. Wallet preparation runs automatically if needed.</p><fieldset disabled={busy}><div className="form-grid"><label>Staking asset<select aria-label="Staking asset" value={stakeKind} onChange={e=>setStakeKind(e.target.value)}><option value="bch">BCH</option><option value="token">CashToken</option></select></label>{stakeKind==='token'&&<label>Staking token category<input aria-label="Staking token category" aria-describedby="queue-error-stakingCategory" aria-invalid={!!creation.errors.stakingCategory} value={stakeCategory} onChange={e=>setStakeCategory(e.target.value)} maxLength={64}/>{fieldError('stakingCategory',creation.errors.stakingCategory)}</label>}<label>Reward asset<select aria-label="Reward asset" value={rewardKind} onChange={e=>setRewardKind(e.target.value)}><option value="bch">BCH</option><option value="token">CashToken</option></select></label>{rewardKind==='token'&&<label>Reward token category<input aria-label="Reward token category" aria-describedby="queue-error-rewardCategory" aria-invalid={!!creation.errors.rewardCategory} value={rewardCategory} onChange={e=>setRewardCategory(e.target.value)} maxLength={64}/>{fieldError('rewardCategory',creation.errors.rewardCategory)}</label>}<label>Reward per release (min. {rewardMinimumLabel})<input aria-label={'Reward per release (min. '+rewardMinimumLabel+')'} aria-describedby="queue-error-cap" aria-invalid={!!creation.errors.cap} value={cap} onChange={e=>setCap(e.target.value)} inputMode="decimal"/>{fieldError('cap',creation.errors.cap)}</label><label>Release interval (minutes)<input type="number" min={minimumMinutes(activeNetwork)} step={minimumMinutes(activeNetwork)} aria-label="Release interval (minutes)" aria-describedby="queue-error-interval" aria-invalid={!!creation.errors.interval} value={interval} onChange={e=>setReleaseInterval(e.target.value)}/>{fieldError('interval',creation.errors.interval)}</label><label>Number of releases<input type="number" min="1" max="1000" aria-label="Number of releases" aria-describedby="queue-error-releases" aria-invalid={!!creation.errors.releases} value={releases} onChange={e=>setReleases(e.target.value)}/>{fieldError('releases',creation.errors.releases)}</label><label>Schedule starts (local time)<input type="datetime-local" step="1" aria-label="Schedule starts (local time)" aria-describedby="queue-error-epoch" aria-invalid={!!creation.errors.epoch} value={epoch} onChange={e=>setEpoch(e.target.value)}/>{fieldError('epoch',creation.errors.epoch)}</label></div>{creationPreview&&<dl><dt>Total reward reserve</dt><dd>{assetAmount(asset(creationPreview.rewardCategory),creationPreview.cap*BigInt(creationPreview.releases))}</dd><dt>Schedule duration</dt><dd>{formatDuration(creationPreview.interval*creationPreview.releases)}</dd><dt>Final scheduled release (local time)</dt><dd>{localTimestamp(creationPreview.epoch+creationPreview.interval*creationPreview.releases)}</dd></dl>}<p>Transactions: {review?.quote?.transactions??'calculated before approval'} · Wallet approvals: {review?.quote?.approvals??'calculated before approval'}</p><p>Estimated network fee: {review?.intent.kind==='create'?(review.quote?.totalFee??review.plan.fee)+' sats':'calculated from wallet inputs before approval'}</p>{review?.intent.kind==='create'&&<p>Total wallet BCH committed, including fee: {review.quote?.walletDebit??review.walletDebit} sats</p>}{actionFeedback}{!creationPreview&&<p>Correct the highlighted fields to create the vault.</p>}<button type="submit" disabled={!canRequest||busy||!creationPreview}>Create Vault</button></fieldset></form>:myOffers?ownerSection:selectedId?<>
-  <a href="#/v3/offers">← All vaults</a><h1>Vault {selectedId.slice(0,12)}</h1>{!selectedConfig?<p>Finding this vault in public discovery… {catalogError}</p>:!snapshot?<p>{selectedError||'Verifying vault, queue and reward reserve…'}</p>:<>
+  <a href="#/v3/offers">← All vaults</a><h1>Vault {selectedId.slice(0,12)}</h1>{creations.filter(o=>o.txid===selectedId).map(creationStatus)}{!selectedConfig?<p>Finding this vault in public discovery… {catalogError}</p>:!snapshot?<p>{selectedError||'Verifying vault, queue and reward reserve…'}</p>:<>
    <div className="queue-vault-layout"><section className="panel queue-vault-details" aria-label="Vault details"><h2>Vault details</h2><div className="queue-vault-summary-grid"><div className="queue-vault-data"><dl className="terms"><div><dt>Staking asset</dt><dd>{assetLabel(asset(selectedConfig.parameters.stakingCategory))}</dd></div><div><dt>Reward asset</dt><dd>{assetLabel(asset(selectedConfig.parameters.rewardCategory))}</dd></div><div><dt>Total max reward</dt><dd>{assetAmount(asset(selectedConfig.parameters.rewardCategory),selectedConfig.parameters.cap*BigInt(selectedConfig.parameters.releases))}</dd></div><div><dt>Remaining reserve</dt><dd>{assetAmount(asset(selectedConfig.parameters.rewardCategory),snapshot.state.reserve)}</dd></div><div><dt>Reward per release</dt><dd>{assetAmount(asset(selectedConfig.parameters.rewardCategory),selectedConfig.parameters.cap)}</dd></div><div><dt>Release interval</dt><dd>{formatDuration(selectedConfig.parameters.interval)}</dd></div><div><dt>Scheduled releases</dt><dd>{selectedConfig.parameters.releases}</dd></div><div><dt>Starts (local time)</dt><dd>{localTimestamp(selectedConfig.parameters.epoch)}</dd></div></dl><div className="queue-claim" role="group" aria-label="Claim reward"><p>Winning reward: {head?assetAmount(asset(selectedConfig.parameters.rewardCategory),head.reward):'none'}</p><p>Caller pays the fee. The reward goes to the winning offer.</p><button type="button" disabled={!head||!canRequest||busy||!!selectedError||headStatus==='awaiting-release'} title={!head?'No offers waiting':headStatus==='awaiting-release'?'The highest-ranked offer is waiting for scheduled rewards.':headStatus==='never-funded'?'The head cannot be funded by the remaining reserve; this action returns its stake.':undefined} onClick={()=>{if(head)void prepare({kind:'claim',config:selectedConfig,expectedHead:head.id});}}>{head&&head.reward>snapshot.state.reserve?'Return unfundable head':'Claim reward'}</button></div>{selectedError&&<p role="status">{selectedError}</p>}</div><QueueReleaseSchedule parameters={selectedConfig.parameters} reserve={snapshot.state.reserve} mtp={snapshot.clock.mtp} verifiedAt={verifiedAt} now={now} verified={!selectedError}/></div></section>
    <form className="form-panel queue-offer-panel" noValidate onSubmit={e=>{e.preventDefault();if(terms)void prepare({kind:'insert',config:selectedConfig,terms});}}><h2>Make an Offer</h2><div className="form-grid"><label>Stake amount<input inputMode="decimal" aria-label="Stake amount" aria-describedby="queue-error-stake" aria-invalid={!!offer.errors.stake} value={stake} onChange={e=>setStake(e.target.value)}/>{fieldError('stake',offer.errors.stake)}</label><label>Lock duration (time units)<input type="number" min="1" max="65535" aria-label="Lock duration (time units)" aria-describedby="queue-error-duration" aria-invalid={!!offer.errors.duration} value={duration} onChange={e=>setDuration(e.target.value)}/>{fieldError('duration',offer.errors.duration)}</label><label>Requested reward<input inputMode="decimal" aria-label="Requested reward" aria-describedby="queue-error-reward" aria-invalid={!!offer.errors.reward} value={reward} onChange={e=>setReward(e.target.value)}/>{fieldError('reward',offer.errors.reward)}</label></div><DurationSummary seconds={terms?.duration??0}/>{terms&&<p>Total stake committed: {assetAmount(asset(selectedConfig.parameters.stakingCategory),terms.stake)}</p>}<p>Transactions: 1 · Wallet approvals: 1</p><p>Estimated network fee: {review?.intent.kind==='insert'?review.plan.fee+' sats':'calculated from wallet inputs before approval'}</p>{review?.intent.kind==='insert'&&<p>Total wallet BCH committed, including fee: {review.walletDebit} sats</p>}{termsError&&<p>Correct the highlighted fields to make an offer.</p>}{selectedError&&<p role="alert">Current vault verification failed: {errorMessage(selectedError)} Wait for provider connectivity and retry.</p>}{actionFeedback}<button disabled={!canRequest||busy||!terms||!!selectedError} type="submit">Make an Offer</button></form>
 
    <section className="panel queue-queue-panel" aria-label="Queue"><h2>Queue</h2><div className="table-scroll"><table className="queue-ranking-table"><caption className="sr-only">Ranked queue</caption><thead><tr><th>Rank</th><th>Stake</th><th>Lock duration</th><th>Reward</th><th>Priority</th></tr></thead><tbody>{snapshot.ordered.map((o,n)=><tr key={o.id}><td>{n+1}</td><td>{assetAmount(asset(selectedConfig.parameters.stakingCategory),o.stake)}</td><td>{o.duration/512} time {o.duration===512?'unit':'units'}<small>{formatDuration(o.duration)}</small></td><td>{assetAmount(asset(selectedConfig.parameters.rewardCategory),o.reward)}</td><td>{String(o.stake*BigInt(o.duration/512))}/{String(o.reward)}</td></tr>)}</tbody></table></div>{!snapshot.ordered.length&&<p>No offers waiting.</p>}</section>{ownerSection}</div>
   </>}
- </>:<section className="v3-known"><h1>Known vaults</h1><button disabled={busy} onClick={()=>void discover()}>Refresh public discovery</button>{catalogError&&<p role="status">{catalogError}</p>}<table className="marketplace-table"><thead><tr><th>Vault</th><th>Total max reward</th><th>Staking asset</th><th>Offers</th></tr></thead><tbody>{configs.slice(page*20,(page+1)*20).map((c,n)=><tr key={id(c)}><td><a className="marketplace-link" aria-label={'Vault '+(page*20+n+1)} href={'#/v3/vault/'+id(c)}>{page*20+n+1}</a></td><td>{assetAmount(asset(c.parameters.rewardCategory),c.parameters.cap*BigInt(c.parameters.releases))}</td><td>{assetLabel(asset(c.parameters.stakingCategory))}</td><td title={listings[id(c)]?.error}>{listings[id(c)]?.snapshot?.ordered.length??(listings[id(c)]?.error?'Verification unavailable':'Verifying…')}</td></tr>)}</tbody></table>{ready&&!configs.length&&<p>No linked-list vaults have been discovered yet.</p>}<div><button disabled={!page} onClick={()=>setPage(p=>p-1)}>Previous</button><button disabled={(page+1)*20>=configs.length&&!pages.length} onClick={()=>{if((page+1)*20>=configs.length&&pages[0])void discover(pages[0]).then(()=>setPage(p=>p+1));else setPage(p=>p+1);}}>Next</button></div></section>}
+ </>:<section className="v3-known"><h1>Known vaults</h1>{discoveryControls}<table className="marketplace-table"><thead><tr><th>Vault</th><th>Total max reward</th><th>Staking asset</th><th>Offers</th></tr></thead><tbody>{configs.slice(page*20,(page+1)*20).map((c,n)=><tr key={id(c)}><td><a className="marketplace-link" aria-label={'Vault '+(page*20+n+1)} href={'#/v3/vault/'+id(c)}>{page*20+n+1}</a></td><td>{assetAmount(asset(c.parameters.rewardCategory),c.parameters.cap*BigInt(c.parameters.releases))}</td><td>{assetLabel(asset(c.parameters.stakingCategory))}</td><td title={listings[id(c)]?.error}>{listings[id(c)]?.snapshot?.ordered.length??(listings[id(c)]?.error?'Verification unavailable':'Verifying…')}</td></tr>)}</tbody></table>{ready&&!configs.length&&<p>No linked-list vaults have been discovered yet.</p>}<div><button disabled={!page} onClick={()=>setPage(p=>p-1)}>Previous</button><button disabled={(page+1)*20>=configs.length&&!pages.length} onClick={()=>{if((page+1)*20>=configs.length&&pages[0])void discover(pages[0]).then(loaded=>{if(loaded)setPage(p=>p+1);});else setPage(p=>p+1);}}>Next</button></div></section>}
  {!!ops.length&&<details className="advanced"><summary>Transaction recovery ({ops.filter(o=>!['confirmed','discarded'].includes(o.stage)).length})</summary>{ops.filter(o=>o.stage!=='discarded').map(o=><article key={o.id}><p>{o.intent.kind==='recover'?'Old request resolution':o.intent.kind==='create'&&['seed-funding','queue-funding'].includes(o.step)?'Old vault request':o.intent.kind} · {o.step} · {o.supersededBy&&o.reservationResolution==='conflict'?'resolved':o.stage}{o.signing==='uncertain'||o.signing==='requested'?' · Signing status unknown':''} · {o.txid}</p>{o.error&&<details><summary>Inspection details</summary><p>{o.error}</p></details>}{o.raw&&['seed-funding','queue-funding'].includes(o.step)&&!o.supersededBy&&<button type="button" disabled={busy||!canRequest} onClick={()=>void prepare({kind:'recover',operationId:o.id})}>Resolve old request</button>}<button disabled={busy||!canRequest} onClick={()=>void act({operation:'resume',id:o.id})}>Inspect / resume</button>{o.raw&&['action','wallet-preparation','wallet-recovery'].includes(o.step)&&<button disabled={busy||!canRequest} onClick={()=>void act({operation:'resume',id:o.id,retry:true})}>Retry identical transaction</button>}{!o.raw&&['unsigned','rejected'].includes(o.signing)&&<button disabled={busy} onClick={()=>void queueCall({operation:'discard',id:o.id}).then(operations).catch(e=>setMessage(String(e)))}>Discard unsigned request</button>}</article>)}</details>}
  </div>;
 }

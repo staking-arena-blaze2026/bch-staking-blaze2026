@@ -40,8 +40,8 @@ function client(readOnly:boolean):Client{
 export function queueCall(intent:Record<string,unknown>,keys:WalletKey[]=[]):Promise<any>{
  const retaining=intent.operation==='retain'||intent.operation==='signingFailed';
  if(networkLeaving&&!retaining)return Promise.reject(Error('Network changed; review again'));
- const readOnly=['list','sync','owned'].includes(String(intent.operation));
- const channel=String(intent.operation)==='list'?'journal':['market','owners'].includes(String(intent.channel))?String(intent.channel):'selected';
+ const readOnly=['list','sync','owned','discover','creationStatus'].includes(String(intent.operation));
+ const channel=String(intent.operation)==='list'?'journal':['market','owners','discovery','creation'].includes(String(intent.channel))?String(intent.channel):'selected';
  let c:Client;
  if(readOnly){if(!readers.has(channel))readers.set(channel,client(true));c=readers.get(channel)!;}
  else c=networkLeaving&&retaining?(retention??=client(false)):(financial??=client(false));
