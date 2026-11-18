@@ -228,18 +228,18 @@ body{
  body{background-image:url('/assets/brand/stake-arena-landscape-mobile-v1.webp')}
 }
 
-/* Stack a scalable, single-line ribbon above the centered original logo. */
+/* Center an upward-arched parchment ribbon, 30% smaller, above a 15% larger logo. */
 .header .brand-artwork{
  display:flex;flex-direction:column;align-items:center;justify-content:center;
  width:calc(100% - 32px);max-width:1280px;min-height:0;
  gap:clamp(4px,.8vw,12px);margin:clamp(12px,1.8vw,26px) auto 0;
 }
 .header .brand-artwork>.brand{
- flex:0 0 auto;width:clamp(110px,18vw,320px);max-width:100%;
+ flex:0 0 auto;width:clamp(126.5px,20.7vw,368px);max-width:100%;
 }
 .header .brand-artwork .brand-logo{width:100%;height:auto;transform:none}
 .header .brand-artwork img.brand-slogan{
- order:-1;flex:0 0 auto;width:clamp(0px,calc(64vw + 160px),1200px);max-width:100%;
+ order:-1;flex:0 0 auto;width:min(70%,clamp(0px,calc(44.8vw + 112px),840px));max-width:100%;
  height:auto;margin:0;filter:drop-shadow(0 4px 3px #4e38154d);
 }
 
