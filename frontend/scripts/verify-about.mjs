@@ -30,9 +30,10 @@ try{
   await context.routeWebSocket(/^wss?:\/\//,socket=>socket.close());
   const page=await context.newPage();
   const errors=[];page.on('pageerror',error=>errors.push(String(error)));
+  await page.addInitScript(()=>localStorage.setItem('stake-arena-welcome-dismissed','1'));
   await page.goto(base+'#/about');
   await page.locator('.about-document').waitFor();
-  const normalized=await page.evaluate(html=>{const element=document.createElement('div');element.innerHTML=html;return element.innerHTML;},expected);
+  const normalized=await page.evaluate(html=>{const element=document.createElement('div');element.innerHTML=html;const section=[...element.querySelectorAll('strong')].find(node=>node.textContent==='Zero-Interest, Redemption-Protected Stablecoin Minting');section?.setAttribute('id','stablecoin');section?.setAttribute('tabindex','-1');return element.innerHTML;},expected);
   assert.equal(await page.locator('.about-document').innerHTML(),normalized,'Exact Markdown rendering');
   assert.equal(await page.locator('.about-document ol > li').count(),4);
   assert.equal(await page.locator('.about-document > ul > li').count(),4);

@@ -82,13 +82,14 @@ function OfferForm({vault:v,tip,stale,now}:{vault:Vault;tip:Envelope['tip'];stal
     <p className="muted">Wallet signature and a valid on-chain registration will be required. {v.period>=v.config.periods?'This vault’s schedule is complete.':v.phase==='activated'?'Registration is currently paused in the indexed state.':v.offers.length>=16?'This vault has reached its lifetime registration capacity.':'Terms must still satisfy the canonical state when submitted.'}</p><label>Wallet token funding outpoint<input value={funding} onChange={e=>setFunding(e.target.value)} placeholder="transaction ID:output index"/><small>Receive address index 0; requires S × W tokens and at least 15,000 satoshis.</small></label><button className="button" type="button" disabled={!wallet||busy||!registrationAllowed(v,tip,stale,now)||!!result.error||!result.commitment||!/^[a-f0-9]{64}:\d+$/i.test(funding)} onClick={()=>{void submit();}}>{busy?'Awaiting wallet…':'Make an Offer'}</button><p role="status">{status}</p></form></>;
 }
 export default function App() {
-  const [about,setAbout]=useState(()=>window.location.hash==='#/about');
+  const [hash,setHash]=useState(()=>window.location.hash);
   useEffect(()=>{
-    const change=()=>{setAbout(window.location.hash==='#/about');window.scrollTo({top:0,behavior:'instant'});};
+    const change=()=>{setHash(window.location.hash);window.scrollTo({top:0,behavior:'instant'});};
     window.addEventListener('hashchange',change);
     return()=>window.removeEventListener('hashchange',change);
   },[]);
-  return about?<About/>:<ArenaApp/>;
+  const stablecoin=hash==='#/about/stablecoin';
+  return hash==='#/about'||stablecoin?<About stablecoin={stablecoin}/>:<ArenaApp/>;
 }
 
 function ArenaApp() {

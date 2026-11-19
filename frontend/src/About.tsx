@@ -4,9 +4,17 @@ import {switchNetwork} from './activeNetwork';
 import {MAINNET_NETWORK,CHIPNET_NETWORK,REGTEST_NETWORK} from './walletNetwork';
 import Brand from './Brand';
 import Markdown from 'react-markdown';
-import document from '../../ABOUT.md?raw';
+import {useEffect,useRef} from 'react';
+import aboutDocument from '../../ABOUT.md?raw';
 
-export default function About() {
+export default function About({stablecoin=false}:{stablecoin?:boolean}) {
+  const stablecoinHeading=useRef<HTMLElement>(null);
+  useEffect(()=>{
+    if(!stablecoin)return;
+    stablecoinHeading.current?.scrollIntoView({block:'start'});
+    stablecoinHeading.current?.focus({preventScroll:true});
+  },[stablecoin]);
+
   return <div className="app about-page">
     <a className="skip-link" href="#content" onClick={event=>{event.preventDefault();globalThis.document.getElementById('content')?.focus();}}>Skip to content</a>
     <header className="header">
@@ -15,7 +23,11 @@ export default function About() {
     </header>
     <main id="content" tabIndex={-1}>
       <a className="button" href="#/v3/offers">← Back to marketplace</a>
-      <article className="about-document"><Markdown>{document}</Markdown></article>
+      <article className="about-document"><Markdown components={{
+        strong:({children})=>children==='Zero-Interest, Redemption-Protected Stablecoin Minting'
+          ? <strong id="stablecoin" ref={stablecoinHeading} tabIndex={-1}>{children}</strong>
+          : <strong>{children}</strong>,
+      }}>{aboutDocument}</Markdown></article>
     </main>
   </div>;
 }

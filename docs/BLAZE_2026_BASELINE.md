@@ -219,3 +219,5 @@ Post-baseline funding estimates for Create Vault, Make an Offer and Claim reward
 Grill emblem and vault UI updates: the fork uses the supplied grill emblem, puts creation status below the form, groups token categories with their asset selectors, and moves the live lock-duration conversion beside its input. Known vaults and details use network-specific BCMR names where available, with category fallbacks and exact integer units. The wallet stripe and footer were simplified. This is post-baseline presentation work.
 
 Post-baseline linked-queue browsing and offer tracking. The public index carries waiting-offer counts, the browser reconstructs display queues on independent read workers, and My Offers matches the wallet key before archive replay. Cancellation and withdrawal still authorize the exact spend with independent chain evidence. See [queue browsing and transaction verification](blaze2026/queue-browsing.md).
+
+First-visit welcome dialog: introduces competitive staking and links to the About page, the stablecoin use case and Penny Picker. The browser remembers dismissal across visits. This is post-baseline presentation work.

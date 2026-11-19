@@ -5,3 +5,11 @@ export const launchOptions = {
   ...(process.env.CHROMIUM_PATH ? { executablePath: process.env.CHROMIUM_PATH } : {}),
   args: ['--disable-gpu'],
 };
+
+export const returningVisitor = port => ({
+  cookies: [],
+  origins: [{
+    origin: `http://127.0.0.1:${port}`,
+    localStorage: [{name:'stake-arena-welcome-dismissed',value:'1'}],
+  }],
+});

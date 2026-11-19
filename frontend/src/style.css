@@ -284,6 +284,15 @@ body{padding-bottom:calc(80px + env(safe-area-inset-bottom,0px))}
 .queue-asset-fields{display:grid;align-content:start;gap:12px;min-width:0}
 .queue-lock-duration small{display:block}
 footer a{color:inherit}
+
+.welcome-dialog{width:min(620px,calc(100% - 32px));padding:clamp(18px,4vw,32px);overscroll-behavior:contain}
+.welcome-dialog form{float:right;margin:0 0 8px 12px}
+.welcome-dialog form button{min-width:44px;min-height:44px;padding:0;font-size:24px;line-height:1}
+.welcome-dialog p{font-size:clamp(14px,2vw,16px);color:inherit;margin:0 0 14px}
+.welcome-dialog p:last-child{margin-bottom:0}
+.welcome-dialog h2{font-size:20px;margin:18px 0 8px}
+.welcome-dialog a{color:#79340a;text-decoration:underline}
+.about-document #stablecoin{scroll-margin-top:24px}
 .queue-queue-panel .queue-ranking-table{width:100%;min-width:520px;border-collapse:collapse;font-size:13px}
 .queue-queue-panel .queue-ranking-table th{background:#633817;color:#fff1d8;text-align:left;white-space:nowrap}
 .queue-queue-panel .queue-ranking-table td{vertical-align:top;overflow-wrap:normal}

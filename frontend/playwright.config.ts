@@ -1,5 +1,5 @@
 import { defineConfig } from '@playwright/test';
-import { launchOptions } from './scripts/browser-options.mjs';
+import { launchOptions, returningVisitor } from './scripts/browser-options.mjs';
 const port=Number(process.env.ARENA_BROWSER_PORT??'5173');
 if(!Number.isInteger(port)||port<1024||port>65535)throw Error('Invalid ARENA_BROWSER_PORT');
 export default defineConfig({
@@ -15,6 +15,7 @@ export default defineConfig({
     navigationTimeout: 30000,
     baseURL: `http://127.0.0.1:${port}`,
     launchOptions,
+    storageState: returningVisitor(port),
     // Keep DOM/network tracing; avoid continuous screencast captures on the VM.
     trace: { mode: 'retain-on-failure', screenshots: false, snapshots: true, sources: true },
     screenshot: 'only-on-failure',

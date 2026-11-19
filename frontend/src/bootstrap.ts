@@ -1,6 +1,21 @@
 import './style.css';
 import {startPublicPreview} from './publicIndexPreview';
 if(!location.hash || location.hash==='#/' || location.hash==='#')history.replaceState(null,'',location.pathname+location.search+'#/v3/offers');
+const welcome=document.querySelector<HTMLDialogElement>('#arena-welcome');
+if(welcome){
+  const key='stake-arena-welcome-dismissed';
+  let dismissed=false;
+  try{dismissed=localStorage.getItem(key)==='1';}catch{/* Storage can be unavailable. */}
+  if(!dismissed){
+    welcome.addEventListener('close',()=>{
+      try{localStorage.setItem(key,'1');}catch{/* The dialog still closes without storage. */}
+    },{once:true});
+    for(const link of welcome.querySelectorAll('a[href^="#/about"]')){
+      link.addEventListener('click',()=>welcome.close());
+    }
+    welcome.showModal();
+  }
+}
 startPublicPreview();
 // Load the UI explicitly so a failed module request cannot leave an empty page.
 function showStartupError(error: unknown) {
