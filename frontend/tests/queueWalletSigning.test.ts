@@ -169,3 +169,82 @@ it.each(['matching','changed'])('revalidates the offline quote when signing cost
   }
  }finally{window.removeEventListener('arena-preparation-confirm',declineChanged);wallet.close?.();}
 });
+
+it.each(['locally reserved','spent before signing'])('re-quotes once and asks for review when selected funding is %s',async(reason)=>{
+ const {manager,wallet,plan,events}=setup(),draft=offlineDraft(manager);
+ const stale=Object.assign(Error(reason),{details:{code:reason==='locally reserved'?'creation-quote-stale':'selected-inputs-changed'}});
+ vi.mocked(queueCall).mockImplementation(async request=>{
+  events.push(String(request.operation));
+  switch(request.operation){
+   case 'acceptCreateReview':
+    if(reason==='locally reserved')throw stale;
+    return {...draft,approved:true,plan};
+   case 'authorize':throw stale;
+   case 'list':return [];
+   case 'prepare':
+   case 'resume':return {...draft,id:'replacement',plan,quote:{...draft.quote,totalFee:'550'},approved:false};
+   case 'discard':return {};
+   default:throw Error('Unexpected worker operation '+request.operation);
+  }
+ });
+ const decline=vi.fn((event:Event)=>{
+  const {quote,respond}=(event as CustomEvent).detail;
+  expect(quote.totalFee).toBe('550');
+  expect(manager.signTransaction).not.toHaveBeenCalled();
+  respond(false);
+ });
+ window.addEventListener('arena-preparation-confirm',decline);
+ try{
+  await expect(wallet.queue!({operation:'continueCreate',draft})).rejects.toThrow('cancelled');
+  expect(decline).toHaveBeenCalledOnce();
+  expect(events).toEqual(reason==='locally reserved'?['acceptCreateReview','list','prepare','discard']:['acceptCreateReview','authorize','resume','discard']);
+  expect(manager.signTransaction).not.toHaveBeenCalled();
+ }finally{window.removeEventListener('arena-preparation-confirm',decline);wallet.close?.();}
+});
+
+it.each(['insert','claim'])('shows a provisional %s estimate and requests a decision when repricing changes costs',async kind=>{
+ const {wallet,manager,plan,events}=setup();
+ const previous={fee:'400',walletDebit:'2100'};
+ const updated={fee:kind==='claim'?'400':'450',walletDebit:'2150'};
+ const op=(costs:typeof previous)=>({id:'action',intent:{kind},stage:'review',plan:{...plan,fee:costs.fee},walletDebit:costs.walletDebit});
+ let rebuilt=false;
+ vi.mocked(queueCall).mockImplementation(async request=>{
+  events.push(String(request.operation));
+  if(request.operation==='prepare')return op(previous);
+  if(request.operation==='authorize'){
+   if(!rebuilt)throw Error('Fee policy changed');
+   return {...op(updated),verifiedAt:Date.now(),owner:{publicKey:binToHex(manager.getPubkey(0,0n))}};
+  }
+  if(request.operation==='resume'){rebuilt=true;return op(updated);}
+  if(request.operation==='submit')return {stage:'pending',step:'action'};
+  return {};
+ });
+ const costsSeen:string[]=[];
+ const observe=(e:Event)=>{costsSeen.push((e as CustomEvent).detail.walletDebit);events.push('estimate');};
+ const decide=vi.fn((event:Event)=>{
+  const {quote,respond}=(event as CustomEvent).detail;
+  expect(quote).toEqual({action:kind,previous,updated});
+  expect(manager.signTransaction).not.toHaveBeenCalled();
+  events.push('decide');respond(kind==='insert');
+ });
+ window.addEventListener('arena-queue-review',observe);
+ window.addEventListener('arena-preparation-confirm',decide);
+ try{
+  const action=wallet.queue!({operation:'prepare',intent:{kind}});
+  if(kind==='insert'){
+   await expect(action).resolves.toMatchObject({stage:'pending'});
+   expect(manager.signTransaction).toHaveBeenCalledOnce();
+  }else{
+   await expect(action).rejects.toThrow('Claim cancelled');
+   expect(manager.signTransaction).not.toHaveBeenCalled();
+   expect(events.at(-1)).toBe('discard');
+  }
+  expect(costsSeen.slice(0,2)).toEqual(['2100','2150']);
+  expect(events.slice(0,6)).toEqual(['prepare','estimate','authorize','resume','estimate','decide']);
+  expect(decide).toHaveBeenCalledOnce();
+ }finally{
+  window.removeEventListener('arena-queue-review',observe);
+  window.removeEventListener('arena-preparation-confirm',decide);
+  wallet.close?.();
+ }
+});

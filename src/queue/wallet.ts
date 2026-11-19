@@ -4,8 +4,8 @@ import {BchFundingError,errorMessage} from './funding.js';
 import {TransactionBuilder,placeholderP2PKHUnlocker,placeholderSignature,type SpendableUtxo} from 'cashscript';
 import {binToHex,hexToBin,decodeTransaction,hashTransaction,type Transaction} from '@bitauth/libauth';
 import type {ElectrumCore} from '../electrum-core.js';
-import {coinIdentity,verifyCoins,verifyCoinsAcrossPeers,confirmedWalletTransaction,walletPeers} from '../electrum-wallet.js';
-import {walletAddress,validateWalletSigned,type WalletKey,type WalletCoin,type BrowserPlan} from '../transactions-core.js';
+import {verifyCoins,verifyCoinsAcrossPeers,confirmedWalletTransaction,walletPeers} from '../electrum-wallet.js';
+import {walletAddress,walletScript,validateWalletSigned,type WalletKey,type WalletCoin,type BrowserPlan} from '../transactions-core.js';
 import {verifiedProviders} from '../verified-providers.js';
 import {ancestryVerifier} from '../zero-conf.js';
 import {tickContext} from '../consensus-clock.js';
@@ -20,6 +20,7 @@ import {creationSequence,type CreationQuote} from './preparation.js';
 export type Intent={kind:'recover';operationId:string}|{kind:'create';parameters:q.Parameters}|{kind:'insert';config:Config;terms:q.Score}|{kind:'cancel'|'withdraw';config:Config;offerId:string}|{kind:'claim';config:Config;expectedHead?:string};
 export interface Operation {
  id:string;intent:Intent;owner:WalletKey;keys:WalletKey[];stage:'review'|'signed'|'pending'|'confirmed'|'conflict'|'discarded';
+ referenceVault?:SpendableUtxo;
  queueCoin?:SpendableUtxo;seed?:SpendableUtxo;
  history?:{step:string;raw:string;txid:string}[];
  recovery?:{operationId:string;transactionId:string;seal:string};recoveryResolved?:boolean;supersededBy?:string;
@@ -30,7 +31,7 @@ export interface Operation {
  signing:'unsigned'|'requested'|'rejected'|'uncertain'|'signed';
 }
 export interface Store {list():Promise<Operation[]>;save(op:Operation):Promise<void>}
-export interface FundingEvidence {verified:string;available:string;reserved:string;restricted:string;eligibleGenesis:number;addresses:number;reservations:{id:string;step:string;txid?:string;satoshis:string;reason:string}[]}
+export interface FundingEvidence {reported:string;available:string;reserved:string;restricted:string;eligibleGenesis:number;addresses:number;reservations:{id:string;step:string;txid?:string;satoshis:string;reason:string}[]}
 const legacyAnchors=(op:Operation)=>{
  if(op.supersededBy&&op.stage==='conflict'&&op.reservationResolution==='conflict')return [];
  const refs=[...(op.queueCoin?[op.queueCoin]:[]),...(op.seed?[op.seed]:[])];
@@ -41,62 +42,76 @@ const legacyAnchors=(op:Operation)=>{
 };
 const reservationInputs=(op:Operation)=>[...(op.reservations??op.sources),...legacyAnchors(op)];
 const outpoint=(u:SpendableUtxo)=>u.txid+':'+u.vout;
+const readFeeRate=async(p:ElectrumCore)=>policyRate(await p.request('blockchain.relayfee'));
 /** Plans, public derivation paths and signed bytes are durable; private keys
  * never enter this service. All actions share the same approval/broadcast path. */
 export class QueueWallet {
  private preliminary?:{scope:string;key:string;sequence:ReturnType<typeof creationSequence>};
- private discovery?:{id:string;peers:Map<string,{tip:string;rows:Map<string,WalletCoin[]>}>};
- private readonly reviewed=new Map<string,{seal:string;tip:string;height:number;authorizedAt?:number}>();
+ private discovery?:{id:string;peer:string;rows:Map<string,SpendableUtxo[]>;rate:bigint};
+ private readonly reviewed=new Map<string,{seal:string;tip?:string;height?:number;authorizedAt?:number}>();
  invalidateReviews(){this.reviewed.clear();this.discovery=undefined;this.preliminary=undefined;}
- private seal(op:Operation){return json({intent:op.intent,owner:op.owner,keys:op.keys,step:op.step,plan:op.plan,sources:op.sources,rate:op.rate,config:op.config,offerId:op.offerId,network:op.network,quote:op.quote,completed:op.completed,spentFees:op.spentFees,parent:op.parent,reservations:op.reservations,recovery:op.recovery});}
+ private seal(op:Operation){return json({intent:op.intent,owner:op.owner,keys:op.keys,step:op.step,plan:op.plan,sources:op.sources,rate:op.rate,config:op.config,offerId:op.offerId,network:op.network,quote:op.quote,completed:op.completed,spentFees:op.spentFees,parent:op.parent,reservations:op.reservations,referenceVault:op.referenceVault,recovery:op.recovery});}
  constructor(readonly provider:ElectrumCore,readonly store:Store){}
  async get(id:string){const op=(await this.store.list()).find(o=>o.id===id);if(!op)throw Error('Unknown queue operation');if(op.network&&op.network!==this.network())throw Error('Queue journal network mismatch');if(!['action','wallet-preparation','wallet-recovery'].includes(op.step))throw Error('Legacy transaction evidence requires manual inspection');return op;}
  private funding(coin:WalletCoin):q.Funding{return {input:coin.utxo,unlocker:placeholderP2PKHUnlocker(walletAddress(hexToBin(coin.publicKey),this.network()))};}
  private network(){const network=String(this.provider.network);if(!['mainnet','chipnet','regtest'].includes(network))throw Error('Unsupported queue network');return network as 'mainnet'|'chipnet'|'regtest';}
  private authorization(owner:WalletKey){return {publicKey:hexToBin(owner.publicKey),authorization:placeholderSignature()};}
  private async rate(){return timed(this.provider,'fee-policy',()=>verifiedProviders(this.provider,walletPeers(this.provider),async(_peer,p)=>{const tip=await p.tip(),rate=policyRate(await p.request('blockchain.relayfee'));return {value:{rate,tip:tip.hash,height:tip.height},tip,identity:tip.hash+':'+rate};},{parallel:true}));}
- private async inventory(keys:WalletKey[],id:string,ignoreReservation?:string,discoveryId?:string){
-  if(!keys.length||keys.length>600||new Set(keys.map(k=>k.path+':'+k.index)).size!==keys.length)throw Error('Invalid wallet descriptor');
-  if(discoveryId&&this.discovery?.id!==discoveryId)this.discovery={id:discoveryId,peers:new Map()};
-  const verified=await timed(this.provider,'wallet-address-discovery',()=>verifiedProviders(this.provider,walletPeers(this.provider),async(peer,p)=>{
-   const tip=await p.tip(),coins:WalletCoin[]=[];let addresses=0,avoided=0;const lookupStart=performance.now(),before={...p.requestCounts};
-   // Lists retained only within this progressive discovery are candidates,
-   // never spendability proof. Funded scripts are freshly read by verifyCoins.
-   let cache=discoveryId?this.discovery?.peers.get(peer):undefined;
-   if(!cache||cache.tip!==tip.hash){cache={tip:tip.hash,rows:new Map()};if(discoveryId)this.discovery?.peers.set(peer,cache);}
-   const rows=cache.rows;
-   try{await boundedMap(keys,4,async key=>{
-    if(!['receive','change','defi'].includes(key.path)||!Number.isInteger(key.index)||key.index<0||key.index>=200)throw Error('Invalid wallet derivation');
-    walletAddress(hexToBin(key.publicKey),this.network());const script=binToHex(q.ownerScript(hexToBin(key.publicKey)));
-    if(rows.has(script))avoided++;else {addresses++;rows.set(script,(await p.getUtxosForLockingBytecode(script)).filter(u=>!u.token?.nft).map(utxo=>({...key,utxo})));}
-    return script;
-   });}catch(error){rows.clear();throw error;}
-   for(const key of keys)coins.push(...rows.get(binToHex(q.ownerScript(hexToBin(key.publicKey))))!);
-   if(new Set(coins.map(c=>outpoint(c.utxo))).size!==coins.length)throw Error('Duplicate wallet funding');
+ private async reportedFunding(scripts:Map<string,WalletKey>,discoveryId?:string){
+  const p=this.provider;
+  return timed(p,'wallet-address-discovery',()=>p.session(async()=>{
+   const cached=this.discovery;
+   const batch=discoveryId && cached?.id===discoveryId && cached.peer===p.endpoint ? cached :
+    {id:discoveryId,peer:p.endpoint,rows:new Map<string,SpendableUtxo[]>(),rate:policyRate(await p.request('blockchain.relayfee'))};
+   const missing=[...scripts.keys()].filter(script=>!batch.rows.has(script));
+   const before={...p.requestCounts},start=performance.now();
+   const rows=await boundedMap(missing,4,script=>p.reportedUtxosForLockingBytecode(script));
+   for(const [i,outputs] of rows.entries())batch.rows.set(missing[i]!,outputs);
+   if(discoveryId)this.discovery={...batch,id:discoveryId};
    const requests=Object.fromEntries(Object.entries(p.requestCounts).map(([method,count])=>[method,count-(before[method]??0)]).filter(([,count])=>count));
-   this.provider.onTiming?.({stage:'wallet-utxo-retrieval',milliseconds:performance.now()-lookupStart,requests,ok:true,addresses,repeatedRequestsAvoided:avoided});
-   try{if(coins.length)await timed(p,'wallet-input-verification',()=>verifyCoins(p,coins.map(c=>c.utxo),peer,true));}catch(error){rows.clear();throw error;}if((await p.tip()).hash!==tip.hash)throw Error('Tip changed during funding discovery');
-   coins.sort((a,b)=>outpoint(a.utxo).localeCompare(outpoint(b.utxo)));return {value:{coins,tip:tip.hash},tip,identity:json({tip:tip.hash,coins})};
-  },{parallel:true}));
-  const coins=verified.coins;
-  let list=await this.store.list();
-  for(const op of list)if(!op.network||op.network===this.network())this.reservePreparationOutputs(op);
+   p.onTiming?.({stage:'wallet-utxo-retrieval',milliseconds:performance.now()-start,requests,ok:true,addresses:missing.length,repeatedRequestsAvoided:scripts.size-missing.length});
+   const coins:WalletCoin[]=[];
+   for(const [script,key] of scripts)for(const utxo of batch.rows.get(script)!)if(!utxo.token?.nft)coins.push({...key,utxo});
+   return {coins,rate:batch.rate};
+  }));
+ }
+ private async inventory(keys:WalletKey[],id:string,ignoreReservation?:string,discoveryId?:string,draft?:Operation){
+  if(!keys.length||keys.length>600||new Set(keys.map(k=>k.path+':'+k.index)).size!==keys.length)throw Error('Invalid wallet descriptor');
+  const scripts=new Map<string,WalletKey>();
+  for(const key of keys){
+   if(!['receive','change','defi'].includes(key.path)||!Number.isInteger(key.index)||key.index<0||key.index>=200)throw Error('Invalid wallet derivation');
+   const script=walletScript(key.publicKey);
+   if(scripts.has(script))throw Error('Duplicate wallet script');
+   scripts.set(script,key);
+  }
+  let coins:WalletCoin[],rate:bigint;
+  if(draft?.reservations?.length){
+   if(draft.network!==this.network()||typeof draft.rate!=='bigint'||draft.rate<1n||draft.rate>100n)throw Error('Incompatible vault quote. Review Create Vault again.');
+   rate=draft.rate;
+   coins=draft.reservations.map(utxo=>{
+    const key=utxo.lockingBytecode && scripts.get(utxo.lockingBytecode);
+    if(!key||utxo.token?.nft)throw Error('The reviewed funding does not belong to the connected wallet.');
+    return {...key,utxo};
+   });
+  }else ({coins,rate}=await this.reportedFunding(scripts,discoveryId));
   const live=new Set(coins.map(c=>outpoint(c.utxo)));
-  // An independently re-read, identical complete set of actual signed inputs
-  // can only justify retaining an unresolved reservation, never releasing it.
-  const stillReserved=(op:Operation)=>op.reservationResolution==='unresolved'&&op.reservationEvidence?.kind==='verified-unspent-inputs'&&op.reservationEvidence.tip===verified.tip&&op.sources.length>0&&op.sources.every(u=>coins.some(c=>outpoint(c.utxo)===outpoint(u)&&coinIdentity(c.utxo)===coinIdentity(u)));
-  const relevant=(op:Operation)=>reservationInputs(op).some(u=>live.has(outpoint(u)))||coins.some(c=>c.utxo.txid===op.txid);
-  // A previously confirmed spend can disappear in a reorganization. If a
-  // reserved input reappears, old journal classifications cannot release it.
-  for(const op of list.filter(o=>o.step!=='wallet-recovery'))if((!op.network||op.network===this.network())&&op.id!==id&&op.raw&&op.stage!=='discarded'&&relevant(op)&&!stillReserved(op)&&(!['confirmed','conflict'].includes(op.stage)||!['action','wallet-preparation'].includes(op.step)||reservationInputs(op).some(u=>live.has(outpoint(u)))))await timed(this.provider,'legacy-reservation-reconciliation',()=>this.reconcileReservation(op));
-  for(const op of list.filter(o=>o.step==='wallet-recovery'&&o.raw))if((!op.network||op.network===this.network())&&relevant(op))await this.reconcileReservation(op);
-  list=await this.store.list();
-  const active=list.filter(o=>(!o.network||o.network===this.network())&&o.id!==id&&o.id!==ignoreReservation&&!id.startsWith(o.id+':next')&&o.stage!=='discarded'&&(o.stage!=='conflict'||o.reservationResolution==='unresolved')&&(o.stage!=='confirmed'||o.reservationResolution==='unresolved'||o.step==='wallet-preparation'&&!o.next||!['action','wallet-preparation'].includes(o.step)&&(o.reservationResolution!=='confirmed'||legacyAnchors(o).length>0)));
+  if(live.size!==coins.length)throw Error('Duplicate wallet funding');
+  coins.sort((a,b)=>outpoint(a.utxo).localeCompare(outpoint(b.utxo)));
+  const list=await this.store.list();
+  const fundingTxids=new Set(coins.map(coin=>coin.utxo.txid));
+  for(const op of list)if(op.txid&&fundingTxids.has(op.txid)&&(!op.network||op.network===this.network()))this.reservePreparationOutputs(op);
+  // A provider report cannot release a durable reservation. If a source of an
+  // already confirmed or conflicted spend reappears, hold its funds until
+  // explicit reconciliation can independently establish the old spend's status.
+  const reappeared=(op:Operation)=>!!op.raw&&op.sources.some(u=>live.has(outpoint(u)));
+  const active=list.filter(o=>(!o.network||o.network===this.network())&&o.id!==id&&o.id!==ignoreReservation&&!id.startsWith(o.id+':next')&&o.stage!=='discarded'&&
+   (reappeared(o)||(o.stage!=='conflict'||o.reservationResolution==='unresolved')&&(o.stage!=='confirmed'||o.reservationResolution==='unresolved'||o.step==='wallet-preparation'&&!o.next||!['action','wallet-preparation'].includes(o.step)&&(o.reservationResolution!=='confirmed'||legacyAnchors(o).length>0))));
   const anchored=list.filter(o=>o.id!==ignoreReservation&&(!o.network||o.network===this.network())&&legacyAnchors(o).length>0);
   const records=[...new Map([...active,...anchored].map(o=>[o.id,o])).values()];
   const reserved=new Set([...active.flatMap(o=>reservationInputs(o).map(outpoint)),...anchored.flatMap(o=>legacyAnchors(o).map(outpoint))]);
   const available=coins.filter(c=>!reserved.has(outpoint(c.utxo))).sort((a,b)=>a.utxo.satoshis>b.utxo.satoshis?-1:1),sum=(cs:WalletCoin[])=>cs.reduce((n,c)=>n+c.utxo.satoshis,0n).toString();
-  return {coins:available,evidence:{verified:sum(coins),available:sum(available),reserved:sum(coins.filter(c=>reserved.has(outpoint(c.utxo)))),restricted:'0',eligibleGenesis:0,addresses:keys.length,reservations:records.map(o=>({id:o.id,step:o.step,txid:o.txid,reason:o.step==='wallet-preparation'?'Self-send outputs and funding are reserved for the approved creation continuation. Inspect / resume this sequence; confirmation alone does not release its continuation inputs.':legacyAnchors(o).length?(o.error?o.error+' ':'')+'Legacy seed/queue continuation references require manual inspection before release; historical fields and signed bytes are retained.':o.error??(!o.raw&&['unsigned','rejected'].includes(o.signing)?'Unsigned reviewed request. Discard it in Transaction recovery if no longer needed.':'Signed or uncertain wallet request. Inspect its independent transaction status and check Cashonize before retrying.'),satoshis:sum(coins.filter(c=>reservationInputs(o).some(u=>outpoint(u)===outpoint(c.utxo))))})).filter(o=>o.satoshis!=='0')} satisfies FundingEvidence};
+  if(draft?.reservations?.length && available.length!==coins.length)throw Object.assign(Error('Reviewed funding is now reserved by another request. Recalculate the vault quote.'),{details:{code:'creation-quote-stale'}});
+  return {coins:available,scripts,rate,evidence:{reported:sum(coins),available:sum(available),reserved:sum(coins.filter(c=>reserved.has(outpoint(c.utxo)))),restricted:'0',eligibleGenesis:0,addresses:keys.length,reservations:records.map(o=>({id:o.id,step:o.step,txid:o.txid,reason:o.step==='wallet-preparation'?'Self-send outputs and funding are reserved for the approved creation continuation. Inspect / resume this sequence; confirmation alone does not release its continuation inputs.':legacyAnchors(o).length?(o.error?o.error+' ':'')+'Legacy seed/queue continuation references require manual inspection before release; historical fields and signed bytes are retained.':o.error??(!o.raw&&['unsigned','rejected'].includes(o.signing)?'Unsigned reviewed request. Discard it in Transaction recovery if no longer needed.':'Signed or uncertain wallet request. Inspect its independent transaction status and check Cashonize before retrying.'),satoshis:sum(coins.filter(c=>reservationInputs(o).some(u=>outpoint(u)===outpoint(c.utxo))))})).filter(o=>o.satoshis!=='0')} satisfies FundingEvidence};
  }
  /** Reserve real self-send outputs as soon as their immutable signed txid is
   * known. Original inputs alone cannot protect continuation after broadcast. */
@@ -153,6 +168,7 @@ export class QueueWallet {
   if(existing?.raw)return this.reconcileRecovery(existing.id);
   if(existing&&!['unsigned','rejected'].includes(existing.signing))throw Error('A resolution approval is already unresolved. Inspect that recovery before starting another');
   const id=previous?.id??existing?.id??crypto.randomUUID();
+  if(!target.op.supersededBy||target.op.reservationResolution!=='conflict')await this.reconcileReservation(target.op);
   const inventory=await this.inventory(keys,id,targetId),current=await this.recoveryTarget(targetId,owner);
   if(current.op.supersededBy&&current.op.reservationResolution==='conflict')throw Error('This old request is already resolved. Continue creating your new vault');
   if(current.op.stage==='confirmed'||current.op.stage==='pending')throw Error('The old transaction is already on the network. Inspect its outputs before recovery');
@@ -193,18 +209,18 @@ export class QueueWallet {
   if(previous)this.reviewed.delete(previous.id);
   if(intent.kind==='recover')return this.prepareRecovery(intent.operationId,keys,previous);
   const owner=keys.find(k=>k.path==='receive'&&k.index===0);if(!owner||previous&&previous.owner.publicKey!==owner.publicKey)throw Error('Resume with the original wallet');
-  const id=previous?.id??continuation?.id??crypto.randomUUID(),inventory=await this.inventory(keys,id,undefined,discoveryId),coins=inventory.coins;
+  const id=previous?.id??continuation?.id??crypto.randomUUID(),inventory=await this.inventory(keys,id,undefined,discoveryId,typeof creationReview==='object'?creationReview:undefined),coins=inventory.coins;
   if(intent.kind==='create'&&!coins.length){
    const e=inventory.evidence;throw Object.assign(Error(`Insufficient wallet funding. ${e.available} satoshis available; ${e.reserved} satoshis reserved. ${e.reservations.length?'Inspect Transaction recovery. Signed bytes and all reservations are retained.':'No funds found in the checked addresses.'}`),{details:{code:'creation-funding',...e},summary:e.reservations.length?`An old request reserves ${e.reserved} satoshis. Resolve that request to continue creating this new vault.`:'No usable funds found in the checked wallet addresses.'});
   }
-  const policy=await this.rate(),rate=policy.rate,authorization=this.authorization(owner);
-  let step:Operation['step']='action',built:ReturnType<typeof q.priced>,authorize=true,selected:WalletCoin[]=[],config=previous?.config,offerId=previous?.offerId;let label:string=intent.kind;let quote:CreationQuote|undefined;let reservations:SpendableUtxo[]|undefined;
+  const rate=inventory.rate,authorization=this.authorization(owner);
+  let step:Operation['step']='action',built:ReturnType<typeof q.priced>,authorize=true,selected:WalletCoin[]=[],config=previous?.config,offerId=previous?.offerId;let label:string=intent.kind;let quote:CreationQuote|undefined;let referenceVault:SpendableUtxo|undefined;let quotedTip:{height:number;hash:string}|undefined;let reservations:SpendableUtxo[]|undefined;
   if(intent.kind==='create'){
    q.parameters(intent.parameters);
    validateNewTime(intent.parameters.interval,this.network(),'Interval');
    let sequence:ReturnType<typeof creationSequence>;
    try{
-    const key=json({parameters:intent.parameters,coins,owner,rate,tip:policy.tip});
+    const key=json({parameters:intent.parameters,coins,owner,rate});
     if(discoveryId&&this.preliminary?.scope===discoveryId&&this.preliminary.key===key){sequence=this.preliminary.sequence;this.provider.onTiming?.({stage:'preparation-plan-reused',milliseconds:0,requests:{},ok:true,repeatedRequestsAvoided:1});}
     else {sequence=await timed(this.provider,'preparation-planning',async()=>creationSequence(intent.parameters,coins,owner,this.provider,rate));if(discoveryId)this.preliminary={scope:discoveryId,key,sequence};}
    }catch(error){
@@ -213,9 +229,12 @@ export class QueueWallet {
     e.eligibleGenesis=coins.filter(c=>!c.utxo.token&&c.utxo.vout===0&&![q.ZERO,p.stakingCategory,p.rewardCategory].includes(c.utxo.txid)).length;
     e.restricted=coins.filter(c=>c.utxo.token&&c.utxo.token.category!==p.rewardCategory).reduce((n,c)=>n+c.utxo.satoshis,0n).toString();
     const required=error instanceof BchFundingError?error.required.toString():undefined;
-    const detail={cause:errorMessage(error),code:'creation-funding',inputLimit:16,...e,required,fee:error instanceof BchFundingError?(error.fee+error.preparationFees).toString():undefined,automaticPreparation:'No complete sequence could be funded with the current verified, unreserved inputs.'};
-    const failure=Object.assign(new Error(`Vault creation funding: ${!(error instanceof BchFundingError)?errorMessage(error)+'. ':''}${required?`the tested ${error instanceof BchFundingError?error.phase:'sequence'} requires ${required} satoshis (including ${detail.fee} satoshis in measured fees, carriers and non-dust change${error instanceof BchFundingError&&error.phase==='wallet preparation'?'; the later creation fee has not yet been quoted':''}). `:`The reserve and creation carriers alone require at least ${(p.rewardCategory===q.ZERO?p.cap*BigInt(p.releases):q.CARRIER)+2n*q.CARRIER+1000n} satoshis; a complete fee quote is unavailable. `}${e.available} satoshis are available in verified, unreserved wallet inputs across ${e.addresses} supplied addresses; ${e.reserved} satoshis are excluded by unresolved transaction reservations. ${e.eligibleGenesis} eligible genesis UTXOs. ${detail.automaticPreparation} ${e.restricted} satoshis are attached to other fungible token categories and require token-preserving preparation. ${e.reservations.length?'Inspect Transaction recovery: '+e.reservations.map(r=>r.id+' ('+r.step+', '+r.satoshis+' sats): '+r.reason).join('; ')+'. Signed bytes are retained; no automatic rebroadcast or covenant abandonment is performed. ':''}Check that Cashonize exposes the funded wallet addresses, inspect unresolved reservations, or add BCH to this wallet and retry. Plans use at most 16 funding inputs per transaction; consolidate heavily fragmented funds in the wallet if needed. No new transaction was signed during this preflight.`),{details:detail,summary:e.reservations.length?`An old request reserves ${e.reserved} satoshis. Resolve that request to continue creating this new vault.`:`Wallet preparation needs more usable BCH. ${e.available} satoshis are available.`});throw failure;
-   }quote=sequence.quote;reservations=coins.filter(c=>sequence.preparations.some(s=>s.selected.includes(c))||sequence.selected.includes(c)).map(c=>c.utxo);
+    const detail={cause:errorMessage(error),code:'creation-funding',inputLimit:16,...e,required,fee:error instanceof BchFundingError?(error.fee+error.preparationFees).toString():undefined,automaticPreparation:'No complete sequence could be funded with the reported, unreserved inputs.'};
+    const failure=Object.assign(new Error(`Vault creation funding: ${!(error instanceof BchFundingError)?errorMessage(error)+'. ':''}${required?`the tested ${error instanceof BchFundingError?error.phase:'sequence'} requires ${required} satoshis (including ${detail.fee} satoshis in measured fees, carriers and non-dust change${error instanceof BchFundingError&&error.phase==='wallet preparation'?'; the later creation fee has not yet been quoted':''}). `:`The reserve and creation carriers alone require at least ${(p.rewardCategory===q.ZERO?p.cap*BigInt(p.releases):q.CARRIER)+2n*q.CARRIER+1000n} satoshis; a complete fee quote is unavailable. `}${e.available} satoshis are reported in unreserved wallet inputs across ${e.addresses} supplied addresses; ${e.reserved} satoshis are excluded by unresolved transaction reservations. ${e.eligibleGenesis} eligible genesis UTXOs. ${detail.automaticPreparation} ${e.restricted} satoshis are attached to other fungible token categories and require token-preserving preparation. ${e.reservations.length?'Inspect Transaction recovery: '+e.reservations.map(r=>r.id+' ('+r.step+', '+r.satoshis+' sats): '+r.reason).join('; ')+'. Signed bytes are retained; no automatic rebroadcast or covenant abandonment is performed. ':''}Check that Cashonize exposes the funded wallet addresses, inspect unresolved reservations, or add BCH to this wallet and retry. Plans use at most 16 funding inputs per transaction; consolidate heavily fragmented funds in the wallet if needed. No new transaction was signed during this preflight.`),{details:detail,summary:e.reservations.length?`An old request reserves ${e.reserved} satoshis. Resolve that request to continue creating this new vault.`:`Wallet preparation needs more usable BCH. ${e.available} satoshis are available.`});throw failure;
+   }
+   quote=sequence.quote;
+   const selectedOutpoints=new Set([...sequence.selected,...sequence.preparations.flatMap(s=>s.selected)].map(c=>outpoint(c.utxo)));
+   reservations=coins.filter(c=>selectedOutpoints.has(outpoint(c.utxo))).map(c=>c.utxo);
    const first=sequence.preparations[0];authorize=false;
    if(first){built=first.built;selected=first.selected;step='wallet-preparation';config=undefined;label='Prepare wallet with a BCH self-send';}
    else {built=sequence.created;selected=sequence.selected;config={parameters:intent.parameters,identity:sequence.created.context.identity,anchor:{genesis:'',creator:owner.publicKey}};label='Create vault with full reward reserve';}
@@ -223,22 +242,28 @@ export class QueueWallet {
    try{
    const index=new QueueIndexer(this.provider,intent.config),c=index.context();config=intent.config;
    // Withdrawals are independent of the standing queue; claims need only its head.
-   const snapshot=intent.kind==='insert'||intent.kind==='cancel'?await index.sync():undefined;
-   const head=intent.kind==='claim'?await index.head():undefined;
+   const snapshot=intent.kind==='cancel'?await index.sync():undefined;
+   const head=intent.kind==='claim'?await index.reportedHead():undefined;
+   quotedTip=head?.clock??snapshot?.clock;
    if(intent.kind==='claim'&&intent.expectedHead&&head!.state.head.id!==intent.expectedHead)throw Error('Winning offer changed; review the current head before claiming');
    if(intent.kind==='insert'){
-    if(intent.terms.reward>snapshot!.state.reserve)throw Error('Reward request can never be funded by the remaining reserve');
-    const position=insertionPoint(snapshot!,intent.terms),inserted=this.select(coins,c.p.stakingCategory,intent.terms.stake,cs=>{const result=q.insert(c,position.controller,position.authority,intent.terms,authorization,cs.map(c=>this.funding(c)),rate);selected=cs;return result;});built=inserted;offerId=inserted.offer.id;label='Register offer: stake '+intent.terms.stake+', duration '+intent.terms.duration+' seconds, reward '+intent.terms.reward;
+    const queue=await index.reportedQueue();
+    quotedTip=queue.tip;
+    if(intent.terms.reward>q.readState(c,queue.vault).reserve)throw Error('Reward request can never be funded by the remaining reserve');
+    const position=insertionPoint(queue,intent.terms);
+    if(position.controller!==queue.vault)referenceVault=queue.vault;
+    const inserted=this.select(coins,c.p.stakingCategory,intent.terms.stake,cs=>{const result=q.insert(c,position.controller,position.authority,intent.terms,authorization,cs.map(c=>this.funding(c)),rate);selected=cs;return result;});built=inserted;offerId=inserted.offer.id;label='Register offer: stake '+intent.terms.stake+', duration '+intent.terms.duration+' seconds, reward '+intent.terms.reward;
    }else {
 
     if(intent.kind==='withdraw'){
      const entry=(await index.owned(owner.publicKey,intent.offerId)).find(o=>o.id===intent.offerId);if(!entry||entry.status!=='Baked'||!entry.locked||entry.maturesAt===undefined||entry.checkedMtp<entry.maturesAt)throw Error('Stake allocation has not matured');built=this.select(coins,q.ZERO,0n,cs=>{selected=cs;return q.withdraw(c,entry.offer,entry.locked!,authorization,cs.map(c=>this.funding(c)),rate);});offerId=entry.id;label='Get independently matured stake back';
     }else {
      const position=intent.kind==='claim'?{controller:head!.vault,node:head!.node}:cancellationPoint(snapshot!,intent.offerId);if(!position)throw Error('Queue is empty');
-     const offer=q.readNode(c,position.node),escrow=c.p.stakingCategory===q.ZERO?undefined:await index.assetInput(offer.stake,offer.id);
+     const offer=q.readNode(c,position.node),escrow=c.p.stakingCategory===q.ZERO?undefined:
+      intent.kind==='claim'?await index.reportedAssetInput(offer.stake,offer.id):await index.assetInput(offer.stake,offer.id);
      const state=head?.state??snapshot!.state,clock=head?.clock??snapshot!.clock;
      const action=intent.kind==='cancel'?1:offer.reward>state.reserve?3:2;
-     const reserve=action===2&&c.p.rewardCategory!==q.ZERO?await index.assetInput(state.reserve):undefined;
+     const reserve=action===2&&c.p.rewardCategory!==q.ZERO?await index.reportedAssetInput(state.reserve):undefined;
      if(action===2&&q.rewardStatus(c.p,state,offer.reward,clock.mtp-1)!=='available')throw Error('Rewards await the next scheduled release');
      built=this.select(coins,q.ZERO,0n,cs=>{selected=cs;return q.remove(c,position.controller,position.node,action,cs.map(c=>this.funding(c)),action===1?authorization:undefined,escrow,reserve,action===2?clock.mtp-1:0,rate);});authorize=action===1;offerId=offer.id;label=action===3?'Return unfundable head stake to its owner':action===2?'Pay head reward and create independent stake lock':'Cancel offer and return its complete stake';
     }
@@ -247,18 +272,22 @@ export class QueueWallet {
     if(!/Insufficient|funding/i.test(errorMessage(error)))throw error;
     const e=inventory.evidence,asset=intent.kind==='insert'?intent.config.parameters.stakingCategory:q.ZERO;
     const eligible=coins.filter(c=>!c.utxo.token||asset!==q.ZERO&&c.utxo.token.category===asset),available=eligible.reduce((n,c)=>n+c.utxo.satoshis,0n).toString();
-    throw Object.assign(new Error(`${errorMessage(error)}. ${available} satoshis are available in verified, unreserved inputs eligible for this action across ${e.addresses} supplied addresses; ${e.reserved} satoshis are excluded by unresolved reservations. ${e.reservations.length?'Inspect Transaction recovery before retrying. ':''}Add BCH or the required asset to the connected wallet, check its exposed addresses, then retry. No new transaction was signed during this preflight.`),{details:{code:'action-funding',...e,eligibleAvailable:available,required:error instanceof BchFundingError?error.required.toString():undefined}});
+    throw Object.assign(new Error(`${errorMessage(error)}. ${available} satoshis are reported in unreserved inputs eligible for this action across ${e.addresses} supplied addresses; ${e.reserved} satoshis are excluded by unresolved reservations. ${e.reservations.length?'Inspect Transaction recovery before retrying. ':''}Add BCH or the required asset to the connected wallet, check its exposed addresses, then retry. No new transaction was signed during this preflight.`),{details:{code:'action-funding',...e,eligibleAvailable:available,required:error instanceof BchFundingError?error.required.toString():undefined}});
    }
   }
-  const tx=built.builder.generateWcTransactionObject().transaction as Transaction,changeScript=binToHex(q.ownerScript(hexToBin(owner.publicKey))),walletDebit=(selected.reduce((n,c)=>n+c.utxo.satoshis,0n)-tx.outputs.filter(o=>binToHex(o.lockingBytecode)===changeScript).reduce((n,o)=>n+o.valueSatoshis,0n)).toString();
+  const tx=built.builder.generateWcTransactionObject().transaction as Transaction;
+  const walletInputs=selected.reduce((sum,coin)=>sum+coin.utxo.satoshis,0n);
+  const walletOutputs=tx.outputs.filter(o=>inventory.scripts.has(binToHex(o.lockingBytecode)));
+  const walletDebit=(walletInputs-walletOutputs.reduce((sum,o)=>sum+o.valueSatoshis,0n)).toString();
   if(['create','insert'].includes(intent.kind))label+='; '+(quote?.transactions??1)+' transactions; '+(quote?.approvals??1)+' wallet approvals; total wallet BCH including fees '+(quote?.walletDebit??walletDebit)+' sats';
-  const plan=this.plan(built,selected,owner,authorize,label+'; miner fee '+built.fee+' sats at '+rate+' sat/byte'),op:Operation={id,intent,owner,keys,network:this.network(),quote,reservations,completed:previous?.completed??continuation?.completed??0,spentFees:previous?.spentFees??continuation?.spentFees??'0',parent:previous?.parent??continuation?.parent,approved:!quote||!previous&&quote.transactions===1||!!previous?.approved&&json(previous.quote)===json(quote),step,plan,sources:built.sources,rate,stage:'review',signing:'unsigned',config,offerId,walletDebit};
+  const plan=this.plan(built,selected,owner,authorize,label+'; miner fee '+built.fee+' sats at '+rate+' sat/byte'),op:Operation={id,intent,owner,keys,network:this.network(),quote,reservations,referenceVault,completed:previous?.completed??continuation?.completed??0,spentFees:previous?.spentFees??continuation?.spentFees??'0',parent:previous?.parent??continuation?.parent,approved:!quote||!previous&&quote.transactions===1||!!previous?.approved&&json(previous.quote)===json(quote),step,plan,sources:built.sources,rate,stage:'review',signing:'unsigned',config,offerId,walletDebit};
   // A watch-only quote expires with the page. It cannot reserve inputs, be
   // resumed from history, or carry authorization across a wallet reconnect.
   if(creationReview==='preview')return op;
   const seal=this.seal(op);
   if(creationReview)op.approved=seal===this.seal(creationReview);
-  await this.store.save(op);this.reviewed.set(id,{seal,tip:policy.tip,height:policy.height});return op;
+  else if(previous&&intent.kind==='create')op.approved=!!previous.approved&&seal===this.seal(previous);
+  await this.store.save(op);this.reviewed.set(id,{seal,tip:quotedTip?.hash,height:quotedTip?.height});return op;
  }
  async confirm(id:string){const op=await this.get(id);if(op.stage!=='review'||op.signing!=='unsigned'||!this.reviewed.has(id))throw Error('Fresh preparation review required');op.approved=true;await this.store.save(op);return op;}
  async advance(id:string,keys:WalletKey[]){
@@ -287,6 +316,21 @@ export class QueueWallet {
   await this.store.save(child);
   return child;
  }
+ private async verifySelection(op:Operation){
+  // A self-send only consumes some of the quoted sequence's current wallet
+  // outputs. Check its later funding now, before asking to pay the first fee.
+  const selected=op.intent.kind==='create'&&op.step==='wallet-preparation'
+   ? [...new Map([...(op.reservations??[]),...op.sources].map(u=>[outpoint(u),u])).values()]
+   : op.sources;
+  // A lower-ranked insert reads the reserve from the vault without spending it.
+  // Bind that observation and the immutable vault origin to the same peer proofs.
+  if(op.intent.kind==='insert'||op.intent.kind==='claim'){
+   const index=new QueueIndexer(this.provider,op.intent.config);
+   const inputs=op.referenceVault?[...selected,op.referenceVault]:selected;
+   return verifyCoinsAcrossPeers(this.provider,inputs,true,undefined,{readFeeRate,verifyOrigin:(source,ancestry)=>index.authenticateOrigin(source,ancestry)});
+  }
+  return verifyCoinsAcrossPeers(this.provider,selected,true,undefined,{readFeeRate});
+ }
  async authorize(id:string){
   const op=await this.get(id);
   if(op.raw||op.stage!=='review'||!['unsigned','rejected'].includes(op.signing))throw Error('Uncertain or signed operations cannot be rebuilt');
@@ -298,13 +342,13 @@ export class QueueWallet {
   op.verifiedAt=undefined;await this.store.save(op);
   try{
    if(op.recovery)await this.checkRecoveryTarget(op);
-   const clock=await verifyCoinsAcrossPeers(this.provider,op.sources,true),policy=await this.rate();
-   if(policy.tip!==clock.hash)throw Error('Tip changed during authorization; retry verification');
-   if(clock.hash!==evidence.tip){
-    const movement=await this.provider.session(()=>this.provider.classifyTipChange({hash:evidence.tip,height:evidence.height}),clock.peer);
+   const clock=await this.verifySelection(op);
+   const {tip,height}=evidence;
+   if(tip&&height!==undefined&&clock.hash!==tip){
+    const movement=await this.provider.session(()=>this.provider.classifyTipChange({hash:tip,height}),clock.peer);
     if(movement!=='extension')throw Error('Blockchain reorganized; prepare and review again');
    }
-   if(policy.rate!==op.rate)throw Error('Fee policy changed; prepare and review again');
+   if(clock.feeRate!==op.rate)throw Error('Fee policy changed; prepare and review again');
    await this.finality(op,op.plan.request.transaction as Transaction,clock);
    op.verifiedAt=Date.now();const authorizedAt=performance.now();await this.store.save(op);evidence.authorizedAt=authorizedAt;return op;
   }catch(e){this.reviewed.delete(id);throw e;}
@@ -336,9 +380,11 @@ export class QueueWallet {
   * transaction/confirmation evidence in clock agrees across independent peers. */
  private async finality(op:Operation,tx:Transaction,clock:Awaited<ReturnType<typeof verifyCoinsAcrossPeers>>,submit?:()=>Promise<void>){
   if(!transactionFinal(tx,clock))throw Error('Transaction is not final');
+  const relativeLock=(i:Transaction['inputs'][number])=>i.sequenceNumber<0x80000000&&(i.sequenceNumber&65535)>0;
+  if(!submit&&!tx.inputs.some(relativeLock))return;
   await this.provider.session(async()=>{
    const tip=await this.provider.tip();if(tip.hash!==clock.hash)throw Error('Tip changed before transaction submission');
-   for(const [i,input]of tx.inputs.entries())if(input.sequenceNumber<0x80000000&&(input.sequenceNumber&65535)>0){
+   for(const [i,input]of tx.inputs.entries())if(relativeLock(input)){
     const evidence=clock.ancestry?.find(row=>row[0]===op.sources[i]!.txid),height=Number(evidence?.[2]);
     if(!evidence?.[3]||height<1||(input.sequenceNumber&4194304)===0)throw Error('Relative maturity requires a confirmed allocation');
     const header=await this.provider.header(height);await this.provider.verifyHeaderChain(height,tip,new Map([[height,header.hash]]));
@@ -351,9 +397,8 @@ export class QueueWallet {
  async broadcast(id:string){const op=await this.get(id);if(!op.raw||!op.txid)throw Error('Sign the reviewed operation first');
   try{
    if(op.recovery)await this.checkRecoveryTarget(op);
-   const clock=await verifyCoinsAcrossPeers(this.provider,op.sources,true),policy=await this.rate(),tx=decodeTransaction(hexToBin(op.raw));if(typeof tx==='string')throw Error(tx);
-   if(policy.tip!==clock.hash)throw Error('Tip changed before broadcast; inspect and retry the retained signed transaction');
-   if(policy.rate>op.rate)throw Error('Relay fee policy increased after signing; signed bytes and reservations retained. Inspect recovery before requesting another transaction');
+   const clock=await verifyCoinsAcrossPeers(this.provider,op.sources,true,undefined,{readFeeRate}),tx=decodeTransaction(hexToBin(op.raw));if(typeof tx==='string')throw Error(tx);
+   if(clock.feeRate===undefined||clock.feeRate>op.rate)throw Error('Relay fee policy increased after signing; signed bytes and reservations retained. Inspect recovery before requesting another transaction');
    await this.finality(op,tx,clock,async()=>{
     const sent=await this.provider.sendRawTransaction(op.raw!);if(sent!==op.txid)throw Error('Broadcast identity mismatch');
    });

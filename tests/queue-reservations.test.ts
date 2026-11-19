@@ -28,12 +28,13 @@ for(const network of ['mainnet','chipnet'] as const)test(network+': legacy signe
  });
  assert.equal(saved.get('legacy')!.raw,raw);assert.equal(saved.get('legacy')!.stage,'signed');assert.deepEqual((await rpc<string[]>('getrawmempool')).sort(),before);
  const status=p.transactionStatus.bind(p);let repeatedStatus=0;p.transactionStatus=async txid=>{if(txid===id)repeatedStatus++;return status(txid);};
- await assert.rejects(()=>wallet.prepare({kind:'create',parameters},keys),/Insufficient wallet funding/);assert.equal(repeatedStatus,0,'same-tip verified unspent reservations need no repeated legacy status lookup');p.transactionStatus=status;
+ await assert.rejects(()=>wallet.prepare({kind:'create',parameters},keys),/Insufficient wallet funding/);assert.equal(repeatedStatus,0,'quoting from locally reserved outpoints needs no legacy status lookup');p.transactionStatus=status;
  // Safe inspection never rebroadcasts, even when retry was requested.
  const inspected=await wallet.resume('legacy',keys,true);assert.equal(inspected.reservationEvidence?.kind,'verified-unspent-inputs');assert.equal(inspected.reservationEvidence?.bch,'866420');assert.match(inspected.error!,/actual signed input/);assert.deepEqual((await rpc<string[]>('getrawmempool')).sort(),before);
  const unrelated=await fund(50000),newOp=await wallet.prepare({kind:'create',parameters},keys);assert.ok(newOp.sources.some(u=>u.txid===unrelated.txid));assert.ok(!newOp.sources.some(u=>u.txid===source.txid));await wallet.discard(newOp.id);
  // The fixture explicitly broadcasts; reconciliation itself only reads.
  await rpc('sendrawtransaction',[raw]);await rpc('generatetoaddress',[1,miner]);p.headerCache.clear();await p.refresh();
+ await wallet.resume('legacy',keys);
  const confirmed=await wallet.prepare({kind:'create',parameters},keys);assert.equal(saved.get('legacy')!.stage,'confirmed');assert.equal(saved.get('legacy')!.reservationResolution,'confirmed');assert.equal(saved.get('legacy')!.raw,raw);await wallet.discard(confirmed.id);
  // A confirmed parent cannot clear reservations for different child inputs.
  const intact=structuredClone(saved.get('legacy')!);saved.get('legacy')!.sources=[extra];
@@ -52,9 +53,11 @@ for(const network of ['mainnet','chipnet'] as const)test(network+': legacy signe
  saved.set('competing',{...legacy,id:'competing',queueCoin:extra,sources:[unrelated],reservations:[unrelated],raw:otherRaw,txid:hashTransaction(hexToBin(otherRaw))});
  const competitor=new TransactionBuilder({provider:p}).addInput(unrelated,signer.unlockP2PKH()).addOutput({to:ownerScript(signer.publicKey),amount:48000n}).build();
  await rpc('sendrawtransaction',[competitor]);await rpc('generatetoaddress',[1,miner]);p.headerCache.clear();await p.refresh();
+ await wallet.resume('competing',keys);
  const afterConflict=await wallet.prepare({kind:'create',parameters},keys);assert.ok(!afterConflict.sources.some(u=>u.txid===extra.txid&&u.vout===extra.vout));assert.equal(saved.get('competing')!.stage,'conflict');assert.equal(saved.get('competing')!.raw,otherRaw);
  // Reappearance of a wallet source invalidates a cached conflict classification.
  await wallet.discard(afterConflict.id);await rpc('invalidateblock',[await rpc('getbestblockhash')]);await restartWithoutMempool();p.headerCache.clear();await p.refresh();
- const afterReorg=await wallet.prepare({kind:'create',parameters},keys);assert.equal(saved.get('competing')!.stage,'signed');assert.equal(saved.get('competing')!.reservationResolution,'unresolved');assert.equal(saved.get('competing')!.raw,otherRaw);assert.ok(!afterReorg.sources.some(u=>u.txid===unrelated.txid));
+ const afterReorg=await wallet.prepare({kind:'create',parameters},keys);assert.ok(!afterReorg.sources.some(u=>u.txid===unrelated.txid),'the quote holds reappearing signed inputs pending inspection');
+ await wallet.resume('competing',keys);assert.equal(saved.get('competing')!.stage,'signed');assert.equal(saved.get('competing')!.reservationResolution,'unresolved');assert.equal(saved.get('competing')!.raw,otherRaw);
 
 },18588,['-expire=0','-upgrade12activationheight=1','-mocktime=1790000000']));

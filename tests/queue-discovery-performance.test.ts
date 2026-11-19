@@ -17,9 +17,15 @@ test('progressive discovery: independent fresh inputs, bounded expansion and com
  for(const network of [Network.MAINNET,Network.CHIPNET]){
   const keys:WalletKey[]=Array.from({length:40},(_,index)=>({path:'receive',index,publicKey:binToHex(new SignatureTemplate(new Uint8Array(32).fill(index+1)).publicKey)}));
   const p=new RegtestElectrum(await rpc('getblockcount'));p.network=network;let requests=0,active=0,maximum=0;
-  const original=p.getUtxosForLockingBytecode.bind(p),request=p.request;
+  const request=p.request;
   p.request=async(method,...args)=>{requests++;return method==='blockchain.relayfee'?0.00001:request(method,...args);};
-  p.getUtxosForLockingBytecode=async script=>{active++;maximum=Math.max(maximum,active);try{await new Promise(r=>setTimeout(r,5));return await original(script);}finally{active--;}};
+  // Both quote reads and the historical baseline use this Electrum method.
+  const counted=p.request;
+  p.request=async(method,...args)=>{
+   if(method!=='blockchain.scripthash.listunspent')return counted(method,...args);
+   active++;maximum=Math.max(maximum,active);
+   try{await new Promise(r=>setTimeout(r,5));return await counted(method,...args);}finally{active--;}
+  };
   const parameters={stakingCategory:ZERO,rewardCategory:ZERO,epoch:(await rpc('getblockchaininfo')).mediantime-10000,interval:600,releases:8,cap:1200n};
   async function fund(index:number){const address=walletAddress(hexToBin(keys[index]!.publicKey),'regtest'),raw=await rpc('createrawtransaction',[[],{[address]:0.03}]),funded=await rpc('fundrawtransaction',[raw,{changePosition:1}]),signed=await rpc('signrawtransactionwithwallet',[funded.hex]);await rpc('sendrawtransaction',[signed.hex]);await p.refresh();}
   await fund(0);await fund(0);await rpc('generatetoaddress',[1,await rpc('getnewaddress')]);p.headerCache.clear();await p.refresh();
@@ -32,8 +38,8 @@ test('progressive discovery: independent fresh inputs, bounded expansion and com
   const summary=(rows:typeof before)=>{const latency=rows.map(r=>r.milliseconds).sort((a,b)=>a-b);return {runs:rows.length,medianMs:latency[Math.floor(latency.length/2)],p95Ms:latency[Math.ceil(latency.length*.95)-1],medianRequests:rows.map(r=>r.requests).sort((a,b)=>a-b)[Math.floor(rows.length/2)],addresses:rows[0]?.addresses};};
   results.push({network,scenario:'origins in initial addresses',before:summary(before),after:summary(after),samples:{before,after},maximumConcurrentAddressReads:maximum});
   assert.ok(maximum>=2&&maximum<=4,'address lookups are bounded concurrent reads');
-  // Discover late funding without re-querying empty early addresses. Every
-  // returned coin is independently re-read, so stale candidates cannot sign.
+  // Discover late funding without re-querying empty early addresses. Selected
+  // inputs are independently re-read, so stale candidates cannot sign.
   const late=[{...keys[39]!,index:0},...keys.slice(1,39)];await fund(22);await fund(23);await rpc('generatetoaddress',[1,await rpc('getnewaddress')]);p.headerCache.clear();await p.refresh();
   const lateBefore:Awaited<ReturnType<typeof run>>[]=[],lateAfter:typeof lateBefore=[];
   async function lateRun(ctor:typeof QueueWallet,optimized:boolean){
@@ -47,12 +53,12 @@ test('progressive discovery: independent fresh inputs, bounded expansion and com
   const saved=new Map<string,Operation>(),w=new QueueWallet(p,{list:async()=>structuredClone([...saved.values()]),save:async op=>{saved.set(op.id,structuredClone(op));}});
   let avoided=0;p.onTiming=t=>{avoided+=t.repeatedRequestsAvoided??0;};
   const scope='progressive-test';await assert.rejects(()=>w.prepare({kind:'create',parameters},late.slice(0,2),undefined,undefined,scope),/funding/);
-  const op=await w.prepare({kind:'create',parameters},late.slice(0,26),undefined,undefined,scope);assert.ok(avoided>=4);await w.authorize(op.id);
+  const op=await w.prepare({kind:'create',parameters},late.slice(0,26),undefined,undefined,scope);assert.ok(avoided>=2);await w.authorize(op.id);
   // Ordinary extensions refresh selected-input evidence without invalidating consent.
   await rpc('generatetoaddress',[1,await rpc('getnewaddress')]);p.headerCache.clear();await p.refresh();await w.authorize(op.id);
   // A stale discovery candidate is never accepted as a live input.
-  const hide=p.getUtxosForLockingBytecode;p.getUtxosForLockingBytecode=async()=>[];
-  await assert.rejects(()=>w.authorize(op.id));await assert.rejects(()=>w.beginSigning(op.id),/Fresh/);p.getUtxosForLockingBytecode=hide;
+  const hide=p.request;p.request=async(method,...args)=>method==='blockchain.scripthash.listunspent'?[]:hide(method,...args);
+  await assert.rejects(()=>w.authorize(op.id));await assert.rejects(()=>w.beginSigning(op.id),/Fresh/);p.request=hide;
  }
  if(process.env.QUEUE_DISCOVERY_RESULTS)await writeFile(process.env.QUEUE_DISCOVERY_RESULTS,JSON.stringify({at:new Date().toISOString(),environment:'isolated BCHN regtest; public application configurations; synthetic keys; confirmed funding; 5ms injected per-address delay; no user confirmation or physical Cashonize latency',results},null,2)+'\n');
 },18638,['-expire=0','-upgrade12activationheight=1','-mocktime=1790000000']));

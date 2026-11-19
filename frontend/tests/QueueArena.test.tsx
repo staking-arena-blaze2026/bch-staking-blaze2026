@@ -108,16 +108,16 @@ it('allows cancelling a stranded unsigned reservation without signing or deletin
  await waitFor(()=>expect(queueCall).toHaveBeenCalledWith({operation:'discard',id:'unsigned'}));expect(wallet.queue).toHaveBeenCalledTimes(1);
 });
 
-function renderOfflineCreation() {
+function renderPairedCreation(connected=false) {
  HTMLDialogElement.prototype.showModal = vi.fn(function(this:HTMLDialogElement) { this.setAttribute('open',''); });
  const node=deriveHdPublicNode(deriveHdPrivateNodeFromSeed(new Uint8Array(32).fill(88)));
  const encoded=encodeHdPublicKey({node,network:'testnet'});
  if(typeof encoded==='string')throw Error(encoded);
  const paths=[{name:'receive',xpub:encoded.hdPublicKey}];
- const offline={...wallet,publicPaths:()=>paths};
+ const paired={...wallet,publicPaths:()=>paths};
  window.location.hash='#/create';
- live=false;
- render(<WalletTransactionsContext.Provider value={offline}><QueueArena/></WalletTransactionsContext.Provider>);
+ live=connected;
+ render(<WalletTransactionsContext.Provider value={paired}><QueueArena/></WalletTransactionsContext.Provider>);
 }
 
 it('asks for a live connection when the pairing has no saved public paths',async()=>{
@@ -136,7 +136,7 @@ it('reports funding errors from saved public paths while Cashonize is offline',a
   if(request.operation==='previewCreate')throw Error('Chipnet funding service unavailable');
   return [];
  });
- renderOfflineCreation();
+ renderPairedCreation();
  fireEvent.click(await screen.findByRole('button',{name:'Create Vault'}));
  expect(await screen.findByRole('alert')).toHaveTextContent('Chipnet funding service unavailable');
  expect(queueCall).toHaveBeenCalledWith(expect.objectContaining({operation:'previewCreate'}),expect.arrayContaining([
@@ -146,14 +146,16 @@ it('reports funding errors from saved public paths while Cashonize is offline',a
  expect(wallet.restore).not.toHaveBeenCalled();
 });
 
-it.each(['continue','cancel'])('reviews the offline creation costs before a live continuation (%s)',async decision=>{
+it.each([
+ {connected:false,decision:'continue'},{connected:false,decision:'cancel'},{connected:true,decision:'continue'},
+])('reviews estimated costs before signing (connected=$connected, $decision)',async ({connected,decision})=>{
  const quote={transactions:1,approvals:1,preparationFees:[],creationFee:'400',totalFee:'400',walletDebit:'24000',reserve:'20000',rewardCategory:zero};
  vi.mocked(queueCall).mockImplementation(async (request,keys)=>{
   if(request.operation==='previewCreate')return {id:'offline-review',intent:request.intent,network:'chipnet',keys,owner:keys![0],
    step:'action',stage:'review',signing:'unsigned',plan:{fee:'400',label:'Create vault'},quote};
   return [];
  });
- renderOfflineCreation();
+ renderPairedCreation(connected);
  fireEvent.click(await screen.findByRole('button',{name:'Create Vault'}));
  const review=await screen.findByRole('dialog');
  expect(review).toHaveTextContent('Expected wallet approvals');

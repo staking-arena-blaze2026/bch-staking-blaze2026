@@ -30,12 +30,20 @@ test('queue wallet: public-key plans, explicit signing, durable recovery and own
  function sign(plan:BrowserPlan){const tx=structuredClone(plan.request.transaction) as Transaction;for(const [i]of plan.inputPaths){const signer=plan.signers?.[i]===binToHex(changeKey.publicKey)?changeKey:key,s=plan.request.sourceOutputs[i]!,sig=signer.generateSignature(hash256(generateSigningSerializationBch({transaction:tx,sourceOutputs:plan.request.sourceOutputs,inputIndex:i},{coveredBytecode:s.contract?.redeemScript??s.lockingBytecode,signingSerializationType:Uint8Array.of(0x61)})));sig[64]=0x61;tx.inputs[i]!.unlockingBytecode=s.contract?hexToBin(binToHex(s.unlockingBytecode).replace('41'+'00'.repeat(65),'41'+binToHex(sig))):new Uint8Array([...encodeDataPush(sig),...encodeDataPush(signer.publicKey)]);}return binToHex(encodeTransaction(tx));}
  const costs:{kind:string;step:string;bytes:number;fee:string}[]=[];let approvals=0;
  async function approve(op:Operation){const reviewed=structuredClone(op.plan),auth=await measured(op.intent.kind,op.step,'authorize',()=>wallet.authorize(op.id));assert.deepEqual(auth.plan,reviewed,'authorization must preserve the reviewed body');approvals++;await wallet.beginSigning(op.id);const raw=sign(auth.plan);const sinceSignature=performance.now(),count=requests;await wallet.retain(op.id,raw);costs.push({kind:op.intent.kind,step:op.step,bytes:raw.length/2,fee:auth.plan.fee!});const pending=await wallet.broadcast(op.id);timings.push({kind:op.intent.kind,step:op.step,phase:'signature-to-pending',ms:performance.now()-sinceSignature,requests:requests-count});return pending;}
- // An empty verified inventory cannot fund preparation.
- const initialUtxos=p.getUtxosForLockingBytecode.bind(p);
- p.getUtxosForLockingBytecode=async script=>(await initialUtxos(script)).filter(u=>u.vout!==0);
+ async function prepareFromReports(intent:Extract<Operation['intent'],{kind:'claim'|'insert'}>){
+  const original=p.request;
+  p.request=async(method,...args)=>{
+   if(method.startsWith('blockchain.transaction.')||method==='blockchain.block.headers')throw Error('Unexpected proof request while estimating '+intent.kind);
+   return original(method,...args);
+  };
+  try{return await prepare(intent,keys);}finally{p.request=original;}
+ }
+ // An empty reported inventory cannot fund preparation.
+ const initialUtxos=p.reportedUtxosForLockingBytecode.bind(p);
+ p.reportedUtxosForLockingBytecode=async script=>(await initialUtxos(script)).filter(u=>u.vout!==0);
  const noGenesisParams={stakingCategory:ZERO,rewardCategory:ZERO,epoch:(await rpc('getblockchaininfo')).mediantime-10000,interval:60,releases:20,cap:2000n};
  await assert.rejects(()=>prepare({kind:'create',parameters:noGenesisParams},keys),/Insufficient/);assert.equal(approvals,0);
- p.getUtxosForLockingBytecode=initialUtxos;
+ p.reportedUtxosForLockingBytecode=initialUtxos;
  const params={stakingCategory:ZERO,rewardCategory:ZERO,epoch:(await rpc('getblockchaininfo')).mediantime-10000,interval:60,releases:20,cap:2000n};
  // One origin without independent funding requires two safe self-sends.
  const onePlan=await prepare({kind:'create',parameters:params},keys);assert.equal(onePlan.quote?.transactions,3);await wallet.discard(onePlan.id);assert.equal(approvals,0);
@@ -59,11 +67,25 @@ test('queue wallet: public-key plans, explicit signing, durable recovery and own
  await assert.rejects(()=>wallet.discard(first.id),/uncertain/);
  await assert.rejects(()=>wallet.resume(first.id,keys),/Signing status unknown/);
  approvals++;const firstRaw=sign(authorized.plan);await wallet.retain(first.id,firstRaw);costs.push({kind:'insert',step:'action',bytes:firstRaw.length/2,fee:authorized.plan.fee!});p.lose=true;await assert.rejects(()=>wallet.broadcast(first.id),/Lost broadcast/);assert.equal((await wallet.get(first.id)).raw,firstRaw);assert.equal((await wallet.resume(first.id,keys)).stage,'pending');assert.equal(approvals-before,1);assert.equal((await index.sync()).ordered.length,1);
- const second=await approve(await prepare({kind:'insert',config,terms:{stake:8000n,duration:512,reward:2000n}},keys));
+ // A reported queue can quote even when an imported anchor is wrong. It
+ // cannot turn that estimate into signing authority for another genesis.
+ const wrongConfig={...config,anchor:{...config.anchor,creator:binToHex(changeKey.publicKey)}};
+ const wrongOffer=await prepareFromReports({kind:'insert',config:wrongConfig,terms:{stake:8000n,duration:512,reward:2000n}});
+ await assert.rejects(wallet.authorize(wrongOffer.id));await assert.rejects(wallet.beginSigning(wrongOffer.id),/Fresh/);
+ await wallet.discard(wrongOffer.id);
+ const lowerOffer=await prepareFromReports({kind:'insert',config,terms:{stake:8000n,duration:512,reward:2000n}});
+ assert.ok(lowerOffer.referenceVault,'ranked insert must check the vault reserve even when spending only the predecessor');
+ const second=await approve(lowerOffer);
  const cancel=await approve(await prepare({kind:'cancel',config,offerId:second.offerId!},keys));assert.equal(cancel.sources.length,3);
  const originalSync=QueueIndexer.prototype.sync;
  QueueIndexer.prototype.sync=async()=>{throw Error('Unexpected standing queue traversal');};
- try{await approve(await prepare({kind:'claim',config},keys));}finally{QueueIndexer.prototype.sync=originalSync;}
+ try{
+  await rpc('sendtoaddress',[ownerAddress(changeKey.publicKey,p),1]);await p.refresh();
+  const claim=await prepareFromReports({kind:'claim',config,expectedHead:first.offerId!});
+  assert.deepEqual(claim.plan.inputPaths,[[2,'change',0]]);
+  assert.equal(BigInt(claim.walletDebit!),BigInt(claim.plan.fee!)-(q.CARRIER+2000n),'credit both the reward output to receive/0 and fee change to change/0');
+  await approve(claim);
+ }finally{QueueIndexer.prototype.sync=originalSync;}
  await assert.rejects(()=>prepare({kind:'withdraw',config,offerId:first.offerId!},keys),/not matured/);
  await rpc('generatetoaddress',[1,miner]);await rpc('setmocktime',[(await rpc('getblockchaininfo')).mediantime+1200]);await rpc('generatetoaddress',[12,miner]);p.headerCache.clear();await p.refresh();
  QueueIndexer.prototype.sync=async()=>{throw Error('Unexpected standing queue traversal');};

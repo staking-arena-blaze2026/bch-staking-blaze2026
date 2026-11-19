@@ -54,7 +54,7 @@ for(const network of ['mainnet','chipnet'] as const)for(const scenario of ['comp
  const created=await approve(creation);assert.equal(p.broadcasts,2);assert.equal((await new QueueIndexer(p,created.config!).sync()).state.reserve,9600n);
  // A reorg must restore protection instead of trusting the old resolved flag.
  await rpc('invalidateblock',[await rpc('getbestblockhash')]);await restartWithoutMempool();p.headerCache.clear();await p.refresh();
- await assert.rejects(()=>wallet.prepare({kind:'create',parameters},keys),/old request reserves|Vault creation funding/i);assert.equal(saved.get('legacy')!.reservationResolution,'unresolved');assert.equal(saved.get(recovery.id)!.recoveryResolved,false);assert.equal(saved.get('legacy')!.raw,oldRaw);
+ await assert.rejects(()=>wallet.prepare({kind:'create',parameters},keys),/old request reserves|Vault creation funding/i);await wallet.reconcileRecovery(recovery.id);await wallet.resume('legacy',keys);assert.equal(saved.get('legacy')!.reservationResolution,'unresolved');assert.equal(saved.get(recovery.id)!.recoveryResolved,false);assert.equal(saved.get('legacy')!.raw,oldRaw);
  // If the original transaction wins, recovery cannot touch its covenant output.
  await rpc('sendrawtransaction',[oldRaw]);await rpc('generatetoaddress',[1,miner]);p.headerCache.clear();await p.refresh();
  const lost=await wallet.reconcileRecovery(recovery.id);assert.equal(lost.stage,'conflict');assert.equal(lost.recoveryResolved,false);

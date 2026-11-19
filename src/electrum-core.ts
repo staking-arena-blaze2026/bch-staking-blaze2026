@@ -247,7 +247,27 @@ export class ElectrumCore implements NetworkProvider {
     if (typeof result === 'string' || result.prefix !== (this.network===Network.MAINNET?'bitcoincash':this.network===Network.REGTEST?'bchreg':'bchtest')) throw Error('Address network mismatch');
     return this.getUtxosForLockingBytecode(result.bytecode);
   }
-  async getUtxosForLockingBytecode(script: string | Uint8Array): Promise<SpendableUtxo[]> {
+  /** One provider's reported wallet outputs for funding estimates. Selected inputs
+   * are matched to the real transactions at the spending boundary. */
+  async reportedUtxosForLockingBytecode(script: string): Promise<SpendableUtxo[]> {
+    if (!/^(?:[a-f0-9]{2})+$/i.test(script)) throw Error('Invalid locking script');
+    const rows = await this.request('blockchain.scripthash.listunspent', scriptHash(script), 'include_tokens');
+    if (!Array.isArray(rows) || rows.length > this.maxHistoryEntries) throw Error('Malformed or oversized Electrum UTXOs');
+    return rows.map(row => {
+      if (!row || !isHash(row.tx_hash) || !Number.isSafeInteger(row.tx_pos) || row.tx_pos < 0 || row.tx_pos > 0xffffffff ||
+          !Number.isSafeInteger(row.height) || row.height < -1 || !Number.isSafeInteger(row.value) || row.value < 0) throw Error('Malformed reported UTXO');
+      const coin = {txid:row.tx_hash, vout:row.tx_pos, height:row.height, satoshis:BigInt(row.value), lockingBytecode:script};
+      const token = row.token_data;
+      if (token == null) return coin;
+      if (!isHash(token.category) || typeof token.amount !== 'string' || !/^(0|[1-9][0-9]{0,18})$/.test(token.amount)) throw Error('Malformed reported token');
+      const amount = BigInt(token.amount);
+      if (amount > 0x7fffffffffffffffn || (!token.nft && amount === 0n)) throw Error('Invalid reported token amount');
+      if (token.nft != null && (!['none','mutable','minting'].includes(token.nft.capability) ||
+          typeof token.nft.commitment !== 'string' || !/^(?:[a-f0-9]{2})*$/i.test(token.nft.commitment))) throw Error('Malformed reported NFT');
+      return {...coin, token:{category:token.category, amount, ...(token.nft ? {nft:{capability:token.nft.capability, commitment:token.nft.commitment}} : {})}};
+    });
+  }
+  async getUtxosForLockingBytecode(script: string | Uint8Array, selected?: ReadonlySet<string>): Promise<SpendableUtxo[]> {
     const hex = typeof script === 'string' ? script : binToHex(script);
     if (!/^(?:[a-f0-9]{2})*$/i.test(hex)) throw Error('Invalid locking script');
     const rows = await this.request('blockchain.scripthash.listunspent', scriptHash(hex), 'include_tokens');
@@ -255,7 +275,10 @@ export class ElectrumCore implements NetworkProvider {
     const outputs: SpendableUtxo[] = [], transactions=new Map<string,Promise<any>>();
     for (const row of rows) {
       if (!isHash(row.tx_hash) || !Number.isSafeInteger(row.tx_pos) || row.tx_pos < 0 || !Number.isSafeInteger(row.height)) throw Error('Malformed UTXO outpoint');
-      const identity=row.tx_hash+':'+row.height;if(!transactions.has(identity))transactions.set(identity,this.transaction(row.tx_hash,row.height));
+      if (selected && !selected.has(row.tx_hash+':'+row.tx_pos)) continue;
+      // Selected-input verification obtains its Merkle/ancestry proof from
+      // transactionStatus immediately after checking the reported unspent set.
+      const identity=row.tx_hash+':'+row.height;if(!transactions.has(identity))transactions.set(identity,this.transaction(row.tx_hash,selected?undefined:row.height));
       const tx = await transactions.get(identity)!, o = tx.vout[row.tx_pos];
       if (!o || o.scriptPubKey.hex !== hex || !Number.isSafeInteger(row.value) || BigInt(row.value) !== BigInt(o.satoshis)) throw Error('Electrum UTXO mismatch');
       outputs.push({ txid: tx.txid, vout: row.tx_pos, satoshis: BigInt(o.satoshis), lockingBytecode: hex, ...({height:row.height} as object),

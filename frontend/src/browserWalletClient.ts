@@ -6,7 +6,7 @@ import {v3Call} from './v3Client';
 import {queueCall} from './queueClient';
 import {discoverQueueInputs} from './queueCreatePlanning';
 import type {Operation as QueueOperation} from '../../src/queue/wallet';
-import {confirmPreparation} from './QueuePreparationDialog';
+import {confirmPreparation,type ActionCosts} from './QueuePreparationDialog';
 import type {DappConnectionManager} from '@wizardconnect/dapp';
 import {binToHex} from '@bitauth/libauth';
 import type {WalletOperation} from '../../src/browser-wallet';
@@ -130,7 +130,7 @@ export function browserWalletClient(manager:DappConnectionManager|null,check:()=
     const started=requestCheck?.startedAt??performance.now(),session=JSON.stringify(getManager().getSessionPaths());
     const progress=(message:string)=>window.dispatchEvent(new CustomEvent('arena-wallet-progress',{detail:message}));
     const measure=async<T,>(stage:string,run:()=>Promise<T>)=>{const start=performance.now();try{return await run();}finally{window.dispatchEvent(new CustomEvent('arena-wallet-timing',{detail:{stage,milliseconds:performance.now()-start}}));}};
-    let descriptors:WalletKey[];
+    let descriptors:WalletKey[],refreshed=false;
     const liveKey=(path:WalletKey['path'],index:number)=>{
      if(!walletChains.some(([name,child])=>name===path&&getManager().hasPath(child)))return undefined;
      return checkedWalletKey(getManager().getSessionPaths(),path,index,(c,i)=>getManager().getPubkey(c,i),activeNetwork==='mainnet'?'mainnet':'testnet');
@@ -145,20 +145,40 @@ export function browserWalletClient(manager:DappConnectionManager|null,check:()=
      });
      guard();
      progress('Checking the reviewed vault quote against current wallet funds…');
-     result=await queueCall({operation:'acceptCreateReview',draft},descriptors);
+     try{result=await queueCall({operation:'acceptCreateReview',draft},descriptors);}
+     catch(error){
+      if((error as {details?:{code?:string}}).details?.code!=='creation-quote-stale')throw error;
+      guard();refreshed=true;
+      progress('Quoted funding is no longer available. Finding a new vault quote…');
+      ({operation:result,descriptors}=await discoverQueueInputs({operation:'prepare',intent:draft.intent},keys,liveKey,guard));
+      result.approved=false;
+     }
     }else{
      ({operation:result,descriptors}=await discoverQueueInputs(intent,keys,liveKey,guard));
     }
     if(typeof result?.step==='string'&&!['action','wallet-preparation','wallet-recovery'].includes(result.step))return result;
     let approval=(result?.completed??0)+(result?.raw?1:0),total=(result?.completed??0)+(result?.quote?.approvals??1);
+    let previousCosts:ActionCosts|undefined;
     for(;;){
     guard();
     if(result?.raw&&result.step==='wallet-preparation'&&['pending','confirmed'].includes(result.stage)&&!result.error){
      approval=Math.max(approval,(result.completed??0)+1);
      window.dispatchEvent(new CustomEvent('arena-wallet-progress',{detail:'Verifying prepared output…'}));
-     result=await queueCall({operation:'advance',id:result.id},descriptors);signatureRequested=false;guard();continue;
+     result=await queueCall({operation:'advance',id:result.id},descriptors);signatureRequested=false;refreshed=false;guard();continue;
     }
     if(result?.stage!=='review'||!result.plan)return result;
+    const action=result.intent?.kind;
+    if(action==='insert'||action==='claim'){
+     window.dispatchEvent(new CustomEvent('arena-queue-review',{detail:result}));
+     const costs={fee:result.plan.fee,walletDebit:result.walletDebit};
+     const previous=previousCosts;
+     if(previous&&(costs.fee!==previous.fee||costs.walletDebit!==previous.walletDebit)){
+      progress('Waiting for your review of updated costs');
+      const proceed=await measure('user-confirmation',()=>confirmPreparation({action,previous,updated:costs},signing.signal));guard();
+      if(!proceed)throw Error(action==='insert'?'Offer cancelled.':'Claim cancelled.');
+     }
+     previousCosts=costs;
+    }
     if(result.quote&&!result.approved){
      window.dispatchEvent(new CustomEvent('arena-queue-review',{detail:result}));
      progress('Waiting for your confirmation');
@@ -168,10 +188,13 @@ export function browserWalletClient(manager:DappConnectionManager|null,check:()=
     }
     progress('Checking wallet inputs and current fee policy before approval…');
     let authorized;try{authorized=await measure('signing-authorization',()=>queueCall({operation:'authorize',id:result.id}));}catch(error){
-     if(!/Fee policy changed|Blockchain reorganized|Tip changed/.test(String(error)))throw error;
-     progress('Blockchain or fees changed. Recalculating the plan for review…');
+     const changedInputs=(error as {details?:{code?:string}}).details?.code==='selected-inputs-changed';
+     if(refreshed||!changedInputs&&!/Fee policy changed|Blockchain reorganized|Tip changed/.test(String(error)))throw error;
+     guard();refreshed=true;
+     progress('Funding or fee information changed. Recalculating the plan for review…');
      result=await queueCall({operation:'resume',id:result.id},descriptors);guard();
-     if(intent.operation==='continueCreate')result.approved=false;
+     if(changedInputs&&result.intent?.kind==='create'&&result.approved)throw error;
+     if(result.quote)result.approved=false;
      continue;
     }guard();
     if(authorized.owner.publicKey!==binToHex(getManager().getPubkey(0,0n)??new Uint8Array())||JSON.stringify(getManager().getSessionPaths())!==session)throw Error('Wallet changed before queue approval');
