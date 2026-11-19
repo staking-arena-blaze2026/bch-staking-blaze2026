@@ -4,6 +4,8 @@ import {checkedWalletKey,walletChains} from './walletDerivation';
 import {walletDiagnostic} from './usePersistentWallet';
 import {v3Call} from './v3Client';
 import {queueCall} from './queueClient';
+import {discoverQueueInputs} from './queueCreatePlanning';
+import type {Operation as QueueOperation} from '../../src/queue/wallet';
 import {confirmPreparation} from './QueuePreparationDialog';
 import type {DappConnectionManager} from '@wizardconnect/dapp';
 import {binToHex} from '@bitauth/libauth';
@@ -128,29 +130,24 @@ export function browserWalletClient(manager:DappConnectionManager|null,check:()=
     const started=requestCheck?.startedAt??performance.now(),session=JSON.stringify(getManager().getSessionPaths());
     const progress=(message:string)=>window.dispatchEvent(new CustomEvent('arena-wallet-progress',{detail:message}));
     const measure=async<T,>(stage:string,run:()=>Promise<T>)=>{const start=performance.now();try{return await run();}finally{window.dispatchEvent(new CustomEvent('arena-wallet-timing',{detail:{stage,milliseconds:performance.now()-start}}));}};
-    const discoveryId=crypto.randomUUID();let descriptors:WalletKey[]=[];
-    // Policy: start at two indices on every supported path; expand in batches of at most eight.
-    // A funded atomic plan is optimal and may stop early. Any fallback must
-    // complete all 40 indices/path plus authenticated journal hints first.
-    const limits=intent.operation==='prepare'&&(intent.intent as {kind?:string})?.kind!=='recover'?[2,8,16,24,32,40]:[40];
-    const saved=(intent.operation==='prepare'&&(intent.intent as {kind?:string})?.kind==='create')?await queueCall({operation:'list'}):[];
-    const journal:import('../../src/queue/wallet').Operation[]=Array.isArray(saved)?saved:[];
-    for(const limit of limits){
-     guard();progress('Finding available wallet funds — checking '+limit+' addresses per path…');
-     descriptors=await measure('public-key-derivation',async()=>keys(limit));
-     const owner=descriptors.find(k=>k.path==='receive'&&k.index===0);
-     for(const op of journal){if(op.owner?.publicKey!==owner?.publicKey)continue;
-      for(const hint of op.keys??[]){if(!walletChains.some(([path,child])=>path===hint.path&&getManager().hasPath(child))||hint.index<0||hint.index>=200||!Number.isSafeInteger(hint.index)||descriptors.some(k=>k.path===hint.path&&k.index===hint.index)||!Object.values(op.plan?.signers??{}).includes(hint.publicKey))continue;
-       const key=derived?.find(k=>k.path===hint.path&&k.index===hint.index)??checkedWalletKey(getManager().getSessionPaths(),hint.path,hint.index,(c,i)=>getManager().getPubkey(c,i),activeNetwork==='mainnet'?'mainnet':'testnet');
-       if(key.publicKey===hint.publicKey){if(!derived?.includes(key))(derived??=[]).push(key);descriptors.push({...key,fundingHint:true});}
-      }
-     }
-     try{result=await queueCall({...intent,discoveryId},descriptors);}catch(error){
-      if(limit===40||(!(error as {details?:{code?:string}})?.details?.code?.includes('funding')&&!/Insufficient|funding is required|funding for|funding propagates|Atomic vault creation needs/i.test(String(error))))throw error;
-      continue;
-     }
-     if(intent.operation!=='prepare'||result?.intent?.kind!=='create'||result.quote?.transactions===1||limit===40)break;
-     guard();await queueCall({operation:'discard',id:result.id});
+    let descriptors:WalletKey[];
+    const liveKey=(path:WalletKey['path'],index:number)=>{
+     if(!walletChains.some(([name,child])=>name===path&&getManager().hasPath(child)))return undefined;
+     return checkedWalletKey(getManager().getSessionPaths(),path,index,(c,i)=>getManager().getPubkey(c,i),activeNetwork==='mainnet'?'mainnet':'testnet');
+    };
+    if(intent.operation==='continueCreate'){
+     const draft=intent.draft as QueueOperation;
+     if(draft?.intent?.kind!=='create'||!draft.quote||draft.stage!=='review'||draft.signing!=='unsigned'||!draft.keys?.length)throw Error('Review a new vault quote before continuing');
+     descriptors=draft.keys.map(saved=>{
+      const key=liveKey(saved.path,saved.index);
+      if(!key||key.publicKey!==saved.publicKey)throw Error('The connected wallet differs from the wallet used for this quote. Review Create Vault again.');
+      return saved.fundingHint?{...key,fundingHint:true}:key;
+     });
+     guard();
+     progress('Checking the reviewed vault quote against current wallet funds…');
+     result=await queueCall({operation:'acceptCreateReview',draft},descriptors);
+    }else{
+     ({operation:result,descriptors}=await discoverQueueInputs(intent,keys,liveKey,guard));
     }
     if(typeof result?.step==='string'&&!['action','wallet-preparation','wallet-recovery'].includes(result.step))return result;
     let approval=(result?.completed??0)+(result?.raw?1:0),total=(result?.completed??0)+(result?.quote?.approvals??1);
@@ -173,7 +170,9 @@ export function browserWalletClient(manager:DappConnectionManager|null,check:()=
     let authorized;try{authorized=await measure('signing-authorization',()=>queueCall({operation:'authorize',id:result.id}));}catch(error){
      if(!/Fee policy changed|Blockchain reorganized|Tip changed/.test(String(error)))throw error;
      progress('Blockchain or fees changed. Recalculating the plan for review…');
-     result=await queueCall({operation:'resume',id:result.id},descriptors);guard();continue;
+     result=await queueCall({operation:'resume',id:result.id},descriptors);guard();
+     if(intent.operation==='continueCreate')result.approved=false;
+     continue;
     }guard();
     if(authorized.owner.publicKey!==binToHex(getManager().getPubkey(0,0n)??new Uint8Array())||JSON.stringify(getManager().getSessionPaths())!==session)throw Error('Wallet changed before queue approval');
     if(authorized.plan.request.broadcast!==false||Date.now()-authorized.verifiedAt>10000)throw Error('Queue approval requires fresh verified inputs');

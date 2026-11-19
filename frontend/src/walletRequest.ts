@@ -5,9 +5,16 @@ export type WalletRequestCheck=(()=>void)&{readonly startedAt?:number};
 export const WALLET_REQUEST_MS = 90_000;
 const reviewAgain = () => Error('Wallet request changed. Review the current terms and continue again.');
 
-/** Memory-only user intent. No journal, signing request or transaction exists while waiting.
- * The returned check is also enforced at the live client's approval boundary.
- */
+export function pairingRequestCheck(read:()=>WalletTransactions|null, unchanged:()=>boolean, signal:AbortSignal) {
+  const pairing=read()?.pairing?.();
+  if(!pairing?.paired)throw Error('Connect Wallet to continue');
+  return ()=>{
+    const current=read()?.pairing?.();
+    if(signal.aborted || !unchanged() || !current?.paired || current.generation!==pairing.generation || current.identity!==pairing.identity || current.network!==pairing.network)throw reviewAgain();
+  };
+}
+
+/** Wait for the same paired wallet to become available for live authorization. */
 export async function restoreWalletRequest(
   read:()=>WalletTransactions|null,
   unchanged:()=>boolean,
@@ -15,14 +22,10 @@ export async function restoreWalletRequest(
   waiting:()=>void,
 ):Promise<{wallet:WalletTransactions;check:WalletRequestCheck}> {
   const started=performance.now();
-  const initial=read(),pairing=initial?.pairing?.();
-  if(!pairing?.paired)throw Error('Connect Wallet to continue');
+  const initial=read();
+  const check=pairingRequestCheck(read,unchanged,signal);
   const deadline=Date.now()+WALLET_REQUEST_MS,elapsedDeadline=performance.now()+WALLET_REQUEST_MS;
-  const check=()=>{
-    const current=read()?.pairing?.();
-    if(signal.aborted || !unchanged() || !current?.paired || current.generation!==pairing.generation || current.identity!==pairing.identity || current.network!==pairing.network)throw reviewAgain();
-  };
-  if(!pairing.live){waiting();initial?.restore?.();}
+  if(!initial?.pairing?.().live){waiting();initial?.restore?.();}
   for(;;){
     check();
     const wallet=read(),current=wallet?.pairing?.();

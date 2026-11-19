@@ -1,7 +1,7 @@
 import {creationValidation,offerValidation} from './queueFormValidation';
 import {minimumReward} from '../../src/queue/model';
 import {errorMessage} from '../../src/queue/funding';
-import {QueuePreparationDialog,type PreparationConfirmation} from './QueuePreparationDialog';
+import {confirmPreparation,QueuePreparationDialog,type PreparationConfirmation} from './QueuePreparationDialog';
 import {useEffect,useLayoutEffect,useRef,useState} from 'react';
 import {parameters,ZERO,rewardStatus,validateScore,type Parameters,type Score} from '../../src/queue/model';
 import type {Config,QueueIndexer} from '../../src/queue/chain';
@@ -11,7 +11,8 @@ import {queueCall} from './queueClient';
 import {loadQueuePage} from './queueCatalog';
 import {activeNetwork} from './activeNetwork';
 import {useWalletTransactions} from './walletTransactions';
-import {restoreWalletRequest} from './walletRequest';
+import {pairingRequestCheck,restoreWalletRequest} from './walletRequest';
+import {prepareQueueCreate} from './queueCreatePlanning';
 import {localDateTimeInput,parseLocalDateTime,localTimestamp} from './localTime';
 import {assetInputUnits,assetAmount,assetLabel} from './createAssets';
 import {QueueReleaseSchedule} from './QueueReleaseSchedule';
@@ -51,7 +52,8 @@ export default function QueueArena(){
  const lifetime=useRef(new AbortController()),fingerprint=useRef(''),formEpoch=useRef(0),working=useRef(false);
  const nextFingerprint=encode({route,stakeKind,rewardKind,stakeCategory,rewardCategory,cap,interval,releases,epoch,stake,duration,reward});
  if(nextFingerprint!==fingerprint.current){fingerprint.current=nextFingerprint;formEpoch.current++;}
- const formFingerprint=fingerprint.current;useEffect(()=>{setReview(undefined);confirmationRef.current?.respond(false);},[formFingerprint]);
+ const formFingerprint=fingerprint.current,pairing=wallet?.pairing?.();
+ useEffect(()=>{setReview(undefined);confirmationRef.current?.respond(false);},[formFingerprint,pairing?.identity,pairing?.generation]);
  const selectedConfig=configs.find(c=>id(c)===selectedId),snapshot=selected?.config.anchor.genesis===selectedId?selected:undefined;
  const current=useRef({configs,selectedConfig});current.current={configs,selectedConfig};
  function retain(values:Config[],replace=true){
@@ -184,15 +186,43 @@ export default function QueueArena(){
  },[ops.filter(o=>o.step==='wallet-recovery').map(o=>o.id+o.stage).join(',')]);
  useEffect(()=>{if(actionDetails?.reservations?.some(r=>ops.some(o=>o.recoveryResolved&&o.recovery?.operationId===r.id))){setActionError('');setActionTechnical('');setActionDetails(undefined);}},[actionDetails,ops]);
  async function act(request:Record<string,unknown>){if(working.current)return;working.current=true;setBusy(true);const captured=fingerprint.current,capturedEpoch=formEpoch.current;try{
-  const restored=await restoreWalletRequest(()=>walletRef.current,()=>fingerprint.current===captured&&formEpoch.current===capturedEpoch,lifetime.current.signal,()=>setMessage('Restoring wallet…'));if(!restored.wallet.queue)throw Error('A compatible queue wallet is required');
-  setMessage('Checking request and wallet inputs…');let result:Operation=await restored.wallet.queue(request,restored.check);
+  const readWallet=()=>walletRef.current;
+  const unchanged=()=>fingerprint.current===captured&&formEpoch.current===capturedEpoch;
+  const signal=lifetime.current.signal;
+  const check=pairingRequestCheck(readWallet,unchanged,signal);
+  const intent=request.intent as Intent|undefined;
+  let draft:Operation|undefined;
+  if(request.operation==='prepare'&&intent?.kind==='create'&&!readWallet()?.pairing?.().live){
+   const wallet=readWallet();
+   const paths=wallet?.publicPaths?.();
+   if(wallet?.publicPaths&&!paths?.length){
+    wallet.restore?.();
+    throw Error('This pairing has no usable saved wallet addresses for this network. Open Cashonize, then click Create Vault again once connected.');
+   }
+   if(paths?.length){
+    setMessage('Checking available funds using saved wallet addresses…');
+    draft=await prepareQueueCreate(intent,paths,check);
+    check();
+    if(!draft.quote)throw Error('Vault creation costs are unavailable. Try again.');
+    setReview(draft);
+    setMessage('Review vault creation costs');
+    const proceed=await confirmPreparation(draft.quote,signal);
+    check();
+    if(!proceed){setReview(undefined);setMessage('Vault creation cancelled.');return;}
+   }
+  }
+  const restored=await restoreWalletRequest(readWallet,unchanged,signal,()=>setMessage(draft?'Open Cashonize to sign…':intent?.kind==='create'?'Open Cashonize to load wallet addresses…':'Restoring wallet…'));
+  check();
+  if(!restored.wallet.queue)throw Error('A compatible queue wallet is required');
+  setMessage('Checking request and wallet inputs…');
+  const result:Operation=await restored.wallet.queue(draft?{operation:'continueCreate',draft}:request,restored.check);
   if(result.config?.anchor.genesis&&result.raw){retain([result.config]);if(result.intent.kind==='create')location.hash='#/v3/vault/'+id(result.config);}
   if(result.error)showFailure(Error(result.error));else{setActionError('');setActionTechnical('');setActionDetails(undefined);}
   setMessage(result.intent.kind==='recover'?(result.recoveryResolved?'Old request resolved. Continue creating your new vault.':result.raw?'Resolution submitted. Waiting for confirmation before releasing old reservations.':'Review the resolution before approving it.') :(!['action','wallet-preparation'].includes(result.step)?'Inspected · '+result.stage:result.raw?'Submitted':'Prepared')+' · '+(result.txid??result.plan.label));await operations();if(selectedConfig)void refresh(selectedConfig).catch(()=>{});
  }catch(e){showFailure(e);setMessage('');void operations().catch(()=>{});}finally{working.current=false;setBusy(false);}}
  const prepare=(intent:Intent)=>{setReview(undefined);return act({operation:'prepare',intent});};
  useEffect(()=>{const receive=(e:Event)=>setReview((e as CustomEvent<Operation>).detail);window.addEventListener('arena-queue-review',receive);return()=>window.removeEventListener('arena-queue-review',receive);},[]);
- const canRequest=!!wallet?.pairing?.().paired;
+ const canRequest=!!pairing?.paired;
  const creation=creationValidation({stakingCategory:stakeKind==='bch'?ZERO:stakeCategory,rewardCategory:rewardKind==='bch'?ZERO:rewardCategory,cap,interval,releases,epoch},activeNetwork);
  if(stakeKind==='token'&&stakeCategory===ZERO)creation.errors.stakingCategory='Choose a nonzero CashToken category.';
  if(rewardKind==='token'&&rewardCategory===ZERO)creation.errors.rewardCategory='Choose a nonzero CashToken category.';

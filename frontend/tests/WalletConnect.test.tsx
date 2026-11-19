@@ -2,9 +2,9 @@ vi.mock('../src/activeNetwork',()=>({activeNetwork:'chipnet',selectedNetwork:()=
 import {deriveHdPrivateNodeFromSeed,deriveHdPublicNode,encodeHdPublicKey} from '@bitauth/libauth';
 import {StrictMode} from 'react';
 import {DappConnectionManager} from '@wizardconnect/dapp';
-import {RESTORE_WINDOW_MS} from '../src/usePersistentWallet';
+import {RESTORE_WINDOW_MS,usePersistentWallet} from '../src/usePersistentWallet';
 import { EventEmitter } from 'node:events';
-import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { act, fireEvent, render, renderHook, screen, waitFor, within } from '@testing-library/react';
 import { beforeEach, afterEach, expect, it, vi } from 'vitest';
 import {createWalletRelay as initiateDappRelay} from '../src/walletRelay';
 import { PROTOCOL_NAME, RelayMsgAction } from '@wizardconnect/core';
@@ -41,7 +41,7 @@ beforeEach(() => {
   } as unknown as ReturnType<typeof initiateDappRelay>));
 });
 
-async function walletReady(paths: {name:string;xpub:string}[] = []) {
+async function walletReady(paths: {name:string;xpub:string}[] = [], extensions?:unknown) {
   await act(async () => {
     const callback = vi.mocked(initiateDappRelay).mock.calls.at(-1)![0];
     callback({ client, status: { status: 'connected' } } as unknown as unknown as Parameters<typeof callback>[0]);
@@ -49,7 +49,7 @@ async function walletReady(paths: {name:string;xpub:string}[] = []) {
     client.emit('message', {
       action: RelayMsgAction.WalletReady,
       wallet_name: 'Test BCH Wallet', wallet_icon: '', dapp_discovered: true,
-      supported_protocols: [PROTOCOL_NAME], session: { [PROTOCOL_NAME]: { paths } },
+      supported_protocols: [PROTOCOL_NAME], session: { [PROTOCOL_NAME]: { paths,extensions } },
     });
   });
 }
@@ -365,4 +365,29 @@ it('does not display an address cached for another pairing or network, and cache
  localStorage.setItem(WALLET_ADDRESS_KEY,JSON.stringify({network:'mainnet',identity:'unrelated',address:'bitcoincash:untrusted'}));
  const onTransactions=vi.fn();render(<WalletConnect browser onTransactions={onTransactions}/>);
  expect(screen.queryByText(/Last connected address/)).toBeNull();expect(vi.mocked(browserWalletClient).mock.calls.at(-1)![1]).toThrow('live chipnet wallet session');
+});
+
+it('can read saved SDK public paths after reload without a live handshake and drops them on disconnect',async()=>{
+ const encoded=encodeHdPublicKey({node:deriveHdPublicNode(deriveHdPrivateNodeFromSeed(new Uint8Array(32).fill(88))),network:'testnet'});
+ if(typeof encoded==='string')throw Error(encoded);
+ const paths=[{name:'receive',xpub:encoded.hdPublicKey}];
+ localStorage.setItem(sessionKey,JSON.stringify({privateKey:'saved-key',secret:'saved-secret',walletPublicKey:'0102',paths}));
+ const view=renderHook(usePersistentWallet);
+ expect(view.result.current.isLive()).toBe(false);
+ expect(view.result.current.publicPaths()).toEqual(paths);
+ await act(async()=>{await view.result.current.disconnect();});
+ expect(view.result.current.publicPaths()).toBeUndefined();
+});
+
+it('keeps an incompatible declared chain blocked for offline discovery after reload',async()=>{
+ const encoded=encodeHdPublicKey({node:deriveHdPublicNode(deriveHdPrivateNodeFromSeed(new Uint8Array(32).fill(88))),network:'testnet'});
+ if(typeof encoded==='string')throw Error(encoded);
+ const view=renderHook(usePersistentWallet);
+ act(()=>view.result.current.connect());
+ await walletReady([{name:'receive',xpub:encoded.hdPublicKey}],{'staking-arena/network-v1':{network:'regtest',genesisHash:'0'.repeat(64)}});
+ expect(view.result.current.publicPaths()).toBeUndefined();
+ view.unmount();await act(async()=>{});client.removeAllListeners();events.removeAllListeners();
+ const restored=renderHook(usePersistentWallet);
+ expect(restored.result.current.pairing().paired).toBe(true);
+ expect(restored.result.current.publicPaths()).toBeUndefined();
 });

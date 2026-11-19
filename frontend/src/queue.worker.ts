@@ -37,6 +37,8 @@ scope.onmessage=event=>{pending=pending.catch(()=>{}).then(async()=>{const {id,i
  }
  else if(operation==='sync')result=await new QueueIndexer(provider,intent.config).sync();
  else if(operation==='owned')result=await new QueueIndexer(provider,intent.config).owned(intent.owner);
+ else if(operation==='previewCreate')result=await wallet.prepare(intent.intent,keys,undefined,undefined,intent.discoveryId,'preview');
+ else if(operation==='acceptCreateReview')result=await wallet.prepare(intent.draft.intent,keys,undefined,undefined,undefined,intent.draft);
  else if(operation==='prepare')result=await wallet.prepare(intent.intent,keys,undefined,undefined,intent.discoveryId);
  else if(operation==='advance')result=await wallet.advance(intent.id,keys);
  else if(operation==='reconcileRecovery')result=await wallet.reconcileRecovery(intent.id);

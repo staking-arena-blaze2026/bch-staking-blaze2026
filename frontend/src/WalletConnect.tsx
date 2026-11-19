@@ -86,7 +86,7 @@ export default function WalletConnect({ browser=false, getRequiredNetwork = defa
       if(networkLeaving)throw Error('Network changed; reconnect and review');
       assertTransactionSession(networkSession, requirement.current());
     }
-    if(browser) {const client=browserWalletClient(manager,check,()=>networkSession.revision);client.pairing=()=>walletRef.current.pairing();client.restore=()=>walletRef.current.retry();onTransactions(client);return()=>{client.close?.();onTransactions(null);};}
+    if(browser) {const client=browserWalletClient(manager,check,()=>networkSession.revision);client.pairing=()=>walletRef.current.pairing();client.publicPaths=()=>walletRef.current.publicPaths();client.restore=()=>walletRef.current.retry();onTransactions(client);return()=>{client.close?.();onTransactions(null);};}
     if(!manager)return;
     const publicKey = () => {
       check();

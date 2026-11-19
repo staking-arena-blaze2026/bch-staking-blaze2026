@@ -104,7 +104,25 @@ test('disconnect, revocation, cleared storage and a different profile require ex
   const profile=await browser.newContext();try{const other=await profile.newPage();await other.goto('/#/v3');await expect(other.getByRole('button',{name:'Connect Wallet',exact:true})).toBeVisible();expect((await stats(other)).attempts).toBe(0);}finally{await profile.close();}
 });
 
-test('paired offline creation waits once, expires, preserves inputs, and reload never revives a request',async({page})=>{
+test('saved public paths quote creation offline; approval waits, expires, and never revives on reload',async({page})=>{
+ // Supply one deterministic public-chain quote. Pairing, path storage and
+ // derivation, restoration, the creation form and its review dialog run normally.
+ await page.route(/\/src\/queue\.worker\.ts(?:\?|$)/,route=>route.fulfill({
+   contentType:'application/javascript',
+   body:`
+     self.onmessage=({data:{id,intent,keys}})=>{
+       if(intent.operation==='list')return self.postMessage({id,result:[]});
+       if(intent.operation==='previewCreate'&&keys.some(k=>k.path==='receive'&&k.index===0)){
+         const quote={transactions:1,approvals:1,preparationFees:[],creationFee:'400',totalFee:'400',
+           walletDebit:'24000',reserve:'20000',rewardCategory:'0'.repeat(64)};
+         return self.postMessage({id,result:{id:'offline-preview',intent:intent.intent,owner:keys[0],keys,
+           network:'chipnet',step:'action',stage:'review',signing:'unsigned',plan:{label:'Create vault',fee:'400'},quote}});
+       }
+       return self.postMessage({id,error:'Unexpected fixture request '+intent.operation});
+     };
+     self.postMessage({type:'ready'});
+   `,
+ }));
  await firstPair(page);
  await expect(page.locator('.wallet-control small[title]')).toContainText('Address:');
  await page.evaluate(()=>localStorage.removeItem('test-wallet-online'));await page.clock.install();await page.reload();
@@ -112,7 +130,12 @@ test('paired offline creation waits once, expires, preserves inputs, and reload 
  await expect(page.locator('.wallet-control small[title]')).toContainText('Last connected address:');
  await page.getByLabel('Release interval (minutes)',{exact:true}).fill('120');
  const button=page.getByRole('button',{name:'Create Vault',exact:true});await expect(button).toBeEnabled();await button.click();
- await expect(page.getByText(/Restoring wallet/)).toBeVisible();
+ const review=page.getByRole('dialog');
+ await expect(review.getByText('Expected wallet approvals')).toBeVisible();
+ await expect(page.getByText('Estimated network fee: 400 sats')).toBeVisible();
+ expect((await stats(page)).signatures).toBe(0);
+ await review.getByRole('button',{name:/Continue with 1 approval/}).click();
+ await expect(page.getByText(/Open Cashonize to sign/)).toBeVisible();
  expect((await stats(page)).signatures).toBe(0);
  await page.clock.fastForward(90_101);await expect(page.getByText(/Wallet connection timed out/)).toBeVisible();
  await expect(page.getByLabel('Release interval (minutes)',{exact:true})).toHaveValue('120');
@@ -121,7 +144,8 @@ test('paired offline creation waits once, expires, preserves inputs, and reload 
  // A new pending click is memory-only; reload must restore pairing but no intent.
  await page.evaluate(()=>{localStorage.removeItem('test-wallet-online');(window as any).walletTransport.interrupt();});
  await expect(page.getByText('Cashonize paired · Wallet offline',{exact:true})).toBeVisible();await button.click();
- await expect(page.getByText(/Restoring wallet/)).toBeVisible();
+ await review.getByRole('button',{name:/Continue with 1 approval/}).click();
+ await expect(page.getByText(/Open Cashonize to sign/)).toBeVisible();
  await page.evaluate(()=>localStorage.setItem('test-wallet-online','yes'));await page.reload();await connected(page);
- await expect(page.getByText(/Restoring wallet/)).toHaveCount(0);expect((await stats(page)).signatures).toBe(0);
+ await expect(page.getByText(/Open Cashonize to sign/)).toHaveCount(0);expect((await stats(page)).signatures).toBe(0);
 });

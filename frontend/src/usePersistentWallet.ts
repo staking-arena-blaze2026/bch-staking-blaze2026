@@ -1,12 +1,12 @@
 import {rememberOfferOwner} from './offerIdentity';
-import {activeNetwork} from './activeNetwork';
+import {activeNetwork, networkLeaving} from './activeNetwork';
 import {encodeCashAddress, hash160, hexToBin} from '@bitauth/libauth';
 import {checkedWalletKey} from './walletDerivation';
-import {WalletNetworkSession, assertTransactionSession, MAINNET_NETWORK, CHIPNET_NETWORK} from './walletNetwork';
+import {WalletNetworkSession, assertTransactionSession, detectWalletNetwork, MAINNET_NETWORK, CHIPNET_NETWORK, type PublicPath} from './walletNetwork';
 import {useEffect, useRef, useState} from 'react';
 import {RelayMsgAction, RelayStatus, type WalletReadyMessage} from '@wizardconnect/core';
 import {InvalidWalletSession, createWalletRelay} from './walletRelay';
-import {DappConnectionManager, loadSession, type SessionStorage} from '@wizardconnect/dapp';
+import {DappConnectionManager, loadSession, type SessionStorage, type StoredSession} from '@wizardconnect/dapp';
 
 export const WALLET_SESSION_KEY = 'staking-arena-wizardconnect-v1'+(activeNetwork==='chipnet'?'':'-'+activeNetwork);
 export const WALLET_ADDRESS_KEY = `${WALLET_SESSION_KEY}-address`;
@@ -14,6 +14,10 @@ const INVALID_SESSION_KEY = `${WALLET_SESSION_KEY}-invalid`;
 export const RESTORE_WINDOW_MS = 30_000;
 export type ConnectionState = 'idle'|'connecting'|'restoring'|'connected'|'reconnecting'|'offline'|'invalid';
 export const walletDiagnostic = (transition: string) => console.info(`[Arena wallet ${new Date().toISOString()} +${Math.round(performance.now())}ms] ${transition}`);
+
+// The SDK saves paths, but omits optional chain declarations. Retain the result
+// of the authenticated compatibility check alongside the paths it applies to.
+type SavedWallet = StoredSession & {arenaPublicPathsBlocked?:boolean};
 
 /** Owns exactly one SDK manager/relay. React effect replay is not an ownership change.
  * SDK persistence contains transport credentials, never BCH wallet keys or spending consent.
@@ -36,6 +40,7 @@ class WalletOwner {
   private remoteDisconnectPending = false;
   private pairingGeneration = 0;
   private expectedPaths = '';
+  private publicPathsBlocked = false;
   private listeners = new Set<() => void>();
   private memory = new Map<string,string>();
   private storageFailed = false;
@@ -46,6 +51,10 @@ class WalletOwner {
       if (key === WALLET_SESSION_KEY && this.expectedPaths) {
         const next = JSON.parse(value);
         if (next.paths?.length && JSON.stringify(next.paths) !== this.expectedPaths) return;
+        if (this.state === 'connected' && Array.isArray(next.paths)) {
+          next.arenaPublicPathsBlocked = this.publicPathsBlocked;
+          value = JSON.stringify(next);
+        }
       }
       this.memory.set(key,value); try { localStorage.setItem(key,value); } catch { this.storageUnavailable(); } },
     removeItem: key => { this.memory.delete(key); try { localStorage.removeItem(key); } catch { this.storageUnavailable(); } },
@@ -54,11 +63,24 @@ class WalletOwner {
   subscribe = (listener: () => void) => { this.listeners.add(listener); return () => { this.listeners.delete(listener); }; };
   private emit() { if (this.state === 'invalid') { this.pairingGeneration++; this.storage.removeItem(WALLET_ADDRESS_KEY); } this.listeners.forEach(listener => listener()); }
   private clearTimers() { this.timers.forEach(clearTimeout); this.timers = []; }
-  private saved() { return loadSession(WALLET_SESSION_KEY,this.storage); }
+  private saved(): SavedWallet|null { return loadSession(WALLET_SESSION_KEY,this.storage); }
   pairing = () => {
     const saved = this.saved();
     const paired = !this.stopped && this.state !== 'invalid' && !this.storage.getItem(INVALID_SESSION_KEY) && !!saved?.walletPublicKey;
     return {generation:this.pairingGeneration,paired, live:paired && this.state === 'connected', identity:paired ? JSON.stringify([saved!.walletPublicKey,this.expectedPaths || JSON.stringify(saved!.paths ?? [])]) : '', network:activeNetwork};
+  };
+  publicPaths = ():readonly PublicPath[]|undefined => {
+    if (networkLeaving || !this.pairing().paired || this.remoteDisconnectPending ||
+        (this.state==='connected' && this.publicPathsBlocked)) return;
+    const saved=this.saved(), paths=saved?.paths;
+    if (saved?.arenaPublicPathsBlocked || !Array.isArray(paths) || !paths.length ||
+        (this.expectedPaths && JSON.stringify(paths)!==this.expectedPaths) ||
+        !paths.every(p=>p && typeof p.name==='string' && typeof p.xpub==='string')) return;
+    // Legacy SDK records still have the public key family, even if they predate
+    // the stored compatibility result. Only use those keys on the selected family.
+    const family=detectWalletNetwork(paths).network;
+    if (family!==(activeNetwork==='mainnet'?'mainnet':'testnet')) return;
+    return paths;
   };
   address = () => {
     try {
@@ -78,7 +100,8 @@ class WalletOwner {
       const encoded = encodeCashAddress({prefix:activeNetwork === 'mainnet' ? 'bitcoincash' : 'bchtest',type:'p2pkh',payload:hash160(hexToBin(key.publicKey))});
       if(typeof encoded === 'string') throw Error('Address unavailable');
       this.storage.setItem(WALLET_ADDRESS_KEY,JSON.stringify({identity:this.pairing().identity,network:activeNetwork,address:encoded.address}));
-    } catch { this.storage.removeItem(WALLET_ADDRESS_KEY); }
+      this.publicPathsBlocked=false;
+    } catch { this.publicPathsBlocked=true; this.storage.removeItem(WALLET_ADDRESS_KEY); }
   }
   start() {
     const saved = this.saved();
@@ -303,6 +326,6 @@ export function usePersistentWallet() {
     };
   },[]);
   const owner=ownerRef.current;
-  return {pairing:()=>owner?.pairing()??{paired:false,live:false,identity:'',network:activeNetwork},address:owner?.address(),state:owner?.state??'idle',manager:owner?.manager??null,uri:owner?.uri,qrUri:owner?.qrUri,error:owner?.error,extensions:owner?.extensions,
+  return {pairing:()=>owner?.pairing()??{paired:false,live:false,identity:'',network:activeNetwork},publicPaths:()=>owner?.publicPaths(),address:owner?.address(),state:owner?.state??'idle',manager:owner?.manager??null,uri:owner?.uri,qrUri:owner?.qrUri,error:owner?.error,extensions:owner?.extensions,
     isLive:()=>owner?.state === 'connected',connect:()=>owner?.connect(),retry:()=>owner?.retry(),replace:()=>owner?.replace(),disconnect:async()=>owner?.disconnect()};
 }

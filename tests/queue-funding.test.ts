@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import {SignatureTemplate} from 'cashscript';
 import {binToHex} from '@bitauth/libauth';
 import {ElectrumProvider} from '../src/electrum.js';
+import {QueueWallet,type Operation} from '../src/queue/wallet.js';
 import {creationSequence} from '../src/queue/preparation.js';
 import {BchFundingError,errorMessage} from '../src/queue/funding.js';
 import {ZERO,ownerScript,parameterErrors,scoreErrors} from '../src/queue/protocol.js';
@@ -12,6 +13,25 @@ const coin=(id:string,vout:number,satoshis:bigint,token?:WalletCoin['utxo']['tok
 const parameters={stakingCategory:ZERO,rewardCategory:ZERO,epoch:1800000000,interval:600,releases:8,cap:1200n};
 for(const network of ['mainnet','chipnet'] as const){
  const p=new ElectrumProvider({network,allowBroadcast:false});
+ test(network+': offline quote becomes a journal only after live preparation and a changed input requires review',async()=>{
+  const journal:Operation[]=[];
+  const wallet=new QueueWallet(p,{list:async()=>journal,save:async op=>{journal.push(structuredClone(op));}});
+  const coins=[coin('a',0,50000n),coin('b',0,60000n)];
+  // Deterministic provider observations; exercise the actual builder and plan comparison.
+  Object.assign(wallet,{inventory:async()=>({coins}),rate:async()=>({rate:1n,tip:'ff'.repeat(32),height:100})});
+  const intent={kind:'create' as const,parameters};
+  const preview=await wallet.prepare(intent,[owner],undefined,undefined,undefined,'preview');
+  assert.ok(preview.quote);
+  assert.equal(journal.length,0);
+  await assert.rejects(wallet.authorize(preview.id),/Unknown queue operation/);
+  const live=await wallet.prepare(intent,[owner],undefined,undefined,undefined,structuredClone(preview));
+  assert.equal(live.approved,true);
+  assert.equal(journal.length,1);
+  coins[0]=coin('c',0,50000n);
+  const changed=await wallet.prepare(intent,[owner],undefined,undefined,undefined,structuredClone(preview));
+  assert.equal(changed.approved,false);
+  await assert.rejects(wallet.authorize(changed.id),/Confirm/);
+ });
  test(network+': exact reported balance layout funds complete creation',()=>{
   const cs=[coin('a',0,1200n),coin('a',1,865001n),coin('b',3,1500n)],s=creationSequence(parameters,cs,owner,p,1n);
   assert.equal(s.quote.transactions,2);assert.equal(s.quote.reserve,'9600');assert.equal(BigInt(s.quote.walletDebit),9600n+2400n+1000n+BigInt(s.quote.totalFee));assert.ok(s.selected.length>=2);

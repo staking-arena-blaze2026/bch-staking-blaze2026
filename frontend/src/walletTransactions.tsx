@@ -8,6 +8,8 @@ export interface WalletTransactions {
   v3Availability?():{available:boolean;reason?:string};
   /** Pairing is a restoration hint, never signing authorization. */
   pairing?():{paired:boolean;live:boolean;identity:string;network:string;generation?:number};
+  /** Saved public branches for watch-only discovery on the selected network. */
+  publicPaths?():readonly import('./walletNetwork').PublicPath[]|undefined;
   restore?():void;
   v3?(intent:Record<string,unknown>,requestCheck?:()=>void):Promise<any>;
   queue?(intent:Record<string,unknown>,requestCheck?:WalletRequestCheck):Promise<any>;

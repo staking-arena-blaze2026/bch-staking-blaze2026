@@ -119,3 +119,53 @@ for(const selected of ['mainnet','chipnet'])it(selected+': journals a late authe
   await Promise.resolve();await Promise.resolve();expect(queueCall).toHaveBeenCalledWith({operation:'retain',id:'claim',raw:'late signed bytes'});expect(events).not.toContain('submit');expect(events).not.toContain('discard');expect(manager.signTransaction).toHaveBeenCalledOnce();
  }finally{wallet.close?.();}
 });
+
+function offlineDraft(manager:ReturnType<typeof setup>['manager']) {
+ const keys=[0,1].map(index=>({path:'receive',index,publicKey:binToHex(manager.getPubkey(0,BigInt(index)))}));
+ const quote={transactions:1,approvals:1,preparationFees:[],creationFee:'400',totalFee:'400',walletDebit:'24000',reserve:'20000',rewardCategory:'0'.repeat(64)};
+ return {id:'offline-quote',intent:{kind:'create'},owner:keys[0],keys,stage:'review',signing:'unsigned',step:'action',quote};
+}
+
+it('checks every saved child against the live wallet before authorizing the offline quote',async()=>{
+ const {manager,wallet,events}=setup();
+ const draft=offlineDraft(manager);
+ draft.keys[1].publicKey=draft.keys[0].publicKey;
+ try{
+  await expect(wallet.queue!({operation:'continueCreate',draft})).rejects.toThrow(/connected wallet differs/);
+  expect(events).toEqual([]);
+  expect(manager.signTransaction).not.toHaveBeenCalled();
+ }finally{wallet.close?.();}
+});
+
+it.each(['matching','changed'])('revalidates the offline quote when signing costs are %s',async(costs)=>{
+ const {manager,wallet,events,plan}=setup();
+ const draft=offlineDraft(manager),same=costs==='matching';
+ const original=vi.mocked(queueCall).getMockImplementation()!;
+ vi.mocked(queueCall).mockImplementation(async(...args)=>{
+  if(args[0].operation!=='acceptCreateReview')return original(...args);
+  events.push('acceptCreateReview');
+  expect(args[1]).toEqual(draft.keys);
+  return {...draft,id:'live-review',approved:same,plan,quote:same?draft.quote:{...draft.quote,totalFee:'500',creationFee:'500',walletDebit:'24100'}};
+ });
+ const declineChanged=vi.fn((event:Event)=>{
+  const {quote,respond}=(event as CustomEvent).detail;
+  expect(quote.totalFee).toBe('500');
+  expect(manager.signTransaction).not.toHaveBeenCalled();
+  respond(false);
+ });
+ window.addEventListener('arena-preparation-confirm',declineChanged);
+ try{
+  const result=wallet.queue!({operation:'continueCreate',draft});
+  if(same){
+   await expect(result).resolves.toMatchObject({stage:'pending'});
+   expect(declineChanged).not.toHaveBeenCalled();
+   expect(events).toEqual(['acceptCreateReview','authorize','beginSigning','retain','submit']);
+   expect(manager.signTransaction).toHaveBeenCalledOnce();
+  }else{
+   await expect(result).rejects.toThrow('cancelled');
+   expect(declineChanged).toHaveBeenCalledOnce();
+   expect(events).toEqual(['acceptCreateReview','discard']);
+   expect(manager.signTransaction).not.toHaveBeenCalled();
+  }
+ }finally{window.removeEventListener('arena-preparation-confirm',declineChanged);wallet.close?.();}
+});
