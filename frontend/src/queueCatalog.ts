@@ -1,4 +1,6 @@
 /** Lightweight discovery transport; imported by the startup view before covenants. */
+export const queueConfigStorage=(network:string)=>'staking-arena-queue-configs-'+network;
+
 async function fetchQueuePage(network:string,path='index.json',signal?:AbortSignal,fresh=false){
  if(!['mainnet','chipnet','regtest'].includes(network)||!/^(index\.json|pages\/[a-f0-9]{64}\.json)$/.test(path))throw Error('Invalid queue index request');
  const url=new URL(`public-index/queue/${network}/${path}`,document.baseURI);

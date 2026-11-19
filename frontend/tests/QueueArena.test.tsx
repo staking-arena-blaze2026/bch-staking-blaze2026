@@ -3,7 +3,7 @@ import {deriveHdPrivateNodeFromSeed,deriveHdPublicNode,encodeHdPublicKey} from '
 import {render,screen,waitFor,fireEvent,cleanup,act,within} from '@testing-library/react';
 vi.mock('../src/activeNetwork',()=>({activeNetwork:'chipnet'}));
 vi.mock('../src/queueClient',()=>({queueCall:vi.fn()}));
-vi.mock('../src/queueCatalog',()=>({loadQueuePage:vi.fn()}));
+vi.mock('../src/queueCatalog',async importOriginal=>({...await importOriginal<typeof import('../src/queueCatalog')>(),loadQueuePage:vi.fn()}));
 import {queueCall} from '../src/queueClient';
 import {loadQueuePage} from '../src/queueCatalog';
 import QueueArena from '../src/QueueArena';
@@ -11,17 +11,17 @@ import {WalletTransactionsContext,type WalletTransactions} from '../src/walletTr
 const zero='00'.repeat(32),owner='02'+'11'.repeat(32),genesis='aa'.repeat(32);
 const config={parameters:{stakingCategory:zero,rewardCategory:zero,epoch:1800000000,interval:60,releases:10,cap:2000n},identity:{vault:'bb'.repeat(32),queue:'cc'.repeat(32)},anchor:{genesis,creator:owner}};
 const offer={id:'dd'.repeat(32),owner,stake:3000n,duration:512,reward:2000n,next:{id:zero,stake:0n,duration:0,reward:0n}};
-const snapshot={config,clock:{height:200,hash:'ee'.repeat(32),mtp:1800001200},state:{head:offer,reserve:20000n},ordered:[offer],nodes:new Map(),vault:{},root:{}};
+const snapshot={config,tip:{height:200,hash:'ee'.repeat(32)},mtp:1800001200,state:{head:offer,reserve:20000n},ordered:[offer],nodes:new Map(),vault:{},root:{}};
 let live=true,rows:any[]=[],failure=false;
 const wallet:WalletTransactions={publicKey:()=>owner,pairing:()=>({paired:true,live,identity:owner,network:'chipnet'}),restore:vi.fn(),v3:vi.fn(),queue:vi.fn(async()=>({intent:{kind:'insert'},stage:'pending',step:'action',raw:'retained',txid:'ff'.repeat(32)})),execute:vi.fn()};
-beforeEach(()=>{localStorage.clear();rows=[];live=true;failure=false;vi.clearAllMocks();window.location.hash='#/v3/vault/'+genesis;vi.mocked(loadQueuePage).mockResolvedValue({network:'chipnet',vaults:[config],pages:[]});vi.mocked(queueCall).mockImplementation(async i=>{if(i.operation==='list')return [];if(i.operation==='owned')return rows;if(failure)throw Error('Provider unavailable');return snapshot;});});
+beforeEach(()=>{vi.spyOn(document,'hidden','get').mockReturnValue(false);localStorage.clear();rows=[];live=true;failure=false;vi.clearAllMocks();window.location.hash='#/v3/vault/'+genesis;vi.mocked(loadQueuePage).mockResolvedValue({network:'chipnet',vaults:[config],pages:[]});vi.mocked(queueCall).mockImplementation(async i=>{if(i.operation==='list')return [];if(i.operation==='owned')return rows;if(failure)throw Error('Provider unavailable');return snapshot;});});
 afterEach(cleanup);
-async function open(){render(<WalletTransactionsContext.Provider value={wallet}><QueueArena/></WalletTransactionsContext.Provider>);await screen.findByRole('heading',{name:'Make an Offer'});}
+async function open(){render(<WalletTransactionsContext.Provider value={wallet}><QueueArena/></WalletTransactionsContext.Provider>);await screen.findByRole('heading',{name:'Make an Offer'},{timeout:5000});}
 it('validates 512-second units and preserves exact terms in the approval request',async()=>{await open();fireEvent.change(screen.getByLabelText('Lock duration (time units)'),{target:{value:'12'}});expect(screen.getAllByText(/1 hour, 42 minutes, 24 seconds/).length).toBeGreaterThan(0);fireEvent.click(screen.getByRole('button',{name:'Make an Offer'}));await waitFor(()=>expect(wallet.queue).toHaveBeenCalledWith({operation:'prepare',intent:{kind:'insert',config,terms:{stake:3000n,duration:6144,reward:2000n}}},expect.any(Function)));fireEvent.change(screen.getByLabelText('Lock duration (time units)'),{target:{value:'0'}});expect(screen.getByRole('button',{name:'Make an Offer'})).toBeDisabled();});
 it('binds a claim to the reviewed head, and waits for an offline saved pairing',async()=>{live=false;await open();const details=screen.getByRole('region',{name:'Vault details'});const button=screen.getByRole('button',{name:'Claim reward'});expect(details).toContainElement(button);expect(screen.getByText('Winning reward: 0.00002000 BCH (2000 satoshis)')).toBeVisible();expect(screen.queryByRole('heading',{name:'Claim'})).toBeNull();expect(screen.getByRole('heading',{name:'Queue'})).toBeVisible();expect(button).toBeEnabled();fireEvent.click(button);expect(wallet.queue).not.toHaveBeenCalled();await waitFor(()=>expect(wallet.restore).toHaveBeenCalled());live=true;await waitFor(()=>expect(wallet.queue).toHaveBeenCalledWith({operation:'prepare',intent:{kind:'claim',config,expectedHead:offer.id}},expect.any(Function)));});
 it('cancels deferred approval when the terms or route change',async()=>{live=false;await open();fireEvent.click(screen.getByRole('button',{name:'Make an Offer'}));await waitFor(()=>expect(wallet.restore).toHaveBeenCalled());fireEvent.change(screen.getByLabelText('Stake amount'),{target:{value:'0.00004000'}});live=true;await waitFor(()=>expect(screen.getByRole('alert')).toHaveTextContent('request changed'));expect(wallet.queue).not.toHaveBeenCalled();});
-it('shows owner states and enables matured withdrawal on the My Offers route',async()=>{window.location.hash='#/v3/my-offers';rows=[{id:offer.id,offer,status:'Baked',maturesAt:1800001000,checkedMtp:1800001200}];render(<WalletTransactionsContext.Provider value={wallet}><QueueArena/></WalletTransactionsContext.Provider>);const button=await screen.findByRole('button',{name:'Get my stake back'});expect(screen.getByText('Matured',{selector:'strong'})).toBeVisible();expect(screen.getByRole('button',{name:'Matured'})).toBeVisible();expect(button).toBeEnabled();fireEvent.click(button);await waitFor(()=>expect(wallet.queue).toHaveBeenCalledWith({operation:'prepare',intent:{kind:'withdraw',config,offerId:offer.id}},expect.any(Function)));});
-it('displays local/MTP release timing and the complete expandable schedule',async()=>{await open();expect(screen.getByText(/Blockchain time \(MTP\):/)).toBeInTheDocument();const summary=screen.getByText('Release schedule and history');await act(async()=>{fireEvent.click(summary);summary.closest('details')!.open=true;fireEvent(summary.closest('details')!,new Event('toggle'));});expect(screen.getByRole('columnheader',{name:'Scheduled local time'})).toBeInTheDocument();expect(screen.getAllByRole('row').length).toBeGreaterThan(10);});
+it('shows owner states and enables matured withdrawal on the My Offers route',async()=>{window.location.hash='#/v3/my-offers';rows=[{id:offer.id,offer,status:'Baked',maturesAt:1800001000,checkedMtp:1800001200,eligible:true}];render(<WalletTransactionsContext.Provider value={wallet}><QueueArena/></WalletTransactionsContext.Provider>);const button=await screen.findByRole('button',{name:'Get my stake back'});expect(screen.getByText('Matured',{selector:'strong'})).toBeVisible();expect(screen.getByRole('button',{name:'Matured'})).toBeVisible();expect(button).toBeEnabled();fireEvent.click(button);await waitFor(()=>expect(wallet.queue).toHaveBeenCalledWith({operation:'prepare',intent:{kind:'withdraw',config,offerId:offer.id}},expect.any(Function)));});
+it('displays local/MTP release timing and the complete expandable schedule',async()=>{await open();expect(screen.getByText(/Reported blockchain time \(MTP\):/)).toBeInTheDocument();const summary=screen.getByText('Release schedule and history');await act(async()=>{fireEvent.click(summary);summary.closest('details')!.open=true;fireEvent(summary.closest('details')!,new Event('toggle'));});expect(screen.getByRole('columnheader',{name:'Scheduled local time'})).toBeInTheDocument();expect(screen.getAllByRole('row').length).toBeGreaterThan(10);});
 
 it('shows atomic counts, exact reviewed fee/debit, and clears stale estimates',async()=>{await open();expect(screen.getByText('Transactions: 1 · Wallet approvals: 1')).toBeVisible();expect(screen.queryByText(/Total stake committed:/)).toBeNull();expect(screen.getByText('1 time unit = 512 second')).toBeVisible();await act(async()=>{window.dispatchEvent(new CustomEvent('arena-queue-review',{detail:{intent:{kind:'insert'},plan:{fee:'3613'},walletDebit:'7813'}}));});expect(screen.getByText('Estimated network fee: 3613 sats')).toBeVisible();expect(screen.getByText(/Total wallet BCH committed, including fee: 7813 sats/)).toBeVisible();fireEvent.change(screen.getByLabelText('Stake amount'),{target:{value:'0.00004000'}});expect(screen.queryByText('Estimated network fee: 3613 sats')).not.toBeInTheDocument();});
 it('calculates transaction and approval counts before approval on Create Vault',async()=>{window.location.hash='#/create';render(<WalletTransactionsContext.Provider value={wallet}><QueueArena/></WalletTransactionsContext.Provider>);expect(await screen.findByText('Transactions: calculated before approval · Wallet approvals: calculated before approval')).toBeVisible();expect(screen.getByText('Total reward reserve')).toBeVisible();expect(screen.queryByText(/prepares the genesis/)).not.toBeInTheDocument();});
@@ -221,4 +221,55 @@ it('shows network-resolved token names and exact amounts in the marketplace and 
   expect(fetchToken).toHaveBeenCalledTimes(1);
   expect(fetchToken).toHaveBeenCalledWith('https://bcmr-chipnet.paytaca.com/api/tokens/'+category+'/',expect.anything());
  }finally{fetchToken.mockRestore();}
+});
+
+it('shows the published count before the first blockchain reply and retains it on failure',async()=>{
+ window.location.hash='#/v3/offers';
+ vi.mocked(loadQueuePage).mockResolvedValue({network:'chipnet',vaults:[{...config,offerCount:{network:'chipnet',vaultId:genesis,waiting:7,updatedAt:new Date().toISOString()}}],pages:[]});
+ let reject!: (error:Error)=>void;
+ vi.mocked(queueCall).mockImplementation(async request=>request.operation==='reportedQueue'?new Promise((_resolve,fail)=>{reject=fail;}):[]);
+ render(<QueueArena/>);
+ const table=await screen.findByRole('table');
+ await waitFor(()=>expect(within(table).getByRole('cell',{name:'7'})).toBeVisible());
+ await waitFor(()=>expect(reject).toBeDefined());
+ await act(async()=>reject(Error('Malformed or cyclic link')));
+ expect(within(table).getByTitle(/Inconsistent queue data/)).toHaveTextContent('7');
+ expect(screen.queryByText('Verifying…')).toBeNull();
+});
+
+it('finds active offers before history, checks the owner and initiates cancellation',async()=>{
+ vi.mocked(queueCall).mockImplementation(async request=>request.operation==='owned'?new Promise(()=>{}):request.operation==='reportedQueue'?snapshot:[]);
+ const view=render(<WalletTransactionsContext.Provider value={wallet}><QueueArena/></WalletTransactionsContext.Provider>);
+ const cancel=await screen.findByRole('button',{name:'Cancel'});
+ expect(cancel).toBeEnabled();
+ expect(screen.getByText(/Provider-reported queue/)).toBeVisible();
+ expect(screen.getByText(/Wallet .*Chipnet/)).toBeVisible();
+ vi.mocked(wallet.queue!).mockRejectedValueOnce(Error('Conflicting blockchain evidence'));
+ fireEvent.click(cancel);
+ await waitFor(()=>expect(wallet.queue).toHaveBeenCalledWith({operation:'prepare',intent:{kind:'cancel',config,offerId:offer.id}},expect.any(Function)));
+ expect(await screen.findByText('Conflicting blockchain evidence')).toBeVisible();
+ const other='03'+'22'.repeat(32);
+ view.rerender(<WalletTransactionsContext.Provider value={{...wallet,publicKey:()=>other,pairing:()=>({paired:true,live:true,identity:other,network:'chipnet'})}}><QueueArena/></WalletTransactionsContext.Provider>);
+ expect(screen.queryByRole('button',{name:'Cancel'})).toBeNull();
+ view.rerender(<WalletTransactionsContext.Provider value={{...wallet,pairing:()=>({paired:true,live:true,identity:owner,network:'mainnet'})}}><QueueArena/></WalletTransactionsContext.Provider>);
+ expect(screen.queryByRole('button',{name:'Cancel'})).toBeNull();
+});
+
+it('merges a journaled pending offer into the queue row as soon as it is reported',async()=>{
+ const pending={id:'offer-op',owner:{publicKey:owner},intent:{kind:'insert',config,terms:offer},raw:'retained',offerId:offer.id,stage:'pending'};
+ let report=()=>new Promise<typeof snapshot>(()=>{});
+ vi.mocked(queueCall).mockImplementation(async request=>request.operation==='list'?[pending]:request.operation==='reportedQueue'?report():[]);
+ const view=render(<WalletTransactionsContext.Provider value={wallet}><QueueArena/></WalletTransactionsContext.Provider>);
+ window.location.hash='#/v3/my-offers';
+ await act(async()=>window.dispatchEvent(new HashChangeEvent('hashchange')));
+ let panel=screen.getByRole('heading',{name:'My Offers'}).closest('section')!;
+ await waitFor(()=>expect(within(panel).getByText('Pending',{selector:'strong'})).toBeVisible());
+ expect(within(panel).queryByRole('button',{name:'Cancel'})).toBeNull();
+ report=async()=>snapshot;
+ await act(async()=>{window.location.hash='#/v3/vault/'+genesis;window.dispatchEvent(new HashChangeEvent('hashchange'));});
+ expect(await screen.findByText('Waiting',{selector:'strong'})).toBeVisible();
+ panel=screen.getByRole('heading',{name:'My Offers'}).closest('section')!;
+ expect(within(panel).queryByText('Pending',{selector:'strong'})).toBeNull();
+ expect(within(panel).getAllByRole('article')).toHaveLength(1);
+ view.unmount();
 });

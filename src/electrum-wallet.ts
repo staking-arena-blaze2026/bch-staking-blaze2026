@@ -22,7 +22,7 @@ type VerifyOrigin=(source:ElectrumCore,ancestry:ReturnType<typeof ancestryVerifi
 
 /** Verify supplied public source coins against raw transactions, token UTXOs, proofs and linked tip headers. */
 export async function verifyCoins(p:ElectrumCore,coins:SpendableUtxo[],peer:string,allowUnconfirmed=false,verifyOrigin?:VerifyOrigin){
- const tip=await p.tip(),mtp=await p.medianTime(tip.height,tip.hash),transactions=new Map<string,any>(),scriptCoins=new Map<string,SpendableUtxo[]>(),context=await tickContext(p,tip),ancestry=ancestryVerifier(p,{height:tip.height,mtp,...context});
+ const tip=await p.tip(),mtp=await p.medianTime(tip.height,tip.hash),transactions=new Map<string,any>(),scriptCoins=new Map<string,SpendableUtxo[]>(),context=await tickContext(p,tip),ancestry=ancestryVerifier(p,{height:tip.height,mtp,...context},tip);
  const selected=new Set(coins.map(coin=>coin.txid+':'+coin.vout));
  await boundedMap([...new Set(coins.map(c=>c.lockingBytecode).filter((s):s is string=>!!s))],4,async script=>{scriptCoins.set(script,await p.getUtxosForLockingBytecode(script,selected));});
  for(const coin of coins){
@@ -35,13 +35,19 @@ export async function verifyCoins(p:ElectrumCore,coins:SpendableUtxo[],peer:stri
     if(row.tx_hash===coin.txid)continue;
     const candidate=await p.transaction(row.tx_hash);
     if(!candidate.vin.some((i:any)=>i.txid===coin.txid&&i.vout===coin.vout))continue;
-    if(row.height>0)await p.transactionStatus(row.tx_hash);else await ancestry(row.tx_hash);
+    if(row.height>0)await p.transactionStatus(row.tx_hash,row,tip);else await ancestry(row.tx_hash);
     throw new ChangedWalletInput('Known double-spend conflict for selected input');
    }
    throw new ChangedWalletInput('Input availability temporarily unverified');
   }
   if(coinIdentity(actual)!==coinIdentity(coin))throw new ChangedWalletInput('Source-output proof mismatch');
-  let status=transactions.get(coin.txid);if(!status){try{status=allowUnconfirmed?await ancestry(coin.txid,Number.isSafeInteger((actual as any).height)?{tx_hash:coin.txid,height:(actual as any).height}:undefined):await p.transactionStatus(coin.txid);}catch(error){if(/Tip changed during transaction lookup/.test(String(error))&&await p.classifyTipChange(tip)==='extension')throw new ChainExtension();throw error;}transactions.set(coin.txid,status);}if(!allowUnconfirmed&&status.confirmations<=0)throw Error('Only confirmed wallet/covenant inputs may be spent');
+  let status=transactions.get(coin.txid);if(!status){
+   const height=(actual as SpendableUtxo&{height?:number}).height;
+   const observed=height===undefined?undefined:{tx_hash:coin.txid,height};
+   status=allowUnconfirmed?await ancestry(coin.txid,observed):await p.transactionStatus(coin.txid,observed,tip);
+   transactions.set(coin.txid,status);
+  }
+  if(!allowUnconfirmed&&status.confirmations<=0)throw Error('Only confirmed wallet/covenant inputs may be spent');
   if(status.vin?.length===1&&status.vin[0].vout===0xffffffff&&/^0+$/.test(status.vin[0].txid)&&!matureCoinbase(status.height,context))throw Error('Immature coinbase input');
   if(coinIdentity(utxo(status,coin.vout))!==coinIdentity(coin))throw new ChangedWalletInput('Source-output proof mismatch');
  }

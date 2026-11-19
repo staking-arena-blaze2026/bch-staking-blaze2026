@@ -8,22 +8,28 @@ import {QueueIndexer} from '../../src/queue/chain';
 import {QueueWallet,BrowserQueueStore} from '../../src/queue/wallet';
 import {v3Config} from './v3Config';
 import {providerConflictStore} from './providerConflictStore';
+import {queueArchiveStore} from './queueArchiveStore';
 const workerEnv:Record<string,string|undefined>=import.meta.env;
 const options=v3Config({...workerEnv,VITE_V3_NETWORK:self.name.split(':')[0]}),readOnly=self.name.endsWith(':read');
 if(readOnly)options.allowBroadcast=false;
 const provider=new BrowserElectrumProvider(options),store=new BrowserQueueStore(options.network),wallet=new QueueWallet(provider,store),scope=self as unknown as DedicatedWorkerGlobalScope;
 const publicScan=emptyQueueIndex(options.network);
+const displayIndexers=new Map<string,QueueIndexer>();
 let failure=false;
 const messages:Record<string,string>={'preparation-planning':'Calculating the fastest vault-creation path','wallet-input-verification':'Checking wallet inputs and ancestry','prepare':'Calculating the fastest vault-creation path','wallet-address-discovery':'Finding available wallet funds','independent-provider-verification':'Verifying blockchain information on independent providers','legacy-reservation-reconciliation':'Checking relevant old wallet requests','fee-policy':'Checking current verified fee policy','authorize':'Checking wallet inputs before signing','retain':'Verifying signed transaction','submit':'Broadcasting transaction','advance':'Verifying preparation and preparing the next transaction'};
 let stage='Verifying blockchain information';
 provider.onStage=value=>{stage=messages[value]??'Checking transaction recovery';scope.postMessage({type:'progress',message:stage});};
 provider.onTiming=timing=>scope.postMessage({type:'timing',timing});
 provider.onVerificationProgress=message=>scope.postMessage({type:'progress',message});
-let pending=providerConflictStore(options.network).then(async s=>{provider.unresolvedChainPeers=new Set(await s.read());provider.persistChainConflict=async peers=>{try{await s.save(peers);}catch(e){failure=true;throw e;}};}).catch(()=>{failure=true;});
+const conflictReady=providerConflictStore(options.network).then(async s=>{provider.unresolvedChainPeers=new Set(await s.read());provider.persistChainConflict=async peers=>{try{await s.save(peers);}catch(e){failure=true;throw e;}};}).catch(()=>{failure=true;});
+let pending:Promise<void>=Promise.resolve();
 scope.onmessage=event=>{pending=pending.catch(()=>{}).then(async()=>{const {id,intent,keys=[]}=event.data;const heartbeat=setInterval(()=>scope.postMessage({type:'heartbeat',id,message:'Still checking blockchain information: '+stage}),5000);try{
- const operation=String(intent.operation),reading=['list','sync','owned','discover','creationStatus'].includes(operation);
+ const operation=String(intent.operation),reading=['list','reportedQueue','owned','discover','creationStatus'].includes(operation);
  if(readOnly&&!reading)throw Error('Read-only queue worker cannot sign, journal or broadcast');
- if(failure&&!['list','discover'].includes(operation))throw Error('Provider conflict evidence is unavailable');
+ if(!['list','discover','reportedQueue'].includes(operation)){
+  await conflictReady;
+  if(failure)throw Error('Provider conflict evidence is unavailable');
+ }
  const run=async()=>{let result;
  if(operation==='invalidate')result=wallet.invalidateReviews();
  else if(operation==='list')result=await store.list();
@@ -35,8 +41,20 @@ scope.onmessage=event=>{pending=pending.catch(()=>{}).then(async()=>{const {id,i
   const tx=await confirmedWalletTransaction(provider,intent.txid);
   result={confirmed:tx.confirmations>0};
  }
- else if(operation==='sync')result=await new QueueIndexer(provider,intent.config).sync();
- else if(operation==='owned')result=await new QueueIndexer(provider,intent.config).owned(intent.owner);
+ else if(operation==='reportedQueue'){
+  const key=JSON.stringify(intent.config,(_,value)=>typeof value==='bigint'?value.toString():value);
+  const index=displayIndexers.get(key)??new QueueIndexer(provider,intent.config);
+  displayIndexers.delete(key);displayIndexers.set(key,index);
+  if(displayIndexers.size>40)displayIndexers.delete(displayIndexers.keys().next().value!);
+  result=await index.reportedDisplay(intent.clock===true,true);
+ }
+ else if(operation==='owned'){
+  const {config,owner}=intent;
+  const cached=await queueArchiveStore(options.network).then(store=>store.read(config,owner)).catch(()=>undefined);
+  const indexed=await new QueueIndexer(provider,config).archive(owner,cached?.checkpoint);
+  await queueArchiveStore(options.network).then(store=>store.save(config,owner,indexed)).catch(()=>{});
+  result=indexed.rows;
+ }
  else if(operation==='previewCreate')result=await wallet.prepare(intent.intent,keys,undefined,undefined,intent.discoveryId,'preview');
  else if(operation==='acceptCreateReview')result=await wallet.prepare(intent.draft.intent,keys,undefined,undefined,undefined,intent.draft);
  else if(operation==='prepare')result=await wallet.prepare(intent.intent,keys,undefined,undefined,intent.discoveryId);

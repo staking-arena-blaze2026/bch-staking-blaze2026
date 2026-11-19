@@ -1,6 +1,7 @@
 /** Captured chipnet funding/genesis/registrations; synthetic subsequent headers and confirmations.
  * No PoW or public confirmations are claimed by this deterministic protocol fixture. */
 import captured from './settlement-chipnet.json' with {type:'json'};
+import {createHash} from 'node:crypto';
 import { ElectrumCore, decodeRawTransaction, headerHash, hash256, scriptHash, type ElectrumRequest } from '../../src/electrum-core.js';
 import { sourceOutput, validateKeeperTransaction } from '../../src/keeper-core.js';
 import { utxo } from '../../src/arena-core.js';
@@ -66,6 +67,10 @@ export class SettlementChain {
     if(method==='blockchain.transaction.get'){const tx=this.transactions.get(String(params[0]));if(!tx)throw Error('Transaction unavailable');return tx.hex;}
     if(method==='blockchain.transaction.get_merkle'){const id=String(params[0]);if(this.confirmed.get(id)!==params[1])throw Error('No active confirmation');return this.proofs.get(id);}
     if(method==='blockchain.scripthash.get_history')return this.active().filter(tx=>tx.vout.some(o=>scriptHash(o.scriptPubKey.hex)===params[0])||tx.vin.some(i=>{const prev=this.transactions.get(i.txid)?.vout[i.vout];return prev&&scriptHash(prev.scriptPubKey.hex)===params[0];})).map(tx=>({tx_hash:tx.txid,height:this.confirmed.get(tx.txid)??0})).sort((a,b)=>a.tx_hash.localeCompare(b.tx_hash));
+    if(method==='blockchain.scripthash.subscribe'){
+      const history=await this.request('blockchain.scripthash.get_history',String(params[0]));
+      return history.length?createHash('sha256').update(history.map((row:{tx_hash:string;height:number})=>row.tx_hash+':'+row.height+':').join('')).digest('hex'):null;
+    }
     if(method==='blockchain.scripthash.listunspent') {
       if(params[1]!=='include_tokens')throw Error('Token-inclusive UTXOs required');
       const active=this.active(),spent=new Set(active.flatMap(tx=>this.spends(tx)));

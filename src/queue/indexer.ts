@@ -43,6 +43,7 @@ export interface Snapshot {vault:SpendableUtxo;root:SpendableUtxo;nodes:Map<stri
 /** A UTXO-set traversal for display/routing, never a claim witness. Every live
  * queue NFT is accounted for; duplicates, orphans and stale score caches fail. */
 export function snapshot(c:Context,utxos:SpendableUtxo[]):Snapshot{
+ if(new Set(utxos.map(u=>u.txid+':'+u.vout)).size!==utxos.length)throw Error('Duplicate queue outpoint');
  const states=utxos.filter(u=>u.token?.category===c.identity.vault),roots=utxos.filter(u=>u.token?.category===c.identity.queue&&u.token.nft?.commitment==='00');
  if(states.length!==1||roots.length!==1)throw Error('Vault/root uniqueness failure');
  const vault=states[0]!,root=roots[0]!,s=readState(c,vault),nodes:Snapshot['nodes']=new Map();

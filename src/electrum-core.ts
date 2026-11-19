@@ -94,12 +94,15 @@ export class ElectrumCore implements NetworkProvider {
         await connection.connect(); this.endpoint = endpoint;
         // Only immutable header requests are coalesced within a pinned session.
         const headers=new Map<string,Promise<any>>();
+        const rawReads=new Map<string,Promise<any>>();
         this.request = (method,...params) => {
-          const key=method==='blockchain.block.header'?String(params[0]):undefined;
-          if(key!==undefined&&headers.has(key))return headers.get(key)!;
+          const cache=method==='blockchain.block.header'?headers:method==='blockchain.transaction.get'&&params[1]===false?rawReads:undefined;
+          const key=String(params[0]),existing=cache?.get(key);
+          if(existing)return existing;
           this.requestCounts[method]=(this.requestCounts[method]??0)+1;
           const result=connection.request(method,...params);
-          if(key!==undefined){headers.set(key,result);void result.catch(()=>headers.delete(key));}
+          if(cache===headers){headers.set(key,result);void result.catch(()=>headers.delete(key));}
+          if(cache===rawReads){rawReads.set(key,result);const clear=()=>rawReads.delete(key);void result.then(clear,clear);}
           return result;
         };
         const version = await this.request('server.version', 'Staking Arena', '1.5.0');
@@ -208,7 +211,7 @@ export class ElectrumCore implements NetworkProvider {
       while(this.immutableRaw.size>=512||this.immutableBytes+raw.length/2>this.maxRawBytes){const first=this.immutableRaw.keys().next().value;if(first===undefined)break;this.immutableBytes-=this.immutableRaw.get(first)!.length/2;this.immutableRaw.delete(first);}
       this.immutableRaw.set(identity,raw);this.immutableBytes+=raw.length/2;
     }
-    if(this.rawCache) {if(!this.rawCache.has(txid)&&this.rawCache.size>=this.maxTransactions)throw Error('Raw transaction limit exceeded');this.rawBytes+=raw.length/2;this.rawCache.set(txid,raw);}
+    if(this.rawCache&&!this.rawCache.has(txid)) {if(this.rawCache.size>=this.maxTransactions)throw Error('Raw transaction limit exceeded');this.rawBytes+=raw.length/2;this.rawCache.set(txid,raw);}
     return raw;
   }
   async transaction(txid: string, height?: number): Promise<any> {
@@ -225,20 +228,26 @@ export class ElectrumCore implements NetworkProvider {
     if (position !== 0 || Buffer.from(hash).reverse().toString('hex') !== header.merkle) throw Error('Transaction Merkle proof mismatch');
     return { ...tx, confirmations: 1, blockhash: header.hash, height };
   }
-  async transactionStatus(txid: string, observed?: HistoryEntry) {
-    const tx = await this.transaction(txid);
+  async transactionStatus(txid: string, observed?: HistoryEntry, pinnedTip?:Header) {
     // A raw transaction lookup does not prove confirmation. Locate it through one of its output scripts.
-    if (!tx.vout.length) throw Error('Transaction has no outputs');
     if(observed&&(observed.tx_hash!==txid||!Number.isSafeInteger(observed.height)||observed.height< -1))throw Error('Invalid observed transaction status');
-    const entry = observed ?? (await this.history(tx.vout[0].scriptPubKey.hex)).find(h => h.tx_hash === txid);
+    const entry = observed ?? await (async()=>{
+      const tx=await this.transaction(txid);
+      if(!tx.vout.length)throw Error('Transaction has no outputs');
+      return (await this.history(tx.vout[0].scriptPubKey.hex)).find(h=>h.tx_hash===txid);
+    })();
     if (!entry) throw Error('Transaction status unavailable');
-    const tip = await this.tip();
+    const tip = pinnedTip??await this.tip();
     if (entry.height > tip.height) throw Error('Transaction confirmation ahead of tip');
     const confirmed = await this.transaction(txid, entry.height);
+    if(!confirmed.vout.length)throw Error('Transaction has no outputs');
     if (entry.height > 0) await this.verifyHeaderChain(entry.height, tip, new Map([[entry.height, confirmed.blockhash]]));
-    const moved = await this.classifyTipChange(tip);
-    if(moved==='extension')throw new ChainExtension();
-    if(moved==='reorg')throw Error('Reorganization during transaction lookup');
+    // A pinned caller checks tip movement once after all its dependent reads.
+    if(!pinnedTip){
+      const moved = await this.classifyTipChange(tip);
+      if(moved==='extension')throw new ChainExtension();
+      if(moved==='reorg')throw Error('Reorganization during transaction lookup');
+    }
     return { ...confirmed, confirmations: entry.height > 0 ? tip.height - entry.height + 1 : 0 };
   }
   async getBlockHeight() { return (await this.tip()).height; }

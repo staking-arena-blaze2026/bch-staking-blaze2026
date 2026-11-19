@@ -17,7 +17,7 @@ import {insertionPoint,cancellationPoint} from './indexer.js';
 import {policyRate} from './fees.js';
 import * as q from './protocol.js';
 import {creationSequence,type CreationQuote} from './preparation.js';
-export type Intent={kind:'recover';operationId:string}|{kind:'create';parameters:q.Parameters}|{kind:'insert';config:Config;terms:q.Score}|{kind:'cancel'|'withdraw';config:Config;offerId:string}|{kind:'claim';config:Config;expectedHead?:string};
+export type Intent={kind:'recover';operationId:string}|{kind:'create';parameters:q.Parameters}|{kind:'insert';config:Config;terms:q.Score}|{kind:'cancel';config:Config;offerId:string}|{kind:'withdraw';config:Config;offerId:string;claimTxid?:string}|{kind:'claim';config:Config;expectedHead?:string};
 export interface Operation {
  id:string;intent:Intent;owner:WalletKey;keys:WalletKey[];stage:'review'|'signed'|'pending'|'confirmed'|'conflict'|'discarded';
  referenceVault?:SpendableUtxo;
@@ -242,9 +242,9 @@ export class QueueWallet {
    try{
    const index=new QueueIndexer(this.provider,intent.config),c=index.context();config=intent.config;
    // Withdrawals are independent of the standing queue; claims need only its head.
-   const snapshot=intent.kind==='cancel'?await index.sync():undefined;
+   const snapshot=intent.kind==='cancel'?await index.reportedQueue():undefined;
    const head=intent.kind==='claim'?await index.reportedHead():undefined;
-   quotedTip=head?.clock??snapshot?.clock;
+   quotedTip=head?.clock??snapshot?.tip;
    if(intent.kind==='claim'&&intent.expectedHead&&head!.state.head.id!==intent.expectedHead)throw Error('Winning offer changed; review the current head before claiming');
    if(intent.kind==='insert'){
     const queue=await index.reportedQueue();
@@ -256,16 +256,20 @@ export class QueueWallet {
    }else {
 
     if(intent.kind==='withdraw'){
-     const entry=(await index.owned(owner.publicKey,intent.offerId)).find(o=>o.id===intent.offerId);if(!entry||entry.status!=='Baked'||!entry.locked||entry.maturesAt===undefined||entry.checkedMtp<entry.maturesAt)throw Error('Stake allocation has not matured');built=this.select(coins,q.ZERO,0n,cs=>{selected=cs;return q.withdraw(c,entry.offer,entry.locked!,authorization,cs.map(c=>this.funding(c)),rate);});offerId=entry.id;label='Get independently matured stake back';
+     const reported=intent.claimTxid?await index.reportedWithdrawal(owner.publicKey,intent.offerId,intent.claimTxid):undefined;
+     const legacy=reported?undefined:(await index.owned(owner.publicKey,intent.offerId)).find(o=>o.id===intent.offerId&&o.status==='Baked'&&o.locked&&o.maturesAt!==undefined&&o.checkedMtp>=o.maturesAt);
+     const entry=reported??legacy,locked=entry?.locked;
+     if(!entry||!locked)throw Error('Stake allocation has not matured');
+     quotedTip=reported?.tip;
+     built=this.select(coins,q.ZERO,0n,cs=>{selected=cs;return q.withdraw(c,entry.offer,locked,authorization,cs.map(c=>this.funding(c)),rate);});
+     offerId=entry.offer.id;label='Get matured stake back';
     }else {
      const position=intent.kind==='claim'?{controller:head!.vault,node:head!.node}:cancellationPoint(snapshot!,intent.offerId);if(!position)throw Error('Queue is empty');
-     const offer=q.readNode(c,position.node),escrow=c.p.stakingCategory===q.ZERO?undefined:
-      intent.kind==='claim'?await index.reportedAssetInput(offer.stake,offer.id):await index.assetInput(offer.stake,offer.id);
-     const state=head?.state??snapshot!.state,clock=head?.clock??snapshot!.clock;
-     const action=intent.kind==='cancel'?1:offer.reward>state.reserve?3:2;
-     const reserve=action===2&&c.p.rewardCategory!==q.ZERO?await index.reportedAssetInput(state.reserve):undefined;
-     if(action===2&&q.rewardStatus(c.p,state,offer.reward,clock.mtp-1)!=='available')throw Error('Rewards await the next scheduled release');
-     built=this.select(coins,q.ZERO,0n,cs=>{selected=cs;return q.remove(c,position.controller,position.node,action,cs.map(c=>this.funding(c)),action===1?authorization:undefined,escrow,reserve,action===2?clock.mtp-1:0,rate);});authorize=action===1;offerId=offer.id;label=action===3?'Return unfundable head stake to its owner':action===2?'Pay head reward and create independent stake lock':'Cancel offer and return its complete stake';
+     const offer=q.readNode(c,position.node),escrow=c.p.stakingCategory===q.ZERO?undefined:await index.reportedAssetInput(offer.stake,offer.id);
+     const action=!head?1:offer.reward>head.state.reserve?3:2;
+     const reserve=action===2&&c.p.rewardCategory!==q.ZERO?await index.reportedAssetInput(head!.state.reserve):undefined;
+     if(action===2&&q.rewardStatus(c.p,head!.state,offer.reward,head!.clock.mtp-1)!=='available')throw Error('Rewards await the next scheduled release');
+     built=this.select(coins,q.ZERO,0n,cs=>{selected=cs;return q.remove(c,position.controller,position.node,action,cs.map(c=>this.funding(c)),action===1?authorization:undefined,escrow,reserve,action===2?head!.clock.mtp-1:0,rate);});authorize=action===1;offerId=offer.id;label=action===3?'Return unfundable head stake to its owner':action===2?'Pay head reward and create independent stake lock':'Cancel offer and return its complete stake';
     }
    }
    }catch(error){
@@ -324,10 +328,13 @@ export class QueueWallet {
    : op.sources;
   // A lower-ranked insert reads the reserve from the vault without spending it.
   // Bind that observation and the immutable vault origin to the same peer proofs.
-  if(op.intent.kind==='insert'||op.intent.kind==='claim'){
-   const index=new QueueIndexer(this.provider,op.intent.config);
+  const intent=op.intent;
+  if(intent.kind==='insert'||intent.kind==='claim'||intent.kind==='cancel'||intent.kind==='withdraw'){
+   const index=new QueueIndexer(this.provider,intent.config);
    const inputs=op.referenceVault?[...selected,op.referenceVault]:selected;
-   return verifyCoinsAcrossPeers(this.provider,inputs,true,undefined,{readFeeRate,verifyOrigin:(source,ancestry)=>index.authenticateOrigin(source,ancestry)});
+   return verifyCoinsAcrossPeers(this.provider,inputs,true,undefined,{readFeeRate,verifyOrigin:(source,ancestry)=>intent.kind==='withdraw'
+    ?index.authenticateWithdrawal(source,ancestry,op.owner.publicKey,intent.offerId,op.sources[0]!)
+    :index.authenticateOrigin(source,ancestry)});
   }
   return verifyCoinsAcrossPeers(this.provider,selected,true,undefined,{readFeeRate});
  }

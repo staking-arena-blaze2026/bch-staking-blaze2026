@@ -30,7 +30,7 @@ test('queue wallet: public-key plans, explicit signing, durable recovery and own
  function sign(plan:BrowserPlan){const tx=structuredClone(plan.request.transaction) as Transaction;for(const [i]of plan.inputPaths){const signer=plan.signers?.[i]===binToHex(changeKey.publicKey)?changeKey:key,s=plan.request.sourceOutputs[i]!,sig=signer.generateSignature(hash256(generateSigningSerializationBch({transaction:tx,sourceOutputs:plan.request.sourceOutputs,inputIndex:i},{coveredBytecode:s.contract?.redeemScript??s.lockingBytecode,signingSerializationType:Uint8Array.of(0x61)})));sig[64]=0x61;tx.inputs[i]!.unlockingBytecode=s.contract?hexToBin(binToHex(s.unlockingBytecode).replace('41'+'00'.repeat(65),'41'+binToHex(sig))):new Uint8Array([...encodeDataPush(sig),...encodeDataPush(signer.publicKey)]);}return binToHex(encodeTransaction(tx));}
  const costs:{kind:string;step:string;bytes:number;fee:string}[]=[];let approvals=0;
  async function approve(op:Operation){const reviewed=structuredClone(op.plan),auth=await measured(op.intent.kind,op.step,'authorize',()=>wallet.authorize(op.id));assert.deepEqual(auth.plan,reviewed,'authorization must preserve the reviewed body');approvals++;await wallet.beginSigning(op.id);const raw=sign(auth.plan);const sinceSignature=performance.now(),count=requests;await wallet.retain(op.id,raw);costs.push({kind:op.intent.kind,step:op.step,bytes:raw.length/2,fee:auth.plan.fee!});const pending=await wallet.broadcast(op.id);timings.push({kind:op.intent.kind,step:op.step,phase:'signature-to-pending',ms:performance.now()-sinceSignature,requests:requests-count});return pending;}
- async function prepareFromReports(intent:Extract<Operation['intent'],{kind:'claim'|'insert'}>){
+ async function prepareFromReports(intent:Extract<Operation['intent'],{kind:'claim'|'insert'|'cancel'}>){
   const original=p.request;
   p.request=async(method,...args)=>{
    if(method.startsWith('blockchain.transaction.')||method==='blockchain.block.headers')throw Error('Unexpected proof request while estimating '+intent.kind);
@@ -76,20 +76,31 @@ test('queue wallet: public-key plans, explicit signing, durable recovery and own
  const lowerOffer=await prepareFromReports({kind:'insert',config,terms:{stake:8000n,duration:512,reward:2000n}});
  assert.ok(lowerOffer.referenceVault,'ranked insert must check the vault reserve even when spending only the predecessor');
  const second=await approve(lowerOffer);
- const cancel=await approve(await prepare({kind:'cancel',config,offerId:second.offerId!},keys));assert.equal(cancel.sources.length,3);
+ const wrongCancel=await prepareFromReports({kind:'cancel',config:wrongConfig,offerId:second.offerId!});
+ await assert.rejects(wallet.authorize(wrongCancel.id));await assert.rejects(wallet.beginSigning(wrongCancel.id),/Fresh/);
+ await wallet.discard(wrongCancel.id);
+ const cancel=await approve(await prepareFromReports({kind:'cancel',config,offerId:second.offerId!}));assert.equal(cancel.sources.length,3);
  const originalSync=QueueIndexer.prototype.sync;
  QueueIndexer.prototype.sync=async()=>{throw Error('Unexpected standing queue traversal');};
+ let claimTxid:string|undefined;
  try{
   await rpc('sendtoaddress',[ownerAddress(changeKey.publicKey,p),1]);await p.refresh();
   const claim=await prepareFromReports({kind:'claim',config,expectedHead:first.offerId!});
   assert.deepEqual(claim.plan.inputPaths,[[2,'change',0]]);
   assert.equal(BigInt(claim.walletDebit!),BigInt(claim.plan.fee!)-(q.CARRIER+2000n),'credit both the reward output to receive/0 and fee change to change/0');
-  await approve(claim);
+  claimTxid=(await approve(claim)).txid!;
  }finally{QueueIndexer.prototype.sync=originalSync;}
  await assert.rejects(()=>prepare({kind:'withdraw',config,offerId:first.offerId!},keys),/not matured/);
+ const early=await prepare({kind:'withdraw',config,offerId:first.offerId!,claimTxid},keys);
+ await assert.rejects(wallet.authorize(early.id),/confirmed allocation|immature|maturity/i);
+ await assert.rejects(wallet.beginSigning(early.id),/Fresh/);await wallet.discard(early.id);
  await rpc('generatetoaddress',[1,miner]);await rpc('setmocktime',[(await rpc('getblockchaininfo')).mediantime+1200]);await rpc('generatetoaddress',[12,miner]);p.headerCache.clear();await p.refresh();
  QueueIndexer.prototype.sync=async()=>{throw Error('Unexpected standing queue traversal');};
- try{await approve(await prepare({kind:'withdraw',config,offerId:first.offerId!},keys));}finally{QueueIndexer.prototype.sync=originalSync;}assert.equal((await index.owned(keys[0]!.publicKey)).find(o=>o.id===first.offerId)?.status,'Finished');
+ const history=p.history.bind(p);
+ p.history=async script=>{if(script===q.node(index.context()).lockingBytecode)throw Error('Unexpected queue history during withdrawal preparation');return history(script);};
+ let withdrawal:Operation;
+ try{withdrawal=await prepare({kind:'withdraw',config,offerId:first.offerId!,claimTxid},keys);}finally{p.history=history;QueueIndexer.prototype.sync=originalSync;}
+ await approve(withdrawal);assert.equal((await index.owned(keys[0]!.publicKey)).find(o=>o.id===first.offerId)?.status,'Finished');
 const actionTimings=timings.slice();
  // Review evidence is bound to tip, exact intent and wallet session, and is
  // deliberately not restored as signing authority by a new wallet worker.

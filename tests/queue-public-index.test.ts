@@ -5,8 +5,9 @@ import {SignatureTemplate,type SpendableUtxo} from 'cashscript';
 import {decodeRawTransaction,type HistoryEntry} from '../src/electrum-core.js';
 import {BrowserElectrumProvider} from '../src/electrum-wss.js';
 import {addAnnouncement,payload} from '../src/queue/discovery.js';
-import {emptyQueueIndex,scanQueueIndex,type QueueIndexState} from '../src/queue/public-index.js';
-import {create,ownerScript,ZERO} from '../src/queue/protocol.js';
+import {emptyQueueIndex,refreshQueueCounts,scanQueueIndex,type QueueIndexState} from '../src/queue/public-index.js';
+import {create,insert,ownerScript,ZERO} from '../src/queue/protocol.js';
+import {utxo} from '../src/arena-core.js';
 import {DISCOVERY_CARRIER,discoveryScript} from '../src/v3/discovery.js';
 
 for(const network of ['mainnet','chipnet'] as const)test(`${network} queue discovery survives delayed confirmation, outages and discarded runs`,async()=>{
@@ -72,8 +73,22 @@ for(const network of ['mainnet','chipnet'] as const)test(`${network} queue disco
  await scanQueueIndex(state,provider,5000);
  assert.deepEqual(state.vaults[txid],{parameters,identity:{vault:vault.txid,queue:queue.txid},anchor:{genesis:txid,creator}});
  assert.equal(state.pending[txid],undefined);
+ const countReader=provider.independentReader(provider.endpoints[0]!)!;
+ countReader.tip=async()=>({height:42,hash:'aa'.repeat(32),hex:'',parent:'',merkle:'',time:parameters.epoch});
+ const current=Array.from({length:2},(_,n)=>utxo(genesis,n));
+ countReader.reportedUtxosForLockingBytecode=async script=>current.filter(coin=>coin.lockingBytecode===script);
+ assert.equal(await refreshQueueCounts(state,[countReader],5000),1);
+ assert.deepEqual({...state.counts?.[txid],updatedAt:null},{network,vaultId:txid,waiting:0,updatedAt:null});
+ const terms={stake:3000n,reward:2000n,duration:512};
+ const registered=decodeRawTransaction(insert(build().context,current[0]!,current[1]!,terms,key,[fund(origin('56'))]).raw);
+ current.splice(0,2,...Array.from({length:3},(_,n)=>utxo(registered,n)));
+ assert.equal(await refreshQueueCounts(state,[countReader],5000),1);
+ assert.equal(state.counts?.[txid]?.waiting,1);
+ const last=structuredClone(state.counts?.[txid]);
  outage=true;
  const offline=await scanQueueIndex(state,provider,5000);
  assert.equal(offline.online,0);
  assert.ok(state.vaults[txid]);
+ assert.equal(await refreshQueueCounts(state,[countReader],5000),0);
+ assert.deepEqual(state.counts?.[txid],last);
 });

@@ -1,6 +1,7 @@
 import {createBrandArtwork} from './brandArtwork';
 import {shortTokenCategory,tokenName} from './tokenNames';
-import {warmQueuePage} from './queueCatalog';
+import {queueConfigStorage,warmQueuePage} from './queueCatalog';
+import {queueCount,rememberQueueCount,countDescription} from './queueCounts';
 import type {V3Network} from '../../src/v3/network';
 /** Candidate hints only. This tiny startup view has no wallet, transaction or state
  * verification dependencies. React replaces it once its actual catalog is ready. */
@@ -12,9 +13,9 @@ export function startPublicPreview(){
  const el=(tag:string,text:string)=>{const node=document.createElement(tag);node.textContent=text;return node;};
  const remove=()=>{root.remove();window.removeEventListener('hashchange',changed);clearTimeout(deadline);};
  const changed=()=>{if(!location.hash.startsWith('#/v3/offers'))remove();};
- const deadline=setTimeout(()=>{if(root.isConnected&&!root.hidden)(root.querySelector('main')??root).append(el('p','Vault verification is taking longer than expected. Reload to retry; financial actions remain unavailable.'));},15000);
+ const deadline=setTimeout(()=>{if(root.isConnected&&!root.hidden)(root.querySelector('main')??root).append(el('p','The full vault interface is still loading.'));},15000);
  window.addEventListener('hashchange',changed);
- void warmQueuePage(network as V3Network).then(data=>{
+ const render=(data:{vaults:any[]})=>{
   if(!root.isConnected||!location.hash.startsWith('#/v3/offers'))return;
   const rows=new Map<string,any>(),conflicts=new Set<string>();
   for(const c of data.vaults){
@@ -22,6 +23,7 @@ export function startPublicPreview(){
    if(!p||!c.identity||!c.anchor||![c.anchor.genesis,c.identity.vault,c.identity.queue,p.stakingCategory,p.rewardCategory].every(v=>typeof v==='string'&&/^[a-f0-9]{64}$/.test(v))||!/^(02|03)[a-f0-9]{64}$/.test(c.anchor.creator))continue;
    if(!/^\d{1,7}$/.test(String(p.cap))||Number(p.cap)<1||Number(p.cap)>1000000||![p.epoch,p.interval,p.releases].every(Number.isSafeInteger)||p.epoch<500000000||p.interval<1||p.releases<1||p.releases>1000||p.epoch+p.interval*p.releases>2147483647)continue;
    const config={genesis:c.anchor.genesis,cap:p.cap,periods:p.releases,stakingAsset:p.stakingCategory==='00'.repeat(32)?{kind:'bch'}:{kind:'token',category:p.stakingCategory},rewardAsset:p.rewardCategory==='00'.repeat(32)?{kind:'bch'}:{kind:'token',category:p.rewardCategory}};
+   rememberQueueCount(network,config.genesis,c.offerCount);
    if(rows.has(config.genesis)&&JSON.stringify(rows.get(config.genesis).config)!==JSON.stringify(config))conflicts.add(config.genesis);else rows.set(config.genesis,{config});
   }
   if(!rows.size)return;
@@ -48,10 +50,16 @@ export function startPublicPreview(){
      void tokenName(network as V3Network,asset.category).then(name=>{if(name&&cell.isConnected)cell.textContent=qty+name;});
     }
    }
-   const offers=row.insertCell();offers.dataset.label='Offers';offers.textContent='Verifying…';
+   const offers=row.insertCell(),count=queueCount(network,id);offers.dataset.label='Offers';offers.textContent=count?String(count.waiting):'—';
+   offers.title=count?countDescription(count):'Waiting offer count unavailable';
 
   }
   panel.append(table);
   root.hidden=false;
- }).catch(()=>remove());
+ };
+ try{
+  const cached=JSON.parse(localStorage.getItem(queueConfigStorage(network))??'[]');
+  if(Array.isArray(cached))render({vaults:cached.slice(0,20)});
+ }catch{/* The published index can still populate the startup view. */}
+ void warmQueuePage(network as V3Network).then(render).catch(()=>{if(root.hidden)remove();});
 }
