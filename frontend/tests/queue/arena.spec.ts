@@ -39,6 +39,8 @@ test('real workers render metadata before parallel WSS reads and reconcile owner
  await page.evaluate(({owner,xpub})=>localStorage.setItem('staking-arena-wizardconnect-v1-regtest',JSON.stringify({
   walletPublicKey:owner.slice(2),privateKey:'01'.repeat(32),secret:'02'.repeat(8),paths:[{name:'receive',xpub}],
  })),{owner:fixture.config.anchor.creator,xpub:fixture.xpub});
+ // Keep the saved pairing offline while allowing loopback Electrum requests.
+ await page.addInitScript(()=>Object.defineProperty(Navigator.prototype,'onLine',{configurable:true,get:()=>false}));
  await page.reload();
  const active=page.locator('.queue-my-offers article strong').filter({hasText:'Waiting'});
  await expect(active).toBeVisible({timeout:30000});
