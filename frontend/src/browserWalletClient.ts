@@ -6,7 +6,7 @@ import {v3Call} from './v3Client';
 import {queueCall} from './queueClient';
 import {confirmPreparation} from './QueuePreparationDialog';
 import type {DappConnectionManager} from '@wizardconnect/dapp';
-import {binToHex} from '@bitauth/libauth';
+import {binToHex,sha256} from '@bitauth/libauth';
 import type {WalletOperation} from '../../src/browser-wallet';
 import type {WalletKey} from '../../src/transactions-core';
 import {browserConfig} from './browserConfig';
@@ -25,7 +25,7 @@ export function browserWalletClient(manager:DappConnectionManager|null,check:()=
  // A transport interruption invalidates all in-flight preparation/approval contexts,
  // including work that completes after the same wallet reconnects. Journals remain intact.
  let authorizationRevision=0;
- const invalidate=()=>{authorizationRevision++; signing.abort();window.dispatchEvent(new Event('arena-queue-wallet-invalidated'));};
+ const invalidate=()=>{authorizationRevision++; discoveryId='';savedDiscoveryKeys=[];discoveryLoad=undefined;clearTimeout(warmTimer);signing.abort();window.dispatchEvent(new Event('arena-queue-wallet-invalidated'));};
  window.addEventListener('arena-network-leaving',invalidate);
  manager?.on?.('reconnecting',invalidate);
  manager?.on?.('disconnect',invalidate);
@@ -33,6 +33,70 @@ export function browserWalletClient(manager:DappConnectionManager|null,check:()=
  const keys=(limit=scanLimit)=>{check();const paths=getManager().getSessionPaths(),identity=JSON.stringify(paths);if(identity!==derivationIdentity){derived=[];derivationIdentity=identity;}const result:WalletKey[]=[];let count=0;
  for(let index=0;index<limit;index++)for(const [path,child] of walletChains){if(!getManager().hasPath(child))continue;let key=derived?.find(k=>k.path===path&&k.index===index);if(!key){key=checkedWalletKey(paths,path,index,(c,i)=>getManager().getPubkey(c,i),activeNetwork==='mainnet'?'mainnet':'testnet');(derived??=[]).push(key);count++;}result.push(key);}
  window.dispatchEvent(new CustomEvent('arena-wallet-derivation',{detail:{derived:count,total:derived?.length??0,first:result.find(k=>k.path==='receive'&&k.index===0),paths:paths.map(p=>p.name)}}));return result;};
+ let discoveryId='',savedDiscoveryKeys:WalletKey[]=[],discoveryLoad:Promise<void>|undefined,warming=false,warmTimer:ReturnType<typeof setTimeout>|undefined;
+ const discoveryLimits=[2,8,16,24,32,40];
+ function liveDiscoveryId(){
+  check();
+  const paths=getManager().getSessionPaths().map(path=>[path.name,path.xpub]).sort(([a],[b])=>a!.localeCompare(b!));
+  const id=binToHex(sha256.hash(new TextEncoder().encode(JSON.stringify([activeNetwork,paths]))));
+  if(id!==discoveryId){discoveryId=id;savedDiscoveryKeys=[];discoveryLoad=undefined;}
+  return id;
+ }
+ async function queueDescriptors(limit:number,background=false){
+  const descriptors=keys(limit),owner=descriptors.find(k=>k.path==='receive'&&k.index===0);
+  const saved=await queueCall({operation:'list'});
+  check();
+  const journal:import('../../src/queue/wallet').Operation[]=Array.isArray(saved)?saved:[];
+  const hints:WalletKey[]=[];
+  const add=(path:WalletKey['path'],index:number,signer:string)=>{
+   if(!walletChains.some(([name,child])=>name===path&&getManager().hasPath(child))||!Number.isSafeInteger(index)||index<0||index>=200||hints.some(k=>k.path===path&&k.index===index))return;
+   let key=derived?.find(k=>k.path===path&&k.index===index);
+   if(!key){key=checkedWalletKey(getManager().getSessionPaths(),path,index,(c,i)=>getManager().getPubkey(c,i),activeNetwork==='mainnet'?'mainnet':'testnet');(derived??=[]).push(key);}
+   if(key.publicKey===signer)hints.push({...key,fundingHint:true});
+  };
+  for(const key of savedDiscoveryKeys){
+   add(key.path,key.index,key.publicKey);
+   if(background&&hints.length>=4)break;
+  }
+  for(const op of journal){
+   if(background&&hints.length>=4)break;
+   if(op.owner?.publicKey!==owner?.publicKey||op.network&&op.network!==activeNetwork)continue;
+   for(const [input,path,index] of op.plan?.inputPaths??[]){
+    const signer=op.plan.signers[input];if(signer)add(path,index,signer);
+    if(background&&hints.length>=4)break;
+   }
+  }
+  return {descriptors,hints};
+ }
+ async function warmQueue(batch=0,expand=true){
+  if(warming||v3Approval||v2Approval||closed||networkLeaving||document.visibilityState==='hidden')return;
+  warming=true;const revision=authorizationRevision;
+  try{
+   const id=liveDiscoveryId();
+   if(batch===0){
+    discoveryLoad??=queueCall({operation:'loadDiscovery',discoveryId:id}).then(loaded=>{
+     if(id===discoveryId&&revision===authorizationRevision&&Array.isArray(loaded))savedDiscoveryKeys=loaded;
+    }).catch(()=>{});
+    await discoveryLoad;
+    if(revision!==authorizationRevision||closed||networkLeaving)return;
+   }
+   const {descriptors,hints}=await queueDescriptors(discoveryLimits[batch]!,true);
+   if(v3Approval||v2Approval||closed||networkLeaving||revision!==authorizationRevision)return;
+   const result=await queueCall({operation:'warmDiscovery',discoveryId:id,refresh:batch===0},mergeDescriptors(hints,descriptors));
+   if(!result||id!==discoveryId||closed||revision!==authorizationRevision)return;
+   savedDiscoveryKeys=mergeDescriptors(result.funded??[],savedDiscoveryKeys);
+   if(result.origins<2&&!v3Approval&&expand&&batch+1<discoveryLimits.length){
+    clearTimeout(warmTimer);
+    warmTimer=setTimeout(()=>void warmQueue(batch+1),1500);
+   }
+  }catch{/* The foreground flow independently retries unavailable discovery. */}
+  finally{warming=false;}
+ }
+ function mergeDescriptors(hints:WalletKey[],ordinary:WalletKey[]){
+  const result=new Map<string,WalletKey>();
+  for(const key of [...hints,...ordinary]){const id=key.path+':'+key.index;if(!result.has(id))result.set(id,key);}
+  return [...result.values()];
+ }
  function rememberGenesis(op:WalletOperation){if(op.kind==='create'&&op.genesis&&op.pregenesis)saveLocalVault({...op.parameters,genesis:op.genesis},op.pregenesis);}
  async function finish(op:WalletOperation) {
   rememberGenesis(op);
@@ -41,7 +105,7 @@ export function browserWalletClient(manager:DappConnectionManager|null,check:()=
   return {txid:op.txid??'',status:op.stage,operation:op};
  }
  function v2Updated(result:V2Operation){if(result?.id)window.dispatchEvent(new CustomEvent('arena-v2-operation',{detail:result}));return result;}
- return {browser:true,v3Availability(){try{check();const current=getManager();if(typeof current.signTransaction!=='function'||!current.hasPath(0))throw Error('Compatible transaction signing and receive derivation required');return {available:true};}catch(error){return {available:false,reason:manager?String(error):'Connect a compatible WizardConnect/Cashonize wallet using chipnet test funds'};}},async v2(intent){
+ return {browser:true,warmQueue:(expand=true)=>warmQueue(0,expand),v3Availability(){try{check();const current=getManager();if(typeof current.signTransaction!=='function'||!current.hasPath(0))throw Error('Compatible transaction signing and receive derivation required');return {available:true};}catch(error){return {available:false,reason:manager?String(error):'Connect a compatible WizardConnect/Cashonize wallet using chipnet test funds'};}},async v2(intent){
    const check=authorizationCheck();
    await startup;
    if(['list','sync'].includes(String(intent.operation)))return rpc('v2',intent,[]);
@@ -122,30 +186,30 @@ export function browserWalletClient(manager:DappConnectionManager|null,check:()=
    }finally{v3Approval=false;}
   },async queue(intent,requestCheck){
    const live=authorizationCheck(),guard=()=>{live();requestCheck?.();};guard();
-   if(v3Approval||v2Approval)throw Error('Finish the pending wallet approval first');v3Approval=true;
+   if(v3Approval||v2Approval)throw Error('Finish the pending wallet approval first');v3Approval=true;clearTimeout(warmTimer);
    let result:any,signatureRequested=false;
    try{
+    let previousSignatureAt:number|undefined;
     const started=requestCheck?.startedAt??performance.now(),session=JSON.stringify(getManager().getSessionPaths());
     const progress=(message:string)=>window.dispatchEvent(new CustomEvent('arena-wallet-progress',{detail:message}));
     const measure=async<T,>(stage:string,run:()=>Promise<T>)=>{const start=performance.now();try{return await run();}finally{window.dispatchEvent(new CustomEvent('arena-wallet-timing',{detail:{stage,milliseconds:performance.now()-start}}));}};
-    const discoveryId=crypto.randomUUID();let descriptors:WalletKey[]=[];
-    // Policy: start at two indices on every supported path; expand in batches of at most eight.
-    // A funded atomic plan is optimal and may stop early. Any fallback must
-    // complete all 40 indices/path plus authenticated journal hints first.
-    const limits=intent.operation==='prepare'&&(intent.intent as {kind?:string})?.kind!=='recover'?[2,8,16,24,32,40]:[40];
-    const saved=(intent.operation==='prepare'&&(intent.intent as {kind?:string})?.kind==='create')?await queueCall({operation:'list'}):[];
-    const journal:import('../../src/queue/wallet').Operation[]=Array.isArray(saved)?saved:[];
+    const creating=intent.operation==='prepare'&&(intent.intent as {kind?:string})?.kind==='create';
+    const shared=creating||intent.operation==='prepare'&&(intent.intent as {kind?:string})?.kind==='insert';
+    const scope=shared?liveDiscoveryId():crypto.randomUUID();let descriptors:WalletKey[]=[];
+    const limits=intent.operation==='prepare'&&(intent.intent as {kind?:string})?.kind!=='recover'?discoveryLimits:[40];
+    const initial=shared?await measure('public-key-derivation',async()=>{await discoveryLoad;guard();return queueDescriptors(2);}):undefined;
     for(const limit of limits){
      guard();progress('Finding available wallet funds — checking '+limit+' addresses per path…');
-     descriptors=await measure('public-key-derivation',async()=>keys(limit));
-     const owner=descriptors.find(k=>k.path==='receive'&&k.index===0);
-     for(const op of journal){if(op.owner?.publicKey!==owner?.publicKey)continue;
-      for(const hint of op.keys??[]){if(!walletChains.some(([path,child])=>path===hint.path&&getManager().hasPath(child))||hint.index<0||hint.index>=200||!Number.isSafeInteger(hint.index)||descriptors.some(k=>k.path===hint.path&&k.index===hint.index)||!Object.values(op.plan?.signers??{}).includes(hint.publicKey))continue;
-       const key=derived?.find(k=>k.path===hint.path&&k.index===hint.index)??checkedWalletKey(getManager().getSessionPaths(),hint.path,hint.index,(c,i)=>getManager().getPubkey(c,i),activeNetwork==='mainnet'?'mainnet':'testnet');
-       if(key.publicKey===hint.publicKey){if(!derived?.includes(key))(derived??=[]).push(key);descriptors.push({...key,fundingHint:true});}
+     descriptors=initial&&limit===2?mergeDescriptors(initial.hints,initial.descriptors):await measure('public-key-derivation',async()=>mergeDescriptors(initial?.hints??[],keys(limit)));
+     const request={...intent,discoveryId:scope,...(shared?{atomicOnly:creating&&limit<40,firstBatch:limit===2}:{})};
+     try{
+      try{result=await queueCall(request,descriptors);}
+      catch(error){
+       if((error as {details?:{code?:string}})?.details?.code!=='refresh-wallet-discovery')throw error;
+       guard();progress('Wallet funds changed. Refreshing the checked addresses…');
+       result=await queueCall({...request,firstBatch:true},descriptors);
       }
-     }
-     try{result=await queueCall({...intent,discoveryId},descriptors);}catch(error){
+     }catch(error){
       if(limit===40||(!(error as {details?:{code?:string}})?.details?.code?.includes('funding')&&!/Insufficient|funding is required|funding for|funding propagates|Atomic vault creation needs/i.test(String(error))))throw error;
       continue;
      }
@@ -166,7 +230,7 @@ export function browserWalletClient(manager:DappConnectionManager|null,check:()=
      window.dispatchEvent(new CustomEvent('arena-queue-review',{detail:result}));
      progress('Waiting for your confirmation');
      const proceed=await measure('user-confirmation',()=>confirmPreparation(result.quote,signing.signal,approval,result.spentFees??'0'));guard();
-     if(!proceed){await queueCall({operation:'discard',id:result.id});result.stage='discarded';throw Error(result.recovery?'Old request resolution cancelled. No new transaction was signed or broadcast.':'Vault creation cancelled. No new transaction was signed or broadcast.');}
+     if(!proceed){await queueCall({operation:'discard',id:result.id});result.stage='discarded';throw Error(result.recovery?'Old request resolution cancelled. No new transaction was signed or broadcast.':approval?'Vault creation cancelled after wallet preparation. Completed transactions remain in recovery.':'Vault creation cancelled. No new transaction was signed or broadcast.');}
      result=await queueCall({operation:'confirm',id:result.id});guard();total=approval+result.quote.approvals;
     }
     progress('Checking wallet inputs and current fee policy before approval…');
@@ -181,11 +245,13 @@ export function browserWalletClient(manager:DappConnectionManager|null,check:()=
     window.dispatchEvent(new CustomEvent('arena-wallet-progress',{detail:'Requesting Cashonize approval '+(++approval)+' of '+total+' · '+authorized.plan.label}));
     try{await queueCall({operation:'beginSigning',id:result.id});guard();if(Date.now()-authorized.verifiedAt<0||Date.now()-authorized.verifiedAt>10000)throw Error('Queue approval requires fresh verified inputs');if(JSON.stringify(getManager().getSessionPaths())!==session)throw Error('Wallet changed before queue signing');}catch(error){await queueCall({operation:'signingFailed',id:result.id,rejected:true,notRequested:true}).catch(()=>{});throw error;}
     if(approval===1)window.dispatchEvent(new CustomEvent('arena-wallet-timing',{detail:{stage:'until-first-approval',milliseconds:performance.now()-started}}));
+    if(previousSignatureAt!==undefined)window.dispatchEvent(new CustomEvent('arena-wallet-timing',{detail:{stage:'between-approvals',milliseconds:performance.now()-previousSignatureAt}}));
     const signingId=String(result.id);
     let signed;signatureRequested=true;try{signed=await measure('wallet-signing',()=>signWithRefusalEvidence(getManager(),{transaction:wizardWireTransaction(authorized.plan.request),inputPaths:authorized.plan.inputPaths},{signal:signing.signal},async raw=>{
      try{await queueCall({operation:'retain',id:signingId,raw});progress('Late signed response saved. Inspect transaction recovery before continuing.');}
      catch(error){progress('A signed wallet response arrived, but recovery storage failed. Keep this page open and inspect transaction recovery.');throw error;}
     }));}catch(error){await queueCall({operation:'signingFailed',id:result.id,rejected:error instanceof ExplicitWalletRefusal}).catch(()=>{});throw error;}
+    previousSignatureAt=performance.now();
     if(!signed.signedTransaction)throw Error('Signing status unknown; check transaction recovery');
     window.dispatchEvent(new CustomEvent('arena-wallet-progress',{detail:'Verifying signed transaction…'}));
     await measure('signed-transaction-verification',()=>queueCall({operation:'retain',id:result.id,raw:signed.signedTransaction}));guard();

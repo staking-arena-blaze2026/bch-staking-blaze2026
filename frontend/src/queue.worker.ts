@@ -8,19 +8,52 @@ import {QueueIndexer} from '../../src/queue/chain';
 import {QueueWallet,BrowserQueueStore} from '../../src/queue/wallet';
 import {v3Config} from './v3Config';
 import {providerConflictStore} from './providerConflictStore';
+import {WalletDiscoveryStore} from './walletDiscoveryStore';
 const workerEnv:Record<string,string|undefined>=import.meta.env;
 const options=v3Config({...workerEnv,VITE_V3_NETWORK:self.name.split(':')[0]}),readOnly=self.name.endsWith(':read');
 if(readOnly)options.allowBroadcast=false;
 const provider=new BrowserElectrumProvider(options),store=new BrowserQueueStore(options.network),wallet=new QueueWallet(provider,store),scope=self as unknown as DedicatedWorkerGlobalScope;
 const publicScan=emptyQueueIndex(options.network);
 let failure=false;
+const warmProvider=readOnly?undefined:new BrowserElectrumProvider({...options,allowBroadcast:false});
+const discoveryStore=readOnly?undefined:new WalletDiscoveryStore(options.network,provider.endpoints);
+let discoveryOwner='',discoveryLoad:Promise<unknown>=Promise.resolve();
+function loadDiscovery(id:string){
+ if(!discoveryStore||!/^[a-f0-9]{64}$/.test(id))return Promise.resolve([]);
+ if(discoveryOwner===id)return discoveryLoad;
+ discoveryOwner=id;
+ discoveryLoad=discoveryStore.load(id).then(saved=>{
+  if(discoveryOwner!==id||!saved)return [];
+  const funded=wallet.restoreDiscovery(id,saved.scope,saved.evidence);
+  return [...new Map([...saved.keys,...funded].map(key=>[key.path+':'+key.index,key])).values()];
+ }).catch(()=>[]);
+ return discoveryLoad;
+}
+function persistDiscovery(id:string,invalidate=false,background=false){
+ if(id&&id===discoveryOwner)void discoveryStore?.save(id,wallet.discoverySnapshot(id,background),invalidate).catch(()=>{});
+}
 const messages:Record<string,string>={'preparation-planning':'Calculating the fastest vault-creation path','wallet-input-verification':'Checking wallet inputs and ancestry','prepare':'Calculating the fastest vault-creation path','wallet-address-discovery':'Finding available wallet funds','independent-provider-verification':'Verifying blockchain information on independent providers','legacy-reservation-reconciliation':'Checking relevant old wallet requests','fee-policy':'Checking current verified fee policy','authorize':'Checking wallet inputs before signing','retain':'Verifying signed transaction','submit':'Broadcasting transaction','advance':'Verifying preparation and preparing the next transaction'};
 let stage='Verifying blockchain information';
 provider.onStage=value=>{stage=messages[value]??'Checking transaction recovery';scope.postMessage({type:'progress',message:stage});};
 provider.onTiming=timing=>scope.postMessage({type:'timing',timing});
-provider.onVerificationProgress=message=>scope.postMessage({type:'progress',message});
+provider.onVerificationProgress=message=>{scope.postMessage({type:'progress',message});};
 let pending=providerConflictStore(options.network).then(async s=>{provider.unresolvedChainPeers=new Set(await s.read());provider.persistChainConflict=async peers=>{try{await s.save(peers);}catch(e){failure=true;throw e;}};}).catch(()=>{failure=true;});
-scope.onmessage=event=>{pending=pending.catch(()=>{}).then(async()=>{const {id,intent,keys=[]}=event.data;const heartbeat=setInterval(()=>scope.postMessage({type:'heartbeat',id,message:'Still checking blockchain information: '+stage}),5000);try{
+scope.onmessage=event=>{
+ const {id,intent,keys=[]}=event.data;
+ if(intent.operation==='loadDiscovery'&&discoveryStore){
+  void loadDiscovery(intent.discoveryId).then(result=>scope.postMessage({id,result}));
+  return;
+ }
+ if(intent.operation==='warmDiscovery'&&warmProvider){
+  const owner=intent.discoveryId;
+  void wallet.warmDiscovery(keys,owner,warmProvider,intent.refresh===true).then(
+   result=>{if(result)persistDiscovery(owner,false,true);scope.postMessage({id,result});},
+   error=>scope.postMessage({id,error:errorMessage(error)}));
+  return;
+ }
+ if(intent.operation==='prepare'||intent.operation==='invalidate')wallet.cancelWarmDiscovery();
+ if(intent.operation==='invalidate'){discoveryOwner='';discoveryLoad=Promise.resolve();}
+ pending=pending.catch(()=>{}).then(async()=>{const heartbeat=setInterval(()=>scope.postMessage({type:'heartbeat',id,message:'Still checking blockchain information: '+stage}),5000);try{
  const operation=String(intent.operation),reading=['list','sync','owned','discover','creationStatus'].includes(operation);
  if(readOnly&&!reading)throw Error('Read-only queue worker cannot sign, journal or broadcast');
  if(failure&&!['list','discover'].includes(operation))throw Error('Provider conflict evidence is unavailable');
@@ -37,7 +70,7 @@ scope.onmessage=event=>{pending=pending.catch(()=>{}).then(async()=>{const {id,i
  }
  else if(operation==='sync')result=await new QueueIndexer(provider,intent.config).sync();
  else if(operation==='owned')result=await new QueueIndexer(provider,intent.config).owned(intent.owner);
- else if(operation==='prepare')result=await wallet.prepare(intent.intent,keys,undefined,undefined,intent.discoveryId);
+ else if(operation==='prepare')result=await wallet.prepare(intent.intent,keys,undefined,undefined,intent.discoveryId,intent.atomicOnly===true,intent.firstBatch===true);
  else if(operation==='advance')result=await wallet.advance(intent.id,keys);
  else if(operation==='reconcileRecovery')result=await wallet.reconcileRecovery(intent.id);
  else if(operation==='confirm')result=await wallet.confirm(intent.id);
@@ -52,7 +85,8 @@ scope.onmessage=event=>{pending=pending.catch(()=>{}).then(async()=>{const {id,i
  return result;};
  if(!reading&&!scope.navigator.locks)throw Error('Queue transactions require Web Locks');
  const result=reading?await run():await scope.navigator.locks.request('arena-'+options.network+'-queue',{ifAvailable:true},async lock=>{if(!lock)throw Error('Another tab is updating this queue wallet');return timed(provider,operation,run);});
+ if(['prepare','authorize','submit'].includes(operation))persistDiscovery(discoveryOwner);
  scope.postMessage({id,result});
- }catch(error){scope.postMessage({id,error:errorMessage(error),summary:(error as {summary?:string})?.summary,details:(error as {details?:unknown})?.details});}finally{clearInterval(heartbeat);}});};
+ }catch(error){if(['authorize','submit'].includes(intent.operation)||intent.operation==='prepare'&&/conflict|reorg|provider|tip changed/i.test(String(error)))persistDiscovery(discoveryOwner,true);scope.postMessage({id,error:errorMessage(error),summary:(error as {summary?:string})?.summary,details:(error as {details?:unknown})?.details});}finally{clearInterval(heartbeat);}});};
 
 scope.postMessage({type:'ready'});

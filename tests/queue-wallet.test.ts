@@ -31,11 +31,11 @@ test('queue wallet: public-key plans, explicit signing, durable recovery and own
  const costs:{kind:string;step:string;bytes:number;fee:string}[]=[];let approvals=0;
  async function approve(op:Operation){const reviewed=structuredClone(op.plan),auth=await measured(op.intent.kind,op.step,'authorize',()=>wallet.authorize(op.id));assert.deepEqual(auth.plan,reviewed,'authorization must preserve the reviewed body');approvals++;await wallet.beginSigning(op.id);const raw=sign(auth.plan);const sinceSignature=performance.now(),count=requests;await wallet.retain(op.id,raw);costs.push({kind:op.intent.kind,step:op.step,bytes:raw.length/2,fee:auth.plan.fee!});const pending=await wallet.broadcast(op.id);timings.push({kind:op.intent.kind,step:op.step,phase:'signature-to-pending',ms:performance.now()-sinceSignature,requests:requests-count});return pending;}
  // An empty verified inventory cannot fund preparation.
- const initialUtxos=p.getUtxosForLockingBytecode.bind(p);
- p.getUtxosForLockingBytecode=async script=>(await initialUtxos(script)).filter(u=>u.vout!==0);
+ const initialUtxos=p.getUtxoCandidates.bind(p);
+ p.getUtxoCandidates=async script=>(await initialUtxos(script)).filter(u=>u.vout!==0);
  const noGenesisParams={stakingCategory:ZERO,rewardCategory:ZERO,epoch:(await rpc('getblockchaininfo')).mediantime-10000,interval:60,releases:20,cap:2000n};
  await assert.rejects(()=>prepare({kind:'create',parameters:noGenesisParams},keys),/Insufficient/);assert.equal(approvals,0);
- p.getUtxosForLockingBytecode=initialUtxos;
+ p.getUtxoCandidates=initialUtxos;
  const params={stakingCategory:ZERO,rewardCategory:ZERO,epoch:(await rpc('getblockchaininfo')).mediantime-10000,interval:60,releases:20,cap:2000n};
  // One origin without independent funding requires two safe self-sends.
  const onePlan=await prepare({kind:'create',parameters:params},keys);assert.equal(onePlan.quote?.transactions,3);await wallet.discard(onePlan.id);assert.equal(approvals,0);

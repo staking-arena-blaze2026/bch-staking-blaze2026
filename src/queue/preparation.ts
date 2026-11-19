@@ -62,9 +62,10 @@ function sequence(p:q.Parameters,coins:WalletCoin[],owner:WalletKey,provider:Ele
  * or spread across too many inputs, quote wallet-only consolidation that
  * returns every token category.
  * Quote the complete sequence before asking for any signatures. */
-export function creationSequence(p:q.Parameters,coins:WalletCoin[],owner:WalletKey,provider:ElectrumCore,rate:bigint){
+export function creationSequence(p:q.Parameters,coins:WalletCoin[],owner:WalletKey,provider:ElectrumCore,rate:bigint,atomicOnly=false){
+ if(atomicOnly&&coins.filter(c=>!c.utxo.token&&c.utxo.vout===0&&![q.ZERO,p.stakingCategory,p.rewardCategory].includes(c.utxo.txid)).length<2)throw Error('Insufficient atomic creation funding in checked addresses');
  try{return sequence(p,coins,owner,provider,rate);}catch(error){
-  if(!(error instanceof BchFundingError)||coins.length<=16&&!coins.some(c=>c.utxo.token&&!c.utxo.token.nft&&c.utxo.token.category!==p.rewardCategory))throw error;
+  if(atomicOnly||!(error instanceof BchFundingError)||coins.length<=16&&!coins.some(c=>c.utxo.token&&!c.utxo.token.nft&&c.utxo.token.category!==p.rewardCategory))throw error;
   return sequence(p,coins,owner,provider,rate,true);
  }
 }

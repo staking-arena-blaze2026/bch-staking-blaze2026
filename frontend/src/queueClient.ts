@@ -26,10 +26,10 @@ function client(readOnly:boolean):Client{
  const startup=setTimeout(()=>fail(Error('Queue worker startup timed out; saved journals are retained')),30000);
  worker.onmessage=e=>{
   if(e.data.type==='ready'){clearTimeout(startup);resolveReady();return;}
-  if(e.data.type==='progress'){if(!readOnly)window.dispatchEvent(new CustomEvent('arena-wallet-progress',{detail:e.data.message}));return;}
+  if(e.data.type==='progress'){if(!readOnly&&e.data.message)window.dispatchEvent(new CustomEvent('arena-wallet-progress',{detail:e.data.message}));return;}
   if(e.data.type==='timing'){if(!readOnly)window.dispatchEvent(new CustomEvent('arena-wallet-timing',{detail:e.data.timing}));return;}
   const job=c.pending.get(e.data.id);if(!job)return;
-  if(e.data.type==='heartbeat'){clearTimeout(job.timer);job.timer=setTimeout(()=>c.cancel(Error('Queue worker stopped responding; reconcile saved operations before retrying')),90000);if(!readOnly)window.dispatchEvent(new CustomEvent('arena-wallet-progress',{detail:e.data.message}));return;}
+  if(e.data.type==='heartbeat'){clearTimeout(job.timer);job.timer=setTimeout(()=>c.cancel(Error('Queue worker stopped responding; reconcile saved operations before retrying')),90000);if(!readOnly&&e.data.message)window.dispatchEvent(new CustomEvent('arena-wallet-progress',{detail:e.data.message}));return;}
   clearTimeout(job.timer);c.pending.delete(e.data.id);
   e.data.error?job.reject(Object.assign(Error(e.data.error),{details:e.data.details,summary:e.data.summary})):job.resolve(e.data.result);
  };
@@ -47,7 +47,10 @@ export function queueCall(intent:Record<string,unknown>,keys:WalletKey[]=[]):Pro
  else c=networkLeaving&&retaining?(retention??=client(false)):(financial??=client(false));
  return c.ready.then(()=>new Promise((resolve,reject)=>{
   if(networkLeaving&&!retaining){reject(Error('Network changed; review again'));return;}
-  const id=++sequence,timer=setTimeout(()=>c.cancel(Error('Queue request timed out; reconcile saved operations before retrying')),90000);
+  const id=++sequence,timer=setTimeout(()=>{
+   if(intent.operation==='warmDiscovery'||intent.operation==='loadDiscovery'){c.pending.delete(id);reject(Error('Wallet discovery refresh timed out'));return;}
+   c.cancel(Error('Queue request timed out; reconcile saved operations before retrying'));
+  },90000);
   c.pending.set(id,{resolve,reject,timer});
   try{c.worker.postMessage({id,intent,keys});}catch(e){clearTimeout(timer);c.pending.delete(id);reject(e);}
  }));

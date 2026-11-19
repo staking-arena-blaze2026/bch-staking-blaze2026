@@ -18,12 +18,19 @@ export async function confirmedWalletTransaction(p:ElectrumCore,id:string){
  },{parallel:true});
 }
 /** Verify supplied public source coins against raw transactions, token UTXOs, proofs and linked tip headers. */
-export async function verifyCoins(p:ElectrumCore,coins:SpendableUtxo[],peer:string,allowUnconfirmed=false){
- const tip=await p.tip(),mtp=await p.medianTime(tip.height,tip.hash),transactions=new Map<string,any>(),scriptCoins=new Map<string,Promise<SpendableUtxo[]>>(),context=await tickContext(p,tip),ancestry=ancestryVerifier(p,{height:tip.height,mtp,...context});
- await boundedMap([...new Set(coins.map(c=>c.lockingBytecode).filter((s):s is string=>!!s))],4,async script=>{const value=await p.getUtxosForLockingBytecode(script);scriptCoins.set(script,Promise.resolve(value));});
+export async function verifyCoins(p:ElectrumCore,coins:SpendableUtxo[],peer:string,allowUnconfirmed=false,selectedOnly=false,initial?:Header,beforeClosing?:Promise<unknown>){
+ const tip=initial??await p.tip(),transactions=new Map<string,any>(),scriptCoins=new Map<string,Promise<SpendableUtxo[]>>();
+ const lookup=(script:string)=>selectedOnly?p.getUtxoCandidates(script):p.getUtxosForLockingBytecode(script);
+ const [clock,listed]=await Promise.allSettled([
+  (async()=>{const mtp=await p.medianTime(tip.height,tip.hash);return {mtp,...await tickContext(p,tip)};})(),
+  boundedMap([...new Set(coins.map(c=>c.lockingBytecode).filter((s):s is string=>!!s))],4,async script=>{scriptCoins.set(script,Promise.resolve(await lookup(script)));}),
+ ]);
+ if(clock.status==='rejected')throw clock.reason;
+ if(listed.status==='rejected')throw listed.reason;
+ const {mtp,...context}=clock.value,ancestry=ancestryVerifier(p,{height:tip.height,mtp,...context},tip);
  for(const coin of coins){
   if(!coin.lockingBytecode)throw Error('Missing source script');
-  if(!scriptCoins.has(coin.lockingBytecode))scriptCoins.set(coin.lockingBytecode,p.getUtxosForLockingBytecode(coin.lockingBytecode));
+  if(!scriptCoins.has(coin.lockingBytecode))scriptCoins.set(coin.lockingBytecode,lookup(coin.lockingBytecode));
   const actual=(await scriptCoins.get(coin.lockingBytecode)!).find(u=>u.txid===coin.txid&&u.vout===coin.vout);
   if(!actual){
    // Missing listunspent data alone is propagation/availability evidence. A raw,
@@ -42,13 +49,13 @@ export async function verifyCoins(p:ElectrumCore,coins:SpendableUtxo[],peer:stri
   if(status.vin?.length===1&&status.vin[0].vout===0xffffffff&&/^0+$/.test(status.vin[0].txid)&&!matureCoinbase(status.height,context))throw Error('Immature coinbase input');
   if(coinIdentity(utxo(status,coin.vout))!==coinIdentity(coin))throw Error('Source-output proof mismatch');
  }
+ await beforeClosing;
  const moved=await p.classifyTipChange(tip);if(moved==='extension')throw new ChainExtension();if(moved==='reorg')throw Error('Reorganization during input verification');
  return {height:tip.height,hash:tip.hash,mtp,...context,peer,...(allowUnconfirmed?{ancestry:[...ancestry.evidence].map(([id,tx])=>[id,tx.hex,tx.height??0,tx.confirmations>0]).sort((a,b)=>String(a[0]).localeCompare(String(b[0])))}:{})};
 }
-export async function verifyCoinsAcrossPeers(p:ElectrumCore,coins:SpendableUtxo[],allowUnconfirmed=false,progress?:(message:string)=>void) {
- return verifiedProviders(p,walletPeers(p),async (peer,source)=>{
-  const value=await verifyCoins(source,coins,peer,allowUnconfirmed),tip=await source.tip();
-  if(tip.hash!==value.hash){const moved=await source.classifyTipChange(value);if(moved==='reorg')throw Error('Reorganization after input verification');throw new ChainExtension();}
+export async function verifyCoinsAcrossPeers(p:ElectrumCore,coins:SpendableUtxo[],allowUnconfirmed=false,progress?:(message:string)=>void,selectedOnly=false) {
+ return verifiedProviders(p,walletPeers(p),async (peer,source,tip)=>{
+  const value=await verifyCoins(source,coins,peer,allowUnconfirmed,selectedOnly,tip);
   return {value,tip,identity:json({hash:value.hash,mtp:value.mtp,ancestry:value.ancestry})};
  },{onProgress:progress,parallel:true});
 }

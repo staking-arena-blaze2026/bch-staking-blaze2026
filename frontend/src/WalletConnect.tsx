@@ -48,6 +48,7 @@ export default function WalletConnect({ browser=false, getRequiredNetwork = defa
   requirement.current = getRequiredNetwork;
   const networkSession = useMemo(() => new WalletNetworkSession(() => wallet.manager?.getSessionPaths() ?? []), [wallet.manager]);
   const liveState = useRef(wallet.isLive);
+  const warmWallet = useRef<(()=>void)|undefined>(undefined);
   liveState.current = wallet.isLive;
   const transactions = useMemo(() => createStakingTransactionBoundary(networkSession, () => requirement.current()), [networkSession]);
   const [, refreshNetwork] = useState(0);
@@ -86,7 +87,15 @@ export default function WalletConnect({ browser=false, getRequiredNetwork = defa
       if(networkLeaving)throw Error('Network changed; reconnect and review');
       assertTransactionSession(networkSession, requirement.current());
     }
-    if(browser) {const client=browserWalletClient(manager,check,()=>networkSession.revision);client.pairing=()=>walletRef.current.pairing();client.restore=()=>walletRef.current.retry();onTransactions(client);return()=>{client.close?.();onTransactions(null);};}
+    if(browser) {
+      const client=browserWalletClient(manager,check,()=>networkSession.revision);
+      client.pairing=()=>walletRef.current.pairing();client.restore=()=>walletRef.current.retry();onTransactions(client);
+      const warm=()=>{if(liveState.current())void client.warmQueue?.();};
+      warmWallet.current=warm;
+      document.addEventListener('visibilitychange',warm);
+      const timer=setInterval(()=>{if(liveState.current())void client.warmQueue?.(false);},25000);
+      return()=>{warmWallet.current=undefined;clearInterval(timer);document.removeEventListener('visibilitychange',warm);client.close?.();onTransactions(null);};
+    }
     if(!manager)return;
     const publicKey = () => {
       check();
@@ -118,6 +127,9 @@ export default function WalletConnect({ browser=false, getRequiredNetwork = defa
     }});
     return () => {lifetime.abort();onTransactions(null);};
   }, [wallet.manager, networkSession, onTransactions,browser]);
+  useEffect(()=>{
+    if(wallet.state==='connected')warmWallet.current?.();
+  },[wallet.state,wallet.manager,browser]);
   const compatibility = transactions.check();
   const declaredNetwork = networkSession.read().network;
   const hideChipnetUndeclaredNote = requirement.current()?.network === 'chipnet' && declaredNetwork.source !== 'invalid' && (declaredNetwork.network === 'unknown' || declaredNetwork.network === 'testnet');

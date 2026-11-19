@@ -59,7 +59,7 @@ export class RegtestElectrum extends ElectrumCore {
     }
     if(method==='blockchain.scripthash.listunspent'){
       const rows=[];
-      for(const {tx,height} of this.rows.values())for(const output of tx.vout)if(scriptHash(output.scriptPubKey.hex)===params[0]&&await rpc('gettxout',[tx.txid,output.n,true]))rows.push({tx_hash:tx.txid,tx_pos:output.n,height,value:Number(output.satoshis)});
+      for(const {tx,height} of this.rows.values())for(const output of tx.vout)if(scriptHash(output.scriptPubKey.hex)===params[0]&&await rpc('gettxout',[tx.txid,output.n,true]))rows.push({tx_hash:tx.txid,tx_pos:output.n,height,value:Number(output.satoshis),...(output.tokenData?{token_data:output.tokenData}:{})});
       return rows;
     }
     throw Error('Unsupported local Electrum method '+method);

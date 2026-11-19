@@ -1,19 +1,24 @@
-import {tickContext,matureCoinbase,matureSequence,transactionFinal} from './consensus-clock.js';
+import {tickContext,matureCoinbase,matureSequence,transactionFinal,type TickContext} from './consensus-clock.js';
 import {createVirtualMachineBch2026,decodeTransaction,hexToBin} from '@bitauth/libauth';
-import type {ElectrumCore} from './electrum-core.js';
+import type {ElectrumCore,Header} from './electrum-core.js';
 import {utxo} from './arena-core.js';
 import type {KeeperClock} from './keeper-core.js';
 
+let vm:ReturnType<typeof createVirtualMachineBch2026>|undefined;
+const verifiedScripts=new WeakMap<ElectrumCore,Set<string>>();
 /** Bounded, session-local ancestry validation. Providers attest mempool presence, never finality.
- * Confirmed boundaries retain ElectrumCore's Merkle/header checks. No cached trust crosses sessions.
+ * Confirmed boundaries retain ElectrumCore's Merkle/header checks. Mempool status and spendability are session-local.
  * BCHN has no ancestor-count policy limit; these are application resource limits.
  */
-export function ancestryVerifier(p:ElectrumCore,clock:KeeperClock){
+export function ancestryVerifier(p:ElectrumCore,clock:KeeperClock & Partial<TickContext>,tip?:Header){
  const histories=new Map<string,Promise<import('./electrum-core.js').HistoryEntry[]>>(),raws=new Map<string,Promise<any>>();
  const historyFor=(script:string)=>{if(!histories.has(script))histories.set(script,p.history(script));return histories.get(script)!;};
  const rawFor=(id:string)=>{if(!raws.has(id))raws.set(id,p.transaction(id));return raws.get(id)!;};
- let context:Promise<import('./consensus-clock.js').TickContext>|undefined;
- const getContext=()=>context??=p.network==='chipnet'?p.tip().then(t=>{if(t.height!==clock.height)throw Error('Tip changed during ancestry verification');return tickContext(p,t);}):Promise.resolve({nextBlockTicks:(clock.height+1)*600});
+ let context:Promise<TickContext>|undefined;
+ const getContext=()=>context??=(tip&&clock.nextBlockTicks!==undefined?
+  Promise.resolve({nextBlockTicks:clock.nextBlockTicks,activationHeight:clock.activationHeight}):
+  p.network==='chipnet'?p.tip().then(t=>{if(t.height!==clock.height)throw Error('Tip changed during ancestry verification');return tickContext(p,t);}):
+  Promise.resolve({nextBlockTicks:(clock.height+1)*600}));
  const checked=new Map<string,any>(),visiting=new Set<string>(),spends=new Map<string,string>();
  let count=0,bytes=0;
  const load=async(id:string,observed?:import('./electrum-core.js').HistoryEntry):Promise<any>=>{
@@ -23,7 +28,7 @@ export function ancestryVerifier(p:ElectrumCore,clock:KeeperClock){
   if(visiting.size>=256)throw Error('Unconfirmed ancestry exceeds application depth limit (256)');
   visiting.add(id);
   const ticks=await getContext();
-  const tx=await p.transactionStatus(id,observed);
+  const tx=await p.transactionStatus(id,observed,tip);
   if(tx.confirmations>0){checked.set(id,tx);visiting.delete(id);return tx;}
   if(++count>256||(bytes+=tx.hex.length/2)>4_000_000)throw Error('Unconfirmed ancestry exceeds application validation budget');
   const decoded=decodeTransaction(hexToBin(tx.hex));if(typeof decoded==='string')throw Error(decoded);
@@ -54,8 +59,18 @@ export function ancestryVerifier(p:ElectrumCore,clock:KeeperClock){
    }
    sources.push({valueSatoshis:source.satoshis,lockingBytecode:hexToBin(source.lockingBytecode!),...(source.token?{token:{category:hexToBin(source.token.category),amount:source.token.amount,...(source.token.nft?{nft:{capability:source.token.nft.capability,commitment:hexToBin(source.token.nft.commitment)}}:{})}}:{})});
   }
-  const valid=createVirtualMachineBch2026().verify({transaction:decoded,sourceOutputs:sources});
-  if(valid!==true)throw Error('Invalid unconfirmed ancestor (scripts/tokens/value): '+valid);
+  // The txid commits to the scripts and the txids of every proven source.
+  // Reuse the static VM result only. Every pass still reads current status,
+  // histories and competing spends and checks locks and coinbase maturity.
+  let scripts=verifiedScripts.get(p);
+  if(!scripts){scripts=new Set();verifiedScripts.set(p,scripts);}
+  const identity=p.network+':'+p.endpoint+':'+id;
+  if(!scripts.has(identity)){
+   const valid=(vm??=createVirtualMachineBch2026()).verify({transaction:decoded,sourceOutputs:sources});
+   if(valid!==true)throw Error('Invalid unconfirmed ancestor (scripts/tokens/value): '+valid);
+   if(scripts.size>=256)scripts.delete(scripts.values().next().value!);
+   scripts.add(identity);
+  }
   checked.set(id,tx);visiting.delete(id);return tx;
  };
  return Object.assign(load,{evidence:checked});
