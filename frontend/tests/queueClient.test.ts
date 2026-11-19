@@ -12,7 +12,7 @@ class WorkerMock {
 }
 afterEach(()=>{networkState.leaving=false;window.dispatchEvent(new Event('arena-network-leaving'));WorkerMock.instances=[];vi.useRealTimers();});
 it('waits for module/WASM readiness before posting the first request',async()=>{
- vi.stubGlobal('Worker',WorkerMock);const pending=queueCall({operation:'sync',config:{}}),worker=WorkerMock.instances[0]!;
+ vi.stubGlobal('Worker',WorkerMock);const pending=queueCall({operation:'reportedQueue',config:{}}),worker=WorkerMock.instances[0]!;
  expect(worker.postMessage).not.toHaveBeenCalled();worker.ready();await Promise.resolve();expect(worker.postMessage).toHaveBeenCalledOnce();worker.respond({verified:true});await expect(pending).resolves.toEqual({verified:true});
 });
 it('terminates timed-out financial workers and creates a fresh worker for recovery',async()=>{
@@ -21,7 +21,7 @@ it('terminates timed-out financial workers and creates a fresh worker for recove
  const recovery=queueCall({operation:'resume',id:'retained'}),next=WorkerMock.instances[1]!;expect(next).not.toBe(worker);next.ready();await Promise.resolve();next.respond({retained:true});await expect(recovery).resolves.toEqual({retained:true});
 });
 it('keeps journal and discovery readers independent of financial work',async()=>{
- vi.stubGlobal('Worker',WorkerMock);const requests=[queueCall({operation:'prepare'}),queueCall({operation:'list'}),queueCall({operation:'sync',channel:'market'})];expect(WorkerMock.instances).toHaveLength(3);for(const w of WorkerMock.instances)w.ready();await Promise.resolve();for(const w of WorkerMock.instances)w.respond('done');await expect(Promise.all(requests)).resolves.toEqual(['done','done','done']);
+ vi.stubGlobal('Worker',WorkerMock);const requests=[queueCall({operation:'prepare'}),queueCall({operation:'list'}),queueCall({operation:'reportedQueue',channel:'market-0'})];expect(WorkerMock.instances).toHaveLength(3);for(const w of WorkerMock.instances)w.ready();await Promise.resolve();for(const w of WorkerMock.instances)w.respond('done');await expect(Promise.all(requests)).resolves.toEqual(['done','done','done']);
 });
 
 it('discards session review evidence while leaving the signature journal worker available',async()=>{
@@ -58,7 +58,29 @@ it('retains late signed bytes in the original network worker while blocking new 
 });
 
 it('background catalog verification cannot overwrite active wallet progress',async()=>{
- vi.stubGlobal('Worker',WorkerMock);const observed=vi.fn(),pending=queueCall({operation:'sync',channel:'market'}),worker=WorkerMock.instances[0]!;
+ vi.stubGlobal('Worker',WorkerMock);const observed=vi.fn(),pending=queueCall({operation:'reportedQueue',channel:'market-0'}),worker=WorkerMock.instances[0]!;
  window.addEventListener('arena-wallet-progress',observed);
  try{worker.ready();await Promise.resolve();worker.onmessage?.({data:{type:'progress',message:'Background verification'}});expect(observed).not.toHaveBeenCalled();worker.respond('ready');await pending;}finally{window.removeEventListener('arena-wallet-progress',observed);}
+});
+
+it('cancels obsolete browsing without stopping the other market lane or financial worker',async()=>{
+ vi.stubGlobal('Worker',WorkerMock);
+ const obsolete=new AbortController();
+ const left=queueCall({operation:'reportedQueue',channel:'market-0'},[],obsolete.signal);
+ const rejected=expect(left).rejects.toThrow('superseded');
+ const right=queueCall({operation:'reportedQueue',channel:'market-1'});
+ const financial=queueCall({operation:'prepare'});
+ const [a,b,wallet]=WorkerMock.instances;
+ for(const worker of [a,b,wallet])worker!.ready();
+ await Promise.resolve();
+ expect(a!.postMessage).toHaveBeenCalledOnce();
+ expect(b!.postMessage).toHaveBeenCalledOnce();
+ obsolete.abort();
+ await rejected;
+ expect(a!.terminate).toHaveBeenCalledOnce();
+ expect(b!.terminate).not.toHaveBeenCalled();
+ expect(wallet!.terminate).not.toHaveBeenCalled();
+ b!.respond('count');wallet!.respond('review');
+ await expect(right).resolves.toBe('count');
+ await expect(financial).resolves.toBe('review');
 });

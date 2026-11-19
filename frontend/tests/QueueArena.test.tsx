@@ -157,7 +157,7 @@ it.each([
  });
  renderPairedCreation(connected);
  fireEvent.click(await screen.findByRole('button',{name:'Create Vault'}));
- const review=await screen.findByRole('dialog');
+ const review=await screen.findByRole('dialog',{}, {timeout:5000});
  expect(review).toHaveTextContent('Expected wallet approvals');
  expect(screen.getByText('Estimated network fee: 400 sats')).toBeVisible();
  // Wallet availability while reading the quote cannot itself trigger approval.

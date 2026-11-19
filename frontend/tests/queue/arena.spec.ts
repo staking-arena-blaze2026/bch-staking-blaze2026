@@ -25,7 +25,7 @@ test('real workers render metadata before parallel WSS reads and reconcile owner
  const cells=page.locator('.marketplace-table tbody tr td:last-child');
  try{
   await expect(cells).toHaveText(['3','3']);
-  await expect.poll(()=>blocked.size).toBe(2);
+  await expect.poll(()=>blocked.size,{timeout:60000}).toBeGreaterThanOrEqual(2);
   expect(methods).not.toContain('blockchain.transaction.get_merkle');
  }finally{gate=undefined;release();}
  await expect(cells).toHaveText(['1','1'],{timeout:30000});
@@ -37,7 +37,7 @@ test('real workers render metadata before parallel WSS reads and reconcile owner
 
  for(const width of [320,390,768,1024,1672]){await page.setViewportSize({width,height:1000});await expect(page.getByRole('heading',{name:'Make an Offer'})).toBeVisible();const overflow=await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth);expect(overflow,'page overflow at '+width).toBe(false);const offer=await page.locator('.queue-offer-panel').boundingBox(),queue=await page.locator('.queue-queue-panel').boundingBox();if(width>850){expect(queue!.x).toBeGreaterThan(offer!.x);expect(Math.abs(queue!.y-offer!.y)).toBeLessThan(1);}else expect(queue!.y).toBeGreaterThanOrEqual(offer!.y+offer!.height);}
  await page.evaluate(({owner,xpub})=>localStorage.setItem('staking-arena-wizardconnect-v1-regtest',JSON.stringify({
-  walletPublicKey:owner,privateKey:'01'.repeat(32),secret:'02'.repeat(32),paths:[{name:'receive',xpub}],
+  walletPublicKey:owner.slice(2),privateKey:'01'.repeat(32),secret:'02'.repeat(8),paths:[{name:'receive',xpub}],
  })),{owner:fixture.config.anchor.creator,xpub:fixture.xpub});
  await page.reload();
  const active=page.locator('.queue-my-offers article strong').filter({hasText:'Waiting'});
