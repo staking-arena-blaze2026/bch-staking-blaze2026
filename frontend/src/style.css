@@ -237,7 +237,7 @@ body{
 .header .brand-artwork>.brand{
  flex:0 0 auto;width:clamp(126.5px,20.7vw,368px);max-width:100%;
 }
-.header .brand-artwork .brand-logo{width:100%;height:auto;transform:translateY(clamp(-20px,-2vw,-8px))}
+.header .brand-artwork .brand-logo{width:100%;height:auto;transform:translateY(clamp(-26px,-2.5vw,-12px))}
 .header .brand-artwork img.brand-slogan{
  order:-1;flex:0 0 auto;width:min(70%,clamp(0px,calc(44.8vw + 112px),840px));max-width:100%;
  height:auto;margin:0;filter:drop-shadow(0 4px 3px #4e38154d);
