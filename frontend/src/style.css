@@ -228,16 +228,16 @@ body{
  body{background-image:url('/assets/brand/stake-arena-landscape-mobile-v1.webp')}
 }
 
-/* Center an upward-arched parchment ribbon, 30% smaller, above a 15% larger logo. */
+/* Center the emblem close to the slogan ribbon. */
 .header .brand-artwork{
  display:flex;flex-direction:column;align-items:center;justify-content:center;
  width:calc(100% - 32px);max-width:1280px;min-height:0;
- gap:clamp(4px,.8vw,12px);margin:clamp(12px,1.8vw,26px) auto 0;
+ gap:0;margin:clamp(12px,1.8vw,26px) auto 0;
 }
 .header .brand-artwork>.brand{
  flex:0 0 auto;width:clamp(126.5px,20.7vw,368px);max-width:100%;
 }
-.header .brand-artwork .brand-logo{width:100%;height:auto;transform:none}
+.header .brand-artwork .brand-logo{width:100%;height:auto;transform:translateY(clamp(-12px,-1vw,-4px))}
 .header .brand-artwork img.brand-slogan{
  order:-1;flex:0 0 auto;width:min(70%,clamp(0px,calc(44.8vw + 112px),840px));max-width:100%;
  height:auto;margin:0;filter:drop-shadow(0 4px 3px #4e38154d);
@@ -281,6 +281,9 @@ body{padding-bottom:calc(80px + env(safe-area-inset-bottom,0px))}
 .v3-arena .queue-claim p{margin:0 0 10px}
 .v3-arena .queue-claim button{margin:0}
 .queue-offer-panel .form-grid{grid-template-columns:1fr}
+.queue-asset-fields{display:grid;align-content:start;gap:12px;min-width:0}
+.queue-lock-duration small{display:block}
+footer a{color:inherit}
 .queue-queue-panel .queue-ranking-table{width:100%;min-width:520px;border-collapse:collapse;font-size:13px}
 .queue-queue-panel .queue-ranking-table th{background:#633817;color:#fff1d8;text-align:left;white-space:nowrap}
 .queue-queue-panel .queue-ranking-table td{vertical-align:top;overflow-wrap:normal}

@@ -23,7 +23,7 @@ it('cancels deferred approval when the terms or route change',async()=>{live=fal
 it('shows owner states and enables matured withdrawal on the My Offers route',async()=>{window.location.hash='#/v3/my-offers';rows=[{id:offer.id,offer,status:'Baked',maturesAt:1800001000,checkedMtp:1800001200}];render(<WalletTransactionsContext.Provider value={wallet}><QueueArena/></WalletTransactionsContext.Provider>);const button=await screen.findByRole('button',{name:'Get my stake back'});expect(screen.getByText('Matured',{selector:'strong'})).toBeVisible();expect(screen.getByRole('button',{name:'Matured'})).toBeVisible();expect(button).toBeEnabled();fireEvent.click(button);await waitFor(()=>expect(wallet.queue).toHaveBeenCalledWith({operation:'prepare',intent:{kind:'withdraw',config,offerId:offer.id}},expect.any(Function)));});
 it('displays local/MTP release timing and the complete expandable schedule',async()=>{await open();expect(screen.getByText(/Blockchain time \(MTP\):/)).toBeInTheDocument();const summary=screen.getByText('Release schedule and history');await act(async()=>{fireEvent.click(summary);summary.closest('details')!.open=true;fireEvent(summary.closest('details')!,new Event('toggle'));});expect(screen.getByRole('columnheader',{name:'Scheduled local time'})).toBeInTheDocument();expect(screen.getAllByRole('row').length).toBeGreaterThan(10);});
 
-it('shows atomic counts, exact reviewed fee/debit, and clears stale estimates',async()=>{await open();expect(screen.getByText('Transactions: 1 · Wallet approvals: 1')).toBeVisible();expect(screen.getByText(/Total stake committed:/)).toBeVisible();await act(async()=>{window.dispatchEvent(new CustomEvent('arena-queue-review',{detail:{intent:{kind:'insert'},plan:{fee:'3613'},walletDebit:'7813'}}));});expect(screen.getByText('Estimated network fee: 3613 sats')).toBeVisible();expect(screen.getByText(/Total wallet BCH committed, including fee: 7813 sats/)).toBeVisible();fireEvent.change(screen.getByLabelText('Stake amount'),{target:{value:'0.00004000'}});expect(screen.queryByText('Estimated network fee: 3613 sats')).not.toBeInTheDocument();});
+it('shows atomic counts, exact reviewed fee/debit, and clears stale estimates',async()=>{await open();expect(screen.getByText('Transactions: 1 · Wallet approvals: 1')).toBeVisible();expect(screen.queryByText(/Total stake committed:/)).toBeNull();expect(screen.getByText('1 time unit = 512 second')).toBeVisible();await act(async()=>{window.dispatchEvent(new CustomEvent('arena-queue-review',{detail:{intent:{kind:'insert'},plan:{fee:'3613'},walletDebit:'7813'}}));});expect(screen.getByText('Estimated network fee: 3613 sats')).toBeVisible();expect(screen.getByText(/Total wallet BCH committed, including fee: 7813 sats/)).toBeVisible();fireEvent.change(screen.getByLabelText('Stake amount'),{target:{value:'0.00004000'}});expect(screen.queryByText('Estimated network fee: 3613 sats')).not.toBeInTheDocument();});
 it('calculates transaction and approval counts before approval on Create Vault',async()=>{window.location.hash='#/create';render(<WalletTransactionsContext.Provider value={wallet}><QueueArena/></WalletTransactionsContext.Provider>);expect(await screen.findByText('Transactions: calculated before approval · Wallet approvals: calculated before approval')).toBeVisible();expect(screen.getByText('Total reward reserve')).toBeVisible();expect(screen.queryByText(/prepares the genesis/)).not.toBeInTheDocument();});
 it('cancels the preparation confirmation when creation terms change',async()=>{
  HTMLDialogElement.prototype.showModal=vi.fn(function(this:HTMLDialogElement){this.setAttribute('open','');});window.location.hash='#/create';
@@ -174,4 +174,51 @@ it.each([
   expect(wallet.queue).not.toHaveBeenCalled();
   expect(vi.mocked(queueCall).mock.calls.map(([request])=>request.operation)).not.toContain('discard');
  }
+});
+
+it('keeps creation status below the form and removes the submission label after confirmation',async()=>{
+ window.location.hash='#/v3';
+ const submitted={id:'new-vault',intent:{kind:'create'},step:'action',stage:'pending',raw:'retained',txid:genesis,config};
+ let journal:typeof submitted[]=[];
+ vi.mocked(queueCall).mockImplementation(async request=>{
+  if(request.operation==='list')return journal;
+  if(request.operation==='creationStatus')return {confirmed:true};
+  return snapshot;
+ });
+ vi.mocked(wallet.queue!).mockImplementationOnce(async ()=>{
+  journal=[submitted];
+  return submitted;
+ });
+ render(<WalletTransactionsContext.Provider value={wallet}><QueueArena/></WalletTransactionsContext.Provider>);
+ const submit=screen.getByRole('button',{name:'Create Vault',exact:true});
+ fireEvent.click(submit);
+ const status=await screen.findByRole('region',{name:'Vault creation status'});
+ expect(submit.compareDocumentPosition(status)&Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+ await within(status).findByText(/Confirmed on-chain/);
+ expect(within(status).queryByText(/Submitted/)).toBeNull();
+ expect(within(status).getByRole('link',{name:/Vault/})).toHaveAttribute('href','#/v3/vault/'+genesis);
+ fireEvent.click(screen.getByRole('link',{name:'Browse All Vaults'}));
+ await screen.findByRole('heading',{name:'Known vaults'});
+ expect(screen.queryByText(/Submitted/)).toBeNull();
+});
+
+it('shows network-resolved token names and exact amounts in the marketplace and vault details',async()=>{
+ const category='ab'.repeat(32),name='Arena Token';
+ const tokenConfig={...config,parameters:{...config.parameters,stakingCategory:category,rewardCategory:category}};
+ vi.mocked(loadQueuePage).mockResolvedValue({network:'chipnet',vaults:[tokenConfig],pages:[]});
+ vi.mocked(queueCall).mockImplementation(async request=>
+  request.operation==='list'||request.operation==='owned'?[]:{...snapshot,config:tokenConfig});
+ const fetchToken=vi.spyOn(globalThis,'fetch').mockResolvedValue(new Response(JSON.stringify({name,token:{category}})));
+ try{
+  window.location.hash='#/v3/offers';
+  render(<WalletTransactionsContext.Provider value={wallet}><QueueArena/></WalletTransactionsContext.Provider>);
+  expect(await screen.findByText('20000 '+name)).toBeVisible();
+  expect(screen.getByText(name)).toBeVisible();
+  fireEvent.click(screen.getByRole('link',{name:'Vault 1'}));
+  const detail=await screen.findByRole('region',{name:'Vault details'});
+  expect(within(detail).getAllByText(name)).toHaveLength(2);
+  expect(within(detail).getAllByText('20000 '+name)).toHaveLength(2);
+  expect(fetchToken).toHaveBeenCalledTimes(1);
+  expect(fetchToken).toHaveBeenCalledWith('https://bcmr-chipnet.paytaca.com/api/tokens/'+category+'/',expect.anything());
+ }finally{fetchToken.mockRestore();}
 });

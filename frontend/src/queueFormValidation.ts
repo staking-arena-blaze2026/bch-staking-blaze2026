@@ -22,5 +22,5 @@ export function offerValidation(p:Parameters,f:{stake:string;reward:string;durat
  if(reward===null)errors.reward='Enter a valid requested reward in the displayed asset units.';
  if(durationError)errors.duration=durationError;
  if(reward!==null&&reserve!==undefined&&reward>reserve)errors.reward='Requested reward exceeds the remaining reserve. Reduce the reward or choose another vault.';
- return {errors,terms:Object.keys(errors).length?undefined:terms};
+ return {errors,terms:Object.keys(errors).length?undefined:terms,lockSeconds:durationError?undefined:duration};
 }

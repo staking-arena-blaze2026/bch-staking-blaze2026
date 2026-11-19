@@ -142,15 +142,10 @@ export default function WalletConnect({ browser=false, getRequiredNetwork = defa
     <div className="wallet-identity">
       {(active || wallet.state === 'offline') && <span className="wallet-status" role="status">{wallet.state === 'connected' ? 'Connected to Cashonize' : wallet.state === 'connecting' ? 'Waiting for Cashonize approval…' : 'Cashonize paired · Wallet offline'}</span>}
       {wallet.state === 'invalid' && <span className="wallet-status" role="status">The saved pairing is unavailable, revoked or incompatible. New pairing is necessary.</span>}
-      {wallet.address && <small title={wallet.address}>{wallet.state === 'connected' ? 'Address' : 'Last connected address'}: {wallet.address.split(':')[1]?.slice(0,8)}…{wallet.address.slice(-8)}</small>}
     </div>
     <div className="wallet-actions">
-      {active ? <>
-        {wallet.pairing().paired && wallet.state !== 'connected' && wallet.state !== 'connecting' && <button type="button" className="refresh" onClick={wallet.replace}>Pair wallet again</button>}
+      {active || wallet.state === 'offline' ? <>
         <button type="button" className="refresh" disabled={closing} onClick={() => { void disconnect(); }}>{closing ? 'Disconnecting…' : wallet.state === 'connecting' ? 'Cancel connection' : 'Disconnect'}</button>
-      </> : wallet.state === 'offline' ? <>
-        <button type="button" className="refresh" onClick={wallet.replace}>Pair wallet again</button>
-        <button type="button" className="refresh" onClick={() => { void disconnect(); }}>Disconnect</button>
       </> : wallet.state === 'invalid' ? <>
         <button type="button" className="refresh" onClick={wallet.replace}>Connect Wallet</button>
         <button type="button" className="refresh" onClick={() => { void disconnect(); }}>Disconnect</button>

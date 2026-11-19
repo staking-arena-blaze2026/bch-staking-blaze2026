@@ -55,7 +55,7 @@ test('offline startup keeps automatically retrying and later wallet availability
   await page.reload();
   await expect(page.getByText('Cashonize paired · Wallet offline',{exact:true})).toBeVisible();
   await page.clock.fastForward(30_001);
-  await expect(page.getByRole('button',{name:'Retry saved connection'})).toHaveCount(0);await expect(page.getByRole('button',{name:'Pair wallet again'})).toBeVisible();
+  await expect(page.getByRole('button',{name:'Retry saved connection'})).toHaveCount(0);await expect(page.getByRole('button',{name:'Pair wallet again'})).toHaveCount(0);
   await expect(page.getByText(/Open Cashonize to reconnect|Pairing is saved in this browser profile/)).toHaveCount(0);
   for(const width of [1672,1024,768,390,320]){
     await page.setViewportSize({width,height:900});
@@ -124,10 +124,10 @@ test('saved public paths quote creation offline; approval waits, expires, and ne
    `,
  }));
  await firstPair(page);
- await expect(page.locator('.wallet-control small[title]')).toContainText('Address:');
+ await expect(page.locator('.wallet-control small[title]')).toHaveCount(0);
  await page.evaluate(()=>localStorage.removeItem('test-wallet-online'));await page.clock.install();await page.reload();
  await expect(page.getByText('Cashonize paired · Wallet offline',{exact:true})).toBeVisible();
- await expect(page.locator('.wallet-control small[title]')).toContainText('Last connected address:');
+ await expect(page.locator('.wallet-control small[title]')).toHaveCount(0);
  await page.getByLabel('Release interval (minutes)',{exact:true}).fill('120');
  const button=page.getByRole('button',{name:'Create Vault',exact:true});await expect(button).toBeEnabled();await button.click();
  const review=page.getByRole('dialog');
