@@ -202,22 +202,25 @@ it('keeps creation status below the form and removes the submission label after 
  expect(screen.queryByText(/Submitted/)).toBeNull();
 });
 
-it('shows network-resolved token names and exact amounts in the marketplace and vault details',async()=>{
- const category='ab'.repeat(32),name='Arena Token';
+it('uses token tickers outside the full reward asset identity',async()=>{
+ const category='a7'.repeat(32),name='Arena Token',symbol='ARN';
  const tokenConfig={...config,parameters:{...config.parameters,stakingCategory:category,rewardCategory:category}};
  vi.mocked(loadQueuePage).mockResolvedValue({network:'chipnet',vaults:[tokenConfig],pages:[]});
  vi.mocked(queueCall).mockImplementation(async request=>
   request.operation==='list'||request.operation==='owned'?[]:{...snapshot,config:tokenConfig});
- const fetchToken=vi.spyOn(globalThis,'fetch').mockResolvedValue(new Response(JSON.stringify({name,token:{category}})));
+ const fetchToken=vi.spyOn(globalThis,'fetch').mockResolvedValue(new Response(JSON.stringify({name,token:{category,symbol}})));
  try{
   window.location.hash='#/v3/offers';
   render(<WalletTransactionsContext.Provider value={wallet}><QueueArena/></WalletTransactionsContext.Provider>);
-  expect(await screen.findByText('20000 '+name)).toBeVisible();
-  expect(screen.getByText(name)).toBeVisible();
+  expect(await screen.findByText('20000 '+symbol)).toBeVisible();
+  expect(screen.getByText(symbol)).toBeVisible();
   fireEvent.click(screen.getByRole('link',{name:'Vault 1'}));
   const detail=await screen.findByRole('region',{name:'Vault details'});
-  expect(within(detail).getAllByText(name)).toHaveLength(2);
-  expect(within(detail).getAllByText('20000 '+name)).toHaveLength(2);
+  expect(within(detail).getByText('Reward asset').nextElementSibling).toHaveTextContent(`${name} (${symbol}) [${category}]`);
+  expect(within(detail).getByText('Staking asset').nextElementSibling).toHaveTextContent(symbol);
+  expect(within(detail).getByText('Remaining reserve').nextElementSibling).toHaveTextContent('20000 '+symbol);
+  expect(within(detail).getByText('Total reward currently available for claiming').nextElementSibling).toHaveTextContent('20000 '+symbol);
+  expect(within(screen.getByRole('region',{name:/^Queue$/})).getByText('2000 '+symbol)).toBeVisible();
   expect(fetchToken).toHaveBeenCalledTimes(1);
   expect(fetchToken).toHaveBeenCalledWith('https://bcmr-chipnet.paytaca.com/api/tokens/'+category+'/',expect.anything());
  }finally{fetchToken.mockRestore();}

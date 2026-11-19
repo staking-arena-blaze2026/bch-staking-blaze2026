@@ -221,3 +221,5 @@ Grill emblem and vault UI updates: the fork uses the supplied grill emblem, puts
 Post-baseline linked-queue browsing and offer tracking. The public index carries waiting-offer counts, the browser reconstructs display queues on independent read workers, and My Offers matches the wallet key before archive replay. Cancellation and withdrawal still authorize the exact spend with independent chain evidence. See [queue browsing and transaction verification](blaze2026/queue-browsing.md).
 
 First-visit welcome dialog: introduces competitive staking and links to the About page, the stablecoin use case and Penny Picker. The browser remembers dismissal across visits. This is post-baseline presentation work.
+
+CashToken asset labels: Vault details shows the reward asset's registry name, ticker and full category ID. Compact asset labels and amounts use the ticker when available, including the startup vault list, with a category fallback. This is post-baseline presentation work.

@@ -1,4 +1,4 @@
-import {act} from '@testing-library/react';
+import {act,waitFor} from '@testing-library/react';
 import {expect,it,vi} from 'vitest';
 import {startPublicPreview} from '../src/publicIndexPreview';
 import {loadQueuePage} from '../src/queueCatalog';
@@ -21,4 +21,26 @@ it('renders a 1000-release hint and rejects 1001 releases',async()=>{
  window.location.hash='/v3/offers';document.body.innerHTML='<main id="arena-public-preview" hidden></main>';
  vi.stubGlobal('fetch',vi.fn(async()=>new Response(JSON.stringify({schema:1,network:'mainnet',vaults:[{...config,parameters:{...config.parameters,releases:1000}},{...config,anchor:{...config.anchor,genesis:'aa'.repeat(32)},parameters:{...config.parameters,releases:1001}}],pages:[]}))));
  await act(async()=>{startPublicPreview();await new Promise(r=>setTimeout(r,10));});expect(document.querySelectorAll('.marketplace-table tbody tr')).toHaveLength(1);expect(document.getElementById('arena-public-preview')!.textContent).toContain('0.02000000 BCH');window.location.hash='/v3';window.dispatchEvent(new HashChangeEvent('hashchange'));document.body.replaceChildren();
+});
+
+it('uses the token ticker in the startup marketplace',async()=>{
+ const category='c7'.repeat(32);
+ const tokenConfig={...config,parameters:{...config.parameters,stakingCategory:category,rewardCategory:category}};
+ window.location.hash='/v3/offers';
+ document.body.innerHTML='<main id="arena-public-preview" hidden></main>';
+ vi.stubGlobal('fetch',vi.fn(async(input:string|URL)=>new Response(JSON.stringify(
+  String(input).includes('bcmr.paytaca.com')
+   ? {name:'Arena Trial Token',token:{category,symbol:'ATT'}}
+   : {network:'mainnet',vaults:[tokenConfig],pages:[]}
+ ))));
+ try{
+  startPublicPreview();
+  await waitFor(()=>{
+   expect(document.querySelector('td[data-label="Total max reward"]')).toHaveTextContent('10000 ATT');
+   expect(document.querySelector('td[data-label="Staking asset"]')).toHaveTextContent('ATT');
+  });
+  expect(document.getElementById('arena-public-preview')).not.toHaveTextContent('Arena Trial Token');
+ }finally{
+  window.location.hash='/v3';window.dispatchEvent(new HashChangeEvent('hashchange'));document.body.replaceChildren();
+ }
 });

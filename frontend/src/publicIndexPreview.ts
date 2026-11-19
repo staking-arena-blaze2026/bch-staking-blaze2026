@@ -1,5 +1,5 @@
 import {createBrandArtwork} from './brandArtwork';
-import {shortTokenCategory,tokenName} from './tokenNames';
+import {fetchTokenMetadata,tokenTicker} from './tokenMetadata';
 import {queueConfigStorage,warmQueuePage} from './queueCatalog';
 import {queueCount,rememberQueueCount,countDescription} from './queueCounts';
 import type {V3Network} from '../../src/v3/network';
@@ -44,10 +44,10 @@ export function startPublicPreview(){
    const rewardAmount=c.rewardAsset.kind==='bch'?units.slice(0,-8)+'.'+units.slice(-8):total.toString();
    for(const [label,asset,qty] of [['Total max reward',c.rewardAsset,rewardAmount+' '],['Staking asset',c.stakingAsset,'']] as const){
     const cell=row.insertCell();cell.dataset.label=label;
-    cell.textContent=qty+(asset.kind==='bch'?'BCH':shortTokenCategory(asset.category));
+    cell.textContent=qty+(asset.kind==='bch'?'BCH':tokenTicker(asset.category));
     if(asset.kind==='token'){
      cell.title=asset.category;
-     void tokenName(network as V3Network,asset.category).then(name=>{if(name&&cell.isConnected)cell.textContent=qty+name;});
+     void fetchTokenMetadata(network as V3Network,asset.category).then(metadata=>{if(cell.isConnected)cell.textContent=qty+tokenTicker(asset.category,metadata);});
     }
    }
    const offers=row.insertCell(),count=queueCount(network,id);offers.dataset.label='Offers';offers.textContent=count?String(count.waiting):'—';

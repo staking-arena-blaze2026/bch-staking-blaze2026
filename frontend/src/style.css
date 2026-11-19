@@ -276,7 +276,7 @@ body{padding-bottom:calc(80px + env(safe-area-inset-bottom,0px))}
 .queue-vault-summary-grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:28px;align-items:start}
 .queue-vault-data{min-width:0}
 .queue-vault-data .terms{padding:0;gap:18px 20px;grid-template-columns:repeat(2,minmax(0,1fr))}
-.queue-vault-data .terms dd{margin:4px 0 0}
+.queue-vault-data .terms dd{margin:4px 0 0;overflow-wrap:anywhere}
 .queue-claim{margin-top:22px;padding-top:16px;border-top:1px solid #d1ae77}
 .v3-arena .queue-claim p{margin:0 0 10px}
 .v3-arena .queue-claim button{margin:0}
