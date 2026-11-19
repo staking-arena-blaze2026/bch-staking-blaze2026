@@ -4,13 +4,13 @@ import {checkedWalletKey,publicWalletDeriver,walletChains,walletDiscoveryFingerp
 import {walletDiagnostic} from './usePersistentWallet';
 import {v3Call} from './v3Client';
 import {queueCall} from './queueClient';
-import {confirmPreparation} from './QueuePreparationDialog';
+import {confirmAction,confirmPreparation} from './QueuePreparationDialog';
 import type {DappConnectionManager} from '@wizardconnect/dapp';
 import {binToHex} from '@bitauth/libauth';
 import type {WalletOperation} from '../../src/browser-wallet';
 import type {PublicPath} from './walletNetwork';
 import type {Parameters} from '../../src/queue/model';
-import type {CreationEstimate} from '../../src/queue/wallet';
+import type {ActionQuote,CreationEstimate} from '../../src/queue/wallet';
 import type {WalletKey} from '../../src/transactions-core';
 import {browserConfig} from './browserConfig';
 import {wizardWireTransaction,type WalletTransactions} from './walletTransactions';
@@ -117,18 +117,38 @@ export function browserWalletClient(manager:DappConnectionManager|null,check:()=
  };
  async function planQueue(intent:Record<string,unknown>,scope:string,guard:()=>void,provideKeys:(limit:number)=>WalletKey[]=keys,child=liveChild,discovered=savedDiscoveryKeys){
   const preview=intent.operation==='previewCreate';
-  const creating=preview||intent.operation==='prepare'&&(intent.intent as {kind?:string})?.kind==='create';
-  const shared=creating||intent.operation==='prepare'&&(intent.intent as {kind?:string})?.kind==='insert';
+  const action=intent.intent as {kind?:string;parameters?:Parameters}|undefined;
+  const creating=preview||intent.operation==='prepare'&&action?.kind==='create';
+  const shared=creating||intent.operation==='prepare'&&['insert','claim'].includes(action?.kind??'');
+  const preliminary=shared&&!preview&&typeof intent.reviewedCommitment!=='string';
   const limits=preview||intent.operation==='prepare'&&(intent.intent as {kind?:string})?.kind!=='recover'?discoveryLimits:[40];
   const initial=shared?await measure('public-key-derivation',async()=>{await discoveryLoad;guard();
    return queueDescriptors(2,false,provideKeys,child,guard,preview?discovered:savedDiscoveryKeys);
   }):undefined;
-  let result:any,descriptors:WalletKey[]=[];
+  let result:any,descriptors:WalletKey[]=[],estimate:CreationEstimate|ActionQuote|undefined;
+  const fundingError=(error:unknown)=>(error as {details?:{code?:string}})?.details?.code?.includes('funding')||/Insufficient|funding is required|funding for|funding propagates|Atomic vault creation needs/i.test(String(error));
   for(const limit of limits){
    guard();progress('Finding available wallet funds — checking '+limit+' addresses per path…');
    descriptors=initial&&limit===2?mergeDescriptors(initial.hints,initial.descriptors):await measure('public-key-derivation',async()=>mergeDescriptors(initial?.hints??[],provideKeys(limit)));
-   const request={...intent,discoveryId:scope,...(shared?{atomicOnly:creating&&limit<40,firstBatch:limit===2}:{})};
+   let request:Record<string,unknown>={...intent,discoveryId:scope,...(shared?{atomicOnly:creating&&limit<40,firstBatch:limit===2}:{})};
    try{
+    if(preliminary){
+     try{
+      const candidate=await queueCall({...request,operation:creating?'previewCreate':'previewAction',parameters:action?.parameters},descriptors);
+      guard();
+      if(typeof candidate?.commitment==='string'){
+       estimate=candidate;
+       window.dispatchEvent(new CustomEvent('arena-queue-estimate',{detail:estimate}));
+       request={...request,firstBatch:false,quotedCommitment:candidate.commitment};
+      }
+     }catch(error){
+      guard();
+      if(fundingError(error)&&limit!==40)continue;
+      // A quote is optional online. Independent planning still determines
+      // availability and can report the underlying provider or funding error.
+     }
+     if(!request.quotedCommitment&&estimate)request={...request,quotedCommitment:estimate.commitment};
+    }
     try{result=await queueCall(request,descriptors);}
     catch(error){
      if((error as {details?:{code?:string}})?.details?.code!=='refresh-wallet-discovery')throw error;
@@ -136,14 +156,14 @@ export function browserWalletClient(manager:DappConnectionManager|null,check:()=
      result=await queueCall({...request,firstBatch:true},descriptors);
     }
    }catch(error){
-    if(limit===40||(!(error as {details?:{code?:string}})?.details?.code?.includes('funding')&&!/Insufficient|funding is required|funding for|funding propagates|Atomic vault creation needs/i.test(String(error))))throw error;
+    if(limit===40||!fundingError(error))throw error;
     continue;
    }
    if(!creating||result?.quote?.transactions===1||limit===40||!preview&&result?.intent?.kind!=='create')break;
    guard();
    if(!preview)await queueCall({operation:'discard',id:result.id});
   }
-  return {result,descriptors};
+  return {result,descriptors,estimate};
  }
  async function previewCreate(parameters:Parameters,guard:()=>void):Promise<CreationEstimate>{
   return measure('offline-preview',async()=>{
@@ -252,7 +272,7 @@ export function browserWalletClient(manager:DappConnectionManager|null,check:()=
     let previousSignatureAt:number|undefined;
     const liveStarted=performance.now(),started=requestCheck?.startedAt??liveStarted,paths=getManager().getSessionPaths(),session=JSON.stringify(paths);
     const reviewedOffline=typeof intent.reviewedCommitment==='string';
-    const shared=intent.operation==='prepare'&&['create','insert'].includes((intent.intent as {kind?:string}|undefined)?.kind??'');
+    const shared=intent.operation==='prepare'&&['create','insert','claim'].includes((intent.intent as {kind?:string}|undefined)?.kind??'');
     const scope=shared?liveDiscoveryId():crypto.randomUUID();
     const child=reviewedOffline?publicWalletDeriver(paths,family):liveChild;
     if(reviewedOffline&&!discoveryLoad){
@@ -260,8 +280,9 @@ export function browserWalletClient(manager:DappConnectionManager|null,check:()=
       if(discoveryId===scope&&Array.isArray(hints))savedDiscoveryKeys=hints;
      }).catch(()=>{});
     }
-    let descriptors:WalletKey[];
-    ({result,descriptors}=await planQueue(intent,scope,guard,reviewedOffline?limit=>publicKeys(limit,child):keys,child));
+    let descriptors:WalletKey[],estimate=intent.reviewedEstimate as CreationEstimate|ActionQuote|undefined;
+    const planned=await planQueue(intent,scope,guard,reviewedOffline?limit=>publicKeys(limit,child):keys,child);
+    ({result,descriptors}=planned);estimate=planned.estimate??estimate;
     if(typeof result?.step==='string'&&!['action','wallet-preparation','wallet-recovery'].includes(result.step))return result;
     let approval=(result?.completed??0)+(result?.raw?1:0),total=(result?.completed??0)+(result?.quote?.approvals??1);
     for(;;){
@@ -272,12 +293,15 @@ export function browserWalletClient(manager:DappConnectionManager|null,check:()=
      result=await queueCall({operation:'advance',id:result.id},descriptors);signatureRequested=false;guard();continue;
     }
     if(result?.stage!=='review'||!result.plan)return result;
-    if(result.quote&&!result.approved){
+    if((result.quote||result.actionQuote)&&!result.approved){
      window.dispatchEvent(new CustomEvent('arena-queue-review',{detail:result}));
      progress('Waiting for your confirmation');
-     const proceed=await measure('user-confirmation',()=>confirmPreparation(result.quote,signing.signal,approval,result.spentFees??'0'));guard();
-     if(!proceed){await queueCall({operation:'discard',id:result.id});result.stage='discarded';throw Error(result.recovery?'Old request resolution cancelled. No new transaction was signed or broadcast.':approval?'Vault creation cancelled after wallet preparation. Completed transactions remain in recovery.':'Vault creation cancelled. No new transaction was signed or broadcast.');}
-     result=await queueCall({operation:'confirm',id:result.id});guard();total=approval+result.quote.approvals;
+     const proceed=await measure('user-confirmation',()=>result.actionQuote
+      ?confirmAction(result.actionQuote,signing.signal,estimate&&'kind' in estimate?estimate:undefined)
+      :confirmPreparation(result.quote,signing.signal,approval,result.spentFees??'0',false,estimate&&'quote' in estimate?estimate.quote:undefined));guard();
+     if(!proceed){await queueCall({operation:'discard',id:result.id});result.stage='discarded';throw Error(result.recovery?'Old request resolution cancelled. No new transaction was signed or broadcast.':approval?'Vault creation cancelled after wallet preparation. Completed transactions remain in recovery.':'Request cancelled. No new transaction was signed or broadcast.');}
+     estimate=result.actionQuote??(result.quote?{quote:result.quote,atomic:result.quote.transactions===1,commitment:result.costCommitment}:undefined);
+     result=await queueCall({operation:'confirm',id:result.id});guard();total=approval+(result.quote?.approvals??1);
     }
     progress('Checking wallet inputs and current fee policy before approval…');
     let authorized;try{authorized=await measure('signing-authorization',()=>queueCall({operation:'authorize',id:result.id}));}catch(error){

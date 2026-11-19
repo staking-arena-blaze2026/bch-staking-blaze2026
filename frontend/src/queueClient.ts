@@ -40,7 +40,7 @@ function client(readOnly:boolean):Client{
 export function queueCall(intent:Record<string,unknown>,keys:WalletKey[]=[]):Promise<any>{
  const retaining=intent.operation==='retain'||intent.operation==='signingFailed';
  if(networkLeaving&&!retaining)return Promise.reject(Error('Network changed; review again'));
- // previewCreate is read-only in the worker and uses the shared wallet cache.
+ // Quotes are read-only operations within the worker that owns wallet discovery.
  const readOnly=['list','sync','owned','discover','creationStatus'].includes(String(intent.operation));
  const channel=String(intent.operation)==='list'?'journal':['market','owners','discovery','creation'].includes(String(intent.channel))?String(intent.channel):'selected';
  let c:Client;

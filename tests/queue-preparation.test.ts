@@ -14,6 +14,7 @@ import {walletAddress,type WalletKey} from '../src/transactions-core.js';
 import {QueueWallet,type Operation} from '../src/queue/wallet.js';
 import {ZERO,ownerScript} from '../src/queue/protocol.js';
 import {QueueIndexer} from '../src/queue/chain.js';
+const baseline=process.env.QUEUE_BASELINE_MODULE?await import(process.env.QUEUE_BASELINE_MODULE):undefined;
 test('automatic preparation: both public configurations, minimal approvals, recovery, exact fees and isolated P2P',{timeout:600000},async()=>isolatedRegtest(async()=>{
  const fast=process.env.QUEUE_PREPARATION_UNCONFIRMED==='1';
  const relay=await queueRelayPeer();let mocked=1790000000;await relay.peer('setmocktime',[mocked]);const results:unknown[]=[];let seed=100;
@@ -42,7 +43,9 @@ test('automatic preparation: both public configurations, minimal approvals, reco
     return writer;
    };
   }
-  const rate=network===Network.MAINNET?2n:1n;let advertised=rate;p.request=async(method,...args)=>method==='blockchain.relayfee'?Number(advertised)/100000:request(method,...args);
+  const rate=network===Network.MAINNET?2n:1n;let advertised=rate,requestCount=0;
+  const methods=new Map<string,number>();
+  p.request=async(method,...args)=>{requestCount++;methods.set(method,(methods.get(method)??0)+1);return method==='blockchain.relayfee'?Number(advertised)/100000:request(method,...args);};
   const signer=new SignatureTemplate(new Uint8Array(32).fill(seed++)),key:WalletKey={publicKey:binToHex(signer.publicKey),path:'receive',index:0},keys=[key],saved=new Map<string,Operation>();
   const store={list:async()=>structuredClone([...saved.values()]),save:async(op:Operation)=>{saved.set(op.id,structuredClone(op));}};
   let wallet=new QueueWallet(p,store);let approvals=0;
@@ -66,15 +69,24 @@ test('automatic preparation: both public configurations, minimal approvals, reco
   const parameters={stakingCategory:stake,rewardCategory:reward,epoch:(await rpc('getblockchaininfo')).mediantime-10000,interval:600,releases:scenario==='reported-layout'?8:20,cap:scenario==='reported-layout'?1200n:2000n};
   const expected=scenario==='normal'?1:['one-independent','reported-layout'].includes(scenario)?2:3;
   const atomic=expected===1,scope='d'.repeat(64),intent={kind:'create' as const,parameters};
-  let before=performance.now();
-  const online=await wallet.prepare(intent,keys,undefined,undefined,scope,atomic,true);
+  let baselinePreview:{milliseconds:number;requests:number}|undefined;
+  if(baseline){
+   const old=new baseline.QueueWallet(p,store);
+   const time=performance.now(),count=requestCount;
+   await old.previewCreate(parameters,keys,scope,atomic,true);
+   baselinePreview={milliseconds:performance.now()-time,requests:requestCount-count};
+  }
+  let before=performance.now(),requestsBefore=requestCount;
+  const onlineQuote=await wallet.previewCreate(parameters,keys,scope,atomic,true);
+  const online=await wallet.prepare(intent,keys,undefined,undefined,scope,atomic,false,undefined,onlineQuote.commitment);
   if(!online.approved)await wallet.confirm(online.id);await wallet.authorize(online.id);await wallet.beginSigning(online.id);
-  const onlineMs=performance.now()-before;
+  const onlineMs=performance.now()-before,onlineRequests=requestCount-requestsBefore;
   await wallet.signingFailed(online.id,true);await wallet.discard(online.id);
   const journal=structuredClone(saved);
-  before=performance.now();
+  const beforePreview=new Map(methods);before=performance.now();requestsBefore=requestCount;
   const estimate=await wallet.previewCreate(parameters,keys,scope,atomic,true);
-  const previewMs=performance.now()-before;
+  const previewMs=performance.now()-before,previewRequests=requestCount-requestsBefore;
+  for(const method of ['blockchain.transaction.get','blockchain.transaction.get_merkle','blockchain.scripthash.get_history'])assert.equal(methods.get(method),beforePreview.get(method));
   assert.equal(estimate.quote.approvals,expected);assert.equal(estimate.atomic,atomic);
   assert.deepEqual(saved,journal,'preview never creates or changes transaction records');
   assert.equal(p.broadcasts,0);
@@ -84,18 +96,30 @@ test('automatic preparation: both public configurations, minimal approvals, reco
    assert.equal(changed.approved,false);await assert.rejects(()=>wallet.authorize(changed.id),/Confirm additional/);
    await wallet.discard(changed.id);advertised=rate;
   }
-  before=performance.now();
+  if(scenario==='one-independent'){
+   const first=await wallet.prepare(intent,keys,undefined,undefined,scope,atomic,true,estimate.commitment);
+   const future=first.reservations!.find(coin=>!first.sources.some(source=>source.txid===coin.txid&&source.vout===coin.vout))!;
+   const candidates=p.getUtxoCandidates.bind(p);
+   assert.ok(future,'final creation needs funding outside the first self-send');
+   p.getUtxoCandidates=async script=>(await candidates(script)).filter(coin=>coin.txid!==future.txid||coin.vout!==future.vout);
+   try{
+    await assert.rejects(()=>wallet.authorize(first.id));
+    await assert.rejects(()=>wallet.beginSigning(first.id),/Fresh/);
+   }finally{p.getUtxoCandidates=candidates;}
+   await wallet.discard(first.id);
+  }
+  before=performance.now();requestsBefore=requestCount;
   let op=await wallet.prepare(intent,keys,undefined,undefined,scope,atomic,true,estimate.commitment);
   assert.equal(op.approved,true,'the identical estimate avoids duplicate cost review');
   const quote=op.quote!;
   assert.deepEqual(quote,estimate.quote);
   if(scenario==='reported-layout')assert.equal(BigInt(quote.walletDebit),13000n+BigInt(quote.totalFee));
   assert.equal(quote.transactions,expected,network+' '+scenario);assert.equal(quote.approvals,expected);assert.equal(approvals,0);assert.equal(p.broadcasts,0);
-  let reconnectMs:number|undefined;
+  let reconnectMs:number|undefined,reconnectRequests:number|undefined;
   const measured:{bytes:number;fee:string;step:string}[]=[],betweenApprovals:number[]=[];let signedAt:number|undefined;
   while(true){
    if(!op.approved)op=await wallet.confirm(op.id);
-   const auth=await wallet.authorize(op.id);await wallet.beginSigning(op.id);if(approvals===0)reconnectMs=performance.now()-before;if(signedAt!==undefined)betweenApprovals.push(performance.now()-signedAt);await assert.rejects(()=>wallet.beginSigning(op.id),/Fresh/);
+   const auth=await wallet.authorize(op.id);await wallet.beginSigning(op.id);if(approvals===0){reconnectMs=performance.now()-before;reconnectRequests=requestCount-requestsBefore;}if(signedAt!==undefined)betweenApprovals.push(performance.now()-signedAt);await assert.rejects(()=>wallet.beginSigning(op.id),/Fresh/);
    // Explicit refusal permits a reviewed retry; uncertainty never does.
    if(approvals===0&&expected>1){await wallet.signingFailed(op.id,true);op=await wallet.resume(op.id,keys);if(!op.approved)await wallet.confirm(op.id);await wallet.authorize(op.id);await wallet.beginSigning(op.id);}
    const tx=structuredClone(auth.plan.request.transaction) as Transaction;
@@ -124,7 +148,7 @@ test('automatic preparation: both public configurations, minimal approvals, reco
   assert.notEqual(op.config!.identity.vault,op.config!.identity.queue);assert.equal((await new QueueIndexer(p,op.config!).sync()).state.reserve,parameters.cap*BigInt(parameters.releases));
   const wrong={...op,network:network===Network.MAINNET?Network.CHIPNET:Network.MAINNET};saved.set(op.id,wrong);await assert.rejects(()=>wallet.get(op.id),/network mismatch/);saved.set(op.id,op);
   console.log('Verified',network,scenario,expected,'transactions/approvals');
-  results.push({network,scenario,transactions:expected,approvals,quote,measured,betweenApprovals,onlineMs,previewMs,reconnectMs,withoutConfirmation:fast,p2pRelayed:true});
+  results.push({network,scenario,transactions:expected,approvals,quote,measured,betweenApprovals,onlineMs,onlineRequests,previewMs,previewRequests,reconnectMs,reconnectRequests,baselinePreview,withoutConfirmation:fast,p2pRelayed:true});
  }
  await writeFile(process.env.QUEUE_PREPARATION_RESULTS??'docs/blaze2026/linked-queue/preparation-results.json',JSON.stringify({at:new Date().toISOString(),environment:'isolated BCHN regtest with mainnet/chipnet application configuration and loopback P2P; synthetic Schnorr signer; no public broadcast or real Cashonize',results},null,2)+'\n');
  }finally{await relay.close();}

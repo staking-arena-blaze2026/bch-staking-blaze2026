@@ -76,7 +76,7 @@ test('tabs preserve form values, verified rows open vault routes, and desktop/mo
  expect(await page.locator('.vault-summary-table th,.vault-summary-table td').evaluateAll(cells=>cells.every(c=>getComputedStyle(c).borderTopWidth==='0px'&&getComputedStyle(c).borderBottomWidth==='0px'))).toBe(true);
  expect(await page.locator('.v3-offer').evaluate(el=>getComputedStyle(el).position)).toBe('static');
  await expect(page.getByText('P(Priority) = S × U / R',{exact:true})).toBeVisible();
- await expect(page.getByText('Caller pays the fee. The reward goes to the winning offer.',{exact:true})).toBeVisible();
+ await expect(page.getByText('The caller pays the fee. The reward goes to the winning offer, which may belong to someone else.',{exact:true})).toBeVisible();
  const offerBox=await page.locator('.v3-offer').boundingBox(),claimBox=await page.locator('.v3-claim').boundingBox();expect(claimBox!.x).toBe(offerBox!.x);expect(claimBox!.y).toBeGreaterThan(offerBox!.y+offerBox!.height);expect(claimBox!.width).toBe(offerBox!.width);
  const browseBox=await page.getByRole('link',{name:'Browse All Vaults',exact:true}).boundingBox();expect(browseBox!.width).toBeLessThanOrEqual(230);expect(browseBox!.height).toBeLessThanOrEqual(48);
  await expect(page.getByText('Verified',{exact:true})).toHaveCount(0);await expect(page.getByText('Independent staking allocations',{exact:true})).toHaveCount(0);

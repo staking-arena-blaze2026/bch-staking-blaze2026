@@ -295,12 +295,12 @@ export class ElectrumCore implements NetworkProvider {
   }
   private async unspentRows(script: string | Uint8Array) {
     const hex = typeof script === 'string' ? script : binToHex(script);
-    if (!/^(?:[a-f0-9]{2})*$/i.test(hex)) throw Error('Invalid locking script');
+    if (hex.length>20000||!/^(?:[a-f0-9]{2})*$/i.test(hex)) throw Error('Invalid locking script');
     const rows = await this.request('blockchain.scripthash.listunspent', scriptHash(hex), 'include_tokens');
     if (!Array.isArray(rows) || rows.length > this.maxHistoryEntries) throw Error('Malformed or oversized Electrum UTXOs');
     const seen=new Set<string>();
     for(const row of rows){
-      if(!row||!isHash(row.tx_hash)||!Number.isSafeInteger(row.tx_pos)||row.tx_pos<0||row.tx_pos>0xffffffff||!Number.isSafeInteger(row.height)||row.height< -1||!Number.isSafeInteger(row.value)||row.value<0)throw Error('Malformed UTXO outpoint');
+      if(!row||!isHash(row.tx_hash)||!Number.isSafeInteger(row.tx_pos)||row.tx_pos<0||row.tx_pos>0xffffffff||!Number.isSafeInteger(row.height)||row.height< -1||row.height>0xffffffff||!Number.isSafeInteger(row.value)||row.value<0||row.value>2_100_000_000_000_000)throw Error('Malformed UTXO outpoint');
       const point=row.tx_hash+':'+row.tx_pos;
       if(seen.has(point))throw Error('Duplicate UTXO outpoint');
       seen.add(point);

@@ -32,8 +32,14 @@ test('progressive discovery: independent fresh inputs, bounded expansion and com
   async function run(ctor:typeof QueueWallet,initial:boolean){const saved=new Map<string,Operation>(),w=new ctor(p,{list:async()=>structuredClone([...saved.values()]),save:async op=>{saved.set(op.id,structuredClone(op));}});const scope=crypto.randomUUID(),current=parity||ctor===QueueWallet;
    if(current)await w.warmDiscovery(keys.slice(0,2),scope);
    const start=performance.now(),before=requests;
-   const op=await w.prepare({kind:'create',parameters},initial?keys.slice(0,2):keys,undefined,undefined,current?scope:undefined,current,current);assert.equal(op.quote?.approvals,1);await w.authorize(op.id);await w.beginSigning(op.id);
-   return {milliseconds:performance.now()-start,requests:requests-before,addresses:initial?2:40};
+   const descriptors=initial?keys.slice(0,2):keys;
+   const quote=ctor===QueueWallet?await w.previewCreate(parameters,descriptors,scope,true,true):undefined;
+   const evaluationMs=performance.now()-start,evaluationRequests=requests-before;
+   const op=await w.prepare({kind:'create',parameters},descriptors,undefined,undefined,current?scope:undefined,current,current&&!quote,undefined,quote?.commitment);
+   assert.equal(op.quote?.approvals,1);assert.equal(op.approved,true);
+   if(quote)assert.equal(op.reservations?.length,op.sources.length,'reusing a draft retains every selected source');
+   await w.authorize(op.id);await w.beginSigning(op.id);
+   return {milliseconds:performance.now()-start,requests:requests-before,addresses:initial?2:40,evaluationMs,evaluationRequests};
   }
   const before:Awaited<ReturnType<typeof run>>[]=[],after:typeof before=[];
   for(let i=0;i<(baseline?3:1);i++){if(baseline)before.push(await run(baseline.QueueWallet,true));after.push(await run(QueueWallet,true));}
@@ -46,8 +52,14 @@ test('progressive discovery: independent fresh inputs, bounded expansion and com
   const lateBefore:Awaited<ReturnType<typeof run>>[]=[],lateAfter:typeof lateBefore=[];
   async function lateRun(ctor:typeof QueueWallet,optimized:boolean){
    const saved=new Map<string,Operation>(),w=new ctor(p,{list:async()=>structuredClone([...saved.values()]),save:async op=>{saved.set(op.id,structuredClone(op));}}),start=performance.now(),before=requests,scope=crypto.randomUUID();let addresses=0;
-   for(const limit of [2,8,16,24,32,40]){addresses=limit;let op:Operation;try{op=await w.prepare({kind:'create',parameters},late.slice(0,limit),undefined,undefined,scope,optimized&&limit<40,optimized&&limit===2);}catch(error){if(limit===40)throw error;continue;}
-    if(op.quote?.transactions===1){await w.authorize(op.id);await w.beginSigning(op.id);return {milliseconds:performance.now()-start,requests:requests-before,addresses};}await w.discard(op.id);
+   let evaluationMs=0,evaluationRequests=0;
+   for(const limit of [2,8,16,24,32,40]){addresses=limit;let op:Operation;try{
+    const at=performance.now(),count=requests;let quote;
+    try{if(ctor===QueueWallet)quote=await w.previewCreate(parameters,late.slice(0,limit),scope,limit<40,limit===2);}
+    finally{evaluationMs+=performance.now()-at;evaluationRequests+=requests-count;}
+    op=await w.prepare({kind:'create',parameters},late.slice(0,limit),undefined,undefined,scope,optimized&&limit<40,optimized&&limit===2&&!quote,undefined,quote?.commitment);
+   }catch(error){if(limit===40)throw error;continue;}
+    if(op.quote?.transactions===1){await w.authorize(op.id);await w.beginSigning(op.id);return {milliseconds:performance.now()-start,requests:requests-before,addresses,evaluationMs,evaluationRequests};}await w.discard(op.id);
    }throw Error('No atomic plan found');
   }
   for(let i=0;i<(baseline?3:1);i++){if(baseline)lateBefore.push(await lateRun(baseline.QueueWallet,parity));lateAfter.push(await lateRun(QueueWallet,true));}

@@ -20,13 +20,15 @@ test('persistent discovery shares funding between creation and BCH/token offers,
   const signer=new SignatureTemplate(new Uint8Array(32).fill(network===Network.MAINNET?93:94)),publicKey=binToHex(signer.publicKey),key:WalletKey={path:'receive',index:0,publicKey};
   const keys=[key,...[1,2,3,4,5,6,7].map(index=>({path:'receive' as const,index,publicKey:binToHex(new SignatureTemplate(new Uint8Array(32).fill(94+index)).publicKey)}))];
   const address=walletAddress(signer.publicKey,'regtest'),miner=await rpc<string>('getnewaddress'),script=binToHex(ownerScript(signer.publicKey));
-  const facade=p.request,counts:Record<string,number>={};let absent:string|undefined;
+  const facade=p.request,counts:Record<string,number>={};let absent:string|undefined,fee=1,misreport=false;
+  const touched=new Set<string>();
   p.request=async(method,...args)=>{
    counts[method]=(counts[method]??0)+1;
-   if(method==='blockchain.relayfee')return 0.00001;
+   touched.add(p.endpoint!);
+   if(method==='blockchain.relayfee')return fee/100000;
    if(method==='blockchain.scripthash.listunspent'){
     await new Promise(resolve=>setTimeout(resolve,5));
-    return (await facade(method,...args)).filter((row:{tx_hash:string})=>row.tx_hash!==absent);
+    return (await facade(method,...args)).filter((row:{tx_hash:string})=>row.tx_hash!==absent).map((row:{value:number;tx_hash:string})=>misreport&&row.value===800000?{...row,value:row.value+100}:row);
    }
    return facade(method,...args);
   };
@@ -56,22 +58,60 @@ test('persistent discovery shares funding between creation and BCH/token offers,
    const start=performance.now(),before={...counts},result=await run();
    return {result,milliseconds:performance.now()-start,methods:Object.fromEntries(Object.entries(counts).map(([method,count])=>[method,count-(before[method]??0)]))};
   }
-  async function review(wallet:QueueWallet,cached:boolean){
-   const op=await wallet.prepare(intent,keys,undefined,undefined,cached?id:undefined,false,cached);
+  const quoteTimings:{milliseconds:number;listunspent:number}[]=[];
+  async function review(wallet:QueueWallet,cached:boolean,quotes=true){
+   const start=structuredClone(await store.list()),before={...counts};touched.clear();
+   const startQuote=performance.now();
+   const quote=quotes?await wallet.previewAction(intent,keys,id,true):undefined;
+   if(quote){
+    quoteTimings.push({milliseconds:performance.now()-startQuote,listunspent:(counts['blockchain.scripthash.listunspent']??0)-(before['blockchain.scripthash.listunspent']??0)});
+    assert.equal(touched.size,1);assert.ok(p.endpoints.includes([...touched][0]!));
+    for(const method of ['blockchain.transaction.get','blockchain.transaction.get_merkle','blockchain.scripthash.get_history'])assert.equal(counts[method]??0,before[method]??0);
+    assert.deepEqual(await store.list(),start);
+    assert.equal(quote.asset,stakingCategory);assert.equal(quote.amount,'10000');
+   }
+   const op=await wallet.prepare(intent,keys,undefined,undefined,cached?id:undefined,false,cached&&!quote,undefined,quote?.commitment);
    assert.equal(op.step,'action');assert.equal(op.quote,undefined);
+   if(quote){assert.equal(op.actionQuote?.commitment,quote.commitment);assert.equal(op.approved,true);}
    if(stakingCategory!==ZERO){
     assert.ok(op.sources.some(c=>c.token?.category===stakingCategory&&c.token.amount>=intent.terms.stake));
     assert.ok(op.sources.some(c=>!c.token&&c.lockingBytecode===script),'BCH pays network fees');
    }
    await wallet.authorize(op.id);await wallet.beginSigning(op.id);return op;
   }
-  const old=baseline?await measure(()=>review(new baseline.QueueWallet(p,makeStore()),false)):undefined;
+  const old=baseline?await measure(()=>review(new baseline.QueueWallet(p,makeStore()),true,false)):undefined;
   const cold=await measure(()=>review(first,true));await first.signingFailed(cold.result.id,true);await first.discard(cold.result.id);
-  const saved=structuredClone(first.discoverySnapshot(id));
+  let saved=structuredClone(first.discoverySnapshot(id));
+  if(saved.scope!.expires<Date.now()){
+   await first.warmDiscovery(keys,id);
+   saved=structuredClone(first.discoverySnapshot(id,true));
+  }
   assert.equal(repeat.restoreDiscovery(id,saved.scope,Object.fromEntries(saved.evidence))[0]?.publicKey,publicKey);
   const warm=await measure(()=>review(repeat,true));await repeat.signingFailed(warm.result.id,true);await repeat.discard(warm.result.id);
   assert.deepEqual(warm.result.sources,cold.result.sources);
   assert.ok(warm.methods['blockchain.scripthash.listunspent']!<cold.methods['blockchain.scripthash.listunspent']!,'repeat discovery avoids known address reads');
+  const otherScope='b'.repeat(64);
+  touched.clear();
+  p.unavailable.add(p.endpoints[0]!);
+  const failover=await repeat.previewAction(intent,keys,otherScope,true);
+  assert.deepEqual([...touched],[p.endpoints[1]]);
+  assert.equal(failover.commitment,warm.result.actionQuote?.commitment);
+  p.unavailable.clear();
+  p.unresolvedChainPeers.add(p.endpoints[0]!);
+  await assert.rejects(()=>repeat.previewAction(intent,keys,otherScope),/Conflicting blockchain evidence/);
+  p.unresolvedChainPeers.clear();
+  fee=2;
+  const repriced=await repeat.prepare(intent,keys,undefined,undefined,otherScope,false,false,undefined,failover.commitment);
+  assert.equal(repriced.approved,false);assert.ok(BigInt(repriced.actionQuote!.fee)>BigInt(failover.fee));
+  await assert.rejects(()=>repeat.authorize(repriced.id),/Confirm updated costs/);
+  await repeat.discard(repriced.id);fee=1;
+  misreport=true;
+  const fabricated=await repeat.previewAction(intent,keys,'fabricated',true);
+  misreport=false;
+  const real=await repeat.prepare(intent,keys,undefined,undefined,'truth',false,true,undefined,fabricated.commitment);
+  assert.equal(real.approved,false,'fabricated amount cannot authorize a matching fee or wallet debit');
+  await assert.rejects(()=>repeat.beginSigning(real.id),/Fresh/);
+  await repeat.discard(real.id);
   const switched=await repeat.prepare({kind:'create',parameters},keys,undefined,undefined,id,true,true);
   assert.equal(switched.quote?.approvals,1);
   await repeat.discard(switched.id);
@@ -89,7 +129,11 @@ test('persistent discovery shares funding between creation and BCH/token offers,
   }
   const firstCreating=await measure(()=>createReview(firstCreation));
   await firstCreation.signingFailed(firstCreating.result.id,true);await firstCreation.discard(firstCreating.result.id);
-  const creatingCache=structuredClone(firstCreation.discoverySnapshot(id));
+  let creatingCache=structuredClone(firstCreation.discoverySnapshot(id));
+  if(creatingCache.scope!.expires<Date.now()){
+   await firstCreation.warmDiscovery(keys,id);
+   creatingCache=structuredClone(firstCreation.discoverySnapshot(id,true));
+  }
   repeatCreation.restoreDiscovery(id,creatingCache.scope,Object.fromEntries(creatingCache.evidence));
   const repeatCreating=await measure(()=>createReview(repeatCreation));
   assert.ok(repeatCreating.methods['blockchain.scripthash.listunspent']!<firstCreating.methods['blockchain.scripthash.listunspent']!);
@@ -104,7 +148,7 @@ test('persistent discovery shares funding between creation and BCH/token offers,
   await assert.rejects(()=>repeatCreation.authorize(changedFunding.id),/Confirm additional/);
   absent=undefined;
   const stats=({milliseconds,methods}:typeof warm)=>({milliseconds,methods});
-  results.push({network,stakingAsset:stakingCategory===ZERO?'BCH':'CashToken',baseline:old&&stats(old),first:stats(cold),repeat:stats(warm),create:{first:stats(firstCreating),repeat:stats(repeatCreating)}});
+  results.push({network,stakingAsset:stakingCategory===ZERO?'BCH':'CashToken',baseline:old&&stats(old),first:stats(cold),repeat:stats(warm),quotes:quoteTimings,create:{first:stats(firstCreating),repeat:stats(repeatCreating)}});
  }
  if(process.env.QUEUE_SHARED_RESULTS)await writeFile(process.env.QUEUE_SHARED_RESULTS,JSON.stringify({results},null,2)+'\n');
 },18688,['-expire=0','-upgrade12activationheight=1','-mocktime=1790000000']));

@@ -7,6 +7,29 @@ export class ProviderVerificationError extends Error {
  }
 }
 export interface VerifiedRead<T>{value:T;tip:Header;identity:string}
+/** Reported index data for an estimate. This never contributes to a quorum. */
+export async function reportedProvider<T>(p:ElectrumCore,peers:string[],read:(peer:string,source:ElectrumCore,tip:Header)=>Promise<T>):Promise<T>{
+ return timed(p,'provisional-provider-evaluation',async()=>{
+  const checkConflict=()=>{if(p.unresolvedChainPeers.size)throw new ProviderVerificationError('conflict');};
+  checkConflict();
+  let failure:unknown;
+  for(const peer of peers){
+   const source=p.independentReader(peer)??p,before={...source.requestCounts};
+   try{
+    const value=await source.session(async()=>read(peer,source,await source.tip()),peer);
+    checkConflict();return value;
+   }catch(error){
+    if(error instanceof ProviderVerificationError&&error.category==='conflict')throw error;
+    if(/reorganization|header chain mismatch/i.test(String(error)))throw new ProviderVerificationError('conflict');
+    failure=error;
+   }finally{
+    if(source!==p)for(const [method,count] of Object.entries(source.requestCounts))p.requestCounts[method]=(p.requestCounts[method]??0)+count-(before[method]??0);
+   }
+  }
+  checkConflict();
+  throw new Error('No Electrum provider could evaluate this quote.',{cause:failure});
+ });
+}
 /** Each candidate must perform its own complete cryptographic verification. A quorum
  * only establishes agreement; it never substitutes for verification. Parallel reads require separate ElectrumCore instances; a shared mutable
  * transport always stays sequential. All configured sources are checked. */

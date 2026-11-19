@@ -8,7 +8,11 @@ import {ChainExtension,BLOCKCHAIN_REFRESH,ElectrumCore,type Header} from './elec
 import {json,utxo} from './arena-core.js';
 import {walletScript,type WalletKey,type WalletCoin} from './transactions-core.js';
 export {ChainExtension,BLOCKCHAIN_REFRESH};
-export function walletPeers(p:ElectrumCore){if(p.network!==Network.MAINNET&&p.network!==Network.CHIPNET&&p.network!==Network.REGTEST)throw Error('Wallet transactions require mainnet, chipnet or local regtest');const peers=p.endpoints.filter((v,i,a)=>a.findIndex(x=>new URL(x).hostname===new URL(v).hostname)===i);if(peers.length<2)throw Error('Two different configured WSS hosts are required');return peers;}
+export function walletReadPeers(p:ElectrumCore){
+ if(p.network!==Network.MAINNET&&p.network!==Network.CHIPNET&&p.network!==Network.REGTEST)throw Error('Wallet transactions require mainnet, chipnet or local regtest');
+ return p.endpoints.filter((v,i,a)=>a.findIndex(x=>new URL(x).hostname===new URL(v).hostname)===i);
+}
+export function walletPeers(p:ElectrumCore){const peers=walletReadPeers(p);if(peers.length<2)throw Error('Two different configured WSS hosts are required');return peers;}
 export const coinIdentity=(u:SpendableUtxo)=>json({txid:u.txid,vout:u.vout,satoshis:u.satoshis,script:u.lockingBytecode,token:u.token??null});
 export async function confirmedWalletTransaction(p:ElectrumCore,id:string){
  return verifiedProviders(p,walletPeers(p),async(_peer,p)=>{
@@ -18,9 +22,11 @@ export async function confirmedWalletTransaction(p:ElectrumCore,id:string){
  },{parallel:true});
 }
 /** Verify supplied public source coins against raw transactions, token UTXOs, proofs and linked tip headers. */
-export async function verifyCoins(p:ElectrumCore,coins:SpendableUtxo[],peer:string,allowUnconfirmed=false,selectedOnly=false,initial?:Header,beforeClosing?:Promise<unknown>){
+export async function verifyCoins(p:ElectrumCore,coins:SpendableUtxo[],peer:string,allowUnconfirmed=false,selectedOnly=false,initial?:Header,beforeClosing?:Promise<unknown>,sessionRows?:ReadonlyMap<string,SpendableUtxo[]>){
  const tip=initial??await p.tip(),transactions=new Map<string,any>(),scriptCoins=new Map<string,Promise<SpendableUtxo[]>>();
- const lookup=(script:string)=>selectedOnly?p.getUtxoCandidates(script):p.getUtxosForLockingBytecode(script);
+ // Only use rows read in this same pinned session by the contract planner.
+ // Every selected output still needs matching raw bytes and ancestry evidence.
+ const lookup=async(script:string)=>sessionRows?.get(script)??(selectedOnly?p.getUtxoCandidates(script):p.getUtxosForLockingBytecode(script));
  const [clock,listed]=await Promise.allSettled([
   (async()=>{const mtp=await p.medianTime(tip.height,tip.hash);return {mtp,...await tickContext(p,tip)};})(),
   boundedMap([...new Set(coins.map(c=>c.lockingBytecode).filter((s):s is string=>!!s))],4,async script=>{scriptCoins.set(script,Promise.resolve(await lookup(script)));}),

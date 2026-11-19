@@ -13,18 +13,21 @@ import {QueueWallet,type Operation} from '../src/queue/wallet.js';
 import {QueueIndexer} from '../src/queue/chain.js';
 import * as q from '../src/queue/protocol.js';
 import {ZERO} from '../src/queue/protocol.js';
+const baseline=process.env.QUEUE_BASELINE_MODULE?await import(process.env.QUEUE_BASELINE_MODULE):undefined;
 test('queue wallet: public-key plans, explicit signing, durable recovery and owner stake withdrawal',{timeout:600000},async()=>isolatedRegtest(async()=>{
  class Local extends RegtestElectrum {
   lose=false;
   override async sendRawTransaction(raw:string){const [valid]=await rpc('testmempoolaccept',[[raw]]);assert.equal(valid.allowed,true,JSON.stringify(valid));const id=await rpc<string>('sendrawtransaction',[raw]);await this.refresh();if(this.lose){this.lose=false;throw Error('Lost broadcast acknowledgement');}return id;}
  }
  const p=new Local(await rpc('getblockcount')),request=p.request;
- let requests=0;
- p.request=async(method,...args)=>{requests++;return method==='blockchain.relayfee'?0.00001:request(method,...args);};
+ let requests=0,rate=1;
+ const methods=new Map<string,number>(),peers=new Set<string>();
+ p.request=async(method,...args)=>{requests++;methods.set(method,(methods.get(method)??0)+1);peers.add(p.endpoint!);return method==='blockchain.relayfee'?rate/100000:request(method,...args);};
  const timings:{kind:string;step:string;phase:string;ms:number;requests:number}[]=[];
  async function measured<T>(kind:string,step:string,phase:string,run:()=>Promise<T>){const start=performance.now(),count=requests;try{return await run();}finally{timings.push({kind,step,phase,ms:performance.now()-start,requests:requests-count});}}
  const key=new SignatureTemplate(new Uint8Array(32).fill(73)),changeKey=new SignatureTemplate(new Uint8Array(32).fill(74)),address=ownerAddress(key.publicKey,p),miner=await rpc<string>('getnewaddress'),keys:WalletKey[]=[{publicKey:binToHex(key.publicKey),path:'receive',index:0},{publicKey:binToHex(changeKey.publicKey),path:'change',index:0}],saved=new Map<string,Operation>();
- const wallet=new QueueWallet(p,{list:async()=>structuredClone([...saved.values()]),save:async op=>{saved.set(op.id,structuredClone(op));}});
+ const store={list:async()=>structuredClone([...saved.values()]),save:async(op:Operation)=>{saved.set(op.id,structuredClone(op));}};
+ const wallet=new QueueWallet(p,store);
  const prepare=(...args:Parameters<QueueWallet['prepare']>)=>measured(args[0].kind,'prepare','prepare',()=>wallet.prepare(...args));
  const raw=await rpc('createrawtransaction',[[],{[address]:0.2}]),funded=await rpc('fundrawtransaction',[raw,{changePosition:1}]),signed=await rpc('signrawtransactionwithwallet',[funded.hex]);await rpc('sendrawtransaction',[signed.hex]);await p.refresh();
  function sign(plan:BrowserPlan){const tx=structuredClone(plan.request.transaction) as Transaction;for(const [i]of plan.inputPaths){const signer=plan.signers?.[i]===binToHex(changeKey.publicKey)?changeKey:key,s=plan.request.sourceOutputs[i]!,sig=signer.generateSignature(hash256(generateSigningSerializationBch({transaction:tx,sourceOutputs:plan.request.sourceOutputs,inputIndex:i},{coveredBytecode:s.contract?.redeemScript??s.lockingBytecode,signingSerializationType:Uint8Array.of(0x61)})));sig[64]=0x61;tx.inputs[i]!.unlockingBytecode=s.contract?hexToBin(binToHex(s.unlockingBytecode).replace('41'+'00'.repeat(65),'41'+binToHex(sig))):new Uint8Array([...encodeDataPush(sig),...encodeDataPush(signer.publicKey)]);}return binToHex(encodeTransaction(tx));}
@@ -63,7 +66,30 @@ test('queue wallet: public-key plans, explicit signing, durable recovery and own
  const cancel=await approve(await prepare({kind:'cancel',config,offerId:second.offerId!},keys));assert.equal(cancel.sources.length,3);
  const originalSync=QueueIndexer.prototype.sync;
  QueueIndexer.prototype.sync=async()=>{throw Error('Unexpected standing queue traversal');};
- try{await approve(await prepare({kind:'claim',config},keys));}finally{QueueIndexer.prototype.sync=originalSync;}
+ try{
+  if(baseline){
+   const old=new baseline.QueueWallet(p,store);
+   const prepared=await measured<Operation>('claim','baseline','prepare',()=>old.prepare({kind:'claim',config,expectedHead:first.offerId},keys));
+   await measured('claim','baseline','authorize',()=>old.authorize(prepared.id));
+   await old.discard(prepared.id);
+  }
+  const claim={kind:'claim' as const,config,expectedHead:first.offerId},before=structuredClone(saved),calls=new Map(methods);peers.clear();
+  const scope='claim-quote',quote=await measured('claim','quote','preview',()=>wallet.previewAction(claim,keys,scope,true));
+  assert.deepEqual([...peers],[p.endpoints[0]]);
+  for(const method of ['blockchain.transaction.get','blockchain.transaction.get_merkle','blockchain.scripthash.get_history'])assert.equal(methods.get(method),calls.get(method));
+  assert.equal(quote.beneficiary,keys[0]!.publicKey);assert.equal(quote.amount,'2000');assert.equal(quote.walletDebit,quote.fee);
+  assert.deepEqual(saved,before);
+  rate=2;
+  const repriced=await prepare(claim,keys,undefined,undefined,scope,false,false,undefined,quote.commitment);
+  assert.equal(repriced.approved,false);await assert.rejects(()=>wallet.authorize(repriced.id),/Confirm updated costs/);
+  await wallet.discard(repriced.id);rate=1;
+  const matched=await prepare(claim,keys,undefined,undefined,scope,false,false,undefined,quote.commitment);
+  assert.equal(matched.approved,true);
+  p.unavailable.add(p.endpoints[1]!);
+  try{await assert.rejects(()=>wallet.authorize(matched.id),/second verified provider/);await assert.rejects(()=>wallet.beginSigning(matched.id),/Fresh/);}
+  finally{p.unavailable.clear();}
+  await approve(await prepare(claim,keys,matched,undefined,scope,false,true));
+ }finally{QueueIndexer.prototype.sync=originalSync;}
  await assert.rejects(()=>prepare({kind:'withdraw',config,offerId:first.offerId!},keys),/not matured/);
  await rpc('generatetoaddress',[1,miner]);await rpc('setmocktime',[(await rpc('getblockchaininfo')).mediantime+1200]);await rpc('generatetoaddress',[12,miner]);p.headerCache.clear();await p.refresh();
  QueueIndexer.prototype.sync=async()=>{throw Error('Unexpected standing queue traversal');};
