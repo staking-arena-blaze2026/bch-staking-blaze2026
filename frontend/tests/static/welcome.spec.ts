@@ -47,7 +47,7 @@ test('opens the About page from the welcome link',async({page})=>{
 test('dismisses the welcome dialog with Escape',async({page})=>{
  await page.goto('/');
  const welcome=page.getByRole('dialog',{name:'Welcome to Stake Arena'});
- await expect(welcome).toBeFocused();
+ await expect(welcome.locator('p').first()).toBeFocused();
  await page.keyboard.press('Escape');
  await expect(welcome).toBeHidden();
 });
