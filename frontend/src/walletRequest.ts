@@ -5,6 +5,15 @@ export type WalletRequestCheck=(()=>void)&{readonly startedAt?:number};
 export const WALLET_REQUEST_MS = 90_000;
 const reviewAgain = () => Error('Wallet request changed. Review the current terms and continue again.');
 
+/** Bind an estimate or restoration to one pairing and form lifetime. */
+export function bindWalletRequest(read:()=>WalletTransactions|null,unchanged:()=>boolean,signal:AbortSignal,pairing=read()?.pairing?.()){
+ if(!pairing?.paired)throw Error('Connect Wallet to continue');
+ return ()=>{
+  const current=read()?.pairing?.();
+  if(signal.aborted||!unchanged()||!current?.paired||current.generation!==pairing.generation||current.identity!==pairing.identity||current.network!==pairing.network)throw reviewAgain();
+ };
+}
+
 /** Memory-only user intent. No journal, signing request or transaction exists while waiting.
  * The returned check is also enforced at the live client's approval boundary.
  */
@@ -18,10 +27,7 @@ export async function restoreWalletRequest(
   const initial=read(),pairing=initial?.pairing?.();
   if(!pairing?.paired)throw Error('Connect Wallet to continue');
   const deadline=Date.now()+WALLET_REQUEST_MS,elapsedDeadline=performance.now()+WALLET_REQUEST_MS;
-  const check=()=>{
-    const current=read()?.pairing?.();
-    if(signal.aborted || !unchanged() || !current?.paired || current.generation!==pairing.generation || current.identity!==pairing.identity || current.network!==pairing.network)throw reviewAgain();
-  };
+  const check=bindWalletRequest(read,unchanged,signal,pairing);
   if(!pairing.live){waiting();initial?.restore?.();}
   for(;;){
     check();

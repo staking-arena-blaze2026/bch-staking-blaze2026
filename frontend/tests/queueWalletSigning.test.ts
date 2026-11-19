@@ -174,3 +174,69 @@ it('reloads the same scoped discovery hints after reconnect and checks a saved f
   expect(manager.signTransaction).not.toHaveBeenCalled();
  }finally{wallet.close?.();}
 });
+
+it.each(['mainnet','chipnet'])('derives and previews locally on %s without an SDK manager or a signing operation',async selected=>{
+ const {wallet,manager}=setup(selected);wallet.close?.();
+ const paths=manager.getSessionPaths(),id='a'.repeat(64),scope=browserWalletClient(null,()=>{throw Error('Offline manager accessed');},undefined,()=>({paths,discoveryId:id}));
+ const calls:{operation:string;count:number}[]=[];
+ vi.mocked(queueCall).mockImplementation(async(i,keys)=>{
+  calls.push({operation:String(i.operation),count:keys?.length??0});
+  if(i.operation==='loadDiscovery')return [{path:'receive',index:57,publicKey:'02'+'ff'.repeat(32)}];
+  if(i.operation==='list')return [];
+  if(i.operation==='previewCreate'){
+   expect(i.discoveryId).toBe(id);
+   expect(keys?.[0]?.publicKey).toBe(binToHex(manager.getPubkey(0,0n)));
+   expect(keys?.some(k=>k.index===57)).toBe(false);
+   if(i.atomicOnly)throw Error('Insufficient atomic creation funding');
+   return {quote:{transactions:2},commitment:'b'.repeat(64)};
+  }
+  throw Error('Unexpected preview operation');
+ });
+ try{
+  const estimate=await scope.previewCreate!({} as any,()=>{});
+  expect(estimate.quote.transactions).toBe(2);
+  expect(calls.filter(c=>c.operation==='previewCreate').map(c=>c.count)).toEqual([2,8,16,24,32,40]);
+  expect(calls.map(c=>c.operation)).not.toContain('prepare');
+  expect(manager.signTransaction).not.toHaveBeenCalled();
+ }finally{scope.close?.();}
+});
+
+it('reports missing authenticated derivation and provider failure without creating a journal operation',async()=>{
+ const {wallet,manager}=setup();
+ try{await expect(wallet.previewCreate!({} as any,()=>{})).rejects.toThrow('connect once');expect(queueCall).not.toHaveBeenCalled();}finally{wallet.close?.();}
+ const scope=browserWalletClient(null,()=>{},undefined,()=>({paths:manager.getSessionPaths(),discoveryId:'b'.repeat(64)}));
+ vi.mocked(queueCall).mockImplementation(async(i)=>{if(i.operation==='previewCreate')throw Error('Conflicting provider evidence');return [];});
+ try{await expect(scope.previewCreate!({} as any,()=>{})).rejects.toThrow('Conflicting provider evidence');expect(queueCall).not.toHaveBeenCalledWith(expect.objectContaining({operation:'prepare'}),expect.anything());}finally{scope.close?.();}
+});
+
+it('requests a renewed quote review when the rebuilt commitment changes, then verifies the live signing child',async()=>{
+ const {wallet,manager,plan}=setup();
+ const ownerKey=binToHex(manager.getPubkey(0,0n)),commitment='c'.repeat(64);
+ const op={id:'offline-live',stage:'review',intent:{kind:'create'},step:'action',quote:{transactions:1,approvals:1},approved:false,owner:{publicKey:ownerKey},plan:{...plan,signers:{2:ownerKey}}};
+ vi.mocked(queueCall).mockImplementation(async i=>{
+  if(i.operation==='prepare'){expect(i.reviewedCommitment).toBe(commitment);return op;}
+  if(i.operation==='confirm')return {...op,approved:true};
+  if(i.operation==='authorize')return {...op,verifiedAt:Date.now()};
+  if(i.operation==='submit')return {stage:'pending'};
+  return [];
+ });
+ const decision=(e:Event)=>{expect(manager.signTransaction).not.toHaveBeenCalled();(e as CustomEvent).detail.respond(true);};
+ window.addEventListener('arena-preparation-confirm',decision);
+ try{
+  await wallet.queue!({operation:'prepare',intent:{kind:'create'},reviewedCommitment:commitment});
+  expect(manager.signTransaction).toHaveBeenCalledOnce();
+  expect(vi.mocked(queueCall).mock.calls.map(c=>c[0].operation)).toContain('confirm');
+ }finally{window.removeEventListener('arena-preparation-confirm',decision);wallet.close?.();}
+});
+
+it.each(['wrong key family','duplicate path'])('rejects saved derivation with %s before asking any provider',async reason=>{
+ const {wallet,manager}=setup('chipnet');wallet.close?.();
+ const paths=manager.getSessionPaths();
+ if(reason==='wrong key family')network.value='mainnet';
+ else paths.push({...paths[0]!});
+ const offline=browserWalletClient(null,()=>{},undefined,()=>({paths,discoveryId:'d'.repeat(64)}));
+ try{
+  await expect(offline.previewCreate!({} as any,()=>{})).rejects.toThrow(/public derivation|authenticated Cashonize/);
+  expect(queueCall).not.toHaveBeenCalled();
+ }finally{offline.close?.();}
+});

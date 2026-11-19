@@ -23,6 +23,9 @@ for(const network of ['mainnet','chipnet'] as const)test(network+': legacy signe
  const legacy={...template,id:'legacy',step:'seed-funding',stage:'signed',signing:'signed',raw,txid:id,sources:[source],reservations:[source,extra]} as unknown as Operation;
  saved.set(legacy.id,structuredClone(legacy));
  const before=(await rpc<string[]>('getrawmempool')).sort();
+ await assert.rejects(()=>wallet.previewCreate(parameters,keys,'offline-preview'),/866201|867920|reserved/);
+ assert.deepEqual(saved.get('legacy'),legacy,'preview leaves signed reservations and reconciliation state untouched');
+ assert.deepEqual((await rpc<string[]>('getrawmempool')).sort(),before);
  await assert.rejects(()=>wallet.prepare({kind:'create',parameters},keys),(e:any)=>{
   assert.equal(e.details.code,'creation-funding');assert.equal(e.details.available,'0');assert.equal(e.details.reserved,'867920');assert.equal(e.details.reservations[0].id,'legacy');assert.match(e.message,/Inspect Transaction recovery/);return true;
  });

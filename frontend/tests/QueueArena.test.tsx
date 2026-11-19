@@ -106,3 +106,27 @@ it('allows cancelling a stranded unsigned reservation without signing or deletin
  fireEvent.click(screen.getByRole('button',{name:'Make an Offer'}));fireEvent.click(await screen.findByRole('button',{name:'Cancel unsigned request'}));
  await waitFor(()=>expect(queueCall).toHaveBeenCalledWith({operation:'discard',id:'unsigned'}));expect(wallet.queue).toHaveBeenCalledTimes(1);
 });
+
+it.each(['accept','cancel','identity','form'])('offline estimate %s binds restoration to the reviewed pairing and form',async outcome=>{
+ HTMLDialogElement.prototype.showModal=vi.fn(function(this:HTMLDialogElement){this.setAttribute('open','');});
+ let identity=owner;
+ const quote={transactions:1,approvals:1,preparationFees:[],creationFee:'400',totalFee:'400',walletDebit:'50000',reserve:'40000',rewardCategory:zero};
+ const offline={...wallet,pairing:()=>({paired:true,live,identity,network:'chipnet'}),previewCreate:vi.fn(async()=>({quote,atomic:true,commitment:'a'.repeat(64)}))};
+ live=false;window.location.hash='#/create';
+ const view=render(<WalletTransactionsContext.Provider value={offline}><QueueArena/></WalletTransactionsContext.Provider>);
+ fireEvent.click(screen.getByRole('button',{name:'Create Vault'}));
+ expect(await screen.findByRole('heading',{name:'Review vault creation estimate'})).toBeVisible();
+ expect(wallet.restore).not.toHaveBeenCalled();expect(wallet.queue).not.toHaveBeenCalled();
+ if(outcome==='accept'){
+  fireEvent.click(screen.getByRole('button',{name:'Accept estimate and reconnect'}));
+  await waitFor(()=>expect(wallet.restore).toHaveBeenCalledOnce());
+  expect(wallet.queue).not.toHaveBeenCalled();live=true;
+  await waitFor(()=>expect(wallet.queue).toHaveBeenCalledWith(expect.objectContaining({reviewedCommitment:'a'.repeat(64)}),expect.any(Function)));
+ }else{
+  if(outcome==='cancel')fireEvent.click(screen.getByRole('button',{name:'Cancel'}));
+  if(outcome==='identity'){identity='new-wallet';view.rerender(<WalletTransactionsContext.Provider value={{...offline}}><QueueArena/></WalletTransactionsContext.Provider>);}
+  if(outcome==='form')fireEvent.change(screen.getByLabelText('Number of releases'),{target:{value:'11'}});
+  await waitFor(()=>expect(screen.queryByRole('dialog')).toBeNull());
+  expect(wallet.restore).not.toHaveBeenCalled();expect(wallet.queue).not.toHaveBeenCalled();
+ }
+});

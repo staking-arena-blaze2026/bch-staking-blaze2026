@@ -17,6 +17,7 @@ test('progressive discovery: independent fresh inputs, bounded expansion and com
  for(const network of [Network.MAINNET,Network.CHIPNET]){
   const keys:WalletKey[]=Array.from({length:40},(_,index)=>({path:'receive',index,publicKey:binToHex(new SignatureTemplate(new Uint8Array(32).fill(index+1)).publicKey)}));
   const p=new RegtestElectrum(await rpc('getblockcount'));p.network=network;let requests=0,active=0,maximum=0;
+  const parity=process.env.QUEUE_ONLINE_PARITY==='1';
   const candidate=p.getUtxoCandidates.bind(p),request=p.request;
   p.request=async(method,...args)=>{
    requests++;
@@ -28,10 +29,10 @@ test('progressive discovery: independent fresh inputs, bounded expansion and com
   const parameters={stakingCategory:ZERO,rewardCategory:ZERO,epoch:(await rpc('getblockchaininfo')).mediantime-10000,interval:600,releases:8,cap:1200n};
   async function fund(index:number){const address=walletAddress(hexToBin(keys[index]!.publicKey),'regtest'),raw=await rpc('createrawtransaction',[[],{[address]:0.03}]),funded=await rpc('fundrawtransaction',[raw,{changePosition:1}]),signed=await rpc('signrawtransactionwithwallet',[funded.hex]);await rpc('sendrawtransaction',[signed.hex]);await p.refresh();}
   await fund(0);await fund(0);await rpc('generatetoaddress',[1,await rpc('getnewaddress')]);p.headerCache.clear();await p.refresh();
-  async function run(ctor:typeof QueueWallet,initial:boolean){const saved=new Map<string,Operation>(),w=new ctor(p,{list:async()=>structuredClone([...saved.values()]),save:async op=>{saved.set(op.id,structuredClone(op));}});const scope=crypto.randomUUID(),current=ctor===QueueWallet;
+  async function run(ctor:typeof QueueWallet,initial:boolean){const saved=new Map<string,Operation>(),w=new ctor(p,{list:async()=>structuredClone([...saved.values()]),save:async op=>{saved.set(op.id,structuredClone(op));}});const scope=crypto.randomUUID(),current=parity||ctor===QueueWallet;
    if(current)await w.warmDiscovery(keys.slice(0,2),scope);
    const start=performance.now(),before=requests;
-   const op=await w.prepare({kind:'create',parameters},initial?keys.slice(0,2):keys,undefined,undefined,current?scope:undefined,current,current);assert.equal(op.quote?.approvals,1);await w.authorize(op.id);
+   const op=await w.prepare({kind:'create',parameters},initial?keys.slice(0,2):keys,undefined,undefined,current?scope:undefined,current,current);assert.equal(op.quote?.approvals,1);await w.authorize(op.id);await w.beginSigning(op.id);
    return {milliseconds:performance.now()-start,requests:requests-before,addresses:initial?2:40};
   }
   const before:Awaited<ReturnType<typeof run>>[]=[],after:typeof before=[];
@@ -46,10 +47,10 @@ test('progressive discovery: independent fresh inputs, bounded expansion and com
   async function lateRun(ctor:typeof QueueWallet,optimized:boolean){
    const saved=new Map<string,Operation>(),w=new ctor(p,{list:async()=>structuredClone([...saved.values()]),save:async op=>{saved.set(op.id,structuredClone(op));}}),start=performance.now(),before=requests,scope=crypto.randomUUID();let addresses=0;
    for(const limit of [2,8,16,24,32,40]){addresses=limit;let op:Operation;try{op=await w.prepare({kind:'create',parameters},late.slice(0,limit),undefined,undefined,scope,optimized&&limit<40,optimized&&limit===2);}catch(error){if(limit===40)throw error;continue;}
-    if(op.quote?.transactions===1){await w.authorize(op.id);return {milliseconds:performance.now()-start,requests:requests-before,addresses};}await w.discard(op.id);
+    if(op.quote?.transactions===1){await w.authorize(op.id);await w.beginSigning(op.id);return {milliseconds:performance.now()-start,requests:requests-before,addresses};}await w.discard(op.id);
    }throw Error('No atomic plan found');
   }
-  for(let i=0;i<(baseline?3:1);i++){if(baseline)lateBefore.push(await lateRun(baseline.QueueWallet,false));lateAfter.push(await lateRun(QueueWallet,true));}
+  for(let i=0;i<(baseline?3:1);i++){if(baseline)lateBefore.push(await lateRun(baseline.QueueWallet,parity));lateAfter.push(await lateRun(QueueWallet,true));}
   results.push({network,scenario:'origins first found at indices 22 and 23',before:summary(lateBefore),after:summary(lateAfter),samples:{before:lateBefore,after:lateAfter}});
   const saved=new Map<string,Operation>(),w=new QueueWallet(p,{list:async()=>structuredClone([...saved.values()]),save:async op=>{saved.set(op.id,structuredClone(op));}});
   let avoided=0;p.onTiming=t=>{avoided+=t.repeatedRequestsAvoided??0;};

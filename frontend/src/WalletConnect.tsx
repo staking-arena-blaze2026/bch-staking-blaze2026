@@ -88,7 +88,7 @@ export default function WalletConnect({ browser=false, getRequiredNetwork = defa
       assertTransactionSession(networkSession, requirement.current());
     }
     if(browser) {
-      const client=browserWalletClient(manager,check,()=>networkSession.revision);
+      const client=browserWalletClient(manager,check,()=>networkSession.revision,()=>walletRef.current.offlineDerivation());
       client.pairing=()=>walletRef.current.pairing();client.restore=()=>walletRef.current.retry();onTransactions(client);
       const warm=()=>{if(liveState.current())void client.warmQueue?.();};
       warmWallet.current=warm;

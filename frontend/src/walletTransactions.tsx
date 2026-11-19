@@ -11,6 +11,7 @@ export interface WalletTransactions {
   restore?():void;
   v3?(intent:Record<string,unknown>,requestCheck?:()=>void):Promise<any>;
   warmQueue?(expand?:boolean):Promise<void>;
+  previewCreate?(parameters:import('../../src/queue/model').Parameters,check:()=>void):Promise<import('../../src/queue/wallet').CreationEstimate>;
   queue?(intent:Record<string,unknown>,requestCheck?:WalletRequestCheck):Promise<any>;
   v2?(intent:Record<string,unknown>):Promise<any>;
   inventory?(limit?:number):Promise<import('../../src/electrum-wallet').WalletInventory>;

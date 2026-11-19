@@ -93,6 +93,16 @@ test('persistent discovery shares funding between creation and BCH/token offers,
   repeatCreation.restoreDiscovery(id,creatingCache.scope,Object.fromEntries(creatingCache.evidence));
   const repeatCreating=await measure(()=>createReview(repeatCreation));
   assert.ok(repeatCreating.methods['blockchain.scripthash.listunspent']!<firstCreating.methods['blockchain.scripthash.listunspent']!);
+  await repeatCreation.signingFailed(repeatCreating.result.id,true);await repeatCreation.discard(repeatCreating.result.id);
+  const estimate=await repeatCreation.previewCreate(parameters,keys,id,true,true);
+  absent=repeatCreating.result.sources.find(u=>u.satoshis===800000n)!.txid;
+  // Use a fresh scope to model a funded source being replaced by an already
+  // available, smaller origin. The fees and wallet debit are still equal.
+  const changedFunding=await repeatCreation.prepare({kind:'create',parameters},keys,undefined,undefined,'changed',true,true,estimate.commitment);
+  assert.deepEqual(changedFunding.quote,estimate.quote);
+  assert.equal(changedFunding.approved,false);
+  await assert.rejects(()=>repeatCreation.authorize(changedFunding.id),/Confirm additional/);
+  absent=undefined;
   const stats=({milliseconds,methods}:typeof warm)=>({milliseconds,methods});
   results.push({network,stakingAsset:stakingCategory===ZERO?'BCH':'CashToken',baseline:old&&stats(old),first:stats(cold),repeat:stats(warm),create:{first:stats(firstCreating),repeat:stats(repeatCreating)}});
  }

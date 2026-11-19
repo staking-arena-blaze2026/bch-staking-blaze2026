@@ -104,24 +104,88 @@ test('disconnect, revocation, cleared storage and a different profile require ex
   const profile=await browser.newContext();try{const other=await profile.newPage();await other.goto('/#/v3');await expect(other.getByRole('button',{name:'Connect Wallet',exact:true})).toBeVisible();expect((await stats(other)).attempts).toBe(0);}finally{await profile.close();}
 });
 
-test('paired offline creation waits once, expires, preserves inputs, and reload never revives a request',async({page})=>{
+async function installOfflineEstimate(page:Page){
+ await page.addInitScript(()=>{
+  const operations:string[]=[];
+  Object.assign(window,{offlinePreviewOperations:operations});
+  window.Worker=new Proxy(window.Worker,{construct(target,args){
+   if(!String(args[0]).includes('queue.worker'))return Reflect.construct(target,args);
+   const worker={
+    onmessage:undefined as ((e:{data:unknown})=>void)|undefined,
+    terminate(){},
+    postMessage({id,intent}:{id:number;intent:{operation:string}}){
+     operations.push(intent.operation);
+     const result=intent.operation==='previewCreate'?{atomic:true,commitment:'a'.repeat(64),quote:{transactions:1,approvals:1,preparationFees:[],creationFee:'612',totalFee:'612',walletDebit:'33012',reserve:'20000',rewardCategory:'0'.repeat(64)}}:intent.operation==='discover'?{vaults:[]}:[];
+     queueMicrotask(()=>worker.onmessage?.({data:{id,result}}));
+    },
+   };
+   queueMicrotask(()=>worker.onmessage?.({data:{type:'ready'}}));
+   return worker;
+  }});
+ });
+}
+
+test('offline creation estimates survive a Chromium process restart using the saved public paths',async({playwright,baseURL})=>{
+ const profile=await mkdtemp(join(tmpdir(),'arena-offline-preview-'));
+ let context=await playwright.chromium.launchPersistentContext(profile,{...launchOptions,baseURL});
+ try{
+  let page=await context.newPage();await installOfflineEstimate(page);await firstPair(page);
+  await expect(page.locator('.wallet-control small[title]')).toContainText('Address:');
+  await page.evaluate(()=>localStorage.removeItem('test-wallet-online'));
+  await context.close();
+  context=await playwright.chromium.launchPersistentContext(profile,{...launchOptions,baseURL});
+  page=await context.newPage();await installOfflineEstimate(page);await page.goto('/#/v3');
+  await expect(page.getByRole('navigation',{name:'Main navigation'})).toBeVisible({timeout:45_000});
+ await expect(page.getByText('Cashonize paired · Wallet offline',{exact:true})).toBeVisible();
+  await page.getByRole('button',{name:'Create Vault',exact:true}).click();
+  const estimate=page.getByRole('dialog',{name:'Review vault creation estimate'});
+  await expect(estimate).toBeVisible();expect((await stats(page)).signatures).toBe(0);
+  await estimate.getByRole('button',{name:'Cancel',exact:true}).click();
+  await expect(estimate).toHaveCount(0);
+ }finally{await context.close();await rm(profile,{recursive:true,force:true});}
+});
+
+test('paired offline creation reviews cost before restoration, preserves inputs and clears intent on reload',async({page})=>{
+ await installOfflineEstimate(page);
  await firstPair(page);
  await expect(page.locator('.wallet-control small[title]')).toContainText('Address:');
- await page.evaluate(()=>localStorage.removeItem('test-wallet-online'));await page.clock.install();await page.reload();
+ await page.evaluate(()=>localStorage.removeItem('test-wallet-online'));await page.reload();
+ await expect(page.getByRole('navigation',{name:'Main navigation'})).toBeVisible({timeout:45_000});
  await expect(page.getByText('Cashonize paired · Wallet offline',{exact:true})).toBeVisible();
+ await page.clock.install();
  await expect(page.locator('.wallet-control small[title]')).toContainText('Last connected address:');
  await page.getByLabel('Release interval (minutes)',{exact:true}).fill('120');
  const button=page.getByRole('button',{name:'Create Vault',exact:true});await expect(button).toBeEnabled();await button.click();
- await expect(page.getByText(/Restoring wallet/)).toBeVisible();
- expect((await stats(page)).signatures).toBe(0);
+ const dialog=page.getByRole('dialog',{name:'Review vault creation estimate'});
+ await expect(dialog).toBeVisible();
+ await expect(dialog.getByText('612 satoshis',{exact:true})).toHaveCount(2);
+ await page.clock.fastForward(120_101);
+ await expect(dialog).toBeVisible();await expect(page.getByText(/Wallet connection timed out/)).toHaveCount(0);
+ const operations=await page.evaluate(()=>Object.assign(window).offlinePreviewOperations as string[]);
+ expect(operations).toContain('previewCreate');expect(operations).not.toContain('prepare');expect((await stats(page)).signatures).toBe(0);
+ await dialog.getByRole('button',{name:'Accept estimate and reconnect'}).click();
+ await expect(page.getByText(/Reopen Cashonize to continue/)).toBeVisible();
  await page.clock.fastForward(90_101);await expect(page.getByText(/Wallet connection timed out/)).toBeVisible();
  await expect(page.getByLabel('Release interval (minutes)',{exact:true})).toHaveValue('120');
- await page.evaluate(()=>{localStorage.setItem('test-wallet-online','yes');(window as any).walletTransport.ready();});await connected(page);
- await page.clock.runFor(1000);expect((await stats(page)).signatures).toBe(0);
- // A new pending click is memory-only; reload must restore pairing but no intent.
- await page.evaluate(()=>{localStorage.removeItem('test-wallet-online');(window as any).walletTransport.interrupt();});
- await expect(page.getByText('Cashonize paired · Wallet offline',{exact:true})).toBeVisible();await button.click();
- await expect(page.getByText(/Restoring wallet/)).toBeVisible();
- await page.evaluate(()=>localStorage.setItem('test-wallet-online','yes'));await page.reload();await connected(page);
- await expect(page.getByText(/Restoring wallet/)).toHaveCount(0);expect((await stats(page)).signatures).toBe(0);
+ expect((await stats(page)).signatures).toBe(0);
+ await button.click();await expect(dialog).toBeVisible();
+ await page.reload();await expect(page.getByRole('navigation',{name:'Main navigation'})).toBeVisible({timeout:45_000});
+ await expect(page.getByText('Cashonize paired · Wallet offline',{exact:true})).toBeVisible();
+ await expect(dialog).toHaveCount(0);expect((await stats(page)).signatures).toBe(0);
+});
+
+test('an offline pairing with altered public paths asks for a fresh authenticated connection',async({page})=>{
+ await installOfflineEstimate(page);
+ await firstPair(page);
+ await page.evaluate(key=>{
+  localStorage.removeItem('test-wallet-online');const session=JSON.parse(localStorage.getItem(key)!);
+  session.paths.push({...session.paths[0],name:'change'});localStorage.setItem(key,JSON.stringify(session));
+ },key);
+ await page.reload();
+ await expect(page.getByRole('navigation',{name:'Main navigation'})).toBeVisible({timeout:45_000});
+ await expect(page.getByText('Cashonize paired · Wallet offline',{exact:true})).toBeVisible();
+ await page.getByRole('button',{name:'Create Vault',exact:true}).click();
+ await expect(page.getByText(/Open Cashonize and connect once/)).toBeVisible();
+ expect(await page.evaluate(()=>Object.assign(window).offlinePreviewOperations)).not.toContain('previewCreate');
+ expect((await stats(page)).signatures).toBe(0);
 });
