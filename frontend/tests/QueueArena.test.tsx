@@ -190,7 +190,7 @@ it('keeps creation status below the form and removes the submission label after 
   return submitted;
  });
  render(<WalletTransactionsContext.Provider value={wallet}><QueueArena/></WalletTransactionsContext.Provider>);
- const submit=screen.getByRole('button',{name:'Create Vault',exact:true});
+ const submit=screen.getByRole('button',{name:/^Create Vault$/});
  fireEvent.click(submit);
  const status=await screen.findByRole('region',{name:'Vault creation status'});
  expect(submit.compareDocumentPosition(status)&Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
