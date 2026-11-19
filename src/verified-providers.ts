@@ -7,33 +7,10 @@ export class ProviderVerificationError extends Error {
  }
 }
 export interface VerifiedRead<T>{value:T;tip:Header;identity:string}
-/** Reported index data for an estimate. This never contributes to a quorum. */
-export async function reportedProvider<T>(p:ElectrumCore,peers:string[],read:(peer:string,source:ElectrumCore,tip:Header)=>Promise<T>):Promise<T>{
- return timed(p,'provisional-provider-evaluation',async()=>{
-  const checkConflict=()=>{if(p.unresolvedChainPeers.size)throw new ProviderVerificationError('conflict');};
-  checkConflict();
-  let failure:unknown;
-  for(const peer of peers){
-   const source=p.independentReader(peer)??p,before={...source.requestCounts};
-   try{
-    const value=await source.session(async()=>read(peer,source,await source.tip()),peer);
-    checkConflict();return value;
-   }catch(error){
-    if(error instanceof ProviderVerificationError&&error.category==='conflict')throw error;
-    if(/reorganization|header chain mismatch/i.test(String(error)))throw new ProviderVerificationError('conflict');
-    failure=error;
-   }finally{
-    if(source!==p)for(const [method,count] of Object.entries(source.requestCounts))p.requestCounts[method]=(p.requestCounts[method]??0)+count-(before[method]??0);
-   }
-  }
-  checkConflict();
-  throw new Error('No Electrum provider could evaluate this quote.',{cause:failure});
- });
-}
 /** Each candidate must perform its own complete cryptographic verification. A quorum
  * only establishes agreement; it never substitutes for verification. Parallel reads require separate ElectrumCore instances; a shared mutable
  * transport always stays sequential. All configured sources are checked. */
-export async function verifiedProviders<T>(p:ElectrumCore,peers:string[],read:(peer:string,source:ElectrumCore,tip:Header)=>Promise<VerifiedRead<T>>,options:{parallel?:boolean;attempts?:number;sleep?:(ms:number)=>Promise<void>;onProgress?:(message:string)=>void;onCandidate?:(value:T)=>void;onAgreement?:(peers:string[])=>void}={}):Promise<T>{
+export async function verifiedProviders<T>(p:ElectrumCore,peers:string[],read:(peer:string,source:ElectrumCore)=>Promise<VerifiedRead<T>>,options:{parallel?:boolean;attempts?:number;sleep?:(ms:number)=>Promise<void>;onProgress?:(message:string)=>void;onCandidate?:(value:T)=>void}={}):Promise<T>{
  return timed(p,'independent-provider-verification',async()=>{
  let category:'synchronizing'|'unavailable'='unavailable';
  const unresolved=p.unresolvedChainPeers??=new Set<string>();
@@ -42,7 +19,7 @@ export async function verifiedProviders<T>(p:ElectrumCore,peers:string[],read:(p
   const good:{peer:string;result:VerifiedRead<T>}[]=[],tips=new Map<string,Header>(),observations:{peer:string;result:{tip:Header}}[]=[];let movement=false;
   const readPeer=async(peer:string)=>{
    const source=options.parallel?p.independentReader?.(peer)??p:p,before={...source.requestCounts};
-   try{return await source.session(async()=>{const tip=await source.tip();tips.set(peer,tip);observations.push({peer,result:{tip}});const result=await read(peer,source,tip);
+   try{return await source.session(async()=>{const tip=await source.tip();tips.set(peer,tip);observations.push({peer,result:{tip}});const result=await read(peer,source);
     // Display-only progress. Quorum/conflict checks below still gate return.
     try{if(options.onCandidate)options.onCandidate(structuredClone(result.value));}catch{/* Display observers cannot change authorization. */}
     return result;},peer);}
@@ -79,10 +56,7 @@ export async function verifiedProviders<T>(p:ElectrumCore,peers:string[],read:(p
    // A verified pending transition seen by even one source cannot be voted away.
    // Wait for propagation; never authorize an older snapshot when a newer tip is known.
    const differentCurrent=new Set(current.map(x=>x.result.identity)).size>1;
-   if(!unavailableLink&&!differentCurrent&&!movement&&current.length>=2){
-    options.onAgreement?.(current.map(x=>x.peer));
-    return current[0]!.result.value;
-   }
+   for(const candidate of unavailableLink||differentCurrent||movement?[]:current){if(current.filter(x=>x.result.identity===candidate.result.identity).length>=2)return candidate.result.value;}
    category=good.length>=2||movement||ordinaryLag?'synchronizing':'unavailable';
   }
   if(attempt+1<(options.attempts??3)){p.onTiming?.({stage:'verification-retry',milliseconds:0,requests:{},ok:false,retries:1});const message=new ProviderVerificationError(category).message;p.onVerificationProgress?.(message);options.onProgress?.(message);}

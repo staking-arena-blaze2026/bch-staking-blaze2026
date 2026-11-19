@@ -1,6 +1,6 @@
 import {expect,it} from 'vitest';
 import {deriveHdPrivateNodeFromSeed,deriveHdPublicNode,deriveHdPublicNodeChild,encodeHdPublicKey,binToHex,hash160,cashAddressToLockingBytecode,encodeCashAddress} from '@bitauth/libauth';
-import {checkedWalletKey,walletChains} from '../src/walletDerivation';
+import {checkedWalletKey,deriveWalletKey,walletChains} from '../src/walletDerivation';
 import {walletScript} from '../../src/transactions-core';
 const nodes=walletChains.map((_,i)=>deriveHdPublicNode(deriveHdPrivateNodeFromSeed(new Uint8Array(32).fill(80+i))));
 const paths=walletChains.map(([name],i)=>{const e=encodeHdPublicKey({node:nodes[i]!,network:'testnet'});if(typeof e==='string')throw Error(e);return {name,xpub:e.hdPublicKey};});
@@ -16,4 +16,13 @@ it('wrong SDK/account identity, absent path and non-chipnet key families are ref
 
 it('initial discovery derives only two addresses per advertised chain',()=>{
  let count=0;for(let index=0;index<2;index++)for(const [path] of walletChains)checkedWalletKey(paths,path,index,(c,i)=>{count++;return read(c,i);});expect(count).toBe(6);
+});
+
+it('derives the same bounded children from public paths without an SDK manager',()=>{
+ for(const [path,child] of walletChains){
+  expect(deriveWalletKey(paths,path,39)).toEqual({path,index:39,publicKey:binToHex(read(child,39n))});
+ }
+ expect(()=>deriveWalletKey(paths,'receive',200)).toThrow();
+ expect(()=>deriveWalletKey([...paths,paths[0]!],'receive',0)).toThrow();
+ expect(()=>deriveWalletKey(paths,'receive',0,'mainnet')).toThrow(/mainnet/);
 });

@@ -1,5 +1,6 @@
 import {beforeEach,afterEach,it,expect,vi} from 'vitest';
-import {render,screen,waitFor,fireEvent,cleanup,act} from '@testing-library/react';
+import {deriveHdPrivateNodeFromSeed,deriveHdPublicNode,encodeHdPublicKey} from '@bitauth/libauth';
+import {render,screen,waitFor,fireEvent,cleanup,act,within} from '@testing-library/react';
 vi.mock('../src/activeNetwork',()=>({activeNetwork:'chipnet'}));
 vi.mock('../src/queueClient',()=>({queueCall:vi.fn()}));
 vi.mock('../src/queueCatalog',()=>({loadQueuePage:vi.fn()}));
@@ -107,26 +108,70 @@ it('allows cancelling a stranded unsigned reservation without signing or deletin
  await waitFor(()=>expect(queueCall).toHaveBeenCalledWith({operation:'discard',id:'unsigned'}));expect(wallet.queue).toHaveBeenCalledTimes(1);
 });
 
-it.each(['accept','cancel','identity','form'])('offline estimate %s binds restoration to the reviewed pairing and form',async outcome=>{
- HTMLDialogElement.prototype.showModal=vi.fn(function(this:HTMLDialogElement){this.setAttribute('open','');});
- let identity=owner;
- const quote={transactions:1,approvals:1,preparationFees:[],creationFee:'400',totalFee:'400',walletDebit:'50000',reserve:'40000',rewardCategory:zero};
- const offline={...wallet,pairing:()=>({paired:true,live,identity,network:'chipnet'}),previewCreate:vi.fn(async()=>({quote,atomic:true,commitment:'a'.repeat(64)}))};
- live=false;window.location.hash='#/create';
- const view=render(<WalletTransactionsContext.Provider value={offline}><QueueArena/></WalletTransactionsContext.Provider>);
- fireEvent.click(screen.getByRole('button',{name:'Create Vault'}));
- expect(await screen.findByRole('heading',{name:'Review vault creation estimate'})).toBeVisible();
- expect(wallet.restore).not.toHaveBeenCalled();expect(wallet.queue).not.toHaveBeenCalled();
- if(outcome==='accept'){
-  fireEvent.click(screen.getByRole('button',{name:'Accept estimate and reconnect'}));
-  await waitFor(()=>expect(wallet.restore).toHaveBeenCalledOnce());
-  expect(wallet.queue).not.toHaveBeenCalled();live=true;
-  await waitFor(()=>expect(wallet.queue).toHaveBeenCalledWith(expect.objectContaining({reviewedCommitment:'a'.repeat(64)}),expect.any(Function)));
+function renderPairedCreation(connected=false) {
+ HTMLDialogElement.prototype.showModal = vi.fn(function(this:HTMLDialogElement) { this.setAttribute('open',''); });
+ const node=deriveHdPublicNode(deriveHdPrivateNodeFromSeed(new Uint8Array(32).fill(88)));
+ const encoded=encodeHdPublicKey({node,network:'testnet'});
+ if(typeof encoded==='string')throw Error(encoded);
+ const paths=[{name:'receive',xpub:encoded.hdPublicKey}];
+ const paired={...wallet,publicPaths:()=>paths};
+ window.location.hash='#/create';
+ live=connected;
+ render(<WalletTransactionsContext.Provider value={paired}><QueueArena/></WalletTransactionsContext.Provider>);
+}
+
+it('asks for a live connection when the pairing has no saved public paths',async()=>{
+ live=false;
+ window.location.hash='#/create';
+ render(<WalletTransactionsContext.Provider value={{...wallet,publicPaths:()=>undefined}}><QueueArena/></WalletTransactionsContext.Provider>);
+ fireEvent.click(await screen.findByRole('button',{name:'Create Vault'}));
+ expect(await screen.findByRole('alert')).toHaveTextContent('no usable saved wallet addresses');
+ expect(wallet.restore).toHaveBeenCalledOnce();
+ expect(wallet.queue).not.toHaveBeenCalled();
+ expect(screen.getByRole('button',{name:'Create Vault'})).toBeEnabled();
+});
+
+it('reports funding errors from saved public paths while Cashonize is offline',async()=>{
+ vi.mocked(queueCall).mockImplementation(async request=>{
+  if(request.operation==='previewCreate')throw Error('Chipnet funding service unavailable');
+  return [];
+ });
+ renderPairedCreation();
+ fireEvent.click(await screen.findByRole('button',{name:'Create Vault'}));
+ expect(await screen.findByRole('alert')).toHaveTextContent('Chipnet funding service unavailable');
+ expect(queueCall).toHaveBeenCalledWith(expect.objectContaining({operation:'previewCreate'}),expect.arrayContaining([
+  expect.objectContaining({path:'receive',index:0,publicKey:expect.stringMatching(/^(02|03)[a-f0-9]{64}$/)}),
+ ]));
+ expect(wallet.queue).not.toHaveBeenCalled();
+ expect(wallet.restore).not.toHaveBeenCalled();
+});
+
+it.each([
+ {connected:false,decision:'continue'},{connected:false,decision:'cancel'},{connected:true,decision:'continue'},
+])('reviews estimated costs before signing (connected=$connected, $decision)',async ({connected,decision})=>{
+ const quote={transactions:1,approvals:1,preparationFees:[],creationFee:'400',totalFee:'400',walletDebit:'24000',reserve:'20000',rewardCategory:zero};
+ vi.mocked(queueCall).mockImplementation(async (request,keys)=>{
+  if(request.operation==='previewCreate')return {id:'offline-review',intent:request.intent,network:'chipnet',keys,owner:keys![0],
+   step:'action',stage:'review',signing:'unsigned',plan:{fee:'400',label:'Create vault'},quote};
+  return [];
+ });
+ renderPairedCreation(connected);
+ fireEvent.click(await screen.findByRole('button',{name:'Create Vault'}));
+ const review=await screen.findByRole('dialog');
+ expect(review).toHaveTextContent('Expected wallet approvals');
+ expect(screen.getByText('Estimated network fee: 400 sats')).toBeVisible();
+ // Wallet availability while reading the quote cannot itself trigger approval.
+ live=true;
+ expect(wallet.restore).not.toHaveBeenCalled();
+ expect(wallet.queue).not.toHaveBeenCalled();
+ fireEvent.click(within(review).getByRole('button',{name:decision==='continue'?/Continue with 1 approval/:'Cancel'}));
+ if(decision==='continue'){
+  await waitFor(()=>expect(wallet.queue).toHaveBeenCalledWith({
+   operation:'continueCreate',draft:expect.objectContaining({id:'offline-review',quote}),
+  },expect.any(Function)));
  }else{
-  if(outcome==='cancel')fireEvent.click(screen.getByRole('button',{name:'Cancel'}));
-  if(outcome==='identity'){identity='new-wallet';view.rerender(<WalletTransactionsContext.Provider value={{...offline}}><QueueArena/></WalletTransactionsContext.Provider>);}
-  if(outcome==='form')fireEvent.change(screen.getByLabelText('Number of releases'),{target:{value:'11'}});
-  await waitFor(()=>expect(screen.queryByRole('dialog')).toBeNull());
-  expect(wallet.restore).not.toHaveBeenCalled();expect(wallet.queue).not.toHaveBeenCalled();
+  await waitFor(()=>expect(screen.getByRole('button',{name:'Create Vault'})).toBeEnabled());
+  expect(wallet.queue).not.toHaveBeenCalled();
+  expect(vi.mocked(queueCall).mock.calls.map(([request])=>request.operation)).not.toContain('discard');
  }
 });

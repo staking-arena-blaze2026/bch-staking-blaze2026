@@ -13,32 +13,37 @@ import {QueueWallet,type Operation} from '../src/queue/wallet.js';
 import {QueueIndexer} from '../src/queue/chain.js';
 import * as q from '../src/queue/protocol.js';
 import {ZERO} from '../src/queue/protocol.js';
-const baseline=process.env.QUEUE_BASELINE_MODULE?await import(process.env.QUEUE_BASELINE_MODULE):undefined;
 test('queue wallet: public-key plans, explicit signing, durable recovery and owner stake withdrawal',{timeout:600000},async()=>isolatedRegtest(async()=>{
  class Local extends RegtestElectrum {
   lose=false;
   override async sendRawTransaction(raw:string){const [valid]=await rpc('testmempoolaccept',[[raw]]);assert.equal(valid.allowed,true,JSON.stringify(valid));const id=await rpc<string>('sendrawtransaction',[raw]);await this.refresh();if(this.lose){this.lose=false;throw Error('Lost broadcast acknowledgement');}return id;}
  }
  const p=new Local(await rpc('getblockcount')),request=p.request;
- let requests=0,rate=1;
- const methods=new Map<string,number>(),peers=new Set<string>();
- p.request=async(method,...args)=>{requests++;methods.set(method,(methods.get(method)??0)+1);peers.add(p.endpoint!);return method==='blockchain.relayfee'?rate/100000:request(method,...args);};
+ let requests=0;
+ p.request=async(method,...args)=>{requests++;return method==='blockchain.relayfee'?0.00001:request(method,...args);};
  const timings:{kind:string;step:string;phase:string;ms:number;requests:number}[]=[];
  async function measured<T>(kind:string,step:string,phase:string,run:()=>Promise<T>){const start=performance.now(),count=requests;try{return await run();}finally{timings.push({kind,step,phase,ms:performance.now()-start,requests:requests-count});}}
  const key=new SignatureTemplate(new Uint8Array(32).fill(73)),changeKey=new SignatureTemplate(new Uint8Array(32).fill(74)),address=ownerAddress(key.publicKey,p),miner=await rpc<string>('getnewaddress'),keys:WalletKey[]=[{publicKey:binToHex(key.publicKey),path:'receive',index:0},{publicKey:binToHex(changeKey.publicKey),path:'change',index:0}],saved=new Map<string,Operation>();
- const store={list:async()=>structuredClone([...saved.values()]),save:async(op:Operation)=>{saved.set(op.id,structuredClone(op));}};
- const wallet=new QueueWallet(p,store);
+ const wallet=new QueueWallet(p,{list:async()=>structuredClone([...saved.values()]),save:async op=>{saved.set(op.id,structuredClone(op));}});
  const prepare=(...args:Parameters<QueueWallet['prepare']>)=>measured(args[0].kind,'prepare','prepare',()=>wallet.prepare(...args));
  const raw=await rpc('createrawtransaction',[[],{[address]:0.2}]),funded=await rpc('fundrawtransaction',[raw,{changePosition:1}]),signed=await rpc('signrawtransactionwithwallet',[funded.hex]);await rpc('sendrawtransaction',[signed.hex]);await p.refresh();
  function sign(plan:BrowserPlan){const tx=structuredClone(plan.request.transaction) as Transaction;for(const [i]of plan.inputPaths){const signer=plan.signers?.[i]===binToHex(changeKey.publicKey)?changeKey:key,s=plan.request.sourceOutputs[i]!,sig=signer.generateSignature(hash256(generateSigningSerializationBch({transaction:tx,sourceOutputs:plan.request.sourceOutputs,inputIndex:i},{coveredBytecode:s.contract?.redeemScript??s.lockingBytecode,signingSerializationType:Uint8Array.of(0x61)})));sig[64]=0x61;tx.inputs[i]!.unlockingBytecode=s.contract?hexToBin(binToHex(s.unlockingBytecode).replace('41'+'00'.repeat(65),'41'+binToHex(sig))):new Uint8Array([...encodeDataPush(sig),...encodeDataPush(signer.publicKey)]);}return binToHex(encodeTransaction(tx));}
  const costs:{kind:string;step:string;bytes:number;fee:string}[]=[];let approvals=0;
  async function approve(op:Operation){const reviewed=structuredClone(op.plan),auth=await measured(op.intent.kind,op.step,'authorize',()=>wallet.authorize(op.id));assert.deepEqual(auth.plan,reviewed,'authorization must preserve the reviewed body');approvals++;await wallet.beginSigning(op.id);const raw=sign(auth.plan);const sinceSignature=performance.now(),count=requests;await wallet.retain(op.id,raw);costs.push({kind:op.intent.kind,step:op.step,bytes:raw.length/2,fee:auth.plan.fee!});const pending=await wallet.broadcast(op.id);timings.push({kind:op.intent.kind,step:op.step,phase:'signature-to-pending',ms:performance.now()-sinceSignature,requests:requests-count});return pending;}
- // An empty verified inventory cannot fund preparation.
- const initialUtxos=p.getUtxoCandidates.bind(p);
- p.getUtxoCandidates=async script=>(await initialUtxos(script)).filter(u=>u.vout!==0);
+ async function prepareFromReports(intent:Extract<Operation['intent'],{kind:'claim'|'insert'}>){
+  const original=p.request;
+  p.request=async(method,...args)=>{
+   if(method.startsWith('blockchain.transaction.')||method==='blockchain.block.headers')throw Error('Unexpected proof request while estimating '+intent.kind);
+   return original(method,...args);
+  };
+  try{return await prepare(intent,keys);}finally{p.request=original;}
+ }
+ // An empty reported inventory cannot fund preparation.
+ const initialUtxos=p.reportedUtxosForLockingBytecode.bind(p);
+ p.reportedUtxosForLockingBytecode=async script=>(await initialUtxos(script)).filter(u=>u.vout!==0);
  const noGenesisParams={stakingCategory:ZERO,rewardCategory:ZERO,epoch:(await rpc('getblockchaininfo')).mediantime-10000,interval:60,releases:20,cap:2000n};
  await assert.rejects(()=>prepare({kind:'create',parameters:noGenesisParams},keys),/Insufficient/);assert.equal(approvals,0);
- p.getUtxoCandidates=initialUtxos;
+ p.reportedUtxosForLockingBytecode=initialUtxos;
  const params={stakingCategory:ZERO,rewardCategory:ZERO,epoch:(await rpc('getblockchaininfo')).mediantime-10000,interval:60,releases:20,cap:2000n};
  // One origin without independent funding requires two safe self-sends.
  const onePlan=await prepare({kind:'create',parameters:params},keys);assert.equal(onePlan.quote?.transactions,3);await wallet.discard(onePlan.id);assert.equal(approvals,0);
@@ -62,33 +67,24 @@ test('queue wallet: public-key plans, explicit signing, durable recovery and own
  await assert.rejects(()=>wallet.discard(first.id),/uncertain/);
  await assert.rejects(()=>wallet.resume(first.id,keys),/Signing status unknown/);
  approvals++;const firstRaw=sign(authorized.plan);await wallet.retain(first.id,firstRaw);costs.push({kind:'insert',step:'action',bytes:firstRaw.length/2,fee:authorized.plan.fee!});p.lose=true;await assert.rejects(()=>wallet.broadcast(first.id),/Lost broadcast/);assert.equal((await wallet.get(first.id)).raw,firstRaw);assert.equal((await wallet.resume(first.id,keys)).stage,'pending');assert.equal(approvals-before,1);assert.equal((await index.sync()).ordered.length,1);
- const second=await approve(await prepare({kind:'insert',config,terms:{stake:8000n,duration:512,reward:2000n}},keys));
+ // A reported queue can quote even when an imported anchor is wrong. It
+ // cannot turn that estimate into signing authority for another genesis.
+ const wrongConfig={...config,anchor:{...config.anchor,creator:binToHex(changeKey.publicKey)}};
+ const wrongOffer=await prepareFromReports({kind:'insert',config:wrongConfig,terms:{stake:8000n,duration:512,reward:2000n}});
+ await assert.rejects(wallet.authorize(wrongOffer.id));await assert.rejects(wallet.beginSigning(wrongOffer.id),/Fresh/);
+ await wallet.discard(wrongOffer.id);
+ const lowerOffer=await prepareFromReports({kind:'insert',config,terms:{stake:8000n,duration:512,reward:2000n}});
+ assert.ok(lowerOffer.referenceVault,'ranked insert must check the vault reserve even when spending only the predecessor');
+ const second=await approve(lowerOffer);
  const cancel=await approve(await prepare({kind:'cancel',config,offerId:second.offerId!},keys));assert.equal(cancel.sources.length,3);
  const originalSync=QueueIndexer.prototype.sync;
  QueueIndexer.prototype.sync=async()=>{throw Error('Unexpected standing queue traversal');};
  try{
-  if(baseline){
-   const old=new baseline.QueueWallet(p,store);
-   const prepared=await measured<Operation>('claim','baseline','prepare',()=>old.prepare({kind:'claim',config,expectedHead:first.offerId},keys));
-   await measured('claim','baseline','authorize',()=>old.authorize(prepared.id));
-   await old.discard(prepared.id);
-  }
-  const claim={kind:'claim' as const,config,expectedHead:first.offerId},before=structuredClone(saved),calls=new Map(methods);peers.clear();
-  const scope='claim-quote',quote=await measured('claim','quote','preview',()=>wallet.previewAction(claim,keys,scope,true));
-  assert.deepEqual([...peers],[p.endpoints[0]]);
-  for(const method of ['blockchain.transaction.get','blockchain.transaction.get_merkle','blockchain.scripthash.get_history'])assert.equal(methods.get(method),calls.get(method));
-  assert.equal(quote.beneficiary,keys[0]!.publicKey);assert.equal(quote.amount,'2000');assert.equal(quote.walletDebit,quote.fee);
-  assert.deepEqual(saved,before);
-  rate=2;
-  const repriced=await prepare(claim,keys,undefined,undefined,scope,false,false,undefined,quote.commitment);
-  assert.equal(repriced.approved,false);await assert.rejects(()=>wallet.authorize(repriced.id),/Confirm updated costs/);
-  await wallet.discard(repriced.id);rate=1;
-  const matched=await prepare(claim,keys,undefined,undefined,scope,false,false,undefined,quote.commitment);
-  assert.equal(matched.approved,true);
-  p.unavailable.add(p.endpoints[1]!);
-  try{await assert.rejects(()=>wallet.authorize(matched.id),/second verified provider/);await assert.rejects(()=>wallet.beginSigning(matched.id),/Fresh/);}
-  finally{p.unavailable.clear();}
-  await approve(await prepare(claim,keys,matched,undefined,scope,false,true));
+  await rpc('sendtoaddress',[ownerAddress(changeKey.publicKey,p),1]);await p.refresh();
+  const claim=await prepareFromReports({kind:'claim',config,expectedHead:first.offerId!});
+  assert.deepEqual(claim.plan.inputPaths,[[2,'change',0]]);
+  assert.equal(BigInt(claim.walletDebit!),BigInt(claim.plan.fee!)-(q.CARRIER+2000n),'credit both the reward output to receive/0 and fee change to change/0');
+  await approve(claim);
  }finally{QueueIndexer.prototype.sync=originalSync;}
  await assert.rejects(()=>prepare({kind:'withdraw',config,offerId:first.offerId!},keys),/not matured/);
  await rpc('generatetoaddress',[1,miner]);await rpc('setmocktime',[(await rpc('getblockchaininfo')).mediantime+1200]);await rpc('generatetoaddress',[12,miner]);p.headerCache.clear();await p.refresh();

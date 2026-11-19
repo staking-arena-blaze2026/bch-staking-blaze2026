@@ -20,3 +20,11 @@ it('clearly separates legacy resolution from the new vault and discloses its fee
  expect(screen.getByRole('heading',{name:'Resolve old signed request'})).toBeVisible();expect(screen.getByText(/does not create your new vault/)).toBeVisible();expect(screen.getByText('185 satoshis')).toBeVisible();expect(screen.getByText('864816 satoshis')).toBeVisible();expect(screen.getByText(/Wait for confirmation/)).toBeVisible();
  expect(respond).not.toHaveBeenCalled();fireEvent.click(screen.getByRole('button',{name:'Resolve with 1 wallet approval'}));expect(respond).toHaveBeenCalledWith(true);
 });
+it('shows previous and updated claim costs including a net credit',()=>{
+ const respond=vi.fn();
+ render(<QueuePreparationDialog request={{respond,quote:{action:'claim',previous:{fee:'350',walletDebit:'-950'},updated:{fee:'400',walletDebit:'-900'}}}}/>);
+ expect(screen.getByRole('heading',{name:'Review updated claim costs'})).toBeVisible();
+ expect(screen.getByRole('row',{name:'Network fee 350 sats 400 sats'})).toBeVisible();
+ expect(screen.getByRole('row',{name:'Net wallet BCH, including fee 950 sats received 900 sats received'})).toBeVisible();
+ fireEvent.click(screen.getByRole('button',{name:'Continue with updated claim'}));expect(respond).toHaveBeenCalledWith(true);
+});

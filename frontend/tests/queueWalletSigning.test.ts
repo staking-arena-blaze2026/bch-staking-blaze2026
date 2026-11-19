@@ -17,41 +17,12 @@ function setup(selected='mainnet'){network.value=selected;
  vi.mocked(queueCall).mockImplementation(async i=>{events.push(String(i.operation));if(i.operation==='list')return [];if(i.operation==='prepare')return {id:'claim',stage:'review',plan};if(i.operation==='authorize')return {owner:{publicKey:binToHex(pub(0n))},verifiedAt:Date.now(),plan};if(i.operation==='submit')return {stage:'pending'};return {};});
  return {wallet:browserWalletClient(manager as any,()=>{}),manager,plan,events};
 }
-it('requires explicit approval with wallet broadcast disabled, and retains bytes before submission',async()=>{const {wallet,manager,events}=setup();try{expect((await wallet.queue!({operation:'prepare',intent:{kind:'claim'}})).stage).toBe('pending');expect(manager.signTransaction).toHaveBeenCalledOnce();expect(manager.signTransaction).toHaveBeenCalledWith({transaction:expect.objectContaining({broadcast:false}),inputPaths:[[2,'receive',0]]},{signal:expect.any(AbortSignal)});expect(events).toEqual(['list','previewAction','prepare','authorize','beginSigning','retain','submit']);}finally{wallet.close?.();}});
+it('requires explicit approval with wallet broadcast disabled, and retains bytes before submission',async()=>{const {wallet,manager,events}=setup();try{expect((await wallet.queue!({operation:'prepare',intent:{kind:'claim'}})).stage).toBe('pending');expect(manager.signTransaction).toHaveBeenCalledOnce();expect(manager.signTransaction).toHaveBeenCalledWith({transaction:expect.objectContaining({broadcast:false}),inputPaths:[[2,'receive',0]]},{signal:expect.any(AbortSignal)});expect(events).toEqual(['prepare','authorize','beginSigning','retain','submit']);}finally{wallet.close?.();}});
 it('retains a returned signature across reconnection and never broadcasts with stale authorization',async()=>{const {wallet,manager,events}=setup();manager.signTransaction.mockImplementation(async()=>{manager.emit('reconnecting');return {signedTransaction:'signed'};});try{await expect(wallet.queue!({operation:'prepare'})).rejects.toThrow('authorization changed');expect(events).toContain('retain');expect(events).not.toContain('submit');}finally{wallet.close?.();}});
 it('checks authorization again after the durable signing journal boundary',async()=>{const {wallet,manager,events}=setup(),original=vi.mocked(queueCall).getMockImplementation()!;vi.mocked(queueCall).mockImplementation(async(...args)=>{const result=await original(...args);if(args[0].operation==='beginSigning')manager.emit('reconnecting');return result;});try{await expect(wallet.queue!({operation:'prepare'})).rejects.toThrow('authorization changed');expect(manager.signTransaction).not.toHaveBeenCalled();expect(events).not.toContain('submit');expect(queueCall).toHaveBeenCalledWith({operation:'signingFailed',id:'claim',rejected:true,notRequested:true});}finally{wallet.close?.();}});
 it('rejects worker requests enabling wallet broadcasting before prompting',async()=>{const {wallet,manager,plan}=setup();plan.request.broadcast=true;try{await expect(wallet.queue!({operation:'prepare'})).rejects.toThrow('fresh verified inputs');expect(manager.signTransaction).not.toHaveBeenCalled();}finally{wallet.close?.();}});
 
-for(const kind of ['create','insert'])it(kind+' uses exactly one signing request and broadcasts only retained bytes',async()=>{const {wallet,manager,events}=setup();try{await wallet.queue!({operation:'prepare',intent:{kind}});expect(manager.signTransaction).toHaveBeenCalledOnce();expect(events).toEqual(['list',kind==='create'?'previewCreate':'previewAction','prepare','authorize','beginSigning','retain','submit']);expect(queueCall).toHaveBeenCalledWith({operation:'retain',id:'claim',raw:'signed'});}finally{wallet.close?.();}});
-it.each(['insert','claim'])('checks a changed %s quote before asking for the one wallet approval',async kind=>{
- const {wallet,manager,plan}=setup(),calls:string[]=[];
- const provisional={kind,commitment:'old',fee:'1000',walletDebit:'4000',amount:'3000',asset:'0'.repeat(64)};
- const verified={...provisional,commitment:'new',fee:'1100',walletDebit:'4100'};
- const operation={id:'review',stage:'review',step:'action',plan,actionQuote:verified,approved:false};
- vi.mocked(queueCall).mockImplementation(async request=>{
-  calls.push(String(request.operation));
-  if(request.operation==='previewAction')return provisional;
-  if(request.operation==='prepare'){expect(request.quotedCommitment).toBe(provisional.commitment);return operation;}
-  if(request.operation==='confirm')return {...operation,approved:true};
-  if(request.operation==='authorize')return {...operation,owner:{publicKey:binToHex(manager.getPubkey(0,0n))},verifiedAt:Date.now()};
-  if(request.operation==='submit')return {stage:'pending'};
-  return [];
- });
- const popup=(event:Event)=>{
-  const review=(event as CustomEvent).detail;
-  expect(review.previous).toEqual(provisional);expect(review.action).toEqual(verified);
-  expect(manager.signTransaction).not.toHaveBeenCalled();review.respond(kind!=='claim');
- };
- window.addEventListener('arena-preparation-confirm',popup);
- try{
-  const request=wallet.queue!({operation:'prepare',intent:{kind}});
-  if(kind==='claim'){
-   await expect(request).rejects.toThrow('cancelled');expect(calls).toEqual(['list','previewAction','prepare','discard']);expect(manager.signTransaction).not.toHaveBeenCalled();
-  }else{
-   await request;expect(calls).toEqual(['list','previewAction','prepare','confirm','authorize','beginSigning','retain','submit']);expect(manager.signTransaction).toHaveBeenCalledOnce();
-  }
- }finally{window.removeEventListener('arena-preparation-confirm',popup);wallet.close?.();}
-});
+for(const kind of ['create','insert'])it(kind+' uses exactly one signing request and broadcasts only retained bytes',async()=>{const {wallet,manager,events}=setup();try{await wallet.queue!({operation:'prepare',intent:{kind}});expect(manager.signTransaction).toHaveBeenCalledOnce();expect(events).toEqual([...(kind==='create'?['list']:[]),'prepare','authorize','beginSigning','retain','submit']);expect(queueCall).toHaveBeenCalledWith({operation:'retain',id:'claim',raw:'signed'});}finally{wallet.close?.();}});
 it('rejects unavailable atomic creation before requesting any signature',async()=>{const {wallet,manager}=setup();vi.mocked(queueCall).mockRejectedValue(Error('Atomic vault creation needs two eligible coins'));try{await expect(wallet.queue!({operation:'prepare',intent:{kind:'create'}})).rejects.toThrow('Atomic vault creation');expect(manager.signTransaction).not.toHaveBeenCalled();}finally{wallet.close?.();}});
 
 for(const selected of ['mainnet','chipnet'])for(const count of [2,3]){
@@ -149,123 +120,131 @@ for(const selected of ['mainnet','chipnet'])it(selected+': journals a late authe
  }finally{wallet.close?.();}
 });
 
+function offlineDraft(manager:ReturnType<typeof setup>['manager']) {
+ const keys=[0,1].map(index=>({path:'receive',index,publicKey:binToHex(manager.getPubkey(0,BigInt(index)))}));
+ const quote={transactions:1,approvals:1,preparationFees:[],creationFee:'400',totalFee:'400',walletDebit:'24000',reserve:'20000',rewardCategory:'0'.repeat(64)};
+ return {id:'offline-quote',intent:{kind:'create'},owner:keys[0],keys,stage:'review',signing:'unsigned',step:'action',quote};
+}
 
-it('preloads read-only once and shares the discovery scope between creating and making an offer',async()=>{
- const {wallet,manager}=setup(),original=vi.mocked(queueCall).getMockImplementation()!;
- const keys=vi.spyOn(manager,'getPubkey');
- vi.mocked(queueCall).mockImplementation(async(...args)=>args[0].operation==='warmDiscovery'?{origins:2,funded:[]}:original(...args));
+it('checks every saved child against the live wallet before authorizing the offline quote',async()=>{
+ const {manager,wallet,events}=setup();
+ const draft=offlineDraft(manager);
+ draft.keys[1].publicKey=draft.keys[0].publicKey;
  try{
-  await wallet.warmQueue!();
-  expect(manager.signTransaction).not.toHaveBeenCalled();
-  expect(keys).toHaveBeenCalledTimes(2);
-  for(const kind of ['create','insert'])await wallet.queue!({operation:'prepare',intent:{kind}});
-  expect(manager.signTransaction).toHaveBeenCalledTimes(2);
-  const calls=vi.mocked(queueCall).mock.calls.filter(c=>['warmDiscovery','prepare'].includes(String(c[0].operation)));
-  expect(calls.map(c=>c[0].operation)).toEqual(['warmDiscovery','prepare','prepare']);
-  expect(new Set(calls.map(c=>c[0].discoveryId)).size).toBe(1);
-  expect(calls.every(c=>c[1]?.length===2)).toBe(true);
-  expect(keys.mock.calls.filter(c=>c[1]===1n)).toHaveLength(1);
- }finally{wallet.close?.();}
-});
-
-it('refreshes stale offer candidates before a single approval',async()=>{
- const {wallet,manager}=setup(),original=vi.mocked(queueCall).getMockImplementation()!;
- let plans=0;
- vi.mocked(queueCall).mockImplementation(async(...args)=>{
-  if(args[0].operation==='prepare'&&++plans===1)throw Object.assign(Error('Inputs unavailable'),{details:{code:'refresh-wallet-discovery'}});
-  return original(...args);
- });
- try{
-  await wallet.queue!({operation:'prepare',intent:{kind:'insert'}});
-  expect(plans).toBe(2);
-  expect(manager.signTransaction).toHaveBeenCalledTimes(1);
- }finally{wallet.close?.();}
-});
-
-
-it('reloads the same scoped discovery hints after reconnect and checks a saved funded child against the live wallet',async()=>{
- const {wallet,manager}=setup(),original=vi.mocked(queueCall).getMockImplementation()!;
- const child={path:'receive',index:57,publicKey:binToHex(manager.getPubkey(0,57n))};
- vi.mocked(queueCall).mockImplementation(async(...args)=>{
-  if(args[0].operation==='loadDiscovery')return [child];
-  if(args[0].operation==='warmDiscovery')return {origins:2,funded:[child]};
-  return original(...args);
- });
- try{
-  await wallet.warmQueue!();
-  manager.emit('reconnecting');
-  await wallet.warmQueue!();
-  const loads=vi.mocked(queueCall).mock.calls.filter(c=>c[0].operation==='loadDiscovery');
-  expect(loads).toHaveLength(2);
-  expect(loads[1]![0].discoveryId).toBe(loads[0]![0].discoveryId);
-  const warms=vi.mocked(queueCall).mock.calls.filter(c=>c[0].operation==='warmDiscovery');
-  expect(warms[1]![1]?.[0]).toMatchObject(child);
+  await expect(wallet.queue!({operation:'continueCreate',draft})).rejects.toThrow(/connected wallet differs/);
+  expect(events).toEqual([]);
   expect(manager.signTransaction).not.toHaveBeenCalled();
  }finally{wallet.close?.();}
 });
 
-it.each(['mainnet','chipnet'])('derives and previews locally on %s without an SDK manager or a signing operation',async selected=>{
- const {wallet,manager}=setup(selected);wallet.close?.();
- const paths=manager.getSessionPaths(),id='a'.repeat(64),scope=browserWalletClient(null,()=>{throw Error('Offline manager accessed');},undefined,()=>({paths,discoveryId:id}));
- const calls:{operation:string;count:number}[]=[];
- vi.mocked(queueCall).mockImplementation(async(i,keys)=>{
-  calls.push({operation:String(i.operation),count:keys?.length??0});
-  if(i.operation==='loadDiscovery')return [{path:'receive',index:57,publicKey:'02'+'ff'.repeat(32)}];
-  if(i.operation==='list')return [];
-  if(i.operation==='previewCreate'){
-   expect(i.discoveryId).toBe(id);
-   expect(keys?.[0]?.publicKey).toBe(binToHex(manager.getPubkey(0,0n)));
-   expect(keys?.some(k=>k.index===57)).toBe(false);
-   if(i.atomicOnly)throw Error('Insufficient atomic creation funding');
-   return {quote:{transactions:2},commitment:'b'.repeat(64)};
+it.each(['matching','changed'])('revalidates the offline quote when signing costs are %s',async(costs)=>{
+ const {manager,wallet,events,plan}=setup();
+ const draft=offlineDraft(manager),same=costs==='matching';
+ const original=vi.mocked(queueCall).getMockImplementation()!;
+ vi.mocked(queueCall).mockImplementation(async(...args)=>{
+  if(args[0].operation!=='acceptCreateReview')return original(...args);
+  events.push('acceptCreateReview');
+  expect(args[1]).toEqual(draft.keys);
+  return {...draft,id:'live-review',approved:same,plan,quote:same?draft.quote:{...draft.quote,totalFee:'500',creationFee:'500',walletDebit:'24100'}};
+ });
+ const declineChanged=vi.fn((event:Event)=>{
+  const {quote,respond}=(event as CustomEvent).detail;
+  expect(quote.totalFee).toBe('500');
+  expect(manager.signTransaction).not.toHaveBeenCalled();
+  respond(false);
+ });
+ window.addEventListener('arena-preparation-confirm',declineChanged);
+ try{
+  const result=wallet.queue!({operation:'continueCreate',draft});
+  if(same){
+   await expect(result).resolves.toMatchObject({stage:'pending'});
+   expect(declineChanged).not.toHaveBeenCalled();
+   expect(events).toEqual(['acceptCreateReview','authorize','beginSigning','retain','submit']);
+   expect(manager.signTransaction).toHaveBeenCalledOnce();
+  }else{
+   await expect(result).rejects.toThrow('cancelled');
+   expect(declineChanged).toHaveBeenCalledOnce();
+   expect(events).toEqual(['acceptCreateReview','discard']);
+   expect(manager.signTransaction).not.toHaveBeenCalled();
   }
-  throw Error('Unexpected preview operation');
+ }finally{window.removeEventListener('arena-preparation-confirm',declineChanged);wallet.close?.();}
+});
+
+it.each(['locally reserved','spent before signing'])('re-quotes once and asks for review when selected funding is %s',async(reason)=>{
+ const {manager,wallet,plan,events}=setup(),draft=offlineDraft(manager);
+ const stale=Object.assign(Error(reason),{details:{code:reason==='locally reserved'?'creation-quote-stale':'selected-inputs-changed'}});
+ vi.mocked(queueCall).mockImplementation(async request=>{
+  events.push(String(request.operation));
+  switch(request.operation){
+   case 'acceptCreateReview':
+    if(reason==='locally reserved')throw stale;
+    return {...draft,approved:true,plan};
+   case 'authorize':throw stale;
+   case 'list':return [];
+   case 'prepare':
+   case 'resume':return {...draft,id:'replacement',plan,quote:{...draft.quote,totalFee:'550'},approved:false};
+   case 'discard':return {};
+   default:throw Error('Unexpected worker operation '+request.operation);
+  }
  });
- try{
-  const estimate=await scope.previewCreate!({} as any,()=>{});
-  expect(estimate.quote.transactions).toBe(2);
-  expect(calls.filter(c=>c.operation==='previewCreate').map(c=>c.count)).toEqual([2,8,16,24,32,40]);
-  expect(calls.map(c=>c.operation)).not.toContain('prepare');
+ const decline=vi.fn((event:Event)=>{
+  const {quote,respond}=(event as CustomEvent).detail;
+  expect(quote.totalFee).toBe('550');
   expect(manager.signTransaction).not.toHaveBeenCalled();
- }finally{scope.close?.();}
-});
-
-it('reports missing authenticated derivation and provider failure without creating a journal operation',async()=>{
- const {wallet,manager}=setup();
- try{await expect(wallet.previewCreate!({} as any,()=>{})).rejects.toThrow('connect once');expect(queueCall).not.toHaveBeenCalled();}finally{wallet.close?.();}
- const scope=browserWalletClient(null,()=>{},undefined,()=>({paths:manager.getSessionPaths(),discoveryId:'b'.repeat(64)}));
- vi.mocked(queueCall).mockImplementation(async(i)=>{if(i.operation==='previewCreate')throw Error('Conflicting provider evidence');return [];});
- try{await expect(scope.previewCreate!({} as any,()=>{})).rejects.toThrow('Conflicting provider evidence');expect(queueCall).not.toHaveBeenCalledWith(expect.objectContaining({operation:'prepare'}),expect.anything());}finally{scope.close?.();}
-});
-
-it('requests a renewed quote review when the rebuilt commitment changes, then verifies the live signing child',async()=>{
- const {wallet,manager,plan}=setup();
- const ownerKey=binToHex(manager.getPubkey(0,0n)),commitment='c'.repeat(64);
- const op={id:'offline-live',stage:'review',intent:{kind:'create'},step:'action',quote:{transactions:1,approvals:1},approved:false,owner:{publicKey:ownerKey},plan:{...plan,signers:{2:ownerKey}}};
- vi.mocked(queueCall).mockImplementation(async i=>{
-  if(i.operation==='prepare'){expect(i.reviewedCommitment).toBe(commitment);return op;}
-  if(i.operation==='confirm')return {...op,approved:true};
-  if(i.operation==='authorize')return {...op,verifiedAt:Date.now()};
-  if(i.operation==='submit')return {stage:'pending'};
-  return [];
+  respond(false);
  });
- const decision=(e:Event)=>{expect(manager.signTransaction).not.toHaveBeenCalled();(e as CustomEvent).detail.respond(true);};
- window.addEventListener('arena-preparation-confirm',decision);
+ window.addEventListener('arena-preparation-confirm',decline);
  try{
-  await wallet.queue!({operation:'prepare',intent:{kind:'create'},reviewedCommitment:commitment});
-  expect(manager.signTransaction).toHaveBeenCalledOnce();
-  expect(vi.mocked(queueCall).mock.calls.map(c=>c[0].operation)).toContain('confirm');
- }finally{window.removeEventListener('arena-preparation-confirm',decision);wallet.close?.();}
+  await expect(wallet.queue!({operation:'continueCreate',draft})).rejects.toThrow('cancelled');
+  expect(decline).toHaveBeenCalledOnce();
+  expect(events).toEqual(reason==='locally reserved'?['acceptCreateReview','list','prepare','discard']:['acceptCreateReview','authorize','resume','discard']);
+  expect(manager.signTransaction).not.toHaveBeenCalled();
+ }finally{window.removeEventListener('arena-preparation-confirm',decline);wallet.close?.();}
 });
 
-it.each(['wrong key family','duplicate path'])('rejects saved derivation with %s before asking any provider',async reason=>{
- const {wallet,manager}=setup('chipnet');wallet.close?.();
- const paths=manager.getSessionPaths();
- if(reason==='wrong key family')network.value='mainnet';
- else paths.push({...paths[0]!});
- const offline=browserWalletClient(null,()=>{},undefined,()=>({paths,discoveryId:'d'.repeat(64)}));
+it.each(['insert','claim'])('shows a provisional %s estimate and requests a decision when repricing changes costs',async kind=>{
+ const {wallet,manager,plan,events}=setup();
+ const previous={fee:'400',walletDebit:'2100'};
+ const updated={fee:kind==='claim'?'400':'450',walletDebit:'2150'};
+ const op=(costs:typeof previous)=>({id:'action',intent:{kind},stage:'review',plan:{...plan,fee:costs.fee},walletDebit:costs.walletDebit});
+ let rebuilt=false;
+ vi.mocked(queueCall).mockImplementation(async request=>{
+  events.push(String(request.operation));
+  if(request.operation==='prepare')return op(previous);
+  if(request.operation==='authorize'){
+   if(!rebuilt)throw Error('Fee policy changed');
+   return {...op(updated),verifiedAt:Date.now(),owner:{publicKey:binToHex(manager.getPubkey(0,0n))}};
+  }
+  if(request.operation==='resume'){rebuilt=true;return op(updated);}
+  if(request.operation==='submit')return {stage:'pending',step:'action'};
+  return {};
+ });
+ const costsSeen:string[]=[];
+ const observe=(e:Event)=>{costsSeen.push((e as CustomEvent).detail.walletDebit);events.push('estimate');};
+ const decide=vi.fn((event:Event)=>{
+  const {quote,respond}=(event as CustomEvent).detail;
+  expect(quote).toEqual({action:kind,previous,updated});
+  expect(manager.signTransaction).not.toHaveBeenCalled();
+  events.push('decide');respond(kind==='insert');
+ });
+ window.addEventListener('arena-queue-review',observe);
+ window.addEventListener('arena-preparation-confirm',decide);
  try{
-  await expect(offline.previewCreate!({} as any,()=>{})).rejects.toThrow(/public derivation|authenticated Cashonize/);
-  expect(queueCall).not.toHaveBeenCalled();
- }finally{offline.close?.();}
+  const action=wallet.queue!({operation:'prepare',intent:{kind}});
+  if(kind==='insert'){
+   await expect(action).resolves.toMatchObject({stage:'pending'});
+   expect(manager.signTransaction).toHaveBeenCalledOnce();
+  }else{
+   await expect(action).rejects.toThrow('Claim cancelled');
+   expect(manager.signTransaction).not.toHaveBeenCalled();
+   expect(events.at(-1)).toBe('discard');
+  }
+  expect(costsSeen.slice(0,2)).toEqual(['2100','2150']);
+  expect(events.slice(0,6)).toEqual(['prepare','estimate','authorize','resume','estimate','decide']);
+  expect(decide).toHaveBeenCalledOnce();
+ }finally{
+  window.removeEventListener('arena-queue-review',observe);
+  window.removeEventListener('arena-preparation-confirm',decide);
+  wallet.close?.();
+ }
 });

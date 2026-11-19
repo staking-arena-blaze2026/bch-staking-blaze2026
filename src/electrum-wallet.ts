@@ -8,11 +8,7 @@ import {ChainExtension,BLOCKCHAIN_REFRESH,ElectrumCore,type Header} from './elec
 import {json,utxo} from './arena-core.js';
 import {walletScript,type WalletKey,type WalletCoin} from './transactions-core.js';
 export {ChainExtension,BLOCKCHAIN_REFRESH};
-export function walletReadPeers(p:ElectrumCore){
- if(p.network!==Network.MAINNET&&p.network!==Network.CHIPNET&&p.network!==Network.REGTEST)throw Error('Wallet transactions require mainnet, chipnet or local regtest');
- return p.endpoints.filter((v,i,a)=>a.findIndex(x=>new URL(x).hostname===new URL(v).hostname)===i);
-}
-export function walletPeers(p:ElectrumCore){const peers=walletReadPeers(p);if(peers.length<2)throw Error('Two different configured WSS hosts are required');return peers;}
+export function walletPeers(p:ElectrumCore){if(p.network!==Network.MAINNET&&p.network!==Network.CHIPNET&&p.network!==Network.REGTEST)throw Error('Wallet transactions require mainnet, chipnet or local regtest');const peers=p.endpoints.filter((v,i,a)=>a.findIndex(x=>new URL(x).hostname===new URL(v).hostname)===i);if(peers.length<2)throw Error('Two different configured WSS hosts are required');return peers;}
 export const coinIdentity=(u:SpendableUtxo)=>json({txid:u.txid,vout:u.vout,satoshis:u.satoshis,script:u.lockingBytecode,token:u.token??null});
 export async function confirmedWalletTransaction(p:ElectrumCore,id:string){
  return verifiedProviders(p,walletPeers(p),async(_peer,p)=>{
@@ -21,23 +17,17 @@ export async function confirmedWalletTransaction(p:ElectrumCore,id:string){
   return {value,tip,identity:json({tip:tip.hash,height:value.height,blockhash:value.blockhash,hex:value.hex})};
  },{parallel:true});
 }
+class ChangedWalletInput extends Error {}
+type VerifyOrigin=(source:ElectrumCore,ancestry:ReturnType<typeof ancestryVerifier>)=>Promise<void>;
+
 /** Verify supplied public source coins against raw transactions, token UTXOs, proofs and linked tip headers. */
-export async function verifyCoins(p:ElectrumCore,coins:SpendableUtxo[],peer:string,allowUnconfirmed=false,selectedOnly=false,initial?:Header,beforeClosing?:Promise<unknown>,sessionRows?:ReadonlyMap<string,SpendableUtxo[]>){
- const tip=initial??await p.tip(),transactions=new Map<string,any>(),scriptCoins=new Map<string,Promise<SpendableUtxo[]>>();
- // Only use rows read in this same pinned session by the contract planner.
- // Every selected output still needs matching raw bytes and ancestry evidence.
- const lookup=async(script:string)=>sessionRows?.get(script)??(selectedOnly?p.getUtxoCandidates(script):p.getUtxosForLockingBytecode(script));
- const [clock,listed]=await Promise.allSettled([
-  (async()=>{const mtp=await p.medianTime(tip.height,tip.hash);return {mtp,...await tickContext(p,tip)};})(),
-  boundedMap([...new Set(coins.map(c=>c.lockingBytecode).filter((s):s is string=>!!s))],4,async script=>{scriptCoins.set(script,Promise.resolve(await lookup(script)));}),
- ]);
- if(clock.status==='rejected')throw clock.reason;
- if(listed.status==='rejected')throw listed.reason;
- const {mtp,...context}=clock.value,ancestry=ancestryVerifier(p,{height:tip.height,mtp,...context},tip);
+export async function verifyCoins(p:ElectrumCore,coins:SpendableUtxo[],peer:string,allowUnconfirmed=false,verifyOrigin?:VerifyOrigin){
+ const tip=await p.tip(),mtp=await p.medianTime(tip.height,tip.hash),transactions=new Map<string,any>(),scriptCoins=new Map<string,SpendableUtxo[]>(),context=await tickContext(p,tip),ancestry=ancestryVerifier(p,{height:tip.height,mtp,...context});
+ const selected=new Set(coins.map(coin=>coin.txid+':'+coin.vout));
+ await boundedMap([...new Set(coins.map(c=>c.lockingBytecode).filter((s):s is string=>!!s))],4,async script=>{scriptCoins.set(script,await p.getUtxosForLockingBytecode(script,selected));});
  for(const coin of coins){
   if(!coin.lockingBytecode)throw Error('Missing source script');
-  if(!scriptCoins.has(coin.lockingBytecode))scriptCoins.set(coin.lockingBytecode,lookup(coin.lockingBytecode));
-  const actual=(await scriptCoins.get(coin.lockingBytecode)!).find(u=>u.txid===coin.txid&&u.vout===coin.vout);
+  const actual=scriptCoins.get(coin.lockingBytecode)!.find(u=>u.txid===coin.txid&&u.vout===coin.vout);
   if(!actual){
    // Missing listunspent data alone is propagation/availability evidence. A raw,
    // independently validated spender is a security conflict, even on one peer.
@@ -46,24 +36,38 @@ export async function verifyCoins(p:ElectrumCore,coins:SpendableUtxo[],peer:stri
     const candidate=await p.transaction(row.tx_hash);
     if(!candidate.vin.some((i:any)=>i.txid===coin.txid&&i.vout===coin.vout))continue;
     if(row.height>0)await p.transactionStatus(row.tx_hash);else await ancestry(row.tx_hash);
-    throw Error('Known double-spend conflict for selected input');
+    throw new ChangedWalletInput('Known double-spend conflict for selected input');
    }
-   throw Error('Input availability temporarily unverified');
+   throw new ChangedWalletInput('Input availability temporarily unverified');
   }
-  if(coinIdentity(actual)!==coinIdentity(coin))throw Error('Source-output proof mismatch');
+  if(coinIdentity(actual)!==coinIdentity(coin))throw new ChangedWalletInput('Source-output proof mismatch');
   let status=transactions.get(coin.txid);if(!status){try{status=allowUnconfirmed?await ancestry(coin.txid,Number.isSafeInteger((actual as any).height)?{tx_hash:coin.txid,height:(actual as any).height}:undefined):await p.transactionStatus(coin.txid);}catch(error){if(/Tip changed during transaction lookup/.test(String(error))&&await p.classifyTipChange(tip)==='extension')throw new ChainExtension();throw error;}transactions.set(coin.txid,status);}if(!allowUnconfirmed&&status.confirmations<=0)throw Error('Only confirmed wallet/covenant inputs may be spent');
   if(status.vin?.length===1&&status.vin[0].vout===0xffffffff&&/^0+$/.test(status.vin[0].txid)&&!matureCoinbase(status.height,context))throw Error('Immature coinbase input');
-  if(coinIdentity(utxo(status,coin.vout))!==coinIdentity(coin))throw Error('Source-output proof mismatch');
+  if(coinIdentity(utxo(status,coin.vout))!==coinIdentity(coin))throw new ChangedWalletInput('Source-output proof mismatch');
  }
- await beforeClosing;
+ await verifyOrigin?.(p,ancestry);
  const moved=await p.classifyTipChange(tip);if(moved==='extension')throw new ChainExtension();if(moved==='reorg')throw Error('Reorganization during input verification');
  return {height:tip.height,hash:tip.hash,mtp,...context,peer,...(allowUnconfirmed?{ancestry:[...ancestry.evidence].map(([id,tx])=>[id,tx.hex,tx.height??0,tx.confirmations>0]).sort((a,b)=>String(a[0]).localeCompare(String(b[0])))}:{})};
 }
-export async function verifyCoinsAcrossPeers(p:ElectrumCore,coins:SpendableUtxo[],allowUnconfirmed=false,progress?:(message:string)=>void,selectedOnly=false) {
- return verifiedProviders(p,walletPeers(p),async (peer,source,tip)=>{
-  const value=await verifyCoins(source,coins,peer,allowUnconfirmed,selectedOnly,tip);
-  return {value,tip,identity:json({hash:value.hash,mtp:value.mtp,ancestry:value.ancestry})};
- },{onProgress:progress,parallel:true});
+export async function verifyCoinsAcrossPeers(p:ElectrumCore,coins:SpendableUtxo[],allowUnconfirmed=false,progress?:(message:string)=>void,options:{verifyOrigin?:VerifyOrigin;readFeeRate?:(source:ElectrumCore)=>Promise<bigint>}={}) {
+ let changedInput=false;
+ try {
+  return await verifiedProviders(p,walletPeers(p),async (peer,source)=>{
+   let value;
+   try { value=await verifyCoins(source,coins,peer,allowUnconfirmed,options.verifyOrigin); }
+   catch(error){
+    if(error instanceof ChangedWalletInput)changedInput=true;
+    throw error;
+   }
+   const feeRate=await options.readFeeRate?.(source),tip=await source.tip();
+   if(tip.hash!==value.hash){const moved=await source.classifyTipChange(value);if(moved==='reorg')throw Error('Reorganization after input verification');throw new ChainExtension();}
+   return {value:{...value,feeRate},tip,identity:json({hash:value.hash,mtp:value.mtp,ancestry:value.ancestry,feeRate})};
+  },{onProgress:progress,parallel:true});
+ }catch(error){
+  if(changedInput&&error instanceof ProviderVerificationError&&!p.unresolvedChainPeers?.size)
+   Object.assign(error,{details:{code:'selected-inputs-changed'}});
+  throw error;
+ }
 }
 export interface WalletInventory {coins:WalletCoin[];bch:string;tokens:Record<string,string>;addresses:number;gap:number;limit:number;bounded:true}
 /** A changed tip is never accepted as a snapshot. Prove extension, then restart all reads. */

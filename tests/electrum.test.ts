@@ -23,44 +23,6 @@ test('wire decoding preserves exact CashToken amounts, NFT category/commitment, 
   assert.deepEqual(decoded.vout[0]!.tokenData,{category:'07'.repeat(32),amount:'9223372036854775807',nft:{capability:'mutable',commitment:'010203'}});
   assert.throws(()=>decodeRawTransaction(decoded.hex,'00'.repeat(32)),/mismatch/);
 });
-test('reported UTXOs use token-aware index data and reject malformed funding hints',async()=>{
- const p=new Replay(),script='51',tx_hash='03'.repeat(32);
- const base={tx_hash,tx_pos:0,value:1200,height:42,token_data:{category:'01'.repeat(32),amount:'9223372036854775807',nft:{capability:'mutable',commitment:'1a'.repeat(121)}}};
- let rows:unknown=[base];
- p.request=async(method,...params)=>{assert.equal(method,'blockchain.scripthash.listunspent');assert.deepEqual(params,[scriptHash(script),'include_tokens']);return rows;};
- const [coin]=await p.getUtxoCandidates(script);
- assert.equal(coin?.lockingBytecode,script);assert.equal(coin?.satoshis,1200n);
- assert.equal(coin?.token?.amount,9223372036854775807n);assert.equal(coin?.token?.nft?.commitment,base.token_data.nft.commitment);
- for(const update of [
-  {tx_pos:-1},{tx_hash:'xyz'},{value:2_100_000_000_000_001},{height:-2},
-  {token_data:{...base.token_data,category:'xyz'}},{token_data:{...base.token_data,amount:'9223372036854775808'}},
-  {token_data:{...base.token_data,amount:17}},{token_data:{...base.token_data,nft:{...base.token_data.nft,commitment:'a'}}},
-  {token_data:{...base.token_data,nft:{...base.token_data.nft,capability:'invalid'}}},
- ]){
-  rows=[{...base,...update}];await assert.rejects(()=>p.getUtxoCandidates(script),/Malformed/);
- }
- rows=[base,base];await assert.rejects(()=>p.getUtxoCandidates(script),/Duplicate/);
-});
-
-test('stored inclusion requires matching live block and remains scoped to the provider',async()=>{
-  const id=fixture.configs[0].genesis,height=heights.get(id)!;
-  const source=new Replay(),confirmed=await source.transaction(id,height,true);
-  const saved=structuredClone(source.exportInclusion(source.endpoint));
-  assert.equal(saved.length,1);
-  const restarted=new Replay(),request=restarted.request;
-  const calls:string[]=[];
-  restarted.request=(method,...args)=>{calls.push(method);return request(method,...args);};
-  restarted.restoreInclusion(restarted.endpoint,saved);
-  assert.deepEqual(await restarted.transaction(id,height,true),confirmed);
-  assert.deepEqual(calls,['blockchain.block.header']);
-  const another=new Replay();another.endpoint='fixture://other';
-  another.restoreInclusion(source.endpoint,saved);another.corruptProof=true;
-  await assert.rejects(()=>another.transaction(id,height,true),/proof mismatch/);
-  const forked=new Replay(),original=headers.get(height)!;
-  forked.restoreInclusion(forked.endpoint,saved);forked.corruptProof=true;
-  forked.forks.set(height,original.slice(0,-2)+(original.endsWith('00')?'01':'00'));
-  await assert.rejects(()=>forked.transaction(id,height,true),/proof mismatch/);
-});
 
 test('captured real chipnet vault: lineage, immutable snapshot, allocations, withdrawal, restart and API routes without BCHN',async()=>{
   const dir = await mkdtemp(join(tmpdir(),'electrum-replay-'));
@@ -125,11 +87,8 @@ test('disconnects, stale tips, invalid proofs and changed ancestry fail closed, 
   provider.fail=''; provider.corruptProof=true; await assert.rejects(index.sync(),/proof mismatch/);
   provider.corruptProof=false; provider.omit=fixture.expected.vaults[0].history[1].txid;
   await assert.rejects(index.sync(),/Canonical UTXO unavailable/); assert.equal(json(index.vaults),before); provider.omit=undefined;
-  // The existing provider already linked this exact tip. Exercise corruption
-  // on a cold provider so it must fetch and validate the header range.
-  const badHeaders=new Replay();badHeaders.corruptHeader=true;
-  await assert.rejects(new ElectrumIndexer(fixture.configs,badHeaders).sync(),/Header chain mismatch/);
-  provider.pending=true; await index.sync(); assert.deepEqual(index.health.unconfirmed,['ab'.repeat(32)]); assert.equal(json(index.vaults),before);
+  provider.corruptHeader=true; await assert.rejects(index.sync(),/Header chain mismatch/);
+  provider.corruptHeader=false; provider.pending=true; await index.sync(); assert.deepEqual(index.health.unconfirmed,['ab'.repeat(32)]); assert.equal(json(index.vaults),before);
   const stale = new ElectrumProvider({maxTipAgeSeconds:1}); stale.request=provider.request;
   await assert.rejects(stale.tip(),/Stale/);
   await assert.rejects(stale.sendRawTransaction('00'),/disabled|temporarily unavailable/);

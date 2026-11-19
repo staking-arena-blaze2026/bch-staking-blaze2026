@@ -1,168 +1,91 @@
 import {hexToBin,binToHex} from '@bitauth/libauth';
-import type {ElectrumCore,Header} from '../electrum-core.js';
+import type {ElectrumCore} from '../electrum-core.js';
 import {utxo,json} from '../arena-core.js';
 import {verifiedProviders} from '../verified-providers.js';
-import {coinIdentity,walletPeers,verifyCoins} from '../electrum-wallet.js';
+import {walletPeers,verifyCoins} from '../electrum-wallet.js';
 import {ancestryVerifier} from '../zero-conf.js';
 import {tickContext} from '../consensus-clock.js';
 import {arena,node,root,gate,allocation,readState,readNode,CARRIER,ZERO,sameLink,type Parameters,type Identity,type Offer,type Context} from './protocol.js';
-import {compare,emptyLink,type Score} from './model.js';
-import {authenticateGenesis,insertionPoint,snapshot,type Anchor} from './indexer.js';
-import {policyRate} from './fees.js';
-import {boundedMap} from '../bounded-map.js';
+import {authenticateGenesis,snapshot,type Anchor} from './indexer.js';
 export interface Config {parameters:Parameters;identity:Identity;anchor:Anchor}
 export class QueueIndexer {
  constructor(readonly provider:ElectrumCore,readonly config:Config){}
  context(provider=this.provider):Context{return {p:this.config.parameters,identity:this.config.identity,provider};}
  /** Authenticate the immutable category origin within the caller's pinned provider session. */
- private async origin(p:ElectrumCore,ancestry:ReturnType<typeof ancestryVerifier>){
+ async authenticateOrigin(p:ElectrumCore,ancestry:ReturnType<typeof ancestryVerifier>){
   const created=await ancestry(this.config.anchor.genesis),sources=[];
   for(const i of created.vin)sources.push(utxo(await ancestry(i.txid),i.vout));
   authenticateGenesis(this.context(p),this.config.anchor,created.hex,sources);
  }
- /** Local routing over untrusted token-aware listunspent rows. For a quote
-  * only inspect ranking boundaries. The verified path also checks reachability. */
- async reportedInsertion(p:ElectrumCore,terms:Score,sessionRows?:Map<string,Coin[]>){
+ /** Read reported outpoints for routing. Only the spend path authorizes a plan. */
+ private async queueRows(p:ElectrumCore){
   const c=this.context(p);
-  const [vaults,nodes]=await boundedMap([arena(c),node(c)],2,contract=>readCandidates(p,contract.lockingBytecode,sessionRows));
-  const states=vaults!.filter(u=>u.token?.category===c.identity.vault);
-  if(states.length!==1)throw Error('Vault uniqueness failure');
-  const vault=states[0]!,state=readState(c,vault),standing=nodes!.filter(u=>u.token?.category===c.identity.queue);
-  const roots=state.head.id===ZERO||sessionRows
-   ?(await readCandidates(p,root(c).lockingBytecode,sessionRows)).filter(u=>u.token?.category===c.identity.queue)
-   :[];
-  if(sessionRows){
-   const current=snapshot(c,[vault,...roots,...standing]),position=insertionPoint(current,terms);
-   const successor=position.controller===vault?state.head:readNode(c,position.controller).next;
-   return {...position,state,vault,successor:current.nodes.get(successor.id)?.utxo};
-  }
-  if(state.head.id===ZERO){
-   if(standing.length||!sameLink(state.head,emptyLink()))throw Error('Malformed empty queue');
-   const current=snapshot(c,[vault,...roots]);
-   return {state,vault,controller:vault,authority:current.root,successor:undefined};
-  }
-  if(compare(terms,state.head)>0){
-   const candidates=standing.filter(u=>u.token?.nft?.commitment.slice(0,64)===state.head.id),head=candidates[0];
-   if(!head||candidates.length!==1||!sameLink(state.head,readNode(c,head)))throw Error('Malformed or stale queue head');
-   return {state,vault,controller:vault,authority:head,successor:head};
-  }
-  const entries=standing.map(utxo=>({utxo,offer:readNode(c,utxo)}));
-  const byId=new Map(entries.map(entry=>[entry.offer.id,entry]));
-  if(byId.size!==entries.length)throw Error('Duplicate queue membership');
-  const linked=(link:Offer['next'])=>{
-   if(link.id===ZERO&&sameLink(link,emptyLink()))return undefined;
-   const entry=byId.get(link.id);
-   if(!entry||!sameLink(link,entry.offer))throw Error('Malformed or stale queue link');
-   return entry.utxo;
-  };
-  linked(state.head);
-  const matches=entries.filter(({offer})=>compare(offer,terms)>=0&&(offer.next.id===ZERO||compare(terms,offer.next)>0));
-  if(matches.length!==1)throw Error('No unique reported insertion point');
-  return {state,vault,controller:matches[0]!.utxo,authority:undefined,successor:linked(matches[0]!.offer.next)};
+  const groups=await Promise.all([arena(c),node(c),root(c)].map(contract=>p.reportedUtxosForLockingBytecode(contract.lockingBytecode)));
+  return groups.flat().filter(u=>u.token?.category===c.identity.vault||u.token?.category===c.identity.queue);
  }
- async reportedClaim(p:ElectrumCore,tip:Header,sessionRows?:Map<string,Coin[]>){
+ reportedQueue(){
+  const p=this.provider;
+  return p.session(async()=>{
+   const [tip,rows]=await Promise.all([p.tip(),this.queueRows(p)]);
+   return {...snapshot(this.context(p),rows),tip};
+  });
+ }
+ private async headRows(p:ElectrumCore){
   const c=this.context(p);
-  const [vaults,nodes,mtp]=await readTogether([
-   readCandidates(p,arena(c).lockingBytecode,sessionRows),readCandidates(p,node(c).lockingBytecode,sessionRows),p.medianTime(tip.height,tip.hash),
-  ]);
-  const states=vaults.filter(u=>u.token?.category===c.identity.vault);
-  if(states.length!==1)throw Error('Vault uniqueness failure');
-  const vault=states[0]!,state=readState(c,vault);
+  const [states,nodes]=await Promise.all([arena(c),node(c)].map(contract=>p.reportedUtxosForLockingBytecode(contract.lockingBytecode)));
+  const vaults=states.filter(u=>u.token?.category===c.identity.vault);
+  if(vaults.length!==1)throw Error('Vault uniqueness failure');
+  const vault=vaults[0]!,state=readState(c,vault);
   if(state.head.id===ZERO)throw Error('Queue is empty');
   const candidates=nodes.filter(u=>u.token?.category===c.identity.queue&&u.token.nft?.commitment.slice(0,64)===state.head.id);
   if(candidates.length!==1)throw Error('Head uniqueness failure');
-  const first=candidates[0]!,offer=readNode(c,first);
-  if(!sameLink(state.head,offer))throw Error('Stale head score');
-  const [escrow,reserve]=await readTogether([
-   c.p.stakingCategory===ZERO?undefined:this.reportedAsset(p,offer.stake,offer.id,sessionRows),
-   c.p.rewardCategory===ZERO||offer.reward>state.reserve?undefined:this.reportedAsset(p,state.reserve,undefined,sessionRows),
-  ]);
-  return {vault,node:first,state,offer,mtp,escrow,reserve};
+  const first=candidates[0]!;
+  if(!sameLink(state.head,readNode(c,first)))throw Error('Stale head score');
+  return {vault,node:first,state};
  }
- private async reportedAsset(p:ElectrumCore,amount:bigint,id?:string,sessionRows?:Map<string,Coin[]>){
-  const coins=await readCandidates(p,gate(this.context(p),id).lockingBytecode,sessionRows);
-  return this.selectAsset(coins,amount,id);
+ reportedHead(){
+  const p=this.provider;
+  return p.session(async()=>{
+   const tip=await p.tip();
+   const [head,mtp]=await Promise.all([this.headRows(p),p.medianTime(tip.height,tip.hash)]);
+   return {...head,clock:{height:tip.height,hash:tip.hash,mtp}};
+  });
  }
- private selectAsset(coins:Awaited<ReturnType<ElectrumCore['getUtxoCandidates']>>,amount:bigint,id?:string){
+ async head(){return verifiedProviders(this.provider,walletPeers(this.provider),async(peer,p)=>{
+  const tip=await p.tip(),mtp=await p.medianTime(tip.height,tip.hash),ticks=await tickContext(p,tip);
+  const head=await this.headRows(p);
+  await verifyCoins(p,[head.vault,head.node],peer,true,(source,ancestry)=>this.authenticateOrigin(source,ancestry));
+  if((await p.tip()).hash!==tip.hash)throw Error('Tip changed during head verification');
+  const value={...head,clock:{height:tip.height,hash:tip.hash,mtp,...ticks}};
+  return {value,tip,identity:json(value)};
+ },{parallel:true});}
+ async sync(){return verifiedProviders(this.provider,walletPeers(this.provider),async(peer,p)=>{
+  const c=this.context(p),tip=await p.tip();
+  const coins=await this.queueRows(p),value=snapshot(c,coins);
+  const clock=await verifyCoins(p,coins,peer,true,(source,ancestry)=>this.authenticateOrigin(source,ancestry));
+  if(clock.hash!==tip.hash)throw Error('Tip changed during queue verification');
+  const result={...value,config:this.config,clock:{height:tip.height,hash:tip.hash,mtp:clock.mtp,activationHeight:clock.activationHeight,nextBlockTicks:clock.nextBlockTicks},state:readState(c,value.vault)};
+  return {value:result,tip,identity:json({tip:tip.hash,coins:coins.sort((a,b)=>(a.txid+':'+a.vout).localeCompare(b.txid+':'+b.vout))})};
+ },{parallel:true});}
+ private async gateSource(p:ElectrumCore,amount:bigint,id?:string){
+  const coins=await p.reportedUtxosForLockingBytecode(gate(this.context(p),id).lockingBytecode);
+  // Identical donations are interchangeable. Immutable empty NFTs are
+  // introspection-indistinguishable from pure FTs in an adversarial escrow.
   const category=id?this.config.parameters.stakingCategory:this.config.parameters.rewardCategory;
   const candidates=coins.filter(u=>(!u.token?.nft||u.token.nft.capability==='none'&&u.token.nft.commitment==='')&&u.token?.category===category&&u.token.amount===amount&&u.satoshis===CARRIER).sort((a,b)=>(a.txid+':'+a.vout).localeCompare(b.txid+':'+b.vout));
   if(!candidates.length)throw Error('Backed asset gate source unavailable');
   return candidates[0]!;
  }
- private async action<T,P>(read:(p:ElectrumCore,tip:Header,rows:Map<string,Coin[]>)=>Promise<T>,sources:(value:T)=>Coin[],build:(value:T,rate:bigint)=>{value:P;funding:Coin[]},time?:(value:T)=>number){
-  // Identical draft inputs only save local transaction construction. Both
-  // peers must still authenticate the exact sources in their own session.
-  const drafts=new Map<string,{plan?:ReturnType<typeof build>;error?:unknown}>();
-  return verifiedProviders(this.provider,walletPeers(this.provider),async(peer,p,tip)=>{
-   const rows=new Map<string,Coin[]>();
-   const [state,rate,mtp,ticks]=await readTogether([
-    read(p,tip,rows),p.request('blockchain.relayfee').then(policy=>policyRate(policy)),
-    !time?p.medianTime(tip.height,tip.hash):undefined,tickContext(p,tip),
-   ]);
-   const contracts=sources(state),currentMtp=time?time(state):mtp!;
-   const key=json({rate,mtp:currentMtp,contracts:contracts.map(coinIdentity)});
-   let draft=drafts.get(key);
-   if(!draft){
-    try{draft={plan:build(state,rate)};}catch(error){draft={error};}
-    drafts.set(key,draft);
-   }
-   const coins=watchCoins(...contracts,...(draft.plan?.funding??[])),ancestry=ancestryVerifier(p,{height:tip.height,mtp:currentMtp,...ticks},tip);
-   // Complete both reads in this session, including on failure.
-   const originRead=Promise.allSettled([this.origin(p,ancestry)]);
-   const [inputs]=await Promise.allSettled([verifyCoins(p,coins,peer,true,true,tip,originRead,rows)]);
-   const [origin]=await originRead;
-   if(inputs.status==='rejected')throw inputs.reason;
-   if(origin?.status==='rejected')throw origin.reason;
-   const value={state,rate,tip:tip.hash,height:tip.height,planned:draft.plan?.value,planError:draft.error};
-   return {value,tip,identity:json({tip:tip.hash,coins:coins.map(coinIdentity),ancestry:inputs.value.ancestry,rate,planError:String(draft.error)})};
-  },{parallel:true});
- }
- insertion<P>(terms:Score,build:(state:Awaited<ReturnType<QueueIndexer['reportedInsertion']>>,rate:bigint)=>{value:P;funding:Coin[]}){
-  return this.action((p,_tip,rows)=>this.reportedInsertion(p,terms,rows),s=>watchCoins(s.vault,s.controller,s.authority,s.successor),build);
- }
- claim<P>(build:(state:Awaited<ReturnType<QueueIndexer['reportedClaim']>>,rate:bigint)=>{value:P;funding:Coin[]}){
-  return this.action((p,tip,rows)=>this.reportedClaim(p,tip,rows),s=>watchCoins(s.vault,s.node,s.escrow,s.reserve),build,s=>s.mtp);
- }
- /** Financial head read: no root read, ranking or traversal of the standing queue.
-  * listunspent is script-indexed, so the server still returns node candidates. */
- async head(){return verifiedProviders(this.provider,walletPeers(this.provider),async(peer,p)=>{
-  const c=this.context(p),tip=await p.tip(),mtp=await p.medianTime(tip.height,tip.hash),ticks=await tickContext(p,tip),ancestry=ancestryVerifier(p,{height:tip.height,mtp,...ticks});
-  await this.origin(p,ancestry);
-  const states=(await p.getUtxosForLockingBytecode(arena(c).lockingBytecode)).filter(u=>u.token?.category===c.identity.vault);
-  if(states.length!==1)throw Error('Vault uniqueness failure');
-  const vault=states[0]!,state=readState(c,vault);
-  if(state.head.id===ZERO)throw Error('Queue is empty');
-  const candidates=(await p.getUtxosForLockingBytecode(node(c).lockingBytecode)).filter(u=>u.token?.category===c.identity.queue&&u.token.nft?.commitment.slice(0,64)===state.head.id);
-  if(candidates.length!==1)throw Error('Head uniqueness failure');
-  const first=candidates[0]!,offer=readNode(c,first);
-  if(!sameLink(state.head,offer))throw Error('Stale head score');
-  await verifyCoins(p,[vault,first],peer,true);
-  if((await p.tip()).hash!==tip.hash)throw Error('Tip changed during head verification');
-  const value={vault,node:first,state,clock:{height:tip.height,hash:tip.hash,mtp,...ticks}};
-  return {value,tip,identity:json(value)};
- },{parallel:true});}
- async sync(){return verifiedProviders(this.provider,walletPeers(this.provider),async(peer,p)=>{
-  const c=this.context(p),tip=await p.tip(),mtp=await p.medianTime(tip.height,tip.hash),ticks=await tickContext(p,tip),ancestry=ancestryVerifier(p,{height:tip.height,mtp,...ticks});
-  await this.origin(p,ancestry);
-  const groups=await Promise.all([arena(c),node(c),root(c)].map(contract=>p.getUtxosForLockingBytecode(contract.lockingBytecode))),coins=groups.flat().filter(u=>u.token?.category===c.identity.vault||u.token?.category===c.identity.queue),value=snapshot(c,coins);
-  await verifyCoins(p,coins,peer,true);
-  if((await p.tip()).hash!==tip.hash)throw Error('Tip changed during queue verification');
-  const result={...value,config:this.config,clock:{height:tip.height,hash:tip.hash,mtp,...ticks},state:readState(c,value.vault)};
-  return {value:result,tip,identity:json({tip:tip.hash,coins:coins.sort((a,b)=>(a.txid+':'+a.vout).localeCompare(b.txid+':'+b.vout))})};
- },{parallel:true});}
+ reportedAssetInput(amount:bigint,id?:string){return this.provider.session(()=>this.gateSource(this.provider,amount,id));}
  async assetInput(amount:bigint,id?:string){return verifiedProviders(this.provider,walletPeers(this.provider),async(peer,p)=>{
-  const tip=await p.tip(),coins=await p.getUtxosForLockingBytecode(gate(this.context(p),id).lockingBytecode);
-  // Tokenless exhausted reserves are retained. Donations never replace the backed source.
-  // Immutable empty NFTs are introspection-indistinguishable from pure FTs.
-  // Accept these in adversarial escrows so a bidder cannot block the head.
-  const candidate=this.selectAsset(coins,amount,id);
-  // Identical donations are interchangeable; they cannot block an authentic escrow.
-  await verifyCoins(p,[candidate],peer,true);return {value:candidate,tip,identity:json(candidate)};
+  const tip=await p.tip(),source=await this.gateSource(p,amount,id);
+  await verifyCoins(p,[source],peer,true);
+  return {value:source,tip,identity:json(source)};
  },{parallel:true});}
  /** History is only needed for owner archives; claims use the state head and one node. */
  async owned(owner:string,offerId?:string){return verifiedProviders(this.provider,walletPeers(this.provider),async(peer,p)=>{
   const c=this.context(p),tip=await p.tip(),mtp=await p.medianTime(tip.height,tip.hash),ticks=await tickContext(p,tip),ancestry=ancestryVerifier(p,{height:tip.height,mtp,...ticks}),script=node(c).lockingBytecode;
-  await this.origin(p,ancestry);
+  await this.authenticateOrigin(p,ancestry);
   const history=await p.history(script),all=new Map<string,{offer:Offer;created:string;terminal?:any;allocation?:any}>(),outpoints=new Map<string,string>();
   const transactions=[];
   for(const row of history){
@@ -189,16 +112,4 @@ export class QueueIndexer {
   if((await p.tip()).hash!==tip.hash)throw Error('Tip changed during owner history verification');
   return {value:values,tip,identity:json({tip:tip.hash,values})};
  },{parallel:true});}
-}
-type Coin=Awaited<ReturnType<ElectrumCore['getUtxoCandidates']>>[number];
-function watchCoins(...coins:(Coin|undefined)[]){return [...new Set(coins.filter((coin):coin is Coin=>!!coin))];}
-async function readCandidates(p:ElectrumCore,script:string,sessionRows?:Map<string,Coin[]>){
- const coins=await p.getUtxoCandidates(script);sessionRows?.set(script,coins);return coins;
-}
-async function readTogether<const T extends readonly unknown[]>(reads:T):Promise<{[K in keyof T]:Awaited<T[K]>}>{
- const results=await Promise.allSettled(reads);
- return results.map(result=>{
-  if(result.status==='rejected')throw result.reason;
-  return result.value;
- }) as {[K in keyof T]:Awaited<T[K]>};
 }
