@@ -1,6 +1,6 @@
-import type {Parameters} from '../../src/queue/model';
+import type {Parameters} from './model.js';
 
-export function queueRewardSchedule(p:Parameters,remaining:bigint,mtp:number) {
+export function queueRewardSchedule(p:Pick<Parameters,'releases'|'cap'|'epoch'|'interval'>,remaining:bigint,mtp:number) {
  // Releases unlock only once MTP has passed the boundary.
  const unlocked=Math.max(0,Math.min(p.releases,Math.floor((mtp-1-p.epoch)/p.interval)));
  const future=BigInt(p.releases-unlocked)*p.cap;

@@ -22,3 +22,8 @@ export function loadQueuePage(network:string,path='index.json',signal?:AbortSign
  if(!fresh&&path==='index.json'&&warmed?.network===network&&!warmed.used){warmed.used=true;return warmed.promise;}
  return fetchQueuePage(network,path,signal,fresh);
 }
+
+export const catalogRefreshMs=90000;
+export const catalogStaleMs=15*60*1000;
+export const catalogDate=(updatedAt:string)=>new Date(updatedAt).toLocaleString(undefined,{timeZoneName:'short'});
+export const catalogIsStale=(updatedAt:string,now=Date.now())=>now-Date.parse(updatedAt)>catalogStaleMs;

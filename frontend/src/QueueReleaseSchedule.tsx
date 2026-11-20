@@ -1,7 +1,7 @@
 import {useState,type ReactNode} from 'react';
 import type {Parameters} from '../../src/queue/model';
 import {localTimestamp,browserTimezone} from './localTime';
-import {queueRewardSchedule} from './queueRewardSchedule';
+import {queueRewardSchedule} from '../../src/queue/reward-schedule';
 export function QueueReleaseSchedule({parameters:p,reserve,mtp,reportedAt,now,available:clockAvailable,rewardAmount}:{parameters:Parameters;reserve:bigint;mtp:number|undefined;reportedAt:number;now:number;available:boolean;rewardAmount:(amount:bigint)=>ReactNode}){
  const [expanded,setExpanded]=useState(false);
  const fresh=clockAvailable&&mtp!==undefined&&reportedAt>0&&now-reportedAt<=30000;

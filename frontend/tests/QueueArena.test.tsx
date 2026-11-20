@@ -6,6 +6,7 @@ vi.mock('../src/queueClient',()=>({queueCall:vi.fn()}));
 vi.mock('../src/queueCatalog',async importOriginal=>({...await importOriginal<typeof import('../src/queueCatalog')>(),loadQueuePage:vi.fn()}));
 import {queueCall} from '../src/queueClient';
 import {loadQueuePage} from '../src/queueCatalog';
+import type {CatalogObservation} from '../../src/queue/catalog';
 import QueueArena from '../src/QueueArena';
 import {WalletTransactionsContext,type WalletTransactions} from '../src/walletTransactions';
 const zero='00'.repeat(32),owner='02'+'11'.repeat(32),genesis='aa'.repeat(32);
@@ -206,9 +207,9 @@ it('keeps creation status below the form and removes the submission label after 
 
 it('uses token tickers outside the full reward asset identity',async()=>{
  const category='a7'.repeat(32),name='Arena Token',symbol='ARN';
- const tokenConfig={...config,parameters:{...config.parameters,stakingCategory:category,rewardCategory:category}};
+ const tokenConfig={...config,anchor:{...config.anchor,genesis:'ac'.repeat(32)},parameters:{...config.parameters,stakingCategory:category,rewardCategory:category}};
  const bchVault={...config,anchor:{...config.anchor,genesis:'57'.repeat(32)}};
- vi.mocked(loadQueuePage).mockResolvedValue({network:'chipnet',vaults:[tokenConfig,bchVault],pages:[]});
+ vi.mocked(loadQueuePage).mockResolvedValue({network:'chipnet',vaults:[{...tokenConfig,rewardSnapshot:{network:'chipnet',vaultId:tokenConfig.anchor.genesis,remaining:'20000',updatedAt:new Date().toISOString() }},bchVault],pages:[]});
  vi.mocked(queueCall).mockImplementation(async request=>
   request.operation==='list'||request.operation==='owned'?[]:{...snapshot,config:tokenConfig});
  const fetchToken=vi.spyOn(globalThis,'fetch').mockResolvedValue(new Response(JSON.stringify({name,token:{category,symbol,decimals:2}})));
@@ -246,15 +247,17 @@ it('uses token tickers outside the full reward asset identity',async()=>{
 
 it('shows the published count before the first blockchain reply and retains it on failure',async()=>{
  window.location.hash='#/v3/offers';
- vi.mocked(loadQueuePage).mockResolvedValue({network:'chipnet',vaults:[{...config,offerCount:{network:'chipnet',vaultId:genesis,waiting:7,updatedAt:new Date().toISOString()}}],pages:[]});
+ const vaultId='77'.repeat(32),listed={...config,anchor:{...config.anchor,genesis:vaultId}};
+ const updatedAt=new Date(Date.now()-20*60*1000).toISOString();
+ vi.mocked(loadQueuePage).mockResolvedValue({network:'chipnet',vaults:[{...listed,offerCount:{network:'chipnet',vaultId,waiting:7,updatedAt}}],pages:[]});
  let reject!: (error:Error)=>void;
- vi.mocked(queueCall).mockImplementation(async request=>request.operation==='reportedQueue'?new Promise((_resolve,fail)=>{reject=fail;}):[]);
+ vi.mocked(queueCall).mockImplementation(async request=>request.operation==='catalog'?new Promise((_resolve,fail)=>{reject=fail;}):[]);
  render(<QueueArena/>);
  const table=await screen.findByRole('table');
- await waitFor(()=>expect(within(table).getByRole('cell',{name:'7'})).toBeVisible());
+ await waitFor(()=>expect(within(table).getByRole('cell',{name:/^7 · Stale/})).toBeVisible());
  await waitFor(()=>expect(reject).toBeDefined());
- await act(async()=>reject(Error('Malformed or cyclic link')));
- expect(within(table).getByTitle(/Inconsistent queue data/)).toHaveTextContent('7');
+ await act(async()=>reject(Error('Provider unavailable')));
+ expect(within(table).getByTitle(/Queue data unavailable/)).toHaveTextContent('7 · Stale');
  expect(screen.queryByText('Verifying…')).toBeNull();
 });
 
@@ -402,19 +405,32 @@ it('shows the live score and highlights a submitted offer once it appears in the
 });
 
 
-it('shows unclaimed and future rewards without counting the pot twice',async()=>{
+it('shows published rewards immediately and refreshes cells without replacing the row',async()=>{
  window.location.hash='#/v3/offers';
  const boundary=config.parameters.epoch+2*config.parameters.interval;
- vi.mocked(queueCall).mockImplementation(async request=>request.operation==='reportedQueue'
-  ? {...snapshot,mtp:boundary,state:{...snapshot.state,reserve:19000n}}:[]
- );
+ const vaultId='ab'.repeat(32),listed={...config,anchor:{...config.anchor,genesis:vaultId}};
+ const updatedAt=new Date(Date.now()-20*60*1000).toISOString();
+ const cached={network:'chipnet' as const,vaultId,remaining:'20000',schedule:{available:'2000',nextRelease:boundary},updatedAt};
+ vi.mocked(loadQueuePage).mockResolvedValue({network:'chipnet',vaults:[{...listed,rewardSnapshot:cached}],pages:[]});
+ let observe!: (value:CatalogObservation)=>void;
+ vi.mocked(queueCall).mockImplementation(async (request,_keys,_signal,receive)=>{
+  if(request.operation==='catalog'){observe=receive!;return new Promise(()=>{});}
+  return [];
+ });
  render(<QueueArena/>);
  const table=await screen.findByRole('table');
  expect(within(table).getAllByRole('columnheader').map(header=>header.textContent)).toEqual([
   'Vault','Reward remaining','Next reward release','Reward available for claiming','Staking asset','Offers',
  ]);
- await waitFor(()=>expect(table.querySelector('td[data-label="Reward remaining"]')).toHaveTextContent('0.00019000 BCH'));
- expect(table.querySelector('td[data-label="Reward available for claiming"]')).toHaveTextContent('0.00001000 BCH');
- expect(table.querySelector('td[data-label="Next reward release"] time')).toHaveAttribute('datetime',new Date(boundary*1000).toISOString());
- expect(queueCall).toHaveBeenCalledWith(expect.objectContaining({operation:'reportedQueue',clock:true}),[],expect.any(AbortSignal));
+ const row=(await within(table).findByRole('link',{name:'Vault 1'})).closest('tr')!;
+ expect(row.querySelector('td[data-label="Reward remaining"]')).toHaveTextContent('0.00020000 BCH · Stale');
+ expect(screen.getByText(/Last updated:/).querySelector('time')).toHaveAttribute('datetime',updatedAt);
+ const refreshedAt=new Date().toISOString();
+ await act(async()=>observe({vaultId,kind:'reward',reward:{...cached,remaining:'19000',schedule:{available:'1000',nextRelease:boundary},updatedAt:refreshedAt}}));
+ expect(row.querySelector('td[data-label="Reward remaining"]')).toHaveTextContent('0.00019000 BCH');
+ expect(row.querySelector('td[data-label="Reward available for claiming"]')).toHaveTextContent('0.00001000 BCH');
+ expect(row.querySelector('td[data-label="Next reward release"] time')).toHaveAttribute('datetime',new Date(boundary*1000).toISOString());
+ expect(screen.getByText(/Last updated:/).querySelector('time')).toHaveAttribute('datetime',refreshedAt);
+ expect(within(table).getByRole('link',{name:'Vault 1'}).closest('tr')).toBe(row);
+ expect(queueCall).not.toHaveBeenCalledWith(expect.objectContaining({operation:'reportedQueue'}),[],expect.any(AbortSignal));
 });

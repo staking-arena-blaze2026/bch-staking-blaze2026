@@ -5,6 +5,7 @@ import {ElectrumTransportError} from '../../src/electrum-core';
 import {BrowserElectrumProvider} from '../../src/electrum-wss';
 import {emptyQueueIndex,scanQueueIndex} from '../../src/queue/public-index';
 import {confirmedWalletTransaction} from '../../src/electrum-wallet';
+import {readQueueCatalog} from '../../src/queue/catalog';
 import {QueueIndexer} from '../../src/queue/chain';
 import {QueueWallet,BrowserQueueStore} from '../../src/queue/wallet';
 import {v3Config} from './v3Config';
@@ -13,7 +14,7 @@ import {queueArchiveStore} from './queueArchiveStore';
 const workerEnv:Record<string,string|undefined>=import.meta.env;
 const options=v3Config({...workerEnv,VITE_V3_NETWORK:self.name.split(':')[0]}),readOnly=self.name.endsWith(':read');
 if(readOnly)options.allowBroadcast=false;
-const provider=new BrowserElectrumProvider(options),store=new BrowserQueueStore(options.network),wallet=new QueueWallet(provider,store),scope=self as unknown as DedicatedWorkerGlobalScope;
+const provider=new BrowserElectrumProvider(options),store=new BrowserQueueStore(options.network),scope=self as unknown as DedicatedWorkerGlobalScope;
 const publicScan=emptyQueueIndex(options.network);
 const displayIndexers=new Map<string,QueueIndexer>();
 let failure=false;
@@ -22,7 +23,8 @@ let stage='Verifying blockchain information';
 provider.onStage=value=>{stage=messages[value]??'Checking transaction recovery';scope.postMessage({type:'progress',message:stage});};
 provider.onTiming=timing=>scope.postMessage({type:'timing',timing});
 provider.onVerificationProgress=message=>scope.postMessage({type:'progress',message});
-const conflictReady=providerConflictStore(options.network).then(async s=>{provider.unresolvedChainPeers=new Set(await s.read());provider.persistChainConflict=async peers=>{try{await s.save(peers);}catch(e){failure=true;throw e;}};}).catch(()=>{failure=true;});
+let queueWallet:QueueWallet|undefined,conflictReady:Promise<void>|undefined;
+const loadConflicts=()=>conflictReady??=providerConflictStore(options.network).then(async s=>{provider.unresolvedChainPeers=new Set(await s.read());provider.persistChainConflict=async peers=>{try{await s.save(peers);}catch(e){failure=true;throw e;}};}).catch(()=>{failure=true;});
 function frames(error:unknown) {
  return import.meta.env.DEV&&error instanceof Error?error.stack?.split('\n').slice(1,9).filter(line=>/^\s+at /.test(line)).join('\n'):undefined;
 }
@@ -32,15 +34,14 @@ scope.addEventListener('unhandledrejection', event=>{
 });
 let pending:Promise<void>=Promise.resolve();
 scope.onmessage=event=>{pending=pending.catch(()=>{}).then(async()=>{const {id,intent,keys=[]}=event.data;const heartbeat=readOnly?undefined:setInterval(()=>scope.postMessage({type:'heartbeat',id,message:'Still checking blockchain information: '+stage}),5000);try{
- const operation=String(intent.operation),reading=['list','reportedQueue','owned','discover','creationStatus'].includes(operation);
+ const operation=String(intent.operation),reading=['list','reportedQueue','catalog','owned','discover','creationStatus'].includes(operation);
  if(readOnly&&!reading)throw Error('Read-only queue worker cannot sign, journal or broadcast');
- if(!['list','discover','reportedQueue'].includes(operation)){
-  await conflictReady;
+ if(!['list','discover','reportedQueue','catalog'].includes(operation)){
+  await loadConflicts();
   if(failure)throw Error('Provider conflict evidence is unavailable');
  }
  const run=async()=>{let result;
- if(operation==='invalidate')result=wallet.invalidateReviews();
- else if(operation==='list')result=await store.list();
+ if(operation==='list')result=await store.list();
  else if(operation==='discover'){
   const summary=await scanQueueIndex(publicScan,provider,12000,new Set<string>(intent.published));
   result={...summary,vaults:Object.values(publicScan.vaults)};
@@ -48,6 +49,9 @@ scope.onmessage=event=>{pending=pending.catch(()=>{}).then(async()=>{const {id,i
  else if(operation==='creationStatus'){
   const tx=await confirmedWalletTransaction(provider,intent.txid);
   result={confirmed:tx.confirmations>0};
+ }
+ else if(operation==='catalog'){
+  await readQueueCatalog(provider,intent.targets,value=>scope.postMessage({type:'catalogObservation',id,value}));
  }
  else if(operation==='reportedQueue'){
   const key=JSON.stringify(intent.config,(_,value)=>typeof value==='bigint'?value.toString():value);
@@ -63,20 +67,24 @@ scope.onmessage=event=>{pending=pending.catch(()=>{}).then(async()=>{const {id,i
   await queueArchiveStore(options.network).then(store=>store.save(config,owner,indexed)).catch(()=>{});
   result=indexed.rows;
  }
- else if(operation==='previewCreate')result=await wallet.prepare(intent.intent,keys,undefined,undefined,intent.discoveryId,'preview');
- else if(operation==='acceptCreateReview')result=await wallet.prepare(intent.draft.intent,keys,undefined,undefined,undefined,intent.draft);
- else if(operation==='prepare')result=await wallet.prepare(intent.intent,keys,undefined,undefined,intent.discoveryId);
- else if(operation==='advance')result=await wallet.advance(intent.id,keys);
- else if(operation==='reconcileRecovery')result=await wallet.reconcileRecovery(intent.id);
- else if(operation==='confirm')result=await wallet.confirm(intent.id);
- else if(operation==='authorize')result=await wallet.authorize(intent.id);
- else if(operation==='retain')result=await wallet.retain(intent.id,intent.raw);
- else if(operation==='beginSigning')result=await wallet.beginSigning(intent.id);
- else if(operation==='signingFailed')result=await wallet.signingFailed(intent.id,intent.rejected===true,intent.notRequested===true);
- else if(operation==='submit')result=await wallet.broadcast(intent.id);
- else if(operation==='resume')result=await wallet.resume(intent.id,keys,intent.retry===true);
- else if(operation==='discard')result=await wallet.discard(intent.id);
- else throw Error('Unsupported queue operation');
+ else {
+  const wallet=queueWallet??=new QueueWallet(provider,store);
+  if(operation==='invalidate')result=wallet.invalidateReviews();
+  else if(operation==='previewCreate')result=await wallet.prepare(intent.intent,keys,undefined,undefined,intent.discoveryId,'preview');
+  else if(operation==='acceptCreateReview')result=await wallet.prepare(intent.draft.intent,keys,undefined,undefined,undefined,intent.draft);
+  else if(operation==='prepare')result=await wallet.prepare(intent.intent,keys,undefined,undefined,intent.discoveryId);
+  else if(operation==='advance')result=await wallet.advance(intent.id,keys);
+  else if(operation==='reconcileRecovery')result=await wallet.reconcileRecovery(intent.id);
+  else if(operation==='confirm')result=await wallet.confirm(intent.id);
+  else if(operation==='authorize')result=await wallet.authorize(intent.id);
+  else if(operation==='retain')result=await wallet.retain(intent.id,intent.raw);
+  else if(operation==='beginSigning')result=await wallet.beginSigning(intent.id);
+  else if(operation==='signingFailed')result=await wallet.signingFailed(intent.id,intent.rejected===true,intent.notRequested===true);
+  else if(operation==='submit')result=await wallet.broadcast(intent.id);
+  else if(operation==='resume')result=await wallet.resume(intent.id,keys,intent.retry===true);
+  else if(operation==='discard')result=await wallet.discard(intent.id);
+  else throw Error('Unsupported queue operation');
+ }
  return result;};
  if(!reading&&!scope.navigator.locks)throw Error('Queue transactions require Web Locks');
  const result=reading?await run():await scope.navigator.locks.request('arena-'+options.network+'-queue',{ifAvailable:true},async lock=>{if(!lock)throw Error('Another tab is updating this queue wallet');return timed(provider,operation,run);});

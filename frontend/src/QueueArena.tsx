@@ -8,7 +8,7 @@ import type {Config,QueueIndexer} from '../../src/queue/chain';
 import type {Operation,Intent} from '../../src/queue/wallet';
 import {minimumMinutes,STAKING_UNIT_SECONDS,formatDuration} from '../../src/v3/time-policy';
 import {queueCall} from './queueClient';
-import {loadQueuePage,queueCatalogColumns,queueConfigStorage} from './queueCatalog';
+import {catalogRefreshMs,loadQueuePage,queueCatalogColumns,queueConfigStorage} from './queueCatalog';
 import {activeNetwork} from './activeNetwork';
 import {useWalletTransactions} from './walletTransactions';
 import {pairingRequestCheck,restoreWalletRequest} from './walletRequest';
@@ -17,11 +17,13 @@ import {localDateTimeInput,parseLocalDateTime,localTimestamp} from './localTime'
 import {assetAmount,assetLabel,assetQuantity,categoryAsset as asset,priorityRatio,wholeTokenRange,tokenBounds} from './assetAmounts';
 import {useTokenMetadata} from './useAssetAmounts';
 import {tokenIdentity} from './tokenMetadata';
-import {queueRewardSchedule} from './queueRewardSchedule';
+import type {CatalogObservation} from '../../src/queue/catalog';
+import {markQueueRewardFailed,queueReward,rememberQueueReward} from './queueRewards';
+import {QueueCatalogUpdated,QueueRewardCells} from './QueueCatalogData';
 import {QueueReleaseSchedule} from './QueueReleaseSchedule';
 import {DurationSummary} from './DurationSummary';
 import {QueueCountCell} from './QueueCountCell';
-import {rememberQueueCount,setQueueCountError} from './queueCounts';
+import {queueCount,rememberQueueCount,setQueueCountError} from './queueCounts';
 import {deriveWalletKey} from './walletDerivation';
 import {queueArchiveStore} from './queueArchiveStore';
 type FundingDetails={code?:string;reserved?:string;reservations?:{id:string;step:string}[];tokenBalance?:{category:string;required:bigint;available:bigint}};
@@ -31,7 +33,7 @@ const encode=(v:unknown)=>JSON.stringify(v,(_,x)=>typeof x==='bigint'?x.toString
 const storage=queueConfigStorage(activeNetwork);
 export function parseQueueConfig(value:unknown):Config{
  const c=typeof value==='string'?JSON.parse(value):structuredClone(value);if(!c?.parameters||!c?.identity||!c?.anchor)throw Error('Invalid vault configuration');
- c.parameters.cap=BigInt(c.parameters.cap);parameters(c.parameters);delete c.offerCount;
+ c.parameters.cap=BigInt(c.parameters.cap);parameters(c.parameters);delete c.offerCount;delete c.rewardSnapshot;
  if(![c.identity.vault,c.identity.queue,c.anchor.genesis].every(s=>typeof s==='string'&&/^[a-f0-9]{64}$/.test(s))||c.identity.vault===c.identity.queue||![c.identity.vault,c.identity.queue].every(s=>s!==ZERO&&![c.parameters.stakingCategory,c.parameters.rewardCategory].includes(s))||!/^(02|03)[a-f0-9]{64}$/.test(c.anchor.creator))throw Error('Invalid vault identity');return c;
 }
 function saved(){try{return JSON.parse(localStorage.getItem(storage)??'[]').flatMap((v:unknown)=>{try{return [parseQueueConfig(v)];}catch{return [];}});}catch{return [];} }
@@ -58,7 +60,6 @@ export default function QueueArena(){
  const [publication,setPublication]=useState<{updatedAt:string;online?:number;pending?:Record<string,string>;errors?:string[]}>(),[publicIds,setPublicIds]=useState(savedPublicIds);
  const [refreshing,setRefreshing]=useState(false),[chainStatus,setChainStatus]=useState<Record<string,{confirmed?:boolean;error?:string}>>({});
  const catalogRequest=useRef(0),publishedPages=useRef(new Set<string>()),publicIdsRef=useRef(new Set(publicIds)),liveScan=useRef(false);
- const [catalogRewards,setCatalogRewards]=useState<Record<string,{remaining:bigint;mtp?:number}|null>>({});
  const [reports,setReports]=useState<Record<string,{snapshot?:Snapshot;error?:string;at:number}>>({});
  const snapshots=useRef(new Map<string,{snapshot:Snapshot;at:number}>());
  const [archives,setArchives]=useState<Record<string,{rows:Owned;at?:number;error?:string;updating?:boolean}>>({});
@@ -150,7 +151,8 @@ export default function QueueArena(){
  }):[];
  const visibleOwners=ownerOffers.filter(({row})=>offerFilter==='All'||row.status===offerFilter);
  const recoveryOps=myOffers?ops.filter(op=>owner&&op.owner?.publicKey===owner):ops;
- const catalogPage=configs.slice(page*20,(page+1)*20);
+ const catalogPage=useMemo(()=>configs.slice(page*20,(page+1)*20),[configs,page]);
+ const catalogIds=useMemo(()=>catalogPage.map(id),[catalogPage]);
  const displayConfigs=creating?[]:myOffers?visibleOwners.map(({config})=>config):selectedConfig?[selectedConfig]:catalogPage;
  const tokenMetadata=useTokenMetadata(activeNetwork,[
   ...displayConfigs.flatMap(c=>[c.parameters.stakingCategory,c.parameters.rewardCategory]),
@@ -183,7 +185,14 @@ export default function QueueArena(){
  }
  async function operations(signal?:AbortSignal){const list:Operation[]=signal?await queueCall({operation:'list'},[],signal):await queueCall({operation:'list'});if(signal?.aborted)return list;setOps(list);retain(list.filter(o=>o.raw&&(o.config?.anchor.genesis||'config'in o.intent)).flatMap(o=>{try{return [parseQueueConfig(o.config??('config'in o.intent?o.intent.config:undefined))];}catch{return [];}}),false);return list;}
  function acceptPublished(data:{vaults:unknown[]}){
-  const values=data.vaults.flatMap(v=>{try{const c=parseQueueConfig(v);rememberQueueCount(activeNetwork,id(c),(v as {offerCount?:unknown}).offerCount);return [c];}catch{return [];}});
+  const values=data.vaults.flatMap(v=>{
+   try{
+    const c=parseQueueConfig(v),published=v as {offerCount?:unknown;rewardSnapshot?:unknown};
+    rememberQueueCount(activeNetwork,id(c),published.offerCount);
+    rememberQueueReward(activeNetwork,id(c),published.rewardSnapshot);
+    return [c];
+   }catch{return [];}
+  });
   for(const c of values)publicIdsRef.current.add(id(c));
   setPublicIds(new Set(publicIdsRef.current));
   try{localStorage.setItem(publishedStorage,JSON.stringify([...publicIdsRef.current]));}catch{}
@@ -224,10 +233,10 @@ export default function QueueArena(){
   }catch{/* The published and locally retained catalog stays available. */}
   finally{liveScan.current=false;}
  }
- async function readQueue(c:Config,channel:string,signal:AbortSignal,showOffers:boolean,showCatalogRewards=false){
+ async function readQueue(c:Config,channel:string,signal:AbortSignal,showOffers:boolean){
   const vaultId=id(c);
   try{
-   const value:Snapshot=await queueCall({operation:'reportedQueue',config:c,channel,clock:channel==='selected'||showCatalogRewards},[],signal);
+   const value:Snapshot=await queueCall({operation:'reportedQueue',config:c,channel,clock:channel==='selected'},[],signal);
    if(signal.aborted)return;
    const at=Date.now();
    const observed=observedOffers.current.get(vaultId)??new Set<string>();
@@ -240,23 +249,21 @@ export default function QueueArena(){
    snapshots.current.delete(vaultId);snapshots.current.set(vaultId,entry);
    if(snapshots.current.size>100)snapshots.current.delete(snapshots.current.keys().next().value!);
    if(showOffers)setReports(old=>({...old,[vaultId]:entry}));
-   if(showCatalogRewards||channel==='selected')setCatalogRewards(old=>({...old,[vaultId]:{remaining:value.state.reserve,mtp:entry.snapshot.mtp}}));
   }catch(e){
    if(signal.aborted)return;
    const detail=errorMessage(e);
    const label=/uniqueness|malformed|cyclic|orphan|stale link|ordering|collateral|unauthenticated|inconsistent|invalid root|incorrect reserve|duplicate queue/i.test(detail)?'Inconsistent queue data':'Queue data unavailable';
    setQueueCountError(activeNetwork,vaultId,label);
-   if(showCatalogRewards||channel==='selected')setCatalogRewards(old=>({...old,[vaultId]:null}));
    if(showOffers)setReports(old=>({...old,[vaultId]:{...(old[vaultId]??snapshots.current.get(vaultId)??{at:0}),error:label}}));
    return (e as {recoveryExhausted?:boolean})?.recoveryExhausted;
   }
  }
  useEffect(()=>{const change=()=>{setRoute(location.hash);setNow(Date.now());};window.addEventListener('hashchange',change);return()=>window.removeEventListener('hashchange',change);},[]);
  useEffect(()=>{
-  if(!selectedId&&!myOffers)return;
-  const clock=setInterval(()=>setNow(Date.now()),1000);
+  if(creating)return;
+  const clock=setInterval(()=>setNow(Date.now()),browsing?30000:1000);
   return()=>clearInterval(clock);
- },[selectedId,myOffers]);
+ },[selectedId,myOffers,creating,browsing]);
  useEffect(()=>{const interrupt=()=>{lifetime.current.abort();confirmationRef.current?.respond(false);};const restore=()=>{if(lifetime.current.signal.aborted)lifetime.current=new AbortController();};window.addEventListener('pagehide',interrupt);window.addEventListener('pageshow',restore);return()=>{window.removeEventListener('pagehide',interrupt);window.removeEventListener('pageshow',restore);};},[]);
  useEffect(()=>{
   lifetime.current=new AbortController();
@@ -314,7 +321,7 @@ export default function QueueArena(){
   void check();
   return()=>{active=false;};
  },[awaitingPublication,creationIds,publication]);
- useLayoutEffect(()=>{if(ready||creating||myOffers||selectedId)document.getElementById('arena-public-preview')?.remove();},[ready,creating,myOffers,selectedId]);
+ useLayoutEffect(()=>{if(ready||configs.length||creating||myOffers||selectedId)document.getElementById('arena-public-preview')?.remove();},[ready,configs.length,creating,myOffers,selectedId]);
  useEffect(()=>{if((myOffers||selectedId&&!selectedConfig)&&pages.length)void discover(pages[0]);},[myOffers,selectedId,!!selectedConfig,pages.join(',')]);
  const pendingQueues=[...new Set(receipts.flatMap(receipt=>receipt.kind==='offer'&&receipt.vaultId!==selectedId&&
   !observedOffers.current.get(receipt.vaultId)?.has(receipt.offerId)?[receipt.vaultId]:[]))].sort().join(',');
@@ -351,22 +358,68 @@ export default function QueueArena(){
   void run();
   return()=>{controller.abort();clearTimeout(timer);};
  },[selectedRevision,refreshVersion,verificationRetry]);
+ const catalogRevision=encode(catalogPage);
  useEffect(()=>{
-  if(creating||selectedId||myOffers&&!owner)return;
-  const controller=new AbortController(),values=myOffers?configs:configs.slice(page*20,(page+1)*20);
+  if(!browsing||!ready||!catalogPage.length)return;
+  const controller=new AbortController();
+  let timer:ReturnType<typeof setTimeout>,running=false;
+  const run=async()=>{
+   if(running)return;
+   clearTimeout(timer);
+   running=true;
+   try{
+    if(document.hidden)return;
+    const due=(updatedAt?:string)=>!updatedAt||Date.now()-Date.parse(updatedAt)>=catalogRefreshMs;
+    const targets=catalogPage.map(config=>{
+     const reward=queueReward(activeNetwork,id(config));
+     return {config,reward:!reward?.schedule||due(reward.updatedAt),count:due(queueCount(activeNetwork,id(config))?.updatedAt)};
+    }).filter(t=>t.reward||t.count);
+    if(!targets.length)return;
+    const pending=new Map(targets.map(target=>[id(target.config),{reward:target.reward,count:target.count}]));
+    const observe=({vaultId,kind,reward,count}:CatalogObservation)=>{
+     const fields=pending.get(vaultId);
+     if(controller.signal.aborted||!fields?.[kind])return;
+     if(reward||count)fields[kind]=false;
+     if(kind==='reward'){
+      if(reward)rememberQueueReward(activeNetwork,vaultId,reward);
+      else markQueueRewardFailed(activeNetwork,vaultId);
+     }else{
+      if(count)rememberQueueCount(activeNetwork,vaultId,count);
+      setQueueCountError(activeNetwork,vaultId,count?undefined:'Queue data unavailable');
+     }
+    };
+    try{await queueCall({operation:'catalog',targets},[],controller.signal,observe);}
+    catch{/* Keep the latest observations when the provider is unavailable. */}
+    for(const [vaultId,fields] of pending){
+     if(fields.reward)observe({vaultId,kind:'reward'});
+     if(fields.count)observe({vaultId,kind:'count'});
+    }
+   }finally{
+    running=false;
+    if(!controller.signal.aborted)timer=setTimeout(run,catalogRefreshMs);
+   }
+  };
+  const visible=()=>{if(!document.hidden)void run();};
+  void run();
+  document.addEventListener('visibilitychange',visible);
+  return()=>{controller.abort();clearTimeout(timer);document.removeEventListener('visibilitychange',visible);};
+ },[browsing,ready,catalogRevision,refreshVersion]);
+ useEffect(()=>{
+  if(!myOffers||!owner)return;
+  const controller=new AbortController(),values=configs;
   let timer:ReturnType<typeof setTimeout>;
   const run=async()=>{
    if(!document.hidden){
     let next=0;
     await Promise.all([0,1].map(async lane=>{
-     while(next<values.length&&!controller.signal.aborted)await readQueue(values[next++]!,'market-'+lane,controller.signal,myOffers,!myOffers);
+     while(next<values.length&&!controller.signal.aborted)await readQueue(values[next++]!,'market-'+lane,controller.signal,true);
     }));
    }
-   if(!controller.signal.aborted)timer=setTimeout(run,myOffers?20000:90000);
+   if(!controller.signal.aborted)timer=setTimeout(run,20000);
   };
   void run();
   return()=>{controller.abort();clearTimeout(timer);};
- },[creating,myOffers,selectedId,page,configRevision,myOffers&&!!owner,refreshVersion]);
+ },[myOffers,configRevision,myOffers&&!!owner,refreshVersion]);
  useEffect(()=>{
   if(!owner||!myOffers&&!selectedConfig)return;
   const controller=new AbortController(),values=myOffers?configs:[selectedConfig!];
@@ -547,19 +600,15 @@ export default function QueueArena(){
    })}</tbody></table></div>{!snapshot.ordered.length&&<p>No offers waiting.</p>}</>:<p>{selectedError?'Live queue unavailable.':'Loading queue…'}</p>}</section>{ownerSection}</div>
   </>}
  </>:<section className="v3-known"><h1>Known vaults</h1>{discoveryControls}
+ <QueueCatalogUpdated network={activeNetwork} vaultIds={catalogIds} now={now}/>
  <table className="marketplace-table queue-marketplace"><thead><tr>{queueCatalogColumns.map(label=><th key={label} scope="col">{label}</th>)}</tr></thead>
  <tbody>{catalogPage.map((c,n)=>{
-  const report=catalogRewards[id(c)];
-  const schedule=report?.mtp===undefined?undefined:queueRewardSchedule(c.parameters,report.remaining,report.mtp);
-  const missing=report===undefined?'—':'Unavailable';
   const highlighted=highlight?.kind==='vault'&&highlight.vaultId===id(c);
   return <tr key={id(c)} id={'vault-row-'+id(c)} tabIndex={highlighted?-1:undefined} className={highlighted?'queue-row-highlight':undefined}>
    <td><a className="marketplace-link" aria-label={'Vault '+(page*20+n+1)} href={'#/v3/vault/'+id(c)}>{page*20+n+1}</a></td>
-   <td data-label={queueCatalogColumns[1]}>{report?displayAsset(c.parameters.rewardCategory,report.remaining):missing}</td>
-   <td data-label={queueCatalogColumns[2]}>{schedule?(schedule.nextRelease===undefined?'All releases unlocked':<time dateTime={new Date(schedule.nextRelease*1000).toISOString()}>{localTimestamp(schedule.nextRelease)}</time>):missing}</td>
-   <td data-label={queueCatalogColumns[3]}>{schedule?displayAsset(c.parameters.rewardCategory,schedule.available):missing}</td>
+   <QueueRewardCells network={activeNetwork} vaultId={id(c)} category={c.parameters.rewardCategory} metadata={tokenMetadata(c.parameters.rewardCategory)} now={now}/>
    <td data-label={queueCatalogColumns[4]}>{displayAsset(c.parameters.stakingCategory)}</td>
-   <QueueCountCell network={activeNetwork} vaultId={id(c)}/>
+   <QueueCountCell network={activeNetwork} vaultId={id(c)} now={now}/>
   </tr>;
  })}</tbody></table>{ready&&!configs.length&&<p>No linked-list vaults have been discovered yet.</p>}<div><button disabled={!page} onClick={()=>setPage(p=>p-1)}>Previous</button><button disabled={(page+1)*20>=configs.length&&!pages.length} onClick={()=>{if((page+1)*20>=configs.length&&pages[0])void discover(pages[0]).then(loaded=>{if(loaded)setPage(p=>p+1);});else setPage(p=>p+1);}}>Next</button></div></section>}
  {!creating&&!myOffers&&!selectedId&&message&&messageRoute.current===route&&<p role="status">{message}</p>}

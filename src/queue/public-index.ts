@@ -2,7 +2,8 @@ import {utxo} from '../arena-core.js';
 import type {ElectrumCore,HistoryEntry} from '../electrum-core.js';
 import {discoveryScript} from '../v3/discovery.js';
 import {v3Network,type V3Network} from '../v3/network.js';
-import {QueueIndexer,type Config} from './chain.js';
+import type {Config} from './chain.js';
+import {readQueueCatalog,type CatalogReward,type OfferCount} from './catalog.js';
 import {announcementIn,type Announcement} from './discovery.js';
 import {authenticateGenesis} from './indexer.js';
 
@@ -12,30 +13,29 @@ export interface QueueIndexState {
  pending:Record<string,Announcement>;
  vaults:Record<string,Config>;
  counts?:Record<string,OfferCount>;
+ rewards?:Record<string,CatalogReward>;
 }
-export interface OfferCount {network:V3Network;vaultId:string;waiting:number;updatedAt:string}
 
 export function emptyQueueIndex(network:V3Network):QueueIndexState {
  return {network,seen:[],pending:{},vaults:{}};
 }
 
-/** Refresh the oldest counts first. Retain the last observation during outages. */
-export async function refreshQueueCounts(state:QueueIndexState,providers:readonly ElectrumCore[],budgetMs:number){
- const counts=state.counts??={},deadline=Date.now()+budgetMs;
- const vaults=Object.values(state.vaults).sort((a,b)=>(counts[a.anchor.genesis]?.updatedAt??'').localeCompare(counts[b.anchor.genesis]?.updatedAt??''));
- let next=0,updated=0;
- await Promise.all(providers.map(async p=>{
-  if(v3Network(p)!==state.network)throw Error('Queue count network mismatch');
-  while(next<vaults.length&&Date.now()<deadline){
-   const c=vaults[next++]!,vaultId=c.anchor.genesis;
-   try {
-    const queue=await new QueueIndexer(p,c).reportedDisplay();
-    counts[vaultId]={network:state.network,vaultId,waiting:queue.ordered.length,updatedAt:new Date().toISOString()};
-    updated++;
-   }catch{/* A failed or inconsistent report must never replace a count with zero. */}
-  }
- }));
- return updated;
+/** Refresh the oldest observations first and keep the last successful data. */
+export async function refreshQueueCatalog(state:QueueIndexState,p:ElectrumCore,budgetMs:number){
+ if(v3Network(p)!==state.network)throw Error('Queue catalog network mismatch');
+ const counts=state.counts??={},rewards=state.rewards??={};
+ const age=(c:Config)=>[counts[c.anchor.genesis]?.updatedAt??'',rewards[c.anchor.genesis]?.updatedAt??''].sort()[0]!;
+ const vaults=Object.values(state.vaults).sort((a,b)=>age(a).localeCompare(age(b)));
+ let countsUpdated=0,rewardsUpdated=0;
+ try {
+  await readQueueCatalog(p,vaults.map(config=>({config,reward:true,count:true})),value=>{
+   if(value.count){counts[value.vaultId]=value.count;countsUpdated++;}
+   if(value.reward){
+    rewards[value.vaultId]=value.reward;rewardsUpdated++;
+   }
+  },Date.now()+budgetMs);
+ }catch{/* An unavailable provider leaves the checkpoint intact. */}
+ return {countsUpdated,rewardsUpdated};
 }
 
 /** A confirmed child commits to its source txids. Read and hash-check those

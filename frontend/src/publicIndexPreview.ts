@@ -1,8 +1,11 @@
-import {assetLabel} from './assetAmounts';
+import {assetAmount,assetLabel} from './assetAmounts';
 import {createBrandArtwork} from './brandArtwork';
 import {fetchTokenMetadata} from './tokenMetadata';
-import {queueCatalogColumns,queueConfigStorage,warmQueuePage} from './queueCatalog';
+import {catalogDate,catalogIsStale,queueCatalogColumns,queueConfigStorage,warmQueuePage} from './queueCatalog';
 import {queueCount,rememberQueueCount,countDescription} from './queueCounts';
+import {queueReward,rememberQueueReward} from './queueRewards';
+import {localTimestamp} from './localTime';
+import type {TokenMetadata} from './tokenMetadata';
 import type {V3Network} from '../../src/v3/network';
 /** Candidate hints only. This tiny startup view has no wallet, transaction or state
  * verification dependencies. React replaces it once its actual catalog is ready. */
@@ -24,10 +27,14 @@ export function startPublicPreview(){
    if(!p||!c.identity||!c.anchor||![c.anchor.genesis,c.identity.vault,c.identity.queue,p.stakingCategory,p.rewardCategory].every(v=>typeof v==='string'&&/^[a-f0-9]{64}$/.test(v))||!/^(02|03)[a-f0-9]{64}$/.test(c.anchor.creator))continue;
    if(!/^\d{1,7}$/.test(String(p.cap))||Number(p.cap)<1||Number(p.cap)>1000000||![p.epoch,p.interval,p.releases].every(Number.isSafeInteger)||p.epoch<500000000||p.interval<1||p.releases<1||p.releases>1000||p.epoch+p.interval*p.releases>2147483647)continue;
    const config={genesis:c.anchor.genesis,cap:p.cap,periods:p.releases,stakingAsset:p.stakingCategory==='00'.repeat(32)?{kind:'bch'}:{kind:'token',category:p.stakingCategory},rewardAsset:p.rewardCategory==='00'.repeat(32)?{kind:'bch'}:{kind:'token',category:p.rewardCategory}};
-   rememberQueueCount(network,config.genesis,c.offerCount);
-   if(rows.has(config.genesis)&&JSON.stringify(rows.get(config.genesis).config)!==JSON.stringify(config))conflicts.add(config.genesis);else rows.set(config.genesis,{config});
+   if(rows.has(config.genesis)&&JSON.stringify(rows.get(config.genesis).config)!==JSON.stringify(config))conflicts.add(config.genesis);else rows.set(config.genesis,{config,offerCount:c.offerCount,rewardSnapshot:c.rewardSnapshot});
   }
-  if(!rows.size)return;
+  for(const [id,row] of rows){
+   if(conflicts.has(id))continue;
+   rememberQueueCount(network,id,row.offerCount);
+   rememberQueueReward(network,id,row.rewardSnapshot);
+  }
+  if(!rows.size||!root.hidden)return;
   const header=el('header','');header.className='header';header.append(createBrandArtwork());
   const nav=el('nav','');nav.setAttribute('aria-label','Main navigation');
   for(const [label,href]of [['About','#/about'],['My Offers','#/v3/my-offers']]){const link=el('a',label) as HTMLAnchorElement;link.href=href;nav.append(link);}header.append(nav);
@@ -37,12 +44,33 @@ export function startPublicPreview(){
   const panel=el('section','');panel.className='v3-known';panel.append(el('h2','Known vaults'));
   arena.append(tabs,panel);main.append(arena);root.replaceChildren(header,main);
   const refresh=el('button','Refresh public discovery') as HTMLButtonElement;refresh.disabled=true;panel.append(refresh);
+  const updated=el('p','');panel.append(updated);
+  let updatedAt='';
   const table=document.createElement('table');table.className='marketplace-table queue-marketplace';
   const head=table.createTHead().insertRow();for(const label of queueCatalogColumns){const th=el('th',label);th.setAttribute('scope','col');head.append(th);}
   const body=table.createTBody();let number=0;
   for(const [id,{config:c}]of rows){if(conflicts.has(id)||number>=20)continue;const row=body.insertRow(),link=el('a',String(++number)) as HTMLAnchorElement;link.className='marketplace-link';link.href=`#/v3/vault/${id}`;link.setAttribute('aria-label',`Vault ${number}`);row.insertCell().append(link);
-   for(const label of queueCatalogColumns.slice(1,4)){
-    const cell=row.insertCell();cell.dataset.label=label;cell.textContent='—';
+   const reward=queueReward(network,id),schedule=reward?.schedule;
+   const remaining=row.insertCell(),release=row.insertCell(),available=row.insertCell();
+   const stale=reward&&catalogIsStale(reward.updatedAt)?' · Stale':'';
+   const rewardAsset=c.rewardAsset;
+   const displayRewards=(metadata?:TokenMetadata)=>{
+    remaining.textContent=reward?assetAmount(rewardAsset,BigInt(reward.remaining),metadata)+stale:'Unavailable';
+    available.textContent=schedule?assetAmount(rewardAsset,BigInt(schedule.available),metadata)+stale:'Unavailable';
+   };
+   remaining.dataset.label=queueCatalogColumns[1];
+   release.dataset.label=queueCatalogColumns[2];
+   available.dataset.label=queueCatalogColumns[3];
+   if(!schedule)release.textContent='Unavailable';
+   else if(schedule.nextRelease===null)release.textContent='All releases unlocked'+stale;
+   else {
+    const time=el('time',localTimestamp(schedule.nextRelease));
+    time.setAttribute('datetime',new Date(schedule.nextRelease*1000).toISOString());
+    release.append(time,stale);
+   }
+   displayRewards();
+   if(reward&&rewardAsset.kind==='token'){
+    void fetchTokenMetadata(network as V3Network,rewardAsset.category).then(metadata=>{if(remaining.isConnected)displayRewards(metadata);});
    }
    const staking=row.insertCell(),asset=c.stakingAsset;
    staking.dataset.label=queueCatalogColumns[4];staking.textContent=assetLabel(asset);
@@ -50,10 +78,15 @@ export function startPublicPreview(){
     staking.title=asset.category;
     void fetchTokenMetadata(network as V3Network,asset.category).then(metadata=>{if(staking.isConnected)staking.textContent=assetLabel(asset,metadata);});
    }
-   const offers=row.insertCell(),count=queueCount(network,id);offers.dataset.label='Offers';offers.textContent=count?String(count.waiting):'—';
+   const offers=row.insertCell(),count=queueCount(network,id);offers.dataset.label='Offers';offers.textContent=count?String(count.waiting)+(catalogIsStale(count.updatedAt)?' · Stale':''):'Unavailable';
    offers.title=count?countDescription(count):'Waiting offer count unavailable';
-
+   for(const value of [reward,count])if(value&&(!updatedAt||Date.parse(value.updatedAt)>Date.parse(updatedAt)))updatedAt=value.updatedAt;
   }
+  updated.append('Last updated: ');
+  if(updatedAt){
+   const time=el('time',catalogDate(updatedAt));time.setAttribute('datetime',updatedAt);
+   updated.append(time,catalogIsStale(updatedAt)?' · Stale':'');
+  }else updated.append('Unavailable');
   panel.append(table);
   root.hidden=false;
  };

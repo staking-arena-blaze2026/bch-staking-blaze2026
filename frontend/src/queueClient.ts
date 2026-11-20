@@ -1,10 +1,12 @@
 import {activeNetwork,networkLeaving} from './activeNetwork';
+import type {CatalogObservation} from '../../src/queue/catalog';
 import type {WalletKey} from '../../src/transactions-core';
 
 interface Job {
  resolve:(value:any)=>void;
  reject:(error:Error)=>void;
  timer:ReturnType<typeof setTimeout>;
+ observe?:(value:CatalogObservation)=>void;
 }
 interface Client {
  worker:Worker;
@@ -78,6 +80,7 @@ function client(readOnly:boolean, channel:string):Client {
   if(data.type==='progress'){if(!readOnly)window.dispatchEvent(new CustomEvent('arena-wallet-progress',{detail:data.message}));return;}
   if(data.type==='timing'){if(!readOnly)window.dispatchEvent(new CustomEvent('arena-wallet-timing',{detail:data.timing}));return;}
   const job=c.pending.get(data.id);if(!job)return;
+  if(data.type==='catalogObservation'){job.observe?.(data.value);return;}
   if(data.type==='heartbeat'){
    // Heartbeats prove the event loop is alive, not that an Electrum/IDB await can finish.
    if(!readOnly){
@@ -97,7 +100,7 @@ function client(readOnly:boolean, channel:string):Client {
  return c;
 }
 
-function send(c:Client,intent:Record<string,unknown>,keys:WalletKey[],retaining:boolean,signal?:AbortSignal) {
+function send(c:Client,intent:Record<string,unknown>,keys:WalletKey[],retaining:boolean,signal?:AbortSignal,observe?:Job['observe']) {
  let id:number|undefined,abort:()=>void;
  c.active++;
  const response=new Promise<any>((resolve,reject)=>{
@@ -118,7 +121,7 @@ function send(c:Client,intent:Record<string,unknown>,keys:WalletKey[],retaining:
    id=++sequence;
    const timer=setTimeout(()=>c.close(new WorkerFailure('request-timeout',
     `Queue request timed out after ${requestTimeout/1000}s${signal?'':'; reconcile saved operations before retrying'}`)),requestTimeout);
-   c.pending.set(id,{resolve,reject,timer});
+   c.pending.set(id,{resolve,reject,timer,observe});
    try{c.worker.postMessage({id,intent,keys});}
    catch(error){c.close(new WorkerFailure('post-message',`Queue worker could not accept the request${signal?'':'; reconcile saved operations before retrying'}`,error instanceof Error?stackFrames(error.stack):undefined));}
   },reject);
@@ -137,13 +140,13 @@ function waitToRetry(delay:number,signal:AbortSignal) {
  });
 }
 
-async function read(channel:string,operation:string,intent:Record<string,unknown>,signal:AbortSignal) {
+async function read(channel:string,operation:string,intent:Record<string,unknown>,signal:AbortSignal,observe?:Job['observe']) {
  for(let attempt=0;;attempt++){
   signal.throwIfAborted();
   try {
    let c=readers.get(channel);
    if(!c){c=client(true,channel);readers.set(channel,c);}
-   const result=await send(c,intent,[],false,signal);
+   const result=await send(c,intent,[],false,signal,observe);
    signal.throwIfAborted();
    if(attempt)diagnostic(channel,operation,'recovered',attempt+1);
    return result;
@@ -161,13 +164,13 @@ async function read(channel:string,operation:string,intent:Record<string,unknown
  }
 }
 
-export async function queueCall(intent:Record<string,unknown>,keys:WalletKey[]=[],signal?:AbortSignal):Promise<any>{
+export async function queueCall(intent:Record<string,unknown>,keys:WalletKey[]=[],signal?:AbortSignal,observe?:Job['observe']):Promise<any>{
  const operation=String(intent.operation);
  const retaining=operation==='retain'||operation==='signingFailed';
  if(networkLeaving&&!retaining)throw Error('Network changed; review again');
- const readOnly=['list','reportedQueue','owned','discover','creationStatus'].includes(operation);
+ const readOnly=['list','reportedQueue','catalog','owned','discover','creationStatus'].includes(operation);
  if(readOnly){
-  const channel=operation==='list'?'journal':['market-0','market-1','owners','discovery','creation'].includes(String(intent.channel))?String(intent.channel):'selected';
+  const channel=operation==='list'?'journal':operation==='catalog'?'catalog':['market-0','market-1','owners','discovery','creation'].includes(String(intent.channel))?String(intent.channel):'selected';
   // Browsing callers with a signal own their lane. Journal readers may share a
   // worker, and all readers are scoped to this page's network.
   signal?.throwIfAborted();
@@ -176,7 +179,7 @@ export async function queueCall(intent:Record<string,unknown>,keys:WalletKey[]=[
   const supersede=()=>cancelled.abort(Error('Queue browsing request superseded'));
   networkSignal.addEventListener('abort',leave,{once:true});
   signal?.addEventListener('abort',supersede,{once:true});
-  try{return await read(channel,operation,intent,cancelled.signal);}
+  try{return await read(channel,operation,intent,cancelled.signal,observe);}
   finally{
    networkSignal.removeEventListener('abort',leave);
    signal?.removeEventListener('abort',supersede);

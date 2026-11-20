@@ -1,10 +1,11 @@
-import type {OfferCount} from '../../src/queue/public-index';
+import type {OfferCount} from '../../src/queue/catalog';
+
+import {catalogDate,catalogIsStale} from './queueCatalog';
 
 const entries=new Map<string,OfferCount>();
 const errors=new Map<string,string>();
 const listeners=new Map<string,Set<()=>void>>();
 const key=(network:string,vaultId:string)=>`arena-queue-count-v1-${network}-${vaultId}`;
-export const countFreshMs=15*60*1000;
 
 function valid(network:string,vaultId:string,value:unknown):value is OfferCount{
  const c=value as OfferCount|undefined;
@@ -46,5 +47,5 @@ export function setQueueCountError(network:string,vaultId:string,error?:string){
 }
 
 export function countDescription(count:OfferCount,now=Date.now()){
- return `${now-Date.parse(count.updatedAt)>countFreshMs?'Stale p':'P'}rovisional waiting offers · ${new Date(count.updatedAt).toLocaleString()}`;
+ return `${catalogIsStale(count.updatedAt,now)?'Stale p':'P'}rovisional waiting offers · ${catalogDate(count.updatedAt)}`;
 }
