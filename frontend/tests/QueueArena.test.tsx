@@ -207,7 +207,8 @@ it('keeps creation status below the form and removes the submission label after 
 it('uses token tickers outside the full reward asset identity',async()=>{
  const category='a7'.repeat(32),name='Arena Token',symbol='ARN';
  const tokenConfig={...config,parameters:{...config.parameters,stakingCategory:category,rewardCategory:category}};
- vi.mocked(loadQueuePage).mockResolvedValue({network:'chipnet',vaults:[tokenConfig],pages:[]});
+ const bchVault={...config,anchor:{...config.anchor,genesis:'57'.repeat(32)}};
+ vi.mocked(loadQueuePage).mockResolvedValue({network:'chipnet',vaults:[tokenConfig,bchVault],pages:[]});
  vi.mocked(queueCall).mockImplementation(async request=>
   request.operation==='list'||request.operation==='owned'?[]:{...snapshot,config:tokenConfig});
  const fetchToken=vi.spyOn(globalThis,'fetch').mockResolvedValue(new Response(JSON.stringify({name,token:{category,symbol,decimals:2}})));
@@ -223,6 +224,7 @@ it('uses token tickers outside the full reward asset identity',async()=>{
   expect(within(detail).getByText('Remaining reserve').nextElementSibling).toHaveTextContent('200 '+symbol);
   expect(within(detail).getByText('Total reward currently available for claiming').nextElementSibling).toHaveTextContent('200 '+symbol);
   expect(within(screen.getByRole('region',{name:/^Queue$/})).getByText('20 '+symbol)).toBeVisible();
+  expect(screen.getByLabelText('Requested reward')).toHaveValue('1');
   fireEvent.change(screen.getByLabelText('Stake amount'),{target:{value:'30'}});
   fireEvent.change(screen.getByLabelText('Requested reward'),{target:{value:'201'}});
   const submit=screen.getByRole('button',{name:'Make an Offer'});
@@ -233,6 +235,12 @@ it('uses token tickers outside the full reward asset identity',async()=>{
   await waitFor(()=>expect(wallet.queue).toHaveBeenCalledWith({operation:'prepare',intent:{kind:'insert',config:tokenConfig,terms:{stake:3000n,reward:2000n,duration:512}}},expect.any(Function)));
   expect(fetchToken).toHaveBeenCalledTimes(1);
   expect(fetchToken).toHaveBeenCalledWith('https://bcmr-chipnet.paytaca.com/api/tokens/'+category+'/',expect.anything());
+  fireEvent.click(screen.getByRole('link',{name:'Browse All Vaults'}));
+  fireEvent.click(await screen.findByRole('link',{name:'Vault 2'}));
+  expect(await screen.findByLabelText('Requested reward')).toHaveValue('0.00002000');
+  fireEvent.click(screen.getByRole('link',{name:'Browse All Vaults'}));
+  fireEvent.click(await screen.findByRole('link',{name:'Vault 1'}));
+  expect(await screen.findByLabelText('Requested reward')).toHaveValue('20');
  }finally{fetchToken.mockRestore();}
 });
 
