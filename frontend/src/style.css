@@ -289,6 +289,7 @@ footer a{color:inherit}
 .welcome-dialog form{display:flex;justify-content:flex-end;margin-top:18px}
 .welcome-dialog form button{min-height:44px}
 .welcome-dialog p{font-size:clamp(14px,2vw,16px);color:inherit;margin:0 0 14px}
+.welcome-dialog p[autofocus]:focus{outline:none}
 .welcome-dialog p:last-of-type{margin-bottom:0}
 .welcome-dialog h2{font-size:20px;margin:18px 0 8px}
 .welcome-dialog a{color:#79340a;text-decoration:underline}
