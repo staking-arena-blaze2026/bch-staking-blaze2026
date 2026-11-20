@@ -76,12 +76,38 @@ export default function QueueArena(){
  const selected=selectedId?(reports[selectedId]??snapshots.current.get(selectedId)):undefined;
  const snapshot=selected?.snapshot,reportedAt=selected?.at??0;
  const selectedError=selectedId?reports[selectedId]?.error:undefined;
+ const ownerConfigs=myOffers?configs:selectedConfig?[selectedConfig]:[];
+ const ownerArchives=owner?ownerConfigs.map(c=>archives[owner+':'+id(c)]):[];
+ const ownerOffers=owner?ownerConfigs.flatMap(c=>{
+  const vaultId=id(c),report=reports[vaultId]??snapshots.current.get(vaultId),archive=archives[owner+':'+vaultId];
+  const rows=new Map<string,{id:string;offer:Pick<Offer,'stake'|'reward'|'duration'>;status:string;canAct?:boolean;stale?:boolean;maturesAt?:number;claimTxid?:string}>();
+  for(const o of archive?.rows??[]){
+   if(o.offer.owner!==owner||o.status==='Waiting')continue;
+   const matured=o.status==='Baked'&&o.maturesAt!==undefined&&o.checkedMtp>=o.maturesAt;
+   const stale=!!archive?.error||now-(archive?.at??0)>90000;
+   rows.set(o.id,{...o,status:o.status==='Baked'?matured?'Matured':'Locked':o.status,canAct:matured&&o.eligible&&!stale,stale,claimTxid:o.locked?.txid});
+  }
+  for(const o of report?.snapshot?.ordered??[]){
+   if(o.owner!==owner)continue;
+   const stale=!!reports[vaultId]?.error||now-report!.at>60000;
+   if(rows.has(o.id)&&(stale||!archive?.error&&(archive?.at??0)>report!.at))continue;
+   rows.set(o.id,{id:o.id,offer:o,status:'Waiting',canAct:!stale,stale});
+  }
+  for(const o of ops){
+   if(o.intent.kind!=='insert'||id(o.intent.config)!==vaultId||o.owner?.publicKey!==owner||!o.raw||!o.offerId||rows.has(o.offerId)||
+    observedOffers.current.get(vaultId)?.has(o.offerId)||['discarded','conflict'].includes(o.stage))continue;
+   rows.set(o.offerId,{id:o.offerId,offer:o.intent.terms,status:'Pending'});
+  }
+  return [...rows.values()].map(row=>({config:c,row}));
+ }):[];
+ const visibleOwners=ownerOffers.filter(({row})=>offerFilter==='All'||row.status===offerFilter);
+ const recoveryOps=myOffers?ops.filter(op=>owner&&op.owner?.publicKey===owner):ops;
  const catalogPage=configs.slice(page*20,(page+1)*20);
- const displayConfigs=creating?[]:myOffers?configs:selectedConfig?[selectedConfig]:catalogPage;
+ const displayConfigs=creating?[]:myOffers?visibleOwners.map(({config})=>config):selectedConfig?[selectedConfig]:catalogPage;
  const tokenMetadata=useTokenMetadata(activeNetwork,[
   ...displayConfigs.flatMap(c=>[c.parameters.stakingCategory,c.parameters.rewardCategory]),
   ...(creating&&rewardKind==='token'?[rewardCategory]:[]),
-  ...ops.flatMap(({intent})=>intent.kind==='create'&&intent.parameters?[intent.parameters.rewardCategory]:
+  ...recoveryOps.filter(op=>op.stage!=='discarded').flatMap(({intent})=>intent.kind==='create'&&intent.parameters?[intent.parameters.rewardCategory]:
    intent.kind==='insert'&&intent.config?[intent.config.parameters.stakingCategory,intent.config.parameters.rewardCategory]:[]),
 
  ]);
@@ -377,32 +403,6 @@ export default function QueueArena(){
  </article>)}</section>;
  const actionFeedback=<>{!canRequest&&<p role="alert">Connect a compatible Cashonize wallet to continue.</p>}{busy&&<p>Wallet action in progress. Complete the current review or approval before starting another action.</p>}{actionError&&<div role="alert" className="transaction-error"><p>{actionError}</p>{oldRequests.map(o=><button key={o.id} type="button" disabled={busy||!canRequest} onClick={()=>void prepare({kind:'recover',operationId:o.id})}>Resolve old request</button>)}{unsignedRequests.map(o=><button key={o.id} type="button" disabled={busy} onClick={()=>void cancelUnsigned(o.id)}>Cancel unsigned request</button>)}{actionTechnical&&<details><summary>Technical details</summary><p>{actionTechnical}</p></details>}<button type="button" onClick={()=>{setActionError('');setActionTechnical('');setActionDetails(undefined);}}>Dismiss transaction error</button></div>}</>;
  const head=snapshot?.ordered[0],headStatus=snapshot?.mtp!==undefined&&head?rewardStatus(snapshot.config.parameters,snapshot.state,head.reward,snapshot.mtp-1):undefined;
- const ownerConfigs=myOffers?configs:selectedConfig?[selectedConfig]:[];
- const ownerArchives=owner?ownerConfigs.map(c=>archives[owner+':'+id(c)]):[];
- const ownerOffers=owner?ownerConfigs.flatMap(c=>{
-  const vaultId=id(c),report=reports[vaultId]??snapshots.current.get(vaultId),archive=archives[owner+':'+vaultId];
-  const rows=new Map<string,{id:string;offer:Pick<Offer,'stake'|'reward'|'duration'>;status:string;canAct?:boolean;stale?:boolean;maturesAt?:number;claimTxid?:string}>();
-  for(const o of archive?.rows??[]){
-   if(o.offer.owner!==owner||o.status==='Waiting')continue;
-   const matured=o.status==='Baked'&&o.maturesAt!==undefined&&o.checkedMtp>=o.maturesAt;
-   const stale=!!archive?.error||now-(archive?.at??0)>90000;
-   rows.set(o.id,{...o,status:o.status==='Baked'?matured?'Matured':'Locked':o.status,canAct:matured&&o.eligible&&!stale,stale,claimTxid:o.locked?.txid});
-  }
-  for(const o of report?.snapshot?.ordered??[]){
-   if(o.owner!==owner)continue;
-   const stale=!!reports[vaultId]?.error||now-report!.at>60000;
-   if(rows.has(o.id)&&(stale||!archive?.error&&(archive?.at??0)>report!.at))continue;
-   rows.set(o.id,{id:o.id,offer:o,status:'Waiting',canAct:!stale,stale});
-  }
-  for(const o of ops){
-   if(o.intent.kind!=='insert'||id(o.intent.config)!==vaultId||o.owner?.publicKey!==owner||!o.raw||!o.offerId||rows.has(o.offerId)||
-    observedOffers.current.get(vaultId)?.has(o.offerId)||['discarded','conflict'].includes(o.stage))continue;
-   rows.set(o.offerId,{id:o.offerId,offer:o.intent.terms,status:'Pending'});
-  }
-  return [...rows.values()].map(row=>({config:c,row}));
- }):[];
- const visibleOwners=ownerOffers.filter(({row})=>offerFilter==='All'||row.status===offerFilter);
- const recoveryOps=myOffers?ops.filter(op=>owner&&op.owner?.publicKey===owner):ops;
  const ownerSection=<section className="panel queue-my-offers"><h2>My Offers</h2>{!owner?<p>Connect your wallet to find your offers.</p>:<>
   <p title={owner}>Wallet {owner.slice(0,12)}…{owner.slice(-8)} · {activeNetwork==='mainnet'?'Mainnet':activeNetwork==='chipnet'?'Chipnet':'Regtest'}</p>
   <div className="queue-offer-filters" role="group" aria-label="Offer status">{['All','Pending','Waiting','Locked','Matured','Finished','Cancelled'].map(s=><button key={s} aria-pressed={offerFilter===s} onClick={()=>setOfferFilter(s)}>{s}</button>)}</div>
