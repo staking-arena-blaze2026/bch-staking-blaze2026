@@ -283,6 +283,7 @@ body{padding-bottom:calc(80px + env(safe-area-inset-bottom,0px))}
 .queue-offer-panel .form-grid{grid-template-columns:1fr}
 .queue-asset-fields{display:grid;align-content:start;gap:12px;min-width:0}
 .queue-lock-duration small{display:block}
+.queue-lock-duration small:not([role="alert"]),#queue-priority-preview{font-size:14px}
 footer a{color:inherit}
 
 .welcome-dialog{width:min(620px,calc(100% - 32px));padding:clamp(18px,4vw,32px);overscroll-behavior:contain}
