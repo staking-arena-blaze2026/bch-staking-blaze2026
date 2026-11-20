@@ -158,6 +158,22 @@ img.brand-slogan{display:block;width:100%;height:auto;max-width:none;margin:52px
 .v3-arena>p[role=status],.v3-arena>.advanced{overflow-wrap:anywhere}
 .v3-arena fieldset{border:0;margin:0;padding:0;min-width:0}
 
+.blaze-banner {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 4px 16px;
+  padding: 6px 12px;
+  background: #ffedcf;
+  color: #42220e;
+  border-bottom: 1px solid #9b7042;
+  font-size: 13px;
+  text-align: center;
+}
+.blaze-banner a { font-weight: 650; }
+.blaze-banner code { min-width: 0; }
+
 /* Soft arena landscape and a full-width brown navigation stripe. */
 body{
  background-color:#496929;
