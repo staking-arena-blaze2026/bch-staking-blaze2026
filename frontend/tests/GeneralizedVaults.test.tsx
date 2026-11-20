@@ -8,7 +8,7 @@ const config={version:2 as const,genesis:'c'.repeat(64),stakingAsset:{kind:'bch'
 it('retains exact imported v2 asset terms and labels saved discovery as historical',()=>{
  saveV2Config(config);expect(readV2Configs()[0]).toEqual(config);render(<GeneralizedVaults/>);
  expect(screen.getByRole('link',{name:/V2 vault cccc/})).toHaveAttribute('href','#/v2/vault/'+config.genesis);
- expect(screen.getByText(/Staking: BCH. Reward: CashToken ab/)).toHaveTextContent('7 raw units');
+ expect(screen.getByText(/Staking: BCH. Reward: CashToken ab/)).toHaveTextContent('7 raw units of CashToken');
  expect(screen.getByText(/Saved discovery hint/)).toBeInTheDocument();
 });
 it('shows pending v2 genesis from existing recovery journals without inventing confirmation',async()=>{

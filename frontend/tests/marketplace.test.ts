@@ -14,8 +14,8 @@ it('parses hash routes without server path rewrites',()=>{
  expect(routeFromHash('#/v3/offers')).toEqual({page:'v3'});expect(routeFromHash('#/v3/vault/'+id)).toEqual({page:'v3'});expect(routeFromHash('#/v3')).toEqual({page:'v3'});expect(routeFromHash('#/create')).toEqual({page:'create'});expect(routeFromHash('')).toEqual({page:'home'});expect(routeFromHash('#/vault/bad')).toEqual({page:'missing'});
 });
 it('uses raw satoshis for exact priority and rejects invalid or unsupported preview terms',()=>{
- const v=fixture().vaults[0];expect(offerPreview('3000','2','0.00001000','3',v)).toEqual({commitment:9000n,score:'6'});
- for(const values of [['1','2','0.00001000','2'],['3000','4','0.00001000','2'],['3000','2','0.00002000','2'],['3000','2','0','2'],['3000','2','0.00001000','0'],['1e4','2','0.00001000','2']])expect(offerPreview(...values as [string,string,string,string],v).error).toBeTruthy();
+ const v=fixture().vaults[0];expect(offerPreview('3000','2','0.00001000','3',v,{decimals:0})).toMatchObject({commitment:9000n,terms:{stake:3000,reward:1000}});
+ for(const values of [['1','2','0.00001000','2'],['3000','4','0.00001000','2'],['3000','2','0.00002000','2'],['3000','2','0','2'],['3000','2','0.00001000','0'],['1e4','2','0.00001000','2']])expect(offerPreview(...values as [string,string,string,string],v,{decimals:0}).error).toBeTruthy();
  expect(rewardSatoshis('0.00000001')).toBe(1n);expect(rewardSatoshis('0.000000001')).toBeNull();expect(rewardSatoshis('NaN')).toBeNull();expect(rewardSatoshis('1e-5')).toBeNull();
 });
 it('breaks equal priorities by canonical slot rather than API array order',()=>{

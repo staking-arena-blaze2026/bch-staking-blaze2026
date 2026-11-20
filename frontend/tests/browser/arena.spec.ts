@@ -2,8 +2,14 @@ import { expect,test } from '@playwright/test';
 import { browserFixture as fixture, browserTime } from '../fixture';
 const id='a'.repeat(64);
 test.beforeEach(async({page,context})=>{await context.routeWebSocket(/^wss:\/\/relay\./,socket=>{socket.onMessage(()=>{});});await page.clock.setFixedTime(browserTime);});
+test.beforeEach(async({page})=>{
+ await page.route('https://bcmr-chipnet.paytaca.com/api/tokens/**',route=>route.fulfill({
+  json:{token:{category:route.request().url().split('/').at(-2),symbol:'STAKE',decimals:2}},
+  headers:{'Access-Control-Allow-Origin':'*'},
+ }));
+});
 test('marketplace uses indexed terms and detail links survive reload',async({page})=>{
- await page.route('**/api/vaults',route=>route.fulfill({json:fixture()}));
+ await page.route('**/api/vaults',route=>route.fulfill({json:{...fixture(),chain:'chipnet'}}));
  await page.goto('/#/v1',{waitUntil:'domcontentloaded'});await expect(page.getByRole('heading',{name:'Stake Arena'})).toBeVisible();
  await page.getByRole('link',{name:/Vault aaaaaa/}).click();await expect(page.getByRole('heading',{name:/Vault aaaaaa/})).toBeVisible();
  await page.reload({waitUntil:'domcontentloaded'});await expect(page.getByText('Maximum reward per period',{exact:true})).toBeVisible();
@@ -12,16 +18,16 @@ test('marketplace uses indexed terms and detail links survive reload',async({pag
  await expect(page.getByRole('navigation',{name:'Main navigation'}).getByRole('button',{name:'Connect Wallet'})).toBeVisible();
 });
 test('mobile preview forms are usable without suggesting wallet functionality',async({page})=>{
- await page.setViewportSize({width:390,height:844});await page.route('**/api/vaults',route=>route.fulfill({json:fixture()}));
+ await page.setViewportSize({width:390,height:844});await page.route('**/api/vaults',route=>route.fulfill({json:{...fixture(),chain:'chipnet'}}));
  await page.goto('/#/vault/'+id+'/offer',{waitUntil:'domcontentloaded'});await expect(page.getByRole('heading',{name:'Make an Offer'})).toBeVisible();
- for(const [label,value] of [[/^Stake amount/,'3000'],[/^Lock duration/,'2'],[/^Reward requested/,'0.00001000'],[/^Maximum wins/,'3']] as const)await page.getByRole('textbox',{name:label}).fill(value);
- await expect(page.getByText('9,000 raw token units',{exact:true})).toBeVisible();await expect(page.getByRole('button',{name:'Make an Offer'})).toBeDisabled();
+ for(const [label,value] of [[/^Stake amount/,'30'],[/^Lock duration/,'2'],[/^Reward requested/,'0.00001000'],[/^Maximum wins/,'3']] as const)await page.getByRole('textbox',{name:label}).fill(value);
+ await expect(page.getByText('90 STAKE',{exact:true})).toBeVisible();await expect(page.getByRole('button',{name:'Make an Offer'})).toBeDisabled();
  expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
  await page.goto('/#/create',{waitUntil:'domcontentloaded'});await expect(page.getByRole('button',{name:'Review funding in wallet'})).toBeDisabled();
  await expect(page.getByRole('option')).toHaveCount(6);expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
 });
 test('retains snapshot labels across outage, reload and navigation, then recovers',async({page})=>{
- let offline=false;await page.route('**/api/vaults',route=>offline?route.abort():route.fulfill({json:fixture()}));
+ let offline=false;await page.route('**/api/vaults',route=>offline?route.abort():route.fulfill({json:{...fixture(),chain:'chipnet'}}));
  await page.goto('/#/vault/'+id,{waitUntil:'domcontentloaded'});await expect(page.getByText('Verified indexer data',{exact:true})).toBeVisible();
  offline=true;await page.getByRole('button',{name:'Refresh data'}).click();await expect(page.getByRole('alert')).toContainText('not current');
  await page.reload({waitUntil:'domcontentloaded'});await expect(page.getByRole('alert')).toContainText('Saved indexed snapshot');await expect(page.getByText('Period at snapshot',{exact:true})).toBeVisible();
@@ -29,8 +35,8 @@ test('retains snapshot labels across outage, reload and navigation, then recover
  await expect(offerLink).toBeDisabled();await expect(offerLink).toHaveAttribute('aria-disabled','true');await expect(offerLink).not.toHaveAttribute('href');
  // Preview deep links remain readable while stale data blocks submission.
  await page.goto('/#/vault/'+id+'/offer',{waitUntil:'domcontentloaded'});await expect(page.getByRole('heading',{name:'Make an Offer'})).toBeVisible();await expect(page.getByRole('alert')).toContainText('not current');
- for(const [label,value] of [[/^Stake amount/,'3000'],[/^Lock duration/,'2'],[/^Reward requested/,'0.00001000'],[/^Maximum wins/,'3']] as const)await page.getByRole('textbox',{name:label}).fill(value);
- await expect(page.getByText('9,000 raw token units',{exact:true})).toBeVisible();await expect(page.getByRole('button',{name:'Make an Offer',exact:true})).toBeDisabled();
+ for(const [label,value] of [[/^Stake amount/,'30'],[/^Lock duration/,'2'],[/^Reward requested/,'0.00001000'],[/^Maximum wins/,'3']] as const)await page.getByRole('textbox',{name:label}).fill(value);
+ await expect(page.getByText('90 STAKE',{exact:true})).toBeVisible();await expect(page.getByRole('button',{name:'Make an Offer',exact:true})).toBeDisabled();
  await expect(page.getByRole('button',{name:'Refresh data',exact:true})).toBeEnabled();
  offline=false;await page.getByRole('button',{name:'Refresh data'}).click();await expect(page.getByRole('alert')).toHaveCount(0);
 });
@@ -44,7 +50,7 @@ test('empty, malformed and stale API data never invent available vaults',async({
 test('WizardConnect pairs on demand and Escape cancels the accessible mobile dialog',async({page})=>{
  const errors:string[]=[];page.on('pageerror',error=>errors.push(error.message));
  await page.setViewportSize({width:390,height:844});
- await page.route('**/api/vaults',route=>route.fulfill({json:fixture()}));
+ await page.route('**/api/vaults',route=>route.fulfill({json:{...fixture(),chain:'chipnet'}}));
  // Keep public relays out of the smoke test; pairing URI generation is local.
  let sockets=0;
  await page.routeWebSocket(/^wss:\/\//,()=>{sockets++;});
@@ -72,7 +78,7 @@ test('WizardConnect pairs on demand and Escape cancels the accessible mobile dia
 });
 
 test('unified asset selectors support all four pairs with keyboard and touch without a connected signing wallet',async({page})=>{
- await page.setViewportSize({width:390,height:844});await page.route('**/api/vaults',route=>route.fulfill({json:fixture()}));
+ await page.setViewportSize({width:390,height:844});await page.route('**/api/vaults',route=>route.fulfill({json:{...fixture(),chain:'chipnet'}}));
  await page.goto('/#/create',{waitUntil:'domcontentloaded'});
  const staking=page.getByRole('combobox',{name:'Staking asset',exact:true}),reward=page.getByRole('combobox',{name:'Reward asset',exact:true});
  await expect(staking).toBeEnabled();await expect(reward).toBeEnabled();
@@ -85,7 +91,7 @@ test('unified asset selectors support all four pairs with keyboard and touch wit
   else await expect(page.getByLabel('Reward token category',{exact:false})).toHaveCount(0);
   await page.getByLabel(/^Maximum reward per period/).fill(pay==='bch'?'0.00002000':'7');
   const reserve=page.locator('.calculation dl > div').filter({has:page.getByText('Total upfront reward reserve',{exact:true})});
-  await expect(reserve).toContainText(pay==='bch'?'0.00006000 BCH (6000 satoshis)':'21 raw token units · '+'cd'.repeat(32));
+  await expect(reserve).toContainText(pay==='bch'?'0.00006000 BCH':'21 STAKE');
   await expect(page.getByRole('button',{name:'Review funding in wallet',exact:true})).toBeDisabled();
   expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
  }

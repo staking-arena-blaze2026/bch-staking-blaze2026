@@ -1,5 +1,7 @@
+import {assetAmount,assetLabel} from './assetAmounts';
+import type {TokenMetadata} from './tokenMetadata';
 import {createBrandArtwork} from './brandArtwork';
-import {fetchTokenMetadata,tokenTicker} from './tokenMetadata';
+import {fetchTokenMetadata} from './tokenMetadata';
 import {queueConfigStorage,warmQueuePage} from './queueCatalog';
 import {queueCount,rememberQueueCount,countDescription} from './queueCounts';
 import type {V3Network} from '../../src/v3/network';
@@ -40,14 +42,14 @@ export function startPublicPreview(){
   const head=table.createTHead().insertRow();for(const label of ['Vault','Total max reward','Staking asset','Offers']){const th=el('th',label);th.setAttribute('scope','col');head.append(th);}
   const body=table.createTBody();let number=0;
   for(const [id,{config:c}]of rows){if(conflicts.has(id)||number>=20)continue;const row=body.insertRow(),link=el('a',String(++number)) as HTMLAnchorElement;link.className='marketplace-link';link.href=`#/v3/vault/${id}`;link.setAttribute('aria-label',`Vault ${number}`);row.insertCell().append(link);
-   const total=BigInt(c.cap)*BigInt(c.periods),units=String(total).padStart(9,'0');
-   const rewardAmount=c.rewardAsset.kind==='bch'?units.slice(0,-8)+'.'+units.slice(-8):total.toString();
-   for(const [label,asset,qty] of [['Total max reward',c.rewardAsset,rewardAmount+' '],['Staking asset',c.stakingAsset,'']] as const){
+   const total=BigInt(c.cap)*BigInt(c.periods);
+   for(const [label,asset,qty] of [['Total max reward',c.rewardAsset,total],['Staking asset',c.stakingAsset,undefined]] as const){
     const cell=row.insertCell();cell.dataset.label=label;
-    cell.textContent=qty+(asset.kind==='bch'?'BCH':tokenTicker(asset.category));
+    const display=(metadata?:TokenMetadata)=>qty===undefined?assetLabel(asset,metadata):assetAmount(asset,qty,metadata);
+    cell.textContent=display();
     if(asset.kind==='token'){
      cell.title=asset.category;
-     void fetchTokenMetadata(network as V3Network,asset.category).then(metadata=>{if(cell.isConnected)cell.textContent=qty+tokenTicker(asset.category,metadata);});
+     void fetchTokenMetadata(network as V3Network,asset.category).then(metadata=>{if(cell.isConnected)cell.textContent=display(metadata);});
     }
    }
    const offers=row.insertCell(),count=queueCount(network,id);offers.dataset.label='Offers';offers.textContent=count?String(count.waiting):'—';

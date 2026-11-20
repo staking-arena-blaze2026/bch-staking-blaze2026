@@ -1,6 +1,6 @@
 import {boundedMap} from '../bounded-map.js';
 import {timed} from '../operation-timing.js';
-import {BchFundingError,errorMessage} from './funding.js';
+import {BchFundingError,TokenFundingError,errorMessage} from './funding.js';
 import {TransactionBuilder,placeholderP2PKHUnlocker,placeholderSignature,type SpendableUtxo} from 'cashscript';
 import {binToHex,hexToBin,decodeTransaction,hashTransaction,type Transaction} from '@bitauth/libauth';
 import type {ElectrumCore} from '../electrum-core.js';
@@ -134,6 +134,7 @@ export class QueueWallet {
   eligible.sort((a,b)=>a.utxo.token&&!b.utxo.token?-1:!a.utxo.token&&b.utxo.token?1:a.utxo.satoshis>b.utxo.satoshis?-1:1);
   let tokens=0n,last:unknown;
   for(const coin of eligible){if(selected.length===limit)break;selected.push(coin);tokens+=coin.utxo.token?.amount??0n;if(asset!==q.ZERO&&tokens<amount)continue;try{return build(selected);}catch(e){if(!/Insufficient BCH|dust|minimum|negative|lower than/i.test(String(e)))throw e;last=e;}}
+  if(asset!==q.ZERO&&tokens<amount)throw new TokenFundingError(asset,amount,tokens);
   throw last??Error('Insufficient wallet funding for the selected assets and measured fee');
  }
  private legacySeal(op:Operation){return json({id:op.id,owner:op.owner,intent:op.intent,raw:op.raw,txid:op.txid,sources:op.sources,queueCoin:op.queueCoin,seed:op.seed,history:op.history,reservations:op.reservations});}
@@ -229,7 +230,7 @@ export class QueueWallet {
     e.eligibleGenesis=coins.filter(c=>!c.utxo.token&&c.utxo.vout===0&&![q.ZERO,p.stakingCategory,p.rewardCategory].includes(c.utxo.txid)).length;
     e.restricted=coins.filter(c=>c.utxo.token&&c.utxo.token.category!==p.rewardCategory).reduce((n,c)=>n+c.utxo.satoshis,0n).toString();
     const required=error instanceof BchFundingError?error.required.toString():undefined;
-    const detail={cause:errorMessage(error),code:'creation-funding',inputLimit:16,...e,required,fee:error instanceof BchFundingError?(error.fee+error.preparationFees).toString():undefined,automaticPreparation:'No complete sequence could be funded with the reported, unreserved inputs.'};
+    const detail={cause:errorMessage(error),tokenBalance:error instanceof TokenFundingError?error.balance:undefined,code:'creation-funding',inputLimit:16,...e,required,fee:error instanceof BchFundingError?(error.fee+error.preparationFees).toString():undefined,automaticPreparation:'No complete sequence could be funded with the reported, unreserved inputs.'};
     const failure=Object.assign(new Error(`Vault creation funding: ${!(error instanceof BchFundingError)?errorMessage(error)+'. ':''}${required?`the tested ${error instanceof BchFundingError?error.phase:'sequence'} requires ${required} satoshis (including ${detail.fee} satoshis in measured fees, carriers and non-dust change${error instanceof BchFundingError&&error.phase==='wallet preparation'?'; the later creation fee has not yet been quoted':''}). `:`The reserve and creation carriers alone require at least ${(p.rewardCategory===q.ZERO?p.cap*BigInt(p.releases):q.CARRIER)+2n*q.CARRIER+1000n} satoshis; a complete fee quote is unavailable. `}${e.available} satoshis are reported in unreserved wallet inputs across ${e.addresses} supplied addresses; ${e.reserved} satoshis are excluded by unresolved transaction reservations. ${e.eligibleGenesis} eligible genesis UTXOs. ${detail.automaticPreparation} ${e.restricted} satoshis are attached to other fungible token categories and require token-preserving preparation. ${e.reservations.length?'Inspect Transaction recovery: '+e.reservations.map(r=>r.id+' ('+r.step+', '+r.satoshis+' sats): '+r.reason).join('; ')+'. Signed bytes are retained; no automatic rebroadcast or covenant abandonment is performed. ':''}Check that Cashonize exposes the funded wallet addresses, inspect unresolved reservations, or add BCH to this wallet and retry. Plans use at most 16 funding inputs per transaction; consolidate heavily fragmented funds in the wallet if needed. No new transaction was signed during this preflight.`),{details:detail,summary:e.reservations.length?`An old request reserves ${e.reserved} satoshis. Resolve that request to continue creating this new vault.`:`Wallet preparation needs more usable BCH. ${e.available} satoshis are available.`});throw failure;
    }
    quote=sequence.quote;
@@ -252,7 +253,7 @@ export class QueueWallet {
     if(intent.terms.reward>q.readState(c,queue.vault).reserve)throw Error('Reward request can never be funded by the remaining reserve');
     const position=insertionPoint(queue,intent.terms);
     if(position.controller!==queue.vault)referenceVault=queue.vault;
-    const inserted=this.select(coins,c.p.stakingCategory,intent.terms.stake,cs=>{const result=q.insert(c,position.controller,position.authority,intent.terms,authorization,cs.map(c=>this.funding(c)),rate);selected=cs;return result;});built=inserted;offerId=inserted.offer.id;label='Register offer: stake '+intent.terms.stake+', duration '+intent.terms.duration+' seconds, reward '+intent.terms.reward;
+    const inserted=this.select(coins,c.p.stakingCategory,intent.terms.stake,cs=>{const result=q.insert(c,position.controller,position.authority,intent.terms,authorization,cs.map(c=>this.funding(c)),rate);selected=cs;return result;});built=inserted;offerId=inserted.offer.id;label='Register offer';
    }else {
 
     if(intent.kind==='withdraw'){
@@ -276,7 +277,7 @@ export class QueueWallet {
     if(!/Insufficient|funding/i.test(errorMessage(error)))throw error;
     const e=inventory.evidence,asset=intent.kind==='insert'?intent.config.parameters.stakingCategory:q.ZERO;
     const eligible=coins.filter(c=>!c.utxo.token||asset!==q.ZERO&&c.utxo.token.category===asset),available=eligible.reduce((n,c)=>n+c.utxo.satoshis,0n).toString();
-    throw Object.assign(new Error(`${errorMessage(error)}. ${available} satoshis are reported in unreserved inputs eligible for this action across ${e.addresses} supplied addresses; ${e.reserved} satoshis are excluded by unresolved reservations. ${e.reservations.length?'Inspect Transaction recovery before retrying. ':''}Add BCH or the required asset to the connected wallet, check its exposed addresses, then retry. No new transaction was signed during this preflight.`),{details:{code:'action-funding',...e,eligibleAvailable:available,required:error instanceof BchFundingError?error.required.toString():undefined}});
+    throw Object.assign(new Error(`${errorMessage(error)}. ${available} satoshis are reported in unreserved inputs eligible for this action across ${e.addresses} supplied addresses; ${e.reserved} satoshis are excluded by unresolved reservations. ${e.reservations.length?'Inspect Transaction recovery before retrying. ':''}Add BCH or the required asset to the connected wallet, check its exposed addresses, then retry. No new transaction was signed during this preflight.`),{details:{code:'action-funding',...e,tokenBalance:error instanceof TokenFundingError?error.balance:undefined,eligibleAvailable:available,required:error instanceof BchFundingError?error.required.toString():undefined}});
    }
   }
   const tx=built.builder.generateWcTransactionObject().transaction as Transaction;

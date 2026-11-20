@@ -1,10 +1,12 @@
+import {v3Chain} from './v3Config';
 import {memo,useState} from 'react';
 import type {Snapshot} from '../../src/v3/indexer';
 import {releaseDisplay} from '../../src/v3/release-display';
 import {formatDuration} from '../../src/v3/time-policy';
 import {localTimestamp,browserTimezone} from './localTime';
-import {assetAmount} from './createAssets';
+import {useAssetAmounts} from './useAssetAmounts';
 export const ReleaseSchedule=memo(function ReleaseSchedule({snapshot,verified,verifiedAt,now}:{snapshot:Snapshot;verified:boolean;verifiedAt:number;now:number}){
+ const {assetAmount}=useAssetAmounts(v3Chain,[snapshot.config.rewardAsset]);
  const [expanded,setExpanded]=useState(false);
  const p=snapshot.config,time=releaseDisplay(p,snapshot.instance.state,snapshot.clock.mtp,verifiedAt,now,verified&&!snapshot.provisional&&!snapshot.pending.length);
  return <section aria-label="Reward release timing"><h3>Reward release timing</h3>

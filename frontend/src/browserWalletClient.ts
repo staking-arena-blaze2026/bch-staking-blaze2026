@@ -1,3 +1,5 @@
+import {categoryAsset,tokenAsset,bchAsset} from './assetAmounts';
+import {loadWalletAmountReview,stakingReviewAmounts} from './walletAmountReview';
 import {activeNetwork,networkLeaving} from './activeNetwork';
 import {signWithRefusalEvidence,ExplicitWalletRefusal} from './walletSigning';
 import {checkedWalletKey,walletChains} from './walletDerivation';
@@ -56,12 +58,16 @@ export function browserWalletClient(manager:DappConnectionManager|null,check:()=
     if(typeof getManager().signTransaction!=='function')throw Error('Wallet does not support transaction signing');
     const result=v2Updated(await rpc('v2',intent,intent.operation==='resume'?[]:keys()));
     if(!result?.plan||result.stage!=='review')return result;
+    const describe=await loadWalletAmountReview(activeNetwork,result.plan.request,
+     result.parameters?stakingReviewAmounts(result.kind,result.parameters,result.terms):[]);
+    check();
     const authorization=await rpc('v2',{operation:'authorize',id:result.id},[]);
+    const review=describe(authorization.plan.request,`V2 ${activeNetwork} · ${result.kind} · miner fee ${authorization.plan.fee} sats`);
     check();if(authorization.owner?.publicKey!==binToHex(getManager().getPubkey(0,0n)??new Uint8Array()))throw Error('Resume with the original v2 wallet owner');
     if(Date.now()-authorization.verifiedAt>10000)throw Error('V2 approval verification became stale; reconcile and retry');
     if(JSON.stringify(getManager().getSessionPaths())!==session)throw Error('Wallet changed before v2 approval');
-    window.dispatchEvent(new CustomEvent('arena-wallet-progress',{detail:'Requesting Cashonize approval… '+authorization.plan.label}));
-    const signed=await getManager().signTransaction({transaction:wizardWireTransaction(authorization.plan.request),inputPaths:authorization.plan.inputPaths},{signal:signing.signal});
+    window.dispatchEvent(new CustomEvent('arena-wallet-progress',{detail:'Requesting Cashonize approval… '+(review.label??authorization.plan.label)}));
+    const signed=await getManager().signTransaction({transaction:wizardWireTransaction(review.request),inputPaths:authorization.plan.inputPaths},{signal:signing.signal});
     check();if(JSON.stringify(getManager().getSessionPaths())!==session)throw Error('Wallet changed during v2 approval');
     if(signed.error||!signed.signedTransaction)throw Error('V2 signing refused; operation remains recoverable');
     window.dispatchEvent(new CustomEvent('arena-wallet-progress',{detail:'Validating the signed v2 transaction and confirmed chipnet inputs before broadcast'}));
@@ -101,16 +107,20 @@ export function browserWalletClient(manager:DappConnectionManager|null,check:()=
     }
     const result=(await v3Call(intent,publicKeys));
     if(!result?.plan||result.stage!=='review')return result;
+    const describe=await loadWalletAmountReview(activeNetwork,result.plan.request,
+     result.parameters?stakingReviewAmounts(result.kind,result.parameters,result.terms):[]);
+    check();
     const authorization=await v3Call({operation:'authorize',id:result.id},[]);
+    const review=describe(authorization.plan.request,`V3 ${activeNetwork} · ${result.kind} · miner fee ${authorization.plan.fee} sats`);
     if(authorization.plan.request.broadcast!==false)throw Error('V3 wallet broadcasting must remain disabled');
     check();if(authorization.owner?.publicKey!==binToHex(getManager().getPubkey(0,0n)??new Uint8Array()))throw Error('Resume with the original v3 wallet owner');
     if(Date.now()-authorization.verifiedAt>10000)throw Error('V3 approval verification became stale; reconcile and retry');
     if(JSON.stringify(getManager().getSessionPaths())!==session)throw Error('Wallet changed before v3 approval');
     window.dispatchEvent(new CustomEvent('arena-wallet-timing',{detail:{operation:intent.operation,derivationMilliseconds,untilAuthorizationMilliseconds:performance.now()-started}}));
-    window.dispatchEvent(new CustomEvent('arena-wallet-progress',{detail:'Requesting Cashonize approval… '+authorization.plan.label}));
+    window.dispatchEvent(new CustomEvent('arena-wallet-progress',{detail:'Requesting Cashonize approval… '+(review.label??authorization.plan.label)}));
     try{
     const approvalStarted=performance.now();
-    const signed=await signWithRefusalEvidence(getManager(),{transaction:wizardWireTransaction(authorization.plan.request),inputPaths:authorization.plan.inputPaths},{signal:signing.signal});
+    const signed=await signWithRefusalEvidence(getManager(),{transaction:wizardWireTransaction(review.request),inputPaths:authorization.plan.inputPaths},{signal:signing.signal});
     const signatureReturned=performance.now();
     window.dispatchEvent(new CustomEvent('arena-wallet-timing',{detail:{operation:intent.operation,stage:'cashonize-request-response',milliseconds:signatureReturned-approvalStarted}}));
     if(signed.signedTransaction)await v3Call({operation:result.registrationMode==='atomic'?'retainAtomicSigned':'retainSigned',id:result.id,raw:signed.signedTransaction},[]);
@@ -186,6 +196,16 @@ export function browserWalletClient(manager:DappConnectionManager|null,check:()=
      if(!proceed){await queueCall({operation:'discard',id:result.id});result.stage='discarded';throw Error(result.recovery?'Old request resolution cancelled. No new transaction was signed or broadcast.':'Vault creation cancelled. No new transaction was signed or broadcast.');}
      result=await queueCall({operation:'confirm',id:result.id});guard();total=approval+result.quote.approvals;
     }
+    const queueIntent=(result as QueueOperation).intent;
+    const amounts=queueIntent?.kind==='insert'&&queueIntent.config&&queueIntent.terms?stakingReviewAmounts('offer',{
+     stakingAsset:categoryAsset(queueIntent.config.parameters.stakingCategory),rewardAsset:categoryAsset(queueIntent.config.parameters.rewardCategory),
+     cap:queueIntent.config.parameters.cap,periods:queueIntent.config.parameters.releases,
+    },queueIntent.terms):queueIntent?.kind==='create'&&queueIntent.parameters?stakingReviewAmounts('create',{
+     stakingAsset:categoryAsset(queueIntent.parameters.stakingCategory),rewardAsset:categoryAsset(queueIntent.parameters.rewardCategory),
+     cap:queueIntent.parameters.cap,periods:queueIntent.parameters.releases,
+    }):[];
+    const describe=await loadWalletAmountReview(activeNetwork,result.plan.request,amounts);
+    guard();
     progress('Checking wallet inputs and current fee policy before approval…');
     let authorized;try{authorized=await measure('signing-authorization',()=>queueCall({operation:'authorize',id:result.id}));}catch(error){
      const changedInputs=(error as {details?:{code?:string}}).details?.code==='selected-inputs-changed';
@@ -199,12 +219,13 @@ export function browserWalletClient(manager:DappConnectionManager|null,check:()=
     }guard();
     if(authorized.owner.publicKey!==binToHex(getManager().getPubkey(0,0n)??new Uint8Array())||JSON.stringify(getManager().getSessionPaths())!==session)throw Error('Wallet changed before queue approval');
     if(authorized.plan.request.broadcast!==false||Date.now()-authorized.verifiedAt>10000)throw Error('Queue approval requires fresh verified inputs');
+    const review=describe(authorized.plan.request,`Cashonize · ${queueIntent?.kind??'transaction'} · miner fee ${authorized.plan.fee} sats`);
     window.dispatchEvent(new CustomEvent('arena-queue-review',{detail:{...result,...authorized}}));
-    window.dispatchEvent(new CustomEvent('arena-wallet-progress',{detail:'Requesting Cashonize approval '+(++approval)+' of '+total+' · '+authorized.plan.label}));
+    window.dispatchEvent(new CustomEvent('arena-wallet-progress',{detail:'Requesting Cashonize approval '+(++approval)+' of '+total+' · '+ (review.label??authorized.plan.label)}));
     try{await queueCall({operation:'beginSigning',id:result.id});guard();if(Date.now()-authorized.verifiedAt<0||Date.now()-authorized.verifiedAt>10000)throw Error('Queue approval requires fresh verified inputs');if(JSON.stringify(getManager().getSessionPaths())!==session)throw Error('Wallet changed before queue signing');}catch(error){await queueCall({operation:'signingFailed',id:result.id,rejected:true,notRequested:true}).catch(()=>{});throw error;}
     if(approval===1)window.dispatchEvent(new CustomEvent('arena-wallet-timing',{detail:{stage:'until-first-approval',milliseconds:performance.now()-started}}));
     const signingId=String(result.id);
-    let signed;signatureRequested=true;try{signed=await measure('wallet-signing',()=>signWithRefusalEvidence(getManager(),{transaction:wizardWireTransaction(authorized.plan.request),inputPaths:authorized.plan.inputPaths},{signal:signing.signal},async raw=>{
+    let signed;signatureRequested=true;try{signed=await measure('wallet-signing',()=>signWithRefusalEvidence(getManager(),{transaction:wizardWireTransaction(review.request),inputPaths:authorized.plan.inputPaths},{signal:signing.signal},async raw=>{
      try{await queueCall({operation:'retain',id:signingId,raw});progress('Late signed response saved. Inspect transaction recovery before continuing.');}
      catch(error){progress('A signed wallet response arrived, but recovery storage failed. Keep this page open and inspect transaction recovery.');throw error;}
     }));}catch(error){await queueCall({operation:'signingFailed',id:result.id,rejected:error instanceof ExplicitWalletRefusal}).catch(()=>{});throw error;}
@@ -234,13 +255,18 @@ export function browserWalletClient(manager:DappConnectionManager|null,check:()=
   else if(intent.kind==='resume')op=await rpc('advance',intent.id,publicKeys);
   else throw Error('Unsupported browser wallet operation');
   if(op.stage==='review'&&op.plan){
+   const describe=await loadWalletAmountReview('chipnet',op.plan.request,stakingReviewAmounts(op.kind,{
+    stakingAsset:tokenAsset(op.parameters.stakingCategory),rewardAsset:bchAsset,cap:BigInt(op.parameters.cap),periods:op.parameters.periods,
+   },op.terms?{...op.terms,stake:BigInt(op.terms.stake),reward:BigInt(op.terms.reward)}:undefined));
+   check();
    const authorization=await rpc('authorize',op.id,publicKeys);
+   const review=describe(op.plan.request,`Chipnet · ${op.kind} · miner fee ${op.plan.fee} sats`);
    check();if(authorization.deadline!==undefined&&Date.now()/1000>=authorization.deadline)throw Error('Scheduled registration cutoff passed before wallet approval');
    if(Date.now()-authorization.verifiedAt>10000)throw Error('Wallet authorization data became stale; retry verification');
    if(JSON.stringify(getManager().getSessionPaths())!==session)throw Error('Wallet changed before approval');
    window.dispatchEvent(new CustomEvent('arena-wallet-operation',{detail:op}));
-   window.dispatchEvent(new CustomEvent('arena-wallet-progress',{detail:'Awaiting explicit wallet approval for '+op.plan.label}));
-   const signed=await getManager().signTransaction({transaction:wizardWireTransaction(op.plan.request),inputPaths:op.plan.inputPaths},{signal:signing.signal});
+   window.dispatchEvent(new CustomEvent('arena-wallet-progress',{detail:'Awaiting explicit wallet approval for '+ (review.label??op.plan.label)}));
+   const signed=await getManager().signTransaction({transaction:wizardWireTransaction(review.request),inputPaths:op.plan.inputPaths},{signal:signing.signal});
    check();if(JSON.stringify(getManager().getSessionPaths())!==session)throw Error('Wallet changed during approval');
    if(signed.error||!signed.signedTransaction)throw Error('Wallet rejected signing. The unsigned operation remains resumable.');
    window.dispatchEvent(new CustomEvent('arena-wallet-progress',{detail:'Validating signed transaction and checking current chipnet inputs before broadcast'}));

@@ -1,6 +1,7 @@
 import {Buffer} from '../bytes.js';
 import {hash256,hexToBin} from '@bitauth/libauth';
 export const ZERO='00'.repeat(32), CARRIER=1200n;
+export const MAX_RELEASE=1000000n,MAX_STAKE=1000000n,MAX_REQUEST=1000000000n;
 export interface Parameters {stakingCategory:string;rewardCategory:string;epoch:number;interval:number;releases:number;cap:bigint}
 export interface Identity {vault:string;queue:string}
 export interface Score {stake:bigint;duration:number;reward:bigint}
@@ -17,16 +18,16 @@ export function parameterErrors(p:Parameters):Partial<Record<keyof Parameters,st
  if(!Number.isInteger(p.epoch)||p.epoch<500000000)errors.epoch='Enter a valid schedule start date and time.';
  if(!Number.isInteger(p.interval)||p.interval<1)errors.interval='Enter a positive whole-second interval.';
  if(!Number.isInteger(p.releases)||p.releases<1||p.releases>1000)errors.releases='Enter 1 to 1,000 whole releases.';
- if(p.cap<minimumReward(p.rewardCategory)||p.cap>1000000n)errors.cap=p.rewardCategory===ZERO?'Reward per release must be at least 0.00001200 BCH (1,200 satoshis) and at most 0.01000000 BCH.':'Reward per release must be 1 to 1,000,000 raw fungible units.';
+ if(p.cap<minimumReward(p.rewardCategory)||p.cap>MAX_RELEASE)errors.cap=p.rewardCategory===ZERO?'Reward per release must be at least 0.00001200 BCH (1,200 satoshis) and at most 0.01000000 BCH.':'Reward per release must be 1 to 1,000,000 raw fungible units.';
  if(p.epoch+p.interval*p.releases>2147483647)errors.epoch='Shorten the schedule or choose an earlier start; its end exceeds the protocol timestamp limit.';
  return errors;
 }
 export function parameters(p:Parameters){const errors=parameterErrors(p);if(Object.keys(errors).length)throw Error(Object.values(errors).join(' '));return {assets:Buffer.concat([category(p.stakingCategory),category(p.rewardCategory)]),schedule:Buffer.concat([u32(p.epoch),u32(p.interval),u32(p.releases),u32(p.cap)])};}
 export function scoreErrors(s:Score,p:Parameters):Partial<Record<keyof Score,string>>{
  const errors:Partial<Record<keyof Score,string>>={};
- if(s.stake<CARRIER||s.stake>1000000n)errors.stake=p.stakingCategory===ZERO?'Stake must be 0.00001200 to 0.01000000 BCH.':'Stake must be 1,200 to 1,000,000 raw fungible units.';
+ if(s.stake<CARRIER||s.stake>MAX_STAKE)errors.stake=p.stakingCategory===ZERO?'Stake must be 0.00001200 to 0.01000000 BCH.':'Stake must be 1,200 to 1,000,000 raw fungible units.';
  if(!Number.isInteger(s.duration)||s.duration<512||s.duration>33553920||s.duration%512)errors.duration='Lock duration must be 1 to 65,535 whole 512-second time units.';
- if(s.reward<minimumReward(p.rewardCategory)||s.reward>1000000000n)errors.reward=p.rewardCategory===ZERO?'Requested reward must be at least 0.00001200 BCH and at most 10 BCH.':'Requested reward must be 1 to 1,000,000,000 raw fungible units.';
+ if(s.reward<minimumReward(p.rewardCategory)||s.reward>MAX_REQUEST)errors.reward=p.rewardCategory===ZERO?'Requested reward must be at least 0.00001200 BCH and at most 10 BCH.':'Requested reward must be 1 to 1,000,000,000 raw fungible units.';
  return errors;
 }
 export function validateScore(s:Score,p:Parameters){const errors=scoreErrors(s,p);if(Object.keys(errors).length)throw Error(Object.values(errors).join(' '));}

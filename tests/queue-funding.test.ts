@@ -7,7 +7,7 @@ import {SettlementChain} from './fixtures/settlement-chain.js';
 import {ElectrumProvider} from '../src/electrum.js';
 import {QueueWallet,type Operation} from '../src/queue/wallet.js';
 import {creationSequence} from '../src/queue/preparation.js';
-import {BchFundingError,errorMessage} from '../src/queue/funding.js';
+import {BchFundingError,TokenFundingError,errorMessage} from '../src/queue/funding.js';
 import {ZERO,ownerScript,parameterErrors,scoreErrors} from '../src/queue/protocol.js';
 import type {WalletCoin} from '../src/transactions-core.js';
 const signer=new SignatureTemplate(new Uint8Array(32).fill(81)),owner={publicKey:binToHex(signer.publicKey),path:'receive' as const,index:0};
@@ -36,6 +36,16 @@ for(const network of ['mainnet','chipnet'] as const){
   assert.throws(()=>creationSequence(parameters,[coin('a',0,1200n),coin('b',0,1500n)],owner,p,2n),(e:unknown)=>{
    assert.ok(e instanceof BchFundingError);assert.equal(e.available,2700n);assert.equal(e.required,13000n+e.fee+546n);assert.ok(e.fee>0n);return true;
   });
+ });
+ test(network+': the reserve builder rejects a token balance one raw unit short',()=>{
+  const category='dd'.repeat(32),payout={...parameters,rewardCategory:category,cap:1000000n,releases:1};
+  const funding=[coin('a',0,50000n),coin('b',0,50000n),coin('c',1,1200n,{category,amount:999999n})];
+  assert.throws(()=>creationSequence(payout,funding,owner,p,1n),(error:unknown)=>{
+   assert.ok(error instanceof TokenFundingError);
+   assert.deepEqual(error.balance,{category,required:1000000n,available:999999n});return true;
+  });
+  funding[2]=coin('c',1,1200n,{category,amount:1000000n});
+  assert.equal(creationSequence(payout,funding,owner,p,1n).quote.reserve,'1000000');
  });
  test(network+': BCH and raw-token limits use protocol validation',()=>{
   assert.match(parameterErrors({...parameters,cap:1199n}).cap!,/1,200/);assert.deepEqual(parameterErrors(parameters),{});

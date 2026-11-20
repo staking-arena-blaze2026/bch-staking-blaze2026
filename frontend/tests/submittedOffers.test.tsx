@@ -11,7 +11,7 @@ const snapshot=(history:string[]=[],pendingHistory:string[]=[],source=op.source)
 afterEach(()=>vi.restoreAllMocks());
 it('renders accepted signed evidence immediately, without rank, on the previous state or failed refresh',()=>{
  const view=render(<SubmittedOffers operations={[op]} genesis={config.genesis} snapshot={snapshot()}/>);
- const row=screen.getAllByRole('row')[1];expect(row).toHaveTextContent('Unranked');expect(row).toHaveTextContent('3000 satoshis');expect(row).toHaveTextContent('12 × 512 = 6,144 seconds');expect(row).toHaveTextContent('1000 satoshis');expect(row).toHaveTextContent(op.txid!);expect(row).toHaveTextContent('Pending (0-conf) — awaiting on-chain verification');
+ const row=screen.getAllByRole('row')[1];expect(row).toHaveTextContent('Unranked');expect(row).toHaveTextContent('0.00003000 BCH');expect(row).toHaveTextContent('12 × 512 = 6,144 seconds');expect(row).toHaveTextContent('0.00001000 BCH');expect(row).toHaveTextContent(op.txid!);expect(row).toHaveTextContent('Pending (0-conf) — awaiting on-chain verification');
  view.rerender(<SubmittedOffers operations={[op]} genesis={config.genesis}/>);expect(screen.getByText(op.txid!)).toBeVisible();
  view.rerender(<SubmittedOffers operations={[op]} genesis={config.genesis} snapshot={snapshot([],[op.txid!],op.txid)}/>);expect(screen.queryByText('Unranked')).toBeNull();
 });

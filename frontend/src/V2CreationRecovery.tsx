@@ -1,7 +1,7 @@
 import {useCallback,useEffect,useRef,useState} from 'react';
 import {useWalletTransactions} from './walletTransactions';
 import type {Operation} from '../../src/v2/wallet';
-import {assetLabel} from './createAssets';
+import {useAssetAmounts} from './useAssetAmounts';
 import {saveV2Config,configFromOperation} from './GeneralizedVaults';
 const activeKey='arena-v2-active-creation';
 const encode=(v:unknown)=>JSON.stringify(v,(_,x)=>typeof x==='bigint'?x.toString():x,2);
@@ -69,9 +69,10 @@ export type V2CreationFlow=ReturnType<typeof useV2Creation>;
 export default function V2CreationRecovery({flow:f}:{flow:V2CreationFlow}){
  const wallet=useWalletTransactions();let connected=false;try{connected=!!wallet?.publicKey();}catch{}
  const ops=f.operations.filter(o=>o.kind==='create');
+ const {assetAmount,assetLabel}=useAssetAmounts('chipnet',ops.flatMap(o=>[o.parameters.stakingAsset,o.parameters.rewardAsset]));
  return <section className="panel" aria-label="V2 creation recovery"><h2>V2 creation and recovery</h2><p>Funding needs at least one confirmation before a separate genesis approval. Status polling never signs or rebroadcasts. If interrupted or rejected, continue the saved operation with the original wallet. An uncertain broadcast retains its exact signed bytes; do not start another creation to retry it.</p><button type="button" disabled={f.busy} onClick={()=>void f.refresh()}>Check v2 transaction status</button>{!ops.length&&<p>No saved v2 creations on this browser.</p>}{ops.map(op=>{
  const config=configFromOperation(op),needsApproval=op.stage==='review'&&!op.raw&&!op.txid&&op.step!=='complete';
- return <article key={op.id}><h3>V2 creation · {op.step}</h3><p>Staking: {assetLabel(op.parameters.stakingAsset)}. Reward: {assetLabel(op.parameters.rewardAsset)}.</p><p>{op.stage==='pending'?'Pending / Unconfirmed (0-conf)':op.stage==='prepared'?'Signed transaction retained; broadcast or confirmation uncertain':op.stage}{op.error?' · '+op.error:''}</p>{op.funding&&<p>Funding transaction: <code>{op.funding}</code></p>}{op.txid&&<p>Transaction: <code>{op.txid}</code></p>}
+ return <article key={op.id}><h3>V2 creation · {op.step}</h3><p>Staking: {assetLabel(op.parameters.stakingAsset)}. Reward per period: {assetAmount(op.parameters.rewardAsset,op.parameters.cap)}. Total reserve: {assetAmount(op.parameters.rewardAsset,op.parameters.cap*BigInt(op.parameters.periods))}.</p><p>{op.stage==='pending'?'Pending / Unconfirmed (0-conf)':op.stage==='prepared'?'Signed transaction retained; broadcast or confirmation uncertain':op.stage}{op.error?' · '+op.error:''}</p>{op.funding&&<p>Funding transaction: <code>{op.funding}</code></p>}{op.txid&&<p>Transaction: <code>{op.txid}</code></p>}
  {needsApproval&&<button type="button" disabled={f.busy||!connected} onClick={()=>void f.work({operation:'resume',id:op.id})}>{op.step==='funding'?'Review funding in wallet':'Approve v2 genesis in wallet'}</button>}
  {op.raw&&op.stage==='prepared'&&<button type="button" disabled={f.busy||!connected} onClick={()=>void f.work({operation:'rebroadcast',id:op.id})}>Explicitly retry identical signed transaction</button>}
  {op.fundingRaw&&op.step!=='complete'&&<button type="button" disabled={f.busy||!connected} onClick={()=>void f.work({operation:'rebroadcastFunding',id:op.id})}>Explicitly retry original funding if dropped</button>}

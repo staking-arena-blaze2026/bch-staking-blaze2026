@@ -1,15 +1,15 @@
 import {assetId,validateParameters,type Asset,type Parameters,CARRIER,FEE} from '../../src/v2/model';
-import {bch} from './model';
-import {rewardSatoshis,integer} from './marketplace';
+import {amountInputError,assetInputUnits,wholeTokenRange} from './assetAmounts';
+import type {TokenMetadata} from './tokenMetadata';
+import {integer} from './marketplace';
 import {validateVaultParameters,vaultFunding} from '../../src/wallet-terms';
 export type AssetKind=Asset['kind'];
-export const assetAmount=(asset:Asset,raw:bigint)=>asset.kind==='bch'?`${bch(raw)} BCH (${raw} satoshis)`:`${raw} raw fungible units`;
-export const assetInputUnits=(asset:Asset,text:string)=>asset.kind==='bch'?rewardSatoshis(text):integer(text);
-export const assetLabel=(a:Asset)=>a.kind==='bch'?'BCH':`CashToken ${a.category} (raw fungible units)`;
-export function createQuote(stakingAsset:Asset,rewardAsset:Asset,capText:string,periodsText:string,durationText:string,epoch:string,preferredVersion?:1|2){
+export function createQuote(stakingAsset:Asset,rewardAsset:Asset,capText:string,periodsText:string,durationText:string,epoch:string,preferredVersion?:1|2,rewardMetadata?:TokenMetadata){
  assetId(stakingAsset);assetId(rewardAsset);
- const cap=assetInputUnits(rewardAsset,capText),periods=integer(periodsText),duration=integer(durationText);
- if(cap===null||periods===null||duration===null||!epoch)throw Error('Enter a reward amount, whole periods, whole-second duration and UTC start. BCH supports at most 8 decimal places; tokens require integer units.');
+ const cap=assetInputUnits(rewardAsset,capText,rewardMetadata),periods=integer(periodsText),duration=integer(durationText);
+ if(cap===null)throw Error(amountInputError(rewardAsset,rewardMetadata));
+ if(periods===null||duration===null||!epoch)throw Error('Enter whole periods, a whole-second duration and UTC start.');
+ if(rewardAsset.kind==='token'&&cap>1000000n)throw Error(wholeTokenRange(rewardAsset,1n,1000000n,rewardMetadata));
  const parameters:Parameters=validateParameters({version:2,stakingAsset,rewardAsset,cap,periods:Number(periods),periodSeconds:Number(duration),epoch:Date.parse(epoch+'Z')/1000});
  const reserve=cap*periods;
  if(preferredVersion!==2&&stakingAsset.kind==='token'&&rewardAsset.kind==='bch'){

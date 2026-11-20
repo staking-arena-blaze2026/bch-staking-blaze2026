@@ -1,12 +1,14 @@
+import {v3Chain} from './v3Config';
 import {DurationSummary} from './DurationSummary';
 import {localTimestamp} from './localTime';
 import {Buffer} from '../../src/bytes';
 import {ownedOffers,allocationStatus} from '../../src/v3/my-offers';
 import type {Config,Snapshot} from '../../src/v3/indexer';
 import type {Operation} from '../../src/v3/wallet';
-import {assetAmount,assetLabel} from './createAssets';
+import {useAssetAmounts} from './useAssetAmounts';
 export function MyOffers({owner,live,listings,busy,operations,act,compact=false}:{owner:string;live:boolean;listings:Record<string,{snapshot?:Snapshot;error?:string;at:number}>;busy:boolean;operations:Operation[];act:(config:Config,slot:number,allocation?:string)=>void;compact?:boolean}){
  const rows=Object.values(listings).flatMap(listing=>listing.snapshot?ownedOffers(listing.snapshot,owner).map(offer=>({...offer,listing,snapshot:listing.snapshot!})):[]);
+ const {assetAmount,assetLabel}=useAssetAmounts(v3Chain,rows.flatMap(({snapshot})=>[snapshot.config.stakingAsset,snapshot.config.rewardAsset]));
  const Heading=compact?'h3':'h1';
  return <section className="panel"><Heading>My Offers</Heading>{!compact&&owner?<p>{live?'Connected wallet':'Last connected wallet · offline'}: <code>{owner}</code></p>:!owner?<p>Connect your wallet to find your offers. Your public owner identity will be remembered for read-only viewing.</p>:null}
  {!compact&&<p>Offers are read from on-chain records across discovered vaults. Historical offers remain visible. Wallet approval is required for every spending transaction.</p>}

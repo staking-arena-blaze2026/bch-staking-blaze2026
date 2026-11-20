@@ -1,7 +1,6 @@
 import {useEffect,useState} from 'react';
 import {useWalletTransactions} from './walletTransactions';
-import {assetLabel} from './createAssets';
-import {bch} from './model';
+import {useAssetAmounts} from './useAssetAmounts';
 import {validateParameters} from '../../src/v2/model';
 import type {Config} from '../../src/v2/indexer';
 import type {Operation} from '../../src/v2/wallet';
@@ -22,5 +21,6 @@ export default function GeneralizedVaults(){
  useEffect(()=>{let live=true;setOps([]);setError('');void wallet?.v2?.({operation:'list'}).then(values=>{if(live)setOps(values);}).catch(e=>{if(live)setError(String(e));});return()=>{live=false;};},[wallet]);
  const vaults=new Map(configs.map(config=>[config.genesis,{config,status:'Saved discovery hint · verify current status'}]));
  for(const op of ops){const config=configFromOperation(op);if(config&&(op.kind==='create'||!vaults.has(config.genesis)))vaults.set(config.genesis,{config,status:op.kind!=='create'?'Saved operation discovery hint · verify current status':op.step==='complete'?'Recovery record reports confirmed genesis · verify current status':'Pending / Unconfirmed (0-conf) genesis · recovery record'});}
- return <section className="panel"><h2>Experimental v2 vaults</h2><p>Local/imported discovery only. Saved records are historical; open a vault to verify canonical genesis and current balances on both providers. <a href="#/v2">Import or recover a v2 vault</a></p>{[...vaults.values()].map(({config:c,status})=><article key={c.genesis}><h3><a href={'#/v2/vault/'+c.genesis}>V2 vault {c.genesis.slice(0,12)}</a></h3><p>Staking: {assetLabel(c.stakingAsset)}. Reward: {assetLabel(c.rewardAsset)}. Maximum reward per period: {c.rewardAsset.kind==='bch'?`${bch(c.cap)} BCH`:`${c.cap} raw units`}. {status}.</p></article>)}{!vaults.size&&<p>No local v2 vault records.</p>}{error&&<p role="status">V2 recovery records unavailable: {error}</p>}<button type="button" onClick={()=>setConfigs(readV2Configs())}>Refresh local v2 discovery hints</button></section>;
+ const {assetLabel,assetAmount}=useAssetAmounts('chipnet',[...vaults.values()].flatMap(({config})=>[config.stakingAsset,config.rewardAsset]));
+ return <section className="panel"><h2>Experimental v2 vaults</h2><p>Local/imported discovery only. Saved records are historical; open a vault to verify canonical genesis and current balances on both providers. <a href="#/v2">Import or recover a v2 vault</a></p>{[...vaults.values()].map(({config:c,status})=><article key={c.genesis}><h3><a href={'#/v2/vault/'+c.genesis}>V2 vault {c.genesis.slice(0,12)}</a></h3><p>Staking: {assetLabel(c.stakingAsset)}. Reward: {assetLabel(c.rewardAsset)}. Maximum reward per period: {assetAmount(c.rewardAsset,c.cap)}. {status}.</p></article>)}{!vaults.size&&<p>No local v2 vault records.</p>}{error&&<p role="status">V2 recovery records unavailable: {error}</p>}<button type="button" onClick={()=>setConfigs(readV2Configs())}>Refresh local v2 discovery hints</button></section>;
 }

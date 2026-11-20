@@ -6,7 +6,8 @@ import { fixture } from './fixture';
 import { REFRESH_MS } from '../src/useArena';
 afterEach(()=>{vi.useRealTimers();window.history.replaceState(null,'','/');});
 const response=(data:unknown)=>Promise.resolve(new Response(JSON.stringify(data),{status:200}));
-function live(data=fixture()){vi.stubGlobal('fetch',vi.fn(()=>response(data)));return render(<App/>);}
+function live(data=fixture()){vi.stubGlobal('fetch',vi.fn((input:string|URL)=>String(input).includes('bcmr.paytaca.com')||String(input).includes('bcmr-chipnet.paytaca.com')?
+ response({token:{category:String(input).split('/').at(-2),symbol:'STAKE',decimals:2}}):response(data)));return render(<App/>);}
 async function navigate(href:string){await act(async()=>{window.location.hash=href;window.dispatchEvent(new HashChangeEvent('hashchange'));});}
 it('shows indexed vault terms with a v3 home link and no legacy navigation',async()=>{
  const fetcher=vi.fn(()=>response(fixture()));vi.stubGlobal('fetch',fetcher);render(<App/>);
@@ -38,10 +39,10 @@ it('keeps frozen snapshot competitors after a live cancellation',async()=>{
  expect(screen.getByText('Frozen period roster')).toBeInTheDocument();
 });
 it('calculates the offer preview with exact BCH conversion and never submits a transaction',async()=>{
- const data=fixture();window.location.hash='#/vault/'+data.vaults[0].category+'/offer';live(data);
- await screen.findByRole('heading',{name:'Make an Offer'});
- for(const [name,value] of [[/^Stake amount/,'3000'],[/^Lock duration/,'2'],[/^Reward requested/,'0.00001000'],[/^Maximum wins/,'3']] as const) fireEvent.change(screen.getByLabelText(name),{target:{value}});
- expect(screen.getByText('6')).toBeInTheDocument();expect(screen.getByText('9,000 raw token units')).toBeInTheDocument();
+ const data=fixture();data.chain='chipnet';window.location.hash='#/vault/'+data.vaults[0].category+'/offer';live(data);
+ await screen.findByRole('heading',{name:'Make an Offer'});await screen.findByText('Whole STAKE');
+ for(const [name,value] of [[/^Stake amount/,'30'],[/^Lock duration/,'2'],[/^Reward requested/,'0.00001000'],[/^Maximum wins/,'3']] as const) fireEvent.change(screen.getByLabelText(name),{target:{value}});
+ expect(screen.getByText('60 STAKE / 0.00001000 BCH')).toBeInTheDocument();expect(screen.getByText('90 STAKE')).toBeInTheDocument();
  expect(screen.getByRole('button',{name:'Make an Offer'})).toBeDisabled();
  fireEvent.change(screen.getByLabelText(/^Reward requested/),{target:{value:'0'}});
  expect(screen.getByText(/Requested reward must be at least/)).toBeInTheDocument();
@@ -56,7 +57,7 @@ it('offers both asset choices offline with exact BCH funding and no authorizatio
  fireEvent.change(screen.getByRole('textbox',{name:/^Maximum reward/}),{target:{value:'0.00001000'}});
  fireEvent.change(screen.getByRole('textbox',{name:/^Number of periods/}),{target:{value:'3'}});
  fireEvent.change(screen.getByLabelText(/^Schedule starts/),{target:{value:'2027-01-01T00:00'}});
- expect(screen.getByText('0.00003000 BCH (3000 satoshis)')).toBeInTheDocument();
+ expect(screen.getByText('0.00003000 BCH')).toBeInTheDocument();
  expect(screen.getByText(/No staking asset deposit is required/)).toBeInTheDocument();
 });
 it('handles loading, empty data, missing vaults and initial outages without fabricated listings',async()=>{

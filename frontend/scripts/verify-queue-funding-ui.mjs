@@ -16,8 +16,12 @@ const base=remote??`http://127.0.0.1:${server.address().port}${prefix}`,browser=
 try{
  for(const network of ['mainnet','chipnet']){
   const context=await browser.newContext({viewport:{width:390,height:844}});
+  await context.addInitScript(()=>localStorage.setItem('stake-arena-welcome-dismissed','1'));
   await context.routeWebSocket(/^wss?:\/\//,s=>s.close());
   await context.route('**/*',r=>new URL(r.request().url()).origin===new URL(base).origin?r.continue():r.abort());
+  await context.route(/^https:\/\/bcmr(?:-chipnet)?\.paytaca\.com\/api\/tokens\//,r=>r.fulfill({
+   json:{token:{category:r.request().url().split('/').at(-2),symbol:'TEST',decimals:6}},headers:{'Access-Control-Allow-Origin':'*'},
+  }));
   const page=await context.newPage(),errors=[];page.on('pageerror',e=>errors.push(e.message));
   await page.goto(base+'?network='+network+'#/v3');
   const field=page.getByLabel('Reward per release (min. 0.00001200 BCH)',{exact:true});await field.waitFor();
@@ -27,7 +31,8 @@ try{
   assert.equal(await page.getByRole('button',{name:'Create Vault',exact:true}).isDisabled(),true);await page.getByText('Connect a compatible Cashonize wallet to continue.',{exact:true}).waitFor();
   assert.equal(await page.getByLabel('Release interval (minutes)',{exact:true}).inputValue(),network==='mainnet'?'10':'1');
   await page.getByLabel('Reward asset',{exact:true}).selectOption('token');await page.getByLabel('Reward token category',{exact:true}).fill('ab'.repeat(32));
-  const token=page.getByLabel('Reward per release (min. 1 raw fungible unit)',{exact:true});await token.fill('0.1');await page.getByRole('alert',{name:'cap error',exact:true}).waitFor();await token.fill('1');await page.getByRole('alert',{name:'cap error',exact:true}).waitFor({state:'detached'});
+  const token=page.getByLabel('Reward per release (min. 1 TEST)',{exact:true});await token.fill('0.1');await page.getByRole('alert',{name:'cap error',exact:true}).waitFor();await token.fill('1');await page.getByRole('alert',{name:'cap error',exact:true}).waitFor({state:'detached'});
+  await page.getByText('10 TEST',{exact:true}).waitFor();
   assert.equal(await page.getByRole('alert',{name:'cap error',exact:true}).count(),0);assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);assert.deepEqual(errors,[]);
   // A synthetic dialog event exercises compiled recovery UI without a wallet.
   const openRecovery=()=>page.evaluate(()=>{window.__recoveryDecision=undefined;window.dispatchEvent(new CustomEvent('arena-preparation-confirm',{detail:{quote:{transactions:1,approvals:1,preparationFees:[],creationFee:'0',totalFee:'185',walletDebit:'185',reserve:'0',rewardCategory:'0'.repeat(64),recovery:{operationId:'synthetic-old-request',transactionId:'aa'.repeat(32),reservedBch:'866201',returnedBch:'864816'}},respond:value=>{window.__recoveryDecision=value;}}}));});
@@ -37,7 +42,7 @@ try{
   await page.getByRole('button',{name:'Resolve with 1 wallet approval',exact:true}).click();assert.equal(await page.evaluate(()=>window.__recoveryDecision),true);await page.evaluate(()=>window.dispatchEvent(new Event('arena-preparation-close')));
   await openRecovery();await page.getByRole('button',{name:'Cancel',exact:true}).click();assert.equal(await page.evaluate(()=>window.__recoveryDecision),false);await page.evaluate(()=>window.dispatchEvent(new Event('arena-preparation-close')));
   assert.deepEqual(errors,[]);
-  results.push({network,minimumBch:true,correctedErrorRemoved:true,rawTokenUnits:true,unavailableWalletReason:true,mobile:true,syntheticRecoveryDialog:true,recoveryIsSeparateFromNewVault:true,recoveryFeeDisclosed:true,recoveryConsentAndCancel:true,javascriptErrors:errors});await context.close();
+  results.push({network,minimumBch:true,correctedErrorRemoved:true,wholeTokenInputs:true,unavailableWalletReason:true,mobile:true,syntheticRecoveryDialog:true,recoveryIsSeparateFromNewVault:true,recoveryFeeDisclosed:true,recoveryConsentAndCancel:true,javascriptErrors:errors});await context.close();
  }
  console.log(JSON.stringify({at:new Date().toISOString(),base,noWallet:true,publicSocketsBlocked:true,results},null,2));
 }finally{await browser.close();if(server)await new Promise(done=>server.close(done));}

@@ -1,23 +1,34 @@
 import {act,fireEvent,render,screen,waitFor} from '@testing-library/react';
-import {expect,it,vi} from 'vitest';
+import {beforeEach,expect,it,vi} from 'vitest';
 import {BrowserCreateForm,BrowserOfferForm} from '../src/BrowserWalletForms';
 import {WalletTransactionsContext,type WalletTransactions} from '../src/walletTransactions';
 import {fixture} from './fixture';
 const asset='a'.repeat(64),client=():WalletTransactions=>({browser:true,publicKey:()=> '03b8862eaed4d4fba715b9b0b8cb0ccefea32841fcbcf847be960e34545de1fd25',inventory:vi.fn(async()=>({coins:[],bch:'200000',tokens:{[asset]:'5000'},addresses:63,gap:20,limit:40,bounded:true as const})),operations:async()=>[],execute:vi.fn(async()=>({txid:'b'.repeat(64),status:'pending'}))});
+beforeEach(()=>vi.stubGlobal('fetch',vi.fn(async (input:string)=>{
+ const category=input.split('/').at(-2);
+ return new Response(JSON.stringify({token:{category,decimals:2,symbol:category===asset?'TOK':'ALT'}}));
+})));
 const fill=(label:RegExp|string,value:string)=>fireEvent.change(screen.getByLabelText(label),{target:{value}});
 it('requires explicit funding review and approval; shows exact lifecycle quote without a backend',async()=>{
- const wallet=client(),fetcher=vi.fn();vi.stubGlobal('fetch',fetcher);render(<WalletTransactionsContext.Provider value={wallet}><BrowserCreateForm/></WalletTransactionsContext.Provider>);
+ const wallet=client(),fetcher=vi.mocked(globalThis.fetch);render(<WalletTransactionsContext.Provider value={wallet}><BrowserCreateForm/></WalletTransactionsContext.Provider>);
  fill('Protocol version','1');fill(/^Staking asset category/,asset);fill(/^Maximum reward per period/,'0.00002000');fill(/^Period duration/,'60');fill(/^Number of periods/,'2');fill(/^Schedule starts/,'2026-11-12T00:00');
  expect(screen.getByText('0.00082000 BCH (82000 satoshis)')).toBeInTheDocument();expect(screen.getByRole('button',{name:'Review funding in wallet'})).toBeDisabled();
  await act(async()=>{fireEvent.click(screen.getByRole('button',{name:'Check wallet balances'}));});expect(wallet.execute).not.toHaveBeenCalled();fireEvent.click(screen.getByRole('checkbox'));
- await act(async()=>{fireEvent.click(screen.getByRole('button',{name:'Review funding in wallet'}));});expect(wallet.execute).toHaveBeenCalledWith(expect.objectContaining({kind:'create',parameters:expect.objectContaining({cap:2000,periods:2})}));expect(fetcher).not.toHaveBeenCalled();
+ await act(async()=>{fireEvent.click(screen.getByRole('button',{name:'Review funding in wallet'}));});expect(wallet.execute).toHaveBeenCalledWith(expect.objectContaining({kind:'create',parameters:expect.objectContaining({cap:2000,periods:2})}));expect(fetcher.mock.calls.every(([url])=>String(url).includes('bcmr-chipnet.paytaca.com'))).toBe(true);
 });
 it('reviews S×W deposit, refuses invalid/closed offers and displays wallet rejection without retry signing',async()=>{
  const wallet=client();vi.mocked(wallet.execute).mockRejectedValue(Error('Wallet rejected signing'));
  const vault={...fixture().vaults[0],config:{...fixture().vaults[0].config,epoch:Math.floor(Date.now()/1000)+3600,stakingCategory:asset,periods:2,cap:2000},offers:[]};
  const mounted=render(<WalletTransactionsContext.Provider value={wallet}><BrowserOfferForm vault={vault} tip={{...fixture().tip!,mtp:Math.floor(Date.now()/1000)}} stale={false}/></WalletTransactionsContext.Provider>);
- fill('Stake amount S','1000');fill('Lock duration T','1');fill('Reward requested R (BCH)','0.00003000');fill('Maximum wins W','2');await act(async()=>{fireEvent.click(screen.getByRole('button',{name:'Check wallet balances'}));});fireEvent.click(screen.getByRole('checkbox'));expect(screen.getByRole('button',{name:'Review offer funding in wallet'})).toBeDisabled();
- fill('Reward requested R (BCH)','0.00001000');expect(screen.getByText('2,000 raw token units')).toBeInTheDocument();await act(async()=>{fireEvent.click(screen.getByRole('button',{name:'Review offer funding in wallet'}));});await screen.findByText('Error: Wallet rejected signing');expect(wallet.execute).toHaveBeenCalledOnce();
+ fill(/^Stake amount S/,'10');fill('Lock duration T','1');fill('Reward requested R (BCH)','0.00003000');fill('Maximum wins W','2');await act(async()=>{fireEvent.click(screen.getByRole('button',{name:'Check wallet balances'}));});fireEvent.click(screen.getByRole('checkbox'));expect(screen.getByRole('button',{name:'Review offer funding in wallet'})).toBeDisabled();
+ fill('Reward requested R (BCH)','0.00001000');expect(await screen.findByText('20 TOK',{selector:'dd'})).toBeInTheDocument();
+ const inventory=await wallet.inventory!();
+ vi.mocked(wallet.inventory!).mockResolvedValueOnce({...inventory,tokens:{[asset]:'1999'}});
+ await act(async()=>fireEvent.click(screen.getByRole('button',{name:'Check wallet balances'})));
+ expect(screen.getByRole('button',{name:'Review offer funding in wallet'})).toBeDisabled();
+ expect(screen.getByRole('alert')).toHaveTextContent('19.99 TOK');
+ await act(async()=>fireEvent.click(screen.getByRole('button',{name:'Check wallet balances'})));
+ await act(async()=>{fireEvent.click(screen.getByRole('button',{name:'Review offer funding in wallet'}));});await screen.findByText('Error: Wallet rejected signing');expect(wallet.execute).toHaveBeenCalledWith(expect.objectContaining({terms:{stake:1000,duration:1,reward:1000,maxWins:2}}));
  mounted.rerender(<WalletTransactionsContext.Provider value={wallet}><BrowserOfferForm vault={{...vault,phase:'activated'}} tip={{...fixture().tip!,mtp:Math.floor(Date.now()/1000)}} stale={false}/></WalletTransactionsContext.Provider>);expect(screen.getByRole('button',{name:'Review offer funding in wallet'})).toBeDisabled();expect(screen.getByRole('alert')).toHaveTextContent('Registration is unavailable');
 });
 it('ignores a superseded worker startup error when the live wallet client replaces it',async()=>{
@@ -59,8 +70,8 @@ it('uses verified category suggestions, preserves manual entry, hides BCH catego
  expect(screen.getByRole('button',{name:'Review funding in wallet'})).toBeDisabled();
  fill('Reward asset','token');expect(screen.getByLabelText(/^Maximum reward per period/)).toHaveValue('');
  fill(/^Reward token category/,'b'.repeat(64));fill(/^Maximum reward per period/,'7');
- expect(screen.getByText('14 raw token units · '+'b'.repeat(64))).toBeInTheDocument();expect(screen.getByRole('alert')).toHaveTextContent('Insufficient reward CashTokens');
- fill(/^Reward token category/,asset);expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+ expect(await screen.findByText('14 ALT',{selector:'dd'})).toBeInTheDocument();expect(screen.getByRole('alert')).toHaveTextContent('Insufficient reward CashTokens');
+ fill(/^Reward token category/,asset);await waitFor(()=>expect(screen.queryByRole('alert')).not.toBeInTheDocument());
  fireEvent.click(screen.getByRole('checkbox'));expect(screen.getByRole('button',{name:'Review funding in wallet'})).toBeEnabled();expect(wallet.execute).not.toHaveBeenCalled();expect(wallet.v2).toHaveBeenCalledWith({operation:'list'});
  fill('Staking asset','token');expect(screen.getByLabelText(/^Staking asset category/)).toHaveValue(asset);
  fill('Reward asset','bch');expect(screen.queryByLabelText(/^Reward token category/)).not.toBeInTheDocument();expect(screen.getByLabelText(/^Maximum reward per period/)).toHaveValue('');

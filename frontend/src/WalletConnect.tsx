@@ -1,3 +1,4 @@
+import {loadWalletAmountReview} from './walletAmountReview';
 import {networkLeaving} from './activeNetwork';
 import {browserWalletClient} from './browserWalletClient';
 import { binToHex, hexToBin } from '@bitauth/libauth';
@@ -109,7 +110,11 @@ export default function WalletConnect({ browser=false, getRequiredNetwork = defa
       approvalCheck();
       if (prepared.network !== 'chipnet' || prepared.genesis !== CHIPNET_NETWORK.genesisHash || JSON.stringify(manager.getSessionPaths()) !== paths) throw Error('Network or wallet changed during transaction preparation');
       const plan = JSON.parse(JSON.stringify(prepared.plan),(_k,v) => v && typeof v === 'object' && 'bytes' in v ? hexToBin(v.bytes) : v && typeof v === 'object' && 'bigint' in v ? BigInt(v.bigint) : v && v.type === 'Buffer' ? new Uint8Array(v.data) : v);
-      const result = await manager.signTransaction({transaction:wizardWireTransaction(plan.request),inputPaths:plan.inputPaths},{signal:signing.signal});
+      const describe=await loadWalletAmountReview('chipnet',plan.request);
+      const review=describe(plan.request,String(intent.kind));
+      approvalCheck();
+      if(JSON.stringify(manager.getSessionPaths())!==paths)throw Error('Wallet changed before signing');
+      const result = await manager.signTransaction({transaction:wizardWireTransaction(review.request),inputPaths:plan.inputPaths},{signal:signing.signal});
       approvalCheck();
       if (JSON.stringify(manager.getSessionPaths()) !== paths) throw Error('Wallet changed while signing');
       if (result.error || !result.signedTransaction) throw Error('Wallet declined transaction signing');

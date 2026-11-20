@@ -1,3 +1,5 @@
+import {assetInputUnits,amountInputError,wholeTokenRange,tokenAsset,bchAsset} from './assetAmounts';
+import type {TokenMetadata} from './tokenMetadata';
 import {scheduledPolicy} from '../../src/offer-policy';
 import { ranked, type Envelope, type Vault } from './model';
 export type Route = { page:'home'|'create'|'v2'|'v3'|'missing' } | {page:'v2vault';id:string} | { page:'vault'|'offer'; id:string };
@@ -29,21 +31,14 @@ export const competingOffers=(v:Vault)=>ranked(v.phase==='activated'?(v.snapshot
 export function integer(value:string):bigint|null {
   return /^\d{1,30}$/.test(value)?BigInt(value):null;
 }
-export function rewardSatoshis(value:string):bigint|null {
-  if(!/^\d{1,16}(?:\.\d{1,8})?$/.test(value)) return null;
-  const [whole,fraction='']=value.split('.');
-  return BigInt(whole)*100000000n+BigInt(fraction.padEnd(8,'0'));
-}
-export function priority(stake:bigint,duration:bigint,reward:bigint) {
-  const numerator=stake*duration;
-  const fraction=((numerator%reward)*1000000n/reward).toString().padStart(6,'0').replace(/0+$/,'');
-  return `${numerator/reward}${fraction?'.'+fraction:''}`;
-}
-export function offerPreview(s:string,t:string,r:string,w:string,v:Vault) {
-  const stake=integer(s),duration=integer(t),reward=rewardSatoshis(r),wins=integer(w);
-  if(stake===null||duration===null||reward===null||wins===null) return {error:'Enter whole token units, whole periods and a BCH amount with up to 8 decimal places.'};
-  if(stake<1000n||stake>1000000n) return {error:'Stake must be 1,000–1,000,000 raw token units.'};
+export const rewardSatoshis=(value:string)=>assetInputUnits(bchAsset,value);
+export function offerPreview(s:string,t:string,r:string,w:string,v:Vault,metadata?:TokenMetadata) {
+  const asset=tokenAsset(v.config.stakingCategory);
+  const stake=assetInputUnits(asset,s,metadata),duration=integer(t),reward=rewardSatoshis(r),wins=integer(w);
+  if(stake===null)return {error:amountInputError(asset,metadata)};
+  if(duration===null||reward===null||wins===null) return {error:'Enter whole periods and a BCH amount with up to 8 decimal places.'};
+  if(stake<1000n||stake>1000000n) return {error:wholeTokenRange(asset,1000n,1000000n,metadata)};
   if(duration<1n||duration>BigInt(v.config.periods)||wins<1n||wins>BigInt(v.config.periods)) return {error:`Duration and maximum wins must each be 1–${v.config.periods}.`};
   if(reward<1000n||reward>BigInt(v.config.cap)||reward>1000000n) return {error:'Requested reward must be at least 0.00001000 BCH and no more than the vault cap.'};
-  return {commitment:stake*wins,score:priority(stake,duration,reward)};
+  return {commitment:stake*wins,terms:{stake:Number(stake),duration:Number(duration),reward:Number(reward),maxWins:Number(wins)}};
 }

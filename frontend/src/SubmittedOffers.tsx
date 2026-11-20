@@ -1,15 +1,17 @@
+import {v3Chain} from './v3Config';
 import {DurationSummary} from './DurationSummary';
 import {localTimestamp} from './localTime';
 import {useLayoutEffect,useRef} from 'react';
 import type {Operation} from '../../src/v3/wallet';
 import type {Snapshot} from '../../src/v3/indexer';
 import {offerDisplayStatus} from '../../src/v3/offer-status';
-import {assetAmount} from './createAssets';
+import {useAssetAmounts} from './useAssetAmounts';
 
 /** Journal evidence is display-only: it never contributes to rankings or action authorization. */
 export function SubmittedOffers({operations,genesis,snapshot}:{operations:Operation[];genesis?:string;snapshot?:Snapshot}){
  const rows=operations.filter(o=>o.kind==='offer'&&o.config?.genesis===genesis&&o.terms&&(o.step==='action'||!!o.raw))
  .filter(o=>!snapshot||snapshot.config.genesis!==genesis||![...(snapshot.history??[]),...(snapshot.pendingHistory??[])].includes(o.txid??''));
+ const {assetAmount}=useAssetAmounts(v3Chain,rows.flatMap(o=>[o.parameters.stakingAsset,o.parameters.rewardAsset]));
  const measured=useRef(new Set<string>()),ranked=useRef(new Set<string>());
  useLayoutEffect(()=>{for(const o of rows)if(o.acceptedAt&&!measured.current.has(o.id)){measured.current.add(o.id);window.dispatchEvent(new CustomEvent('arena-wallet-timing',{detail:{operation:'offer',stage:'accepted-to-provisional-row',milliseconds:Math.max(0,Date.now()-o.acceptedAt)}}));}for(const o of operations)if(o.kind==='offer'&&o.config?.genesis===genesis&&o.acceptedAt&&snapshot&&[...(snapshot.history??[]),...(snapshot.pendingHistory??[])].includes(o.txid??'')&&!ranked.current.has(o.id)){ranked.current.add(o.id);window.dispatchEvent(new CustomEvent('arena-wallet-timing',{detail:{operation:'offer',stage:'accepted-to-verified-queue',milliseconds:Math.max(0,Date.now()-o.acceptedAt)}}));}},[rows,operations,snapshot]);
  if(!rows.length)return null;

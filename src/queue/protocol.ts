@@ -1,4 +1,4 @@
-import {BchFundingError} from './funding.js';
+import {BchFundingError,TokenFundingError} from './funding.js';
 import {Buffer} from '../bytes.js';
 import {Contract,TransactionBuilder,type NetworkProvider,type SpendableUtxo,type SignatureTemplate,type Unlocker} from 'cashscript';
 import {binToHex,hash160,hexToBin,decodeTransaction,createVirtualMachineBch2026,type Transaction} from '@bitauth/libauth';
@@ -35,7 +35,7 @@ export function fundingRemainder(builder:TransactionBuilder,available:bigint,req
 function change(builder:TransactionBuilder,funding:Funding[],category:string,required:bigint,owner:Uint8Array,fee:bigint,protectedDelta:bigint,phase='creation'){
  let bch=0n,tokens=0n;
  for(const {input,unlocker}of funding){if(input.token&&(input.token.nft||category===ZERO||input.token.category!==category))throw Error('Unrelated funding token or NFT');bch+=input.satoshis;tokens+=input.token?.amount??0n;builder.addInput(input,unlocker);}
- const remainder=tokens-(category===ZERO?0n:required);if(remainder<0n)throw Error('Insufficient tokens: '+required+' raw units required; '+tokens+' available in selected inputs');
+ const remainder=tokens-(category===ZERO?0n:required);if(remainder<0n)throw new TokenFundingError(category,required,tokens);
  if(remainder>0n){builder.addOutput({to:ownerScript(owner),...asset(category,remainder)});protectedDelta+=CARRIER;}
  const amount=fundingRemainder(builder,bch,protectedDelta,fee,phase);if(amount>0n)builder.addOutput({to:ownerScript(owner),amount});
 }

@@ -23,7 +23,7 @@ it('requires explicit caller wallet approval and labels broadcast as pending',as
  await act(async()=>fireEvent.click(screen.getByRole('button',{name:'Claim reward'})));expect(wallet.v3).toHaveBeenCalledWith({operation:'claim',config});expect(screen.getByRole('status')).toHaveTextContent('pending');expect(screen.getByRole('status')).not.toHaveTextContent('confirmed');
 });
 it('blocks claims when the covenant buffer is insufficient and preserves the top offer',async()=>{
- stub('blocked');await open();expect(screen.getByRole('button',{name:'Claim reward'})).toBeDisabled();expect(screen.getByRole('button',{name:'Claim reward'})).toHaveAttribute('title','Top offer exceeds available pot');expect(screen.getByText('3000 / 3000')).toBeInTheDocument();
+ stub('blocked');await open();expect(screen.getByRole('button',{name:'Claim reward'})).toBeDisabled();expect(screen.getByRole('button',{name:'Claim reward'})).toHaveAttribute('title','Top offer exceeds available pot');expect(screen.getByText('0.00003000 BCH / 0.00003000 BCH')).toBeInTheDocument();
 });
 it('requires a connected compatible wallet even when rewards are available',async()=>{stub('ready');await open(false);expect(screen.getByRole('button',{name:'Claim reward'})).toBeDisabled();expect(screen.getByRole('button',{name:'Claim reward'})).toHaveAttribute('title',expect.stringContaining('connect a compatible WizardConnect/Cashonize wallet'));});
 
@@ -118,7 +118,7 @@ it('offers only S, T and R, shows commitment S, and submits one win',async()=>{
  stub();wallet.v3.mockReset().mockResolvedValue({stage:'pending'});await open();
  expect(screen.queryByLabelText(/Maximum wins/)).not.toBeInTheDocument();expect(screen.getByRole('group',{name:'New v3 offer'}).querySelectorAll('input')).toHaveLength(3);
  expect(screen.getByLabelText('Stake S (BCH)')).toBeInTheDocument();expect(screen.getByLabelText('Lock duration (time units)')).toBeInTheDocument();expect(screen.getByLabelText('Requested reward R (BCH)')).toBeInTheDocument();
- expect(screen.getByText(/Required staking commitment:/)).toHaveTextContent('Required staking commitment: 0.00003000 BCH (3000 satoshis)');
+ expect(screen.getByText(/Required staking commitment:/)).toHaveTextContent('Required staking commitment: 0.00003000 BCH');
  expect(screen.getAllByRole('columnheader').map(h=>h.textContent)).toEqual(['Rank','Stake S','Lock duration (time units)','Requested reward R','Priority P = S × U / R','Offer status']);
  await act(async()=>fireEvent.click(screen.getByRole('button',{name:'Make an Offer'})));
  expect(wallet.v3).toHaveBeenCalledWith({operation:'offer',config,terms:{stake:3000n,duration:512,reward:1000n,maxWins:1}});
@@ -268,9 +268,9 @@ it('renders verified token assets and immutable total reward with a verified emp
  vi.stubGlobal('fetch',vi.fn(async()=>new Response(JSON.stringify({schema:1,network:'mainnet',vaults:[{config:tokenConfig,announcement:config.genesis,height:1,status:'observed-confirmed'}],pages:[]},(_,v)=>typeof v==='bigint'?String(v):v))));
  const previous=vi.mocked(v3Call).getMockImplementation()!;
  vi.mocked(v3Call).mockImplementation(async(...args)=>{const result=await previous(...args);if(args[0].operation==='sync'){result.snapshot.config=tokenConfig;result.snapshot.instance.state=initialState(tokenConfig);}return result;});
- render(<V3Arena/>);await waitFor(()=>expect(screen.getByText('4000 CashToken 34343434…34343434')).toBeVisible());
+ render(<V3Arena/>);await waitFor(()=>expect(screen.getByText('4000 raw units of CashToken 34343434…34343434')).toBeVisible());
  expect(screen.getByText('CashToken 12121212…12121212')).toBeVisible();await waitFor(()=>expect(screen.getAllByRole('row')[1]!.lastElementChild).toHaveTextContent(/^0$/));
- expect(screen.queryByText('1000 CashToken 34343434…34343434')).toBeNull();
+ expect(screen.queryByText('1000 raw units of CashToken 34343434…34343434')).toBeNull();
 });
 
 it('renders index parameter hints while all Electrum reads are pending, with no fabricated offer count',async()=>{

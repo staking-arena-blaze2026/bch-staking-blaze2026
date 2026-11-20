@@ -26,10 +26,7 @@ export type Vault = z.infer<typeof vaultSchema>;
 export type Envelope = z.infer<typeof envelopeSchema>;
 export type ChainEvent = Vault['history'][number];
 export const short = (value: string, size = 6) => value.length > size * 2 + 1 ? `${value.slice(0,size)}…${value.slice(-size)}` : value;
-export function bch(sats: string | bigint | number) {
-  const value = BigInt(sats), sign = value < 0n ? '-' : '', absolute = value < 0n ? -value : value;
-  return `${sign}${absolute / 100000000n}.${(absolute % 100000000n).toString().padStart(8,'0')}`;
-}
+export {bch} from './assetAmounts';
 export const tokenUnits = (amount: string | number | bigint) => BigInt(amount).toLocaleString('en-US');
 export function utc(seconds: number) {
   return new Date(seconds * 1000).toISOString().replace('T',' ').replace('.000Z',' UTC');

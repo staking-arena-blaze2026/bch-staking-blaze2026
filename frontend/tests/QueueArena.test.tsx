@@ -18,7 +18,7 @@ beforeEach(()=>{vi.spyOn(document,'hidden','get').mockReturnValue(false);localSt
 afterEach(cleanup);
 async function open(){render(<WalletTransactionsContext.Provider value={wallet}><QueueArena/></WalletTransactionsContext.Provider>);await screen.findByText('Remaining reserve',{}, {timeout:5000});}
 it('validates 512-second units and preserves exact terms in the approval request',async()=>{await open();fireEvent.change(screen.getByLabelText('Lock duration (time units)'),{target:{value:'12'}});expect(screen.getAllByText(/1 hour, 42 minutes, 24 seconds/).length).toBeGreaterThan(0);fireEvent.click(screen.getByRole('button',{name:'Make an Offer'}));await waitFor(()=>expect(wallet.queue).toHaveBeenCalledWith({operation:'prepare',intent:{kind:'insert',config,terms:{stake:3000n,duration:6144,reward:2000n}}},expect.any(Function)));fireEvent.change(screen.getByLabelText('Lock duration (time units)'),{target:{value:'0'}});expect(screen.getByRole('button',{name:'Make an Offer'})).toBeDisabled();});
-it('binds a claim to the reviewed head, and waits for an offline saved pairing',async()=>{live=false;await open();const details=screen.getByRole('region',{name:'Vault details'});const button=screen.getByRole('button',{name:'Claim reward'});expect(details).toContainElement(button);expect(screen.getByText('Winning reward: 0.00002000 BCH (2000 satoshis)')).toBeVisible();expect(screen.queryByRole('heading',{name:'Claim'})).toBeNull();expect(screen.getByRole('heading',{name:'Queue'})).toBeVisible();expect(button).toBeEnabled();fireEvent.click(button);expect(wallet.queue).not.toHaveBeenCalled();await waitFor(()=>expect(wallet.restore).toHaveBeenCalled());live=true;await waitFor(()=>expect(wallet.queue).toHaveBeenCalledWith({operation:'prepare',intent:{kind:'claim',config,expectedHead:offer.id}},expect.any(Function)));});
+it('binds a claim to the reviewed head, and waits for an offline saved pairing',async()=>{live=false;await open();const details=screen.getByRole('region',{name:'Vault details'});const button=screen.getByRole('button',{name:'Claim reward'});expect(details).toContainElement(button);expect(screen.getByText('Winning reward: 0.00002000 BCH')).toBeVisible();expect(screen.queryByRole('heading',{name:'Claim'})).toBeNull();expect(screen.getByRole('heading',{name:'Queue'})).toBeVisible();expect(button).toBeEnabled();fireEvent.click(button);expect(wallet.queue).not.toHaveBeenCalled();await waitFor(()=>expect(wallet.restore).toHaveBeenCalled());live=true;await waitFor(()=>expect(wallet.queue).toHaveBeenCalledWith({operation:'prepare',intent:{kind:'claim',config,expectedHead:offer.id}},expect.any(Function)));});
 it('cancels deferred approval when the terms or route change',async()=>{live=false;await open();fireEvent.click(screen.getByRole('button',{name:'Make an Offer'}));await waitFor(()=>expect(wallet.restore).toHaveBeenCalled());fireEvent.change(screen.getByLabelText('Stake amount'),{target:{value:'0.00004000'}});live=true;await waitFor(()=>expect(screen.getByRole('alert')).toHaveTextContent('request changed'));expect(wallet.queue).not.toHaveBeenCalled();});
 it('shows owner states and enables matured withdrawal on the My Offers route',async()=>{window.location.hash='#/v3/my-offers';rows=[{id:offer.id,offer,status:'Baked',maturesAt:1800001000,checkedMtp:1800001200,eligible:true}];vi.mocked(queueCall).mockImplementation(async request=>request.operation==='list'?[]:request.operation==='owned'?rows:{...snapshot,ordered:[]});render(<WalletTransactionsContext.Provider value={wallet}><QueueArena/></WalletTransactionsContext.Provider>);const button=await screen.findByRole('button',{name:'Get my stake back'});expect(screen.getByText('Matured',{selector:'strong'})).toBeVisible();expect(screen.getByRole('button',{name:'Matured'})).toBeVisible();expect(button).toBeEnabled();fireEvent.click(button);await waitFor(()=>expect(wallet.queue).toHaveBeenCalledWith({operation:'prepare',intent:{kind:'withdraw',config,offerId:offer.id}},expect.any(Function)));});
 it('displays local/MTP release timing and the complete expandable schedule',async()=>{await open();expect(screen.getByText(/Reported blockchain time \(MTP\):/)).toBeInTheDocument();const summary=screen.getByText('Release schedule and history');await act(async()=>{fireEvent.click(summary);summary.closest('details')!.open=true;fireEvent(summary.closest('details')!,new Event('toggle'));});expect(screen.getByRole('columnheader',{name:'Scheduled local time'})).toBeInTheDocument();expect(screen.getAllByRole('row').length).toBeGreaterThan(10);});
@@ -40,11 +40,13 @@ it('permanently labels the minimum, rejects 1199 sats and accepts exactly 1200',
  fireEvent.change(field,{target:{value:'0.00001200'}});expect(screen.queryByRole('alert',{name:'cap error'})).toBeNull();expect(screen.getByRole('button',{name:'Create Vault'})).toBeEnabled();
  expect(screen.getByLabelText('Reward per release (min. 0.00001200 BCH)')).toHaveValue('0.00001200');
 });
-it('uses raw token units without inventing decimals',async()=>{
+it('blocks token entry when precision cannot be resolved',async()=>{
+ vi.stubGlobal('fetch',vi.fn(async()=>new Response(null,{status:404})));
  window.location.hash='#/create';render(<WalletTransactionsContext.Provider value={wallet}><QueueArena/></WalletTransactionsContext.Provider>);
  fireEvent.change(screen.getByLabelText('Reward asset'),{target:{value:'token'}});fireEvent.change(screen.getByLabelText('Reward token category'),{target:{value:'ab'.repeat(32)}});
- const field=screen.getByLabelText('Reward per release (min. 1 raw fungible unit)');fireEvent.change(field,{target:{value:'0.5'}});expect(screen.getByRole('alert',{name:'cap error'})).toHaveTextContent('token decimals are not assumed');
- fireEvent.change(field,{target:{value:'1'}});expect(screen.queryByRole('alert',{name:'cap error'})).toBeNull();expect(screen.getByRole('button',{name:'Create Vault'})).toBeEnabled();
+ fireEvent.change(screen.getByLabelText('Reward per release'),{target:{value:'1'}});
+ expect(screen.getByRole('alert',{name:'cap error'})).toHaveTextContent('Token precision unavailable from BCMR');
+ expect(screen.getByRole('button',{name:'Create Vault'})).toBeDisabled();
 });
 it.each(['create','offer'])('retains %s preflight errors and values through field corrections and status updates',async(kind)=>{
  if(kind==='create')window.location.hash='#/create';
@@ -71,7 +73,7 @@ it('shows a concise old-request blocker and a resolution action while preserving
  vi.mocked(queueCall).mockImplementation(async i=>{if(i.operation==='list')return submitted?[{...rec,stage:confirmed?'confirmed':'pending',recoveryResolved:confirmed}]:[];if(i.operation==='reconcileRecovery'){confirmed=true;return {...rec,stage:'confirmed',recoveryResolved:true};}return [];});
  vi.mocked(wallet.queue!).mockImplementationOnce(async()=>{submitted=true;return rec;});
  fireEvent.click(screen.getByRole('button',{name:'Resolve old request'}));await waitFor(()=>expect(wallet.queue).toHaveBeenLastCalledWith({operation:'prepare',intent:{kind:'recover',operationId:'old'}},expect.any(Function)));
- expect(screen.getByLabelText('Reward per release (min. 0.00001200 BCH)')).toHaveValue('0.00001200');expect(screen.getByLabelText('Number of releases')).toHaveValue(8);expect(screen.getByText('0.00009600 BCH (9600 satoshis)')).toBeVisible();await screen.findByRole('button',{name:'Continue Create Vault'});expect(screen.getByRole('status')).toHaveTextContent('Old request resolved');
+ expect(screen.getByLabelText('Reward per release (min. 0.00001200 BCH)')).toHaveValue('0.00001200');expect(screen.getByLabelText('Number of releases')).toHaveValue(8);expect(screen.getByText('0.00009600 BCH')).toBeVisible();await screen.findByRole('button',{name:'Continue Create Vault'});expect(screen.getByRole('status')).toHaveTextContent('Old request resolved');
 });
 it('offers Continue Create Vault only after confirmed resolution',async()=>{
  window.location.hash='#/create';const recovery={id:'r',intent:{kind:'recover',operationId:'old'},step:'wallet-recovery',stage:'pending',raw:'new',txid:'ff'.repeat(32),owner:{publicKey:owner},recovery:{operationId:'old'},recoveryResolved:false};let confirmed=false;
@@ -208,19 +210,27 @@ it('uses token tickers outside the full reward asset identity',async()=>{
  vi.mocked(loadQueuePage).mockResolvedValue({network:'chipnet',vaults:[tokenConfig],pages:[]});
  vi.mocked(queueCall).mockImplementation(async request=>
   request.operation==='list'||request.operation==='owned'?[]:{...snapshot,config:tokenConfig});
- const fetchToken=vi.spyOn(globalThis,'fetch').mockResolvedValue(new Response(JSON.stringify({name,token:{category,symbol}})));
+ const fetchToken=vi.spyOn(globalThis,'fetch').mockResolvedValue(new Response(JSON.stringify({name,token:{category,symbol,decimals:2}})));
  try{
   window.location.hash='#/v3/offers';
   render(<WalletTransactionsContext.Provider value={wallet}><QueueArena/></WalletTransactionsContext.Provider>);
-  expect(await screen.findByText('20000 '+symbol)).toBeVisible();
+  expect(await screen.findByText('200 '+symbol)).toBeVisible();
   expect(screen.getByText(symbol)).toBeVisible();
   fireEvent.click(screen.getByRole('link',{name:'Vault 1'}));
   const detail=await screen.findByRole('region',{name:'Vault details'});
   expect(within(detail).getByText('Reward asset').nextElementSibling).toHaveTextContent(`${name} (${symbol}) [${category}]`);
   expect(within(detail).getByText('Staking asset').nextElementSibling).toHaveTextContent(symbol);
-  expect(within(detail).getByText('Remaining reserve').nextElementSibling).toHaveTextContent('20000 '+symbol);
-  expect(within(detail).getByText('Total reward currently available for claiming').nextElementSibling).toHaveTextContent('20000 '+symbol);
-  expect(within(screen.getByRole('region',{name:/^Queue$/})).getByText('2000 '+symbol)).toBeVisible();
+  expect(within(detail).getByText('Remaining reserve').nextElementSibling).toHaveTextContent('200 '+symbol);
+  expect(within(detail).getByText('Total reward currently available for claiming').nextElementSibling).toHaveTextContent('200 '+symbol);
+  expect(within(screen.getByRole('region',{name:/^Queue$/})).getByText('20 '+symbol)).toBeVisible();
+  fireEvent.change(screen.getByLabelText('Stake amount'),{target:{value:'30'}});
+  fireEvent.change(screen.getByLabelText('Requested reward'),{target:{value:'201'}});
+  const submit=screen.getByRole('button',{name:'Make an Offer'});
+  expect(submit).toBeDisabled();
+  expect(screen.getByRole('alert',{name:'reward error'})).toHaveTextContent('200 ARN');
+  fireEvent.change(screen.getByLabelText('Requested reward'),{target:{value:'20'}});
+  fireEvent.click(submit);
+  await waitFor(()=>expect(wallet.queue).toHaveBeenCalledWith({operation:'prepare',intent:{kind:'insert',config:tokenConfig,terms:{stake:3000n,reward:2000n,duration:512}}},expect.any(Function)));
   expect(fetchToken).toHaveBeenCalledTimes(1);
   expect(fetchToken).toHaveBeenCalledWith('https://bcmr-chipnet.paytaca.com/api/tokens/'+category+'/',expect.anything());
  }finally{fetchToken.mockRestore();}

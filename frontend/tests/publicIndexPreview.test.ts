@@ -30,13 +30,13 @@ it('uses the token ticker in the startup marketplace',async()=>{
  document.body.innerHTML='<main id="arena-public-preview" hidden></main>';
  vi.stubGlobal('fetch',vi.fn(async(input:string|URL)=>new Response(JSON.stringify(
   String(input).includes('bcmr.paytaca.com')
-   ? {name:'Arena Trial Token',token:{category,symbol:'ATT'}}
+   ? {name:'Arena Trial Token',token:{category,symbol:'ATT',decimals:6}}
    : {network:'mainnet',vaults:[tokenConfig],pages:[]}
  ))));
  try{
   startPublicPreview();
   await waitFor(()=>{
-   expect(document.querySelector('td[data-label="Total max reward"]')).toHaveTextContent('10000 ATT');
+   expect(document.querySelector('td[data-label="Total max reward"]')).toHaveTextContent('0.01 ATT');
    expect(document.querySelector('td[data-label="Staking asset"]')).toHaveTextContent('ATT');
   });
   expect(document.getElementById('arena-public-preview')).not.toHaveTextContent('Arena Trial Token');

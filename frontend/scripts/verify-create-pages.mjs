@@ -19,6 +19,9 @@ try{
  const context=await browser.newContext({viewport:{width:390,height:844},hasTouch:true,isMobile:true});
  await context.routeWebSocket(/^wss?:\/\//,socket=>socket.close());
  await context.route('**/*',route=>new URL(route.request().url()).origin===new URL(base).origin?route.continue():route.abort());
+ await context.route('https://bcmr-chipnet.paytaca.com/api/tokens/**',route=>route.fulfill({
+  json:{token:{category:route.request().url().split('/').at(-2),symbol:'TEST',decimals:2}},headers:{'Access-Control-Allow-Origin':'*'},
+ }));
  await context.addInitScript(()=>{
   const post=Worker.prototype.postMessage;
   Worker.prototype.postMessage=function(message,...rest){
@@ -40,7 +43,7 @@ try{
   if(pay==='token')await page.getByLabel(/^Reward token category/).fill('cd'.repeat(32));
   await page.getByLabel(/^Maximum reward per period/).fill(pay==='bch'?'0.00002001':'7');
   const reserve=page.locator('.calculation dl>div').filter({has:page.getByText('Total upfront reward reserve',{exact:true})});
-  assert.match(await reserve.innerText(),pay==='bch'?/0\.00006003 BCH \(6003 satoshis\)/:/21 raw token units/);
+  assert.match(await reserve.innerText(),pay==='bch'?/0\.00006003 BCH/:/21 TEST/);
   assert.equal(await page.getByRole('button',{name:'Review funding in wallet',exact:true}).isDisabled(),true);
   assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);
   assert.equal(await page.locator('.calculation dd').evaluateAll(nodes=>nodes.every(n=>n.scrollWidth<=n.clientWidth+1)),true,'Funding values fit without clipping');
@@ -50,7 +53,7 @@ try{
  const config={version:2,genesis:'c'.repeat(64),stakingAsset:{kind:'bch'},rewardAsset:{kind:'token',category:'cd'.repeat(32)},cap:'7',periods:3,periodSeconds:60,epoch:1800000000};
  await page.evaluate(config=>localStorage.setItem('arena-local-vaults-v2',JSON.stringify([config])),config);
  await page.goto(base);const link=page.getByRole('link',{name:/V2 vault cccc/});await link.waitFor();
- assert.match(await link.locator('..').locator('..').innerText(),/Staking: BCH\. Reward: CashToken cd/);
+ await page.getByText(/Staking: BCH\. Reward: TEST/).waitFor();
  await link.click();await page.getByLabel('V2 vault configuration').waitFor();assert.match(await page.getByLabel('V2 vault configuration').inputValue(),/"cap": "7"/);
  assert.equal(await page.getByRole('button',{name:'Verify and refresh vault'}).isDisabled(),false); // public read-only client; no wallet/signature needed
  assert.deepEqual(errors,[]);

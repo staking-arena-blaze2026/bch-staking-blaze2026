@@ -20,14 +20,15 @@ try {
  assert.equal(await page.getByRole('option').count(),8);
  console.log('PASS: production offline marketplace, direct creation route and preview-only controls');
  const id='a'.repeat(64);let online=true;
- await page.route('https://indexer.example.test/read-only/vaults',route=>online?route.fulfill({json:fixture(),headers:{'Access-Control-Allow-Origin':'*'}}):route.abort());
+ await page.route('https://bcmr-chipnet.paytaca.com/api/tokens/**',route=>route.fulfill({json:{token:{category:route.request().url().split('/').at(-2),symbol:'STAKE',decimals:2}},headers:{'Access-Control-Allow-Origin':'*'}}));
+ await page.route('https://indexer.example.test/read-only/vaults',route=>online?route.fulfill({json:{...fixture(),chain:'chipnet'},headers:{'Access-Control-Allow-Origin':'*'}}):route.abort());
  await go('/configured/#/vault/'+id);await page.getByText('Maximum reward per period',{exact:true}).waitFor();
  const rows=page.getByRole('table',{name:'Competing offers ranked by priority'}).getByRole('row');assert.match(await rows.nth(1).textContent(),/Offer #01/);
  await page.reload({waitUntil:'domcontentloaded'});await page.getByText('Maximum reward per period',{exact:true}).waitFor();
  if(process.env.ARENA_CAPTURE_SCREENSHOTS==='1'&&!process.env.ARENA_SKIP_SCREENSHOTS)await page.screenshot({path:'test-results/marketplace-vault-desktop.png',fullPage:true});
  await page.getByRole('link',{name:'Make an Offer'}).click();await page.getByRole('heading',{name:'Make an Offer'}).waitFor();
- for(const [name,value] of [[/^Stake amount/,'3000'],[/^Lock duration/,'2'],[/^Reward requested/,'0.00001000'],[/^Maximum wins/,'3']])await page.getByRole('textbox',{name}).fill(value);
- await page.getByText('9,000 raw token units',{exact:true}).waitFor();assert.equal(await page.getByRole('button',{name:'Make an Offer'}).isEnabled(),false);
+ for(const [name,value] of [[/^Stake amount/,'30'],[/^Lock duration/,'2'],[/^Reward requested/,'0.00001000'],[/^Maximum wins/,'3']])await page.getByRole('textbox',{name}).fill(value);
+ await page.getByText('90 STAKE',{exact:true}).waitFor();assert.equal(await page.getByRole('button',{name:'Make an Offer'}).isEnabled(),false);
  await page.setViewportSize({width:390,height:844});assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);
  if(process.env.ARENA_CAPTURE_SCREENSHOTS==='1'&&!process.env.ARENA_SKIP_SCREENSHOTS)await page.screenshot({path:'test-results/marketplace-offer-mobile.png',fullPage:true});
  online=false;await page.reload({waitUntil:'domcontentloaded'});await page.getByText('Last-known indexed snapshot · not current',{exact:true}).waitFor();
