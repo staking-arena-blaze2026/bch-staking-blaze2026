@@ -223,3 +223,5 @@ Post-baseline linked-queue browsing and offer tracking. The public index carries
 First-visit welcome dialog: introduces competitive staking and links to the About page, the stablecoin use case and Penny Picker. The browser remembers dismissal across visits. This is post-baseline presentation work.
 
 CashToken asset labels: Vault details shows the reward asset's registry name, ticker and full category ID. Compact asset labels and amounts use the ticker when available, including the startup vault list, with a category fallback. This is post-baseline presentation work.
+
+Stake Arena site icon: the supplied green grill artwork is used for the favicon, home-screen shortcut icon and WizardConnect app metadata. This is post-baseline branding work.

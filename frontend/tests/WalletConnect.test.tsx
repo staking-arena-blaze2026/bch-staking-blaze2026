@@ -299,7 +299,10 @@ it('suspends wallet handshakes offline and recovers immediately on internet retu
  await act(async()=>{await vi.advanceTimersByTimeAsync(90_000);});
  expect(client.relay).not.toHaveBeenCalled();
  online.mockReturnValue(true);fireEvent(window,new Event('online'));
- expect(client.relay).toHaveBeenCalledWith(expect.objectContaining({action:RelayMsgAction.DappReady}));
+ expect(client.relay).toHaveBeenCalledWith(expect.objectContaining({
+  action:RelayMsgAction.DappReady,
+  dapp_icon:new URL('./assets/brand/stake-arena-icon.png',document.baseURI).href,
+ }));
  await walletReady();
  expect(screen.getByText('Connected to Cashonize')).toBeVisible();
  fireEvent(window,new Event('offline'));
