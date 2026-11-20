@@ -261,7 +261,7 @@ it('shows the published count before the first blockchain reply and retains it o
 it('finds active offers before history, checks the owner and initiates cancellation',async()=>{
  vi.mocked(queueCall).mockImplementation(async request=>request.operation==='owned'?new Promise(()=>{}):request.operation==='reportedQueue'?snapshot:[]);
  const view=render(<WalletTransactionsContext.Provider value={wallet}><QueueArena/></WalletTransactionsContext.Provider>);
- const cancel=await screen.findByRole('button',{name:'Cancel'});
+ const cancel=await screen.findByRole('button',{name:'Cancel offer'});
  expect(cancel).toBeEnabled();
  expect(screen.getByText(/Provider-reported queue/)).toBeVisible();
  expect(screen.getByText(/Wallet .*Chipnet/)).toBeVisible();
@@ -271,9 +271,9 @@ it('finds active offers before history, checks the owner and initiates cancellat
  expect(await screen.findByText('Conflicting blockchain evidence')).toBeVisible();
  const other='03'+'22'.repeat(32);
  view.rerender(<WalletTransactionsContext.Provider value={{...wallet,publicKey:()=>other,pairing:()=>({paired:true,live:true,identity:other,network:'chipnet'})}}><QueueArena/></WalletTransactionsContext.Provider>);
- expect(screen.queryByRole('button',{name:'Cancel'})).toBeNull();
+ expect(screen.queryByRole('button',{name:'Cancel offer'})).toBeNull();
  view.rerender(<WalletTransactionsContext.Provider value={{...wallet,pairing:()=>({paired:true,live:true,identity:owner,network:'mainnet'})}}><QueueArena/></WalletTransactionsContext.Provider>);
- expect(screen.queryByRole('button',{name:'Cancel'})).toBeNull();
+ expect(screen.queryByRole('button',{name:'Cancel offer'})).toBeNull();
 });
 
 it('merges a journaled pending offer into the queue row as soon as it is reported',async()=>{
@@ -285,7 +285,7 @@ it('merges a journaled pending offer into the queue row as soon as it is reporte
  await act(async()=>window.dispatchEvent(new HashChangeEvent('hashchange')));
  let panel=screen.getByRole('heading',{name:'My Offers'}).closest('section')!;
  await waitFor(()=>expect(within(panel).getByText('Pending',{selector:'strong'})).toBeVisible());
- expect(within(panel).queryByRole('button',{name:'Cancel'})).toBeNull();
+ expect(within(panel).queryByRole('button',{name:'Cancel offer'})).toBeNull();
  report=async()=>snapshot;
  await act(async()=>{window.location.hash='#/v3/vault/'+genesis;window.dispatchEvent(new HashChangeEvent('hashchange'));});
  expect(await screen.findByText('Waiting',{selector:'strong'})).toBeVisible();

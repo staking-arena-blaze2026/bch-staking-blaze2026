@@ -297,6 +297,7 @@ footer a{color:inherit}
 .queue-queue-panel .queue-ranking-table{width:100%;min-width:520px;border-collapse:collapse;font-size:13px}
 .queue-queue-panel .queue-ranking-table th{background:#633817;color:#fff1d8;text-align:left;white-space:nowrap}
 .queue-queue-panel .queue-ranking-table td{vertical-align:top;overflow-wrap:normal}
+.queue-offer-summary{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:12px}
 .queue-offer-filters{display:flex;flex-wrap:wrap;gap:6px;margin:12px 0 18px}
 .v3-arena .queue-my-offers button{display:inline-flex;align-items:center;justify-content:center;flex:0 0 auto;width:auto;max-width:100%;min-height:30px;margin:0;padding:5px 12px;font-size:12px;line-height:1.35;white-space:nowrap;word-break:normal;overflow-wrap:normal;writing-mode:horizontal-tb}
 .v3-arena .queue-offer-filters button[aria-pressed=true]{background:linear-gradient(#8b5830,#633817);color:#fff1d8;border-color:#593217}

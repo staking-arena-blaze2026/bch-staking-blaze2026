@@ -490,10 +490,14 @@ export default function QueueArena(){
   {myOffers&&ownerConfigs.some(c=>reports[id(c)]?.error)&&<p role="status">Some queues are unavailable or inconsistent. Retained offers may be stale.</p>}
   {!visibleOwners.length&&<p>{ownerConfigs.some(c=>!reports[id(c)])?'Loading active offers…':'No matching offers in the queues checked so far.'}</p>}
   {visibleOwners.map(({config:c,row:o})=><article key={id(c)+o.id}><h3><a href={'#/v3/vault/'+id(c)}>Vault {id(c).slice(0,12)}</a> · Offer {o.id.slice(0,12)}</h3>
-   <p><strong>{o.status}</strong>{o.status==='Waiting'?' · Provider-reported queue':o.status==='Pending'?' · Awaiting appearance in the queue':''}{o.stale?' · Stale':''}</p>
-   <p>Stake: {displayAsset(c.parameters.stakingCategory,o.offer.stake)} · Reward: {displayAsset(c.parameters.rewardCategory,o.offer.reward)}</p>
+   <div className="queue-offer-summary">
+    <div>
+     <p><strong>{o.status}</strong>{o.status==='Waiting'?' · Provider-reported queue':o.status==='Pending'?' · Awaiting appearance in the queue':''}{o.stale?' · Stale':''}</p>
+     <p>Stake: {displayAsset(c.parameters.stakingCategory,o.offer.stake)} · Reward: {displayAsset(c.parameters.rewardCategory,o.offer.reward)}</p>
+    </div>
+    {o.status==='Waiting'&&<button type="button" disabled={!canRequest||busy||!o.canAct} onClick={()=>void prepare({kind:'cancel',config:c,offerId:o.id})}>Cancel offer</button>}
+   </div>
    <DurationSummary seconds={o.offer.duration}/>
-   {o.status==='Waiting'&&<button disabled={!canRequest||busy||!o.canAct} onClick={()=>void prepare({kind:'cancel',config:c,offerId:o.id})}>Cancel</button>}
    {o.status==='Locked'&&<p>Reward paid. {o.maturesAt?`Stake matures at blockchain MTP ${localTimestamp(o.maturesAt)}.`:'Awaiting allocation confirmation.'}</p>}
    {o.status==='Matured'&&o.canAct&&<button disabled={!canRequest||busy} onClick={()=>void prepare({kind:'withdraw',config:c,offerId:o.id,...(o.claimTxid?{claimTxid:o.claimTxid}:{})})}>Get my stake back</button>}
   </article>)}

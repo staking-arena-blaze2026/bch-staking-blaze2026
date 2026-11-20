@@ -46,7 +46,15 @@ test('real workers render metadata before parallel WSS reads and reconcile owner
  await page.reload();
  const active=page.locator('.queue-my-offers article strong').filter({hasText:'Waiting'});
  await expect(active).toBeVisible({timeout:30000});
- await expect(page.getByRole('button',{name:'Cancel',exact:true})).toBeEnabled();
+ const cancel=page.getByRole('button',{name:'Cancel offer',exact:true});
+ await expect(cancel).toBeEnabled();
+ for(const width of [320,1672]){
+  await page.setViewportSize({width,height:1000});
+  const summary=await active.locator('xpath=../..').boundingBox(),button=await cancel.boundingBox();
+  expect(button!.x).toBeGreaterThanOrEqual(summary!.x+summary!.width);
+  expect(button!.y+button!.height/2).toBeCloseTo(summary!.y+summary!.height/2,0);
+  expect(button!.x+button!.width).toBeLessThanOrEqual(width);
+ }
  await fixture.claim();await page.reload();
  await expect(page.locator('.queue-my-offers article strong').filter({hasText:'Locked'})).toBeVisible({timeout:30000});
  await expect(page.getByRole('button',{name:'Get my stake back'})).toHaveCount(0);
