@@ -289,7 +289,7 @@ it('merges a journaled pending offer into the queue row as soon as it is reporte
  report=async()=>snapshot;
  await act(async()=>{window.location.hash='#/v3/vault/'+genesis;window.dispatchEvent(new HashChangeEvent('hashchange'));});
  expect(await screen.findByText('Waiting',{selector:'strong'})).toBeVisible();
- panel=screen.getByRole('heading',{name:'My Offers'}).closest('section')!;
+ panel=screen.getByRole('heading',{name:'My offers in this Vault'}).closest('section')!;
  expect(within(panel).queryByText('Pending',{selector:'strong'})).toBeNull();
  expect(within(panel).getAllByRole('article')).toHaveLength(1);
  view.unmount();
