@@ -1,8 +1,7 @@
-import {assetAmount,assetLabel} from './assetAmounts';
-import type {TokenMetadata} from './tokenMetadata';
+import {assetLabel} from './assetAmounts';
 import {createBrandArtwork} from './brandArtwork';
 import {fetchTokenMetadata} from './tokenMetadata';
-import {queueConfigStorage,warmQueuePage} from './queueCatalog';
+import {queueCatalogColumns,queueConfigStorage,warmQueuePage} from './queueCatalog';
 import {queueCount,rememberQueueCount,countDescription} from './queueCounts';
 import type {V3Network} from '../../src/v3/network';
 /** Candidate hints only. This tiny startup view has no wallet, transaction or state
@@ -38,19 +37,18 @@ export function startPublicPreview(){
   const panel=el('section','');panel.className='v3-known';panel.append(el('h2','Known vaults'));
   arena.append(tabs,panel);main.append(arena);root.replaceChildren(header,main);
   const refresh=el('button','Refresh public discovery') as HTMLButtonElement;refresh.disabled=true;panel.append(refresh);
-  const table=document.createElement('table');table.className='marketplace-table';
-  const head=table.createTHead().insertRow();for(const label of ['Vault','Total max reward','Staking asset','Offers']){const th=el('th',label);th.setAttribute('scope','col');head.append(th);}
+  const table=document.createElement('table');table.className='marketplace-table queue-marketplace';
+  const head=table.createTHead().insertRow();for(const label of queueCatalogColumns){const th=el('th',label);th.setAttribute('scope','col');head.append(th);}
   const body=table.createTBody();let number=0;
   for(const [id,{config:c}]of rows){if(conflicts.has(id)||number>=20)continue;const row=body.insertRow(),link=el('a',String(++number)) as HTMLAnchorElement;link.className='marketplace-link';link.href=`#/v3/vault/${id}`;link.setAttribute('aria-label',`Vault ${number}`);row.insertCell().append(link);
-   const total=BigInt(c.cap)*BigInt(c.periods);
-   for(const [label,asset,qty] of [['Total max reward',c.rewardAsset,total],['Staking asset',c.stakingAsset,undefined]] as const){
-    const cell=row.insertCell();cell.dataset.label=label;
-    const display=(metadata?:TokenMetadata)=>qty===undefined?assetLabel(asset,metadata):assetAmount(asset,qty,metadata);
-    cell.textContent=display();
-    if(asset.kind==='token'){
-     cell.title=asset.category;
-     void fetchTokenMetadata(network as V3Network,asset.category).then(metadata=>{if(cell.isConnected)cell.textContent=display(metadata);});
-    }
+   for(const label of queueCatalogColumns.slice(1,4)){
+    const cell=row.insertCell();cell.dataset.label=label;cell.textContent='—';
+   }
+   const staking=row.insertCell(),asset=c.stakingAsset;
+   staking.dataset.label=queueCatalogColumns[4];staking.textContent=assetLabel(asset);
+   if(asset.kind==='token'){
+    staking.title=asset.category;
+    void fetchTokenMetadata(network as V3Network,asset.category).then(metadata=>{if(staking.isConnected)staking.textContent=assetLabel(asset,metadata);});
    }
    const offers=row.insertCell(),count=queueCount(network,id);offers.dataset.label='Offers';offers.textContent=count?String(count.waiting):'—';
    offers.title=count?countDescription(count):'Waiting offer count unavailable';

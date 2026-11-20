@@ -170,13 +170,13 @@ test('accepted atomic offer is visible unranked through reload and asymmetric pr
  expect(methods).not.toContain('blockchain.transaction.broadcast');
 });
 
-test('fresh homepage is the four-column marketplace with accessible rows on desktop and mobile',async({page})=>{
+test('fresh homepage is the reward marketplace with accessible rows on desktop and mobile',async({page})=>{
  await page.route('**/public-index/regtest/index.json',route=>route.fulfill({contentType:'application/json',body:stringify({schema:1,network:'regtest',vaults:[{config:fixture.config,announcement:fixture.config.genesis,height:1,status:'observed-confirmed'}],pages:[]})}));
  await page.goto('./');await expect(page).toHaveURL(/#\/v3\/offers$/);await expect(page.getByRole('heading',{name:'Known vaults'})).toBeVisible();
  await expect(page.locator('.v3-tabs a').first()).toHaveText('Make an Offer');await expect(page.locator('.v3-tabs a').first()).toHaveAttribute('aria-current','page');
  await expect(page.getByRole('link',{name:'Stake Arena home'})).toHaveAttribute('href','#/v3/offers');
  await expect(page.locator('.wallet-network-note')).toHaveCount(0);await expect(page.getByText(/Mainnet uses real BCH\. Review exact amounts/)).toHaveCount(0);
- await expect(page.getByRole('columnheader')).toHaveText(['Vault','Total max reward','Staking asset','Offers']);
+ await expect(page.getByRole('columnheader')).toHaveText(['Vault','Reward remaining','Next reward release','Reward available for claiming','Staking asset','Offers']);
  expect(await page.getByRole('heading',{name:'Known vaults'}).evaluate(el=>el.nextElementSibling?.textContent)).toBe('Refresh public discovery');
  const row=page.locator('.marketplace-table tbody tr');await expect(row.locator('td').last()).toHaveText('1',{timeout:60000});
  for(const width of [1360,390]){await page.setViewportSize({width,height:900});expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);await page.screenshot({path:`test-results/marketplace-${width}.png`,fullPage:true});}

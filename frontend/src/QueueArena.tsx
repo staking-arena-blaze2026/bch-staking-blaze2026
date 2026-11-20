@@ -8,7 +8,7 @@ import type {Config,QueueIndexer} from '../../src/queue/chain';
 import type {Operation,Intent} from '../../src/queue/wallet';
 import {minimumMinutes,STAKING_UNIT_SECONDS,formatDuration} from '../../src/v3/time-policy';
 import {queueCall} from './queueClient';
-import {loadQueuePage,queueConfigStorage} from './queueCatalog';
+import {loadQueuePage,queueCatalogColumns,queueConfigStorage} from './queueCatalog';
 import {activeNetwork} from './activeNetwork';
 import {useWalletTransactions} from './walletTransactions';
 import {pairingRequestCheck,restoreWalletRequest} from './walletRequest';
@@ -17,6 +17,7 @@ import {localDateTimeInput,parseLocalDateTime,localTimestamp} from './localTime'
 import {assetAmount,assetLabel,assetQuantity,categoryAsset as asset,priorityRatio,wholeTokenRange,tokenBounds} from './assetAmounts';
 import {useTokenMetadata} from './useAssetAmounts';
 import {tokenIdentity} from './tokenMetadata';
+import {queueRewardSchedule} from './queueRewardSchedule';
 import {QueueReleaseSchedule} from './QueueReleaseSchedule';
 import {DurationSummary} from './DurationSummary';
 import {QueueCountCell} from './QueueCountCell';
@@ -57,6 +58,7 @@ export default function QueueArena(){
  const [publication,setPublication]=useState<{updatedAt:string;online?:number;pending?:Record<string,string>;errors?:string[]}>(),[publicIds,setPublicIds]=useState(savedPublicIds);
  const [refreshing,setRefreshing]=useState(false),[chainStatus,setChainStatus]=useState<Record<string,{confirmed?:boolean;error?:string}>>({});
  const catalogRequest=useRef(0),publishedPages=useRef(new Set<string>()),publicIdsRef=useRef(new Set(publicIds)),liveScan=useRef(false);
+ const [catalogRewards,setCatalogRewards]=useState<Record<string,{remaining:bigint;mtp?:number}|null>>({});
  const [reports,setReports]=useState<Record<string,{snapshot?:Snapshot;error?:string;at:number}>>({});
  const snapshots=useRef(new Map<string,{snapshot:Snapshot;at:number}>());
  const [archives,setArchives]=useState<Record<string,{rows:Owned;at?:number;error?:string;updating?:boolean}>>({});
@@ -222,10 +224,10 @@ export default function QueueArena(){
   }catch{/* The published and locally retained catalog stays available. */}
   finally{liveScan.current=false;}
  }
- async function readQueue(c:Config,channel:string,signal:AbortSignal,showOffers:boolean){
+ async function readQueue(c:Config,channel:string,signal:AbortSignal,showOffers:boolean,showCatalogRewards=false){
   const vaultId=id(c);
   try{
-   const value:Snapshot=await queueCall({operation:'reportedQueue',config:c,channel,clock:channel==='selected'},[],signal);
+   const value:Snapshot=await queueCall({operation:'reportedQueue',config:c,channel,clock:channel==='selected'||showCatalogRewards},[],signal);
    if(signal.aborted)return;
    const at=Date.now();
    const observed=observedOffers.current.get(vaultId)??new Set<string>();
@@ -238,11 +240,13 @@ export default function QueueArena(){
    snapshots.current.delete(vaultId);snapshots.current.set(vaultId,entry);
    if(snapshots.current.size>100)snapshots.current.delete(snapshots.current.keys().next().value!);
    if(showOffers)setReports(old=>({...old,[vaultId]:entry}));
+   if(showCatalogRewards||channel==='selected')setCatalogRewards(old=>({...old,[vaultId]:{remaining:value.state.reserve,mtp:entry.snapshot.mtp}}));
   }catch(e){
    if(signal.aborted)return;
    const detail=errorMessage(e);
    const label=/uniqueness|malformed|cyclic|orphan|stale link|ordering|collateral|unauthenticated|inconsistent|invalid root|incorrect reserve|duplicate queue/i.test(detail)?'Inconsistent queue data':'Queue data unavailable';
    setQueueCountError(activeNetwork,vaultId,label);
+   if(showCatalogRewards||channel==='selected')setCatalogRewards(old=>({...old,[vaultId]:null}));
    if(showOffers)setReports(old=>({...old,[vaultId]:{...(old[vaultId]??snapshots.current.get(vaultId)??{at:0}),error:label}}));
    return (e as {recoveryExhausted?:boolean})?.recoveryExhausted;
   }
@@ -355,7 +359,7 @@ export default function QueueArena(){
    if(!document.hidden){
     let next=0;
     await Promise.all([0,1].map(async lane=>{
-     while(next<values.length&&!controller.signal.aborted)await readQueue(values[next++]!,'market-'+lane,controller.signal,myOffers);
+     while(next<values.length&&!controller.signal.aborted)await readQueue(values[next++]!,'market-'+lane,controller.signal,myOffers,!myOffers);
     }));
    }
    if(!controller.signal.aborted)timer=setTimeout(run,myOffers?20000:90000);
@@ -542,7 +546,22 @@ export default function QueueArena(){
     </tr>;
    })}</tbody></table></div>{!snapshot.ordered.length&&<p>No offers waiting.</p>}</>:<p>{selectedError?'Live queue unavailable.':'Loading queue…'}</p>}</section>{ownerSection}</div>
   </>}
- </>:<section className="v3-known"><h1>Known vaults</h1>{discoveryControls}<table className="marketplace-table"><thead><tr><th>Vault</th><th>Total max reward</th><th>Staking asset</th><th>Offers</th></tr></thead><tbody>{catalogPage.map((c,n)=><tr key={id(c)} id={'vault-row-'+id(c)} tabIndex={highlight?.kind==='vault'&&highlight.vaultId===id(c)?-1:undefined} className={highlight?.kind==='vault'&&highlight.vaultId===id(c)?'queue-row-highlight':undefined}><td><a className="marketplace-link" aria-label={'Vault '+(page*20+n+1)} href={'#/v3/vault/'+id(c)}>{page*20+n+1}</a></td><td>{displayAsset(c.parameters.rewardCategory,c.parameters.cap*BigInt(c.parameters.releases))}</td><td>{displayAsset(c.parameters.stakingCategory)}</td><QueueCountCell network={activeNetwork} vaultId={id(c)}/></tr>)}</tbody></table>{ready&&!configs.length&&<p>No linked-list vaults have been discovered yet.</p>}<div><button disabled={!page} onClick={()=>setPage(p=>p-1)}>Previous</button><button disabled={(page+1)*20>=configs.length&&!pages.length} onClick={()=>{if((page+1)*20>=configs.length&&pages[0])void discover(pages[0]).then(loaded=>{if(loaded)setPage(p=>p+1);});else setPage(p=>p+1);}}>Next</button></div></section>}
+ </>:<section className="v3-known"><h1>Known vaults</h1>{discoveryControls}
+ <table className="marketplace-table queue-marketplace"><thead><tr>{queueCatalogColumns.map(label=><th key={label} scope="col">{label}</th>)}</tr></thead>
+ <tbody>{catalogPage.map((c,n)=>{
+  const report=catalogRewards[id(c)];
+  const schedule=report?.mtp===undefined?undefined:queueRewardSchedule(c.parameters,report.remaining,report.mtp);
+  const missing=report===undefined?'—':'Unavailable';
+  const highlighted=highlight?.kind==='vault'&&highlight.vaultId===id(c);
+  return <tr key={id(c)} id={'vault-row-'+id(c)} tabIndex={highlighted?-1:undefined} className={highlighted?'queue-row-highlight':undefined}>
+   <td><a className="marketplace-link" aria-label={'Vault '+(page*20+n+1)} href={'#/v3/vault/'+id(c)}>{page*20+n+1}</a></td>
+   <td data-label={queueCatalogColumns[1]}>{report?displayAsset(c.parameters.rewardCategory,report.remaining):missing}</td>
+   <td data-label={queueCatalogColumns[2]}>{schedule?(schedule.nextRelease===undefined?'All releases unlocked':<time dateTime={new Date(schedule.nextRelease*1000).toISOString()}>{localTimestamp(schedule.nextRelease)}</time>):missing}</td>
+   <td data-label={queueCatalogColumns[3]}>{schedule?displayAsset(c.parameters.rewardCategory,schedule.available):missing}</td>
+   <td data-label={queueCatalogColumns[4]}>{displayAsset(c.parameters.stakingCategory)}</td>
+   <QueueCountCell network={activeNetwork} vaultId={id(c)}/>
+  </tr>;
+ })}</tbody></table>{ready&&!configs.length&&<p>No linked-list vaults have been discovered yet.</p>}<div><button disabled={!page} onClick={()=>setPage(p=>p-1)}>Previous</button><button disabled={(page+1)*20>=configs.length&&!pages.length} onClick={()=>{if((page+1)*20>=configs.length&&pages[0])void discover(pages[0]).then(loaded=>{if(loaded)setPage(p=>p+1);});else setPage(p=>p+1);}}>Next</button></div></section>}
  {!creating&&!myOffers&&!selectedId&&message&&messageRoute.current===route&&<p role="status">{message}</p>}
  {!!recoveryOps.length&&<details className="advanced"><summary>Transaction recovery ({recoveryOps.filter(o=>!['confirmed','discarded'].includes(o.stage)).length})</summary>{recoveryOps.filter(o=>o.stage!=='discarded').map(o=><article key={o.id}><p>{o.intent.kind==='recover'?'Old request resolution':o.intent.kind==='create'&&['seed-funding','queue-funding'].includes(o.step)?'Old vault request':o.intent.kind} · {o.step} · {o.supersededBy&&o.reservationResolution==='conflict'?'resolved':o.stage}{o.signing==='uncertain'||o.signing==='requested'?' · Signing status unknown':''} · {o.txid}</p>{o.intent.kind==='create'&&o.intent.parameters&&<p>Reward reserve: {displayAsset(o.intent.parameters.rewardCategory,o.intent.parameters.cap*BigInt(o.intent.parameters.releases))}</p>}{o.intent.kind==='insert'&&o.intent.terms&&<p>Stake: {displayAsset(o.intent.config.parameters.stakingCategory,o.intent.terms.stake)} · Requested reward: {displayAsset(o.intent.config.parameters.rewardCategory,o.intent.terms.reward)}</p>}{o.error&&<details><summary>Inspection details</summary><p>{o.error}</p></details>}{o.raw&&['seed-funding','queue-funding'].includes(o.step)&&!o.supersededBy&&<button type="button" disabled={busy||!canRequest} onClick={()=>void prepare({kind:'recover',operationId:o.id})}>Resolve old request</button>}<button disabled={busy||!canRequest} onClick={()=>void act({operation:'resume',id:o.id})}>Inspect / resume</button>{o.raw&&['action','wallet-preparation','wallet-recovery'].includes(o.step)&&<button disabled={busy||!canRequest} onClick={()=>void act({operation:'resume',id:o.id,retry:true})}>Retry identical transaction</button>}{!o.raw&&['unsigned','rejected'].includes(o.signing)&&<button disabled={busy} onClick={()=>void queueCall({operation:'discard',id:o.id}).then(operations).catch(e=>setMessage(String(e)))}>Discard unsigned request</button>}</article>)}</details>}
  </div>;

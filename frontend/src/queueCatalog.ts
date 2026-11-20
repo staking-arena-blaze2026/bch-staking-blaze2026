@@ -1,4 +1,5 @@
 /** Lightweight discovery transport; imported by the startup view before covenants. */
+export const queueCatalogColumns=['Vault','Reward remaining','Next reward release','Reward available for claiming','Staking asset','Offers'] as const;
 export const queueConfigStorage=(network:string)=>'staking-arena-queue-configs-'+network;
 
 async function fetchQueuePage(network:string,path='index.json',signal?:AbortSignal,fresh=false){

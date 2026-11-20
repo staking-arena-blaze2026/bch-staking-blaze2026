@@ -215,7 +215,7 @@ it('uses token tickers outside the full reward asset identity',async()=>{
  try{
   window.location.hash='#/v3/offers';
   render(<WalletTransactionsContext.Provider value={wallet}><QueueArena/></WalletTransactionsContext.Provider>);
-  expect(await screen.findByText('200 '+symbol)).toBeVisible();
+  await waitFor(()=>expect(document.querySelector('td[data-label="Reward remaining"]')).toHaveTextContent('200 '+symbol));
   expect(screen.getByText(symbol)).toBeVisible();
   fireEvent.click(screen.getByRole('link',{name:'Vault 1'}));
   const detail=await screen.findByRole('region',{name:'Vault details'});
@@ -399,4 +399,22 @@ it('shows the live score and highlights a submitted offer once it appears in the
  expect(screen.queryByRole('button',{name:'Your offer has been submitted'})).toBeNull();
  fireEvent.click(document.body);
  expect(row).not.toHaveClass('queue-row-highlight');
+});
+
+
+it('shows unclaimed and future rewards without counting the pot twice',async()=>{
+ window.location.hash='#/v3/offers';
+ const boundary=config.parameters.epoch+2*config.parameters.interval;
+ vi.mocked(queueCall).mockImplementation(async request=>request.operation==='reportedQueue'
+  ? {...snapshot,mtp:boundary,state:{...snapshot.state,reserve:19000n}}:[]
+ );
+ render(<QueueArena/>);
+ const table=await screen.findByRole('table');
+ expect(within(table).getAllByRole('columnheader').map(header=>header.textContent)).toEqual([
+  'Vault','Reward remaining','Next reward release','Reward available for claiming','Staking asset','Offers',
+ ]);
+ await waitFor(()=>expect(table.querySelector('td[data-label="Reward remaining"]')).toHaveTextContent('0.00019000 BCH'));
+ expect(table.querySelector('td[data-label="Reward available for claiming"]')).toHaveTextContent('0.00001000 BCH');
+ expect(table.querySelector('td[data-label="Next reward release"] time')).toHaveAttribute('datetime',new Date(boundary*1000).toISOString());
+ expect(queueCall).toHaveBeenCalledWith(expect.objectContaining({operation:'reportedQueue',clock:true}),[],expect.any(AbortSignal));
 });

@@ -313,3 +313,9 @@ footer a{color:inherit}
 .queue-notices .button:hover:not(:disabled){background:#703e20}
 .v3-arena tr.queue-row-highlight>td{background:#ffdc87;color:#361b09}
 .v3-arena tr.queue-row-highlight{outline:2px solid #a85514;outline-offset:-2px}
+
+.queue-marketplace th:first-child,.queue-marketplace th:last-child{width:8%}
+.queue-marketplace th:nth-child(2),.queue-marketplace th:nth-child(5){width:17%}
+.queue-marketplace th:nth-child(3),.queue-marketplace th:nth-child(4){width:25%}
+.queue-marketplace th,.v3-arena .queue-marketplace td{padding-inline:clamp(8px,1.3vw,16px)}
+@media(max-width:560px){.queue-marketplace td:first-child{grid-row:1 / span 5}}
