@@ -10,7 +10,7 @@
   "scripts": {
     "blaze:dev": "VITE_INDEXER_MODE=electrum VITE_ARENA_NETWORK=chipnet VITE_V3_NETWORK=mainnet npm --prefix frontend run dev -- --port 5174",
     "blaze:index": "tsx scripts/update-public-index.ts",
-    "blaze:build": "BLAZE_PAGES_BASE=/staking-arena-blaze-site/ node frontend/scripts/build-pages.mjs",
+    "blaze:build": "BLAZE_PAGES_BASE=./ node frontend/scripts/build-pages.mjs",
     "node:start": "bash scripts/node.sh start",
     "node:stop": "bash scripts/node.sh stop",
     "node:status": "bash scripts/node.sh status",
