@@ -4,6 +4,9 @@ import { Buffer, hash256, sha256Bytes } from './bytes.js';
 export { hash256 } from './bytes.js';
 import { binToHex, cashAddressToLockingBytecode, decodeTransaction, hashTransaction, hexToBin } from '@bitauth/libauth';
 import { Network, type NetworkProvider, type SpendableUtxo } from 'cashscript';
+export class ElectrumTransportError extends Error {
+ constructor(message:string,readonly reason:'connect'|'connect timeout'|'disconnect'|'request timeout'|'send' = 'disconnect'){super(message);}
+}
 export interface ElectrumConnection { connect(): Promise<void>; request: ElectrumRequest; close(): void }
 export type ConnectionFactory = (endpoint: string, timeoutMs: number) => ElectrumConnection;
 export const scriptHash = (script: string) => sha256Bytes(Buffer.from(script, 'hex')).reverse().toString('hex');
@@ -85,7 +88,8 @@ export class ElectrumCore implements NetworkProvider {
     return result;
   }
   private async runSession<T>(work: () => Promise<T>, pinnedEndpoint?: string): Promise<T> {
-    const errors: string[] = [];
+    const errors: unknown[] = [];
+    const descriptions: string[] = [];
     if(pinnedEndpoint && !this.endpoints.includes(pinnedEndpoint))throw Error('Unconfigured Electrum endpoint');
     for (const endpoint of pinnedEndpoint?[pinnedEndpoint]:this.endpoints) {
       const connection = this.connectionFactory(endpoint, this.timeoutMs);
@@ -113,10 +117,12 @@ export class ElectrumCore implements NetworkProvider {
           || (await this.header(121957)).hash !== '0000000056087dee73fb66178ca70da89dfd0be098b1a63cf6fe93934cd04c78') throw Error('Electrum chipnet identity mismatch');
         this.activeChainSession=true;
         return await work();
-      } catch (e) { errors.push(`${endpoint}: ${String(e)}`); }
+      } catch (e) { errors.push(e); descriptions.push(`${endpoint}: ${String(e)}`); }
       finally { this.activeChainSession=false; connection.close(); this.rawCache = undefined; this.request = async () => { throw Error('Electrum session closed'); }; }
     }
-    throw Error(errors.join('; '));
+    const message=descriptions.join('; ');
+    if(errors.length&&errors.every(error=>error instanceof ElectrumTransportError))throw new ElectrumTransportError(message,errors.at(-1)?.reason);
+    throw Error(message);
   }
   async header(height: number): Promise<Header> {
     if (!Number.isSafeInteger(height) || height < 0) throw Error('Invalid header height');

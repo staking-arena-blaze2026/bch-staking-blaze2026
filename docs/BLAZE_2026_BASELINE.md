@@ -225,3 +225,5 @@ First-visit welcome dialog: introduces competitive staking and links to the Abou
 CashToken asset labels: Vault details shows the reward asset's registry name, ticker and full category ID. Compact asset labels and amounts use the ticker when available, including the startup vault list, with a category fallback. This is post-baseline presentation work.
 
 Stake Arena site icon: the supplied green grill artwork is used for the favicon, home-screen shortcut icon and WizardConnect app metadata. This is post-baseline branding work.
+
+Post-baseline queue worker recovery. Public vault configuration renders before live queue reads. Read workers replace failed instances and retry with bounded backoff on their own network and channel. An exhausted vault read retains its latest provisional data and offers Retry verification. Controlled worker and Electrum faults reproduced the client recovery gaps. The original production failure trigger and the source of the browser WebSocket warning were not established.

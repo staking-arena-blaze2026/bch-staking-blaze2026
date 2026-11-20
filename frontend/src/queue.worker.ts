@@ -1,6 +1,7 @@
 import {timed} from '../../src/operation-timing';
 import {errorMessage} from '../../src/queue/funding';
 /// <reference lib="webworker" />
+import {ElectrumTransportError} from '../../src/electrum-core';
 import {BrowserElectrumProvider} from '../../src/electrum-wss';
 import {emptyQueueIndex,scanQueueIndex} from '../../src/queue/public-index';
 import {confirmedWalletTransaction} from '../../src/electrum-wallet';
@@ -22,8 +23,15 @@ provider.onStage=value=>{stage=messages[value]??'Checking transaction recovery';
 provider.onTiming=timing=>scope.postMessage({type:'timing',timing});
 provider.onVerificationProgress=message=>scope.postMessage({type:'progress',message});
 const conflictReady=providerConflictStore(options.network).then(async s=>{provider.unresolvedChainPeers=new Set(await s.read());provider.persistChainConflict=async peers=>{try{await s.save(peers);}catch(e){failure=true;throw e;}};}).catch(()=>{failure=true;});
+function frames(error:unknown) {
+ return import.meta.env.DEV&&error instanceof Error?error.stack?.split('\n').slice(1,9).filter(line=>/^\s+at /.test(line)).join('\n'):undefined;
+}
+scope.addEventListener('unhandledrejection', event=>{
+ event.preventDefault();
+ scope.postMessage({type:'fatal',frames:frames(event.reason)});
+});
 let pending:Promise<void>=Promise.resolve();
-scope.onmessage=event=>{pending=pending.catch(()=>{}).then(async()=>{const {id,intent,keys=[]}=event.data;const heartbeat=setInterval(()=>scope.postMessage({type:'heartbeat',id,message:'Still checking blockchain information: '+stage}),5000);try{
+scope.onmessage=event=>{pending=pending.catch(()=>{}).then(async()=>{const {id,intent,keys=[]}=event.data;const heartbeat=readOnly?undefined:setInterval(()=>scope.postMessage({type:'heartbeat',id,message:'Still checking blockchain information: '+stage}),5000);try{
  const operation=String(intent.operation),reading=['list','reportedQueue','owned','discover','creationStatus'].includes(operation);
  if(readOnly&&!reading)throw Error('Read-only queue worker cannot sign, journal or broadcast');
  if(!['list','discover','reportedQueue'].includes(operation)){
@@ -73,6 +81,6 @@ scope.onmessage=event=>{pending=pending.catch(()=>{}).then(async()=>{const {id,i
  if(!reading&&!scope.navigator.locks)throw Error('Queue transactions require Web Locks');
  const result=reading?await run():await scope.navigator.locks.request('arena-'+options.network+'-queue',{ifAvailable:true},async lock=>{if(!lock)throw Error('Another tab is updating this queue wallet');return timed(provider,operation,run);});
  scope.postMessage({id,result});
- }catch(error){scope.postMessage({id,error:errorMessage(error),summary:(error as {summary?:string})?.summary,details:(error as {details?:unknown})?.details});}finally{clearInterval(heartbeat);}});};
+ }catch(error){scope.postMessage({id,error:errorMessage(error),category:error instanceof ElectrumTransportError?'electrum-transport':undefined,transportReason:error instanceof ElectrumTransportError?`lost its Electrum connection (${error.reason})`:undefined,frames:frames(error),summary:(error as {summary?:string})?.summary,details:(error as {details?:unknown})?.details});}finally{clearInterval(heartbeat);}});};
 
 scope.postMessage({type:'ready'});

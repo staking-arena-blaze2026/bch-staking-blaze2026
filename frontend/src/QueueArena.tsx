@@ -51,6 +51,7 @@ export default function QueueArena(){
  const [tokenMetadata,setTokenMetadata]=useState<Record<string,TokenMetadata>>({});
  const [ops,setOps]=useState<Operation[]>([]),[busy,setBusy]=useState(false),[message,setMessage]=useState(''),[review,setReview]=useState<Operation>(),[now,setNow]=useState(Date.now());
  const [refreshVersion,requestRefresh]=useState(0);
+ const [verificationRetry,retryVerification]=useState(0),[retrying,setRetrying]=useState(false);
  const messageRoute=useRef(route);
  const [actionError,setActionError]=useState(''),[actionTechnical,setActionTechnical]=useState(''),[actionDetails,setActionDetails]=useState<{code?:string;reserved?:string;reservations?:{id:string;step:string}[]}>();
  const [confirmation,setConfirmation]=useState<PreparationConfirmation>(),confirmationRef=useRef<PreparationConfirmation|undefined>(undefined);
@@ -96,7 +97,7 @@ export default function QueueArena(){
    return merged;
   });
  }
- async function operations(){const list:Operation[]=await queueCall({operation:'list'});setOps(list);retain(list.filter(o=>o.raw&&(o.config?.anchor.genesis||'config'in o.intent)).flatMap(o=>{try{return [parseQueueConfig(o.config??('config'in o.intent?o.intent.config:undefined))];}catch{return [];}}),false);return list;}
+ async function operations(signal?:AbortSignal){const list:Operation[]=signal?await queueCall({operation:'list'},[],signal):await queueCall({operation:'list'});if(signal?.aborted)return list;setOps(list);retain(list.filter(o=>o.raw&&(o.config?.anchor.genesis||'config'in o.intent)).flatMap(o=>{try{return [parseQueueConfig(o.config??('config'in o.intent?o.intent.config:undefined))];}catch{return [];}}),false);return list;}
  function acceptPublished(data:{vaults:unknown[]}){
   const values=data.vaults.flatMap(v=>{try{const c=parseQueueConfig(v);rememberQueueCount(activeNetwork,id(c),(v as {offerCount?:unknown}).offerCount);return [c];}catch{return [];}});
   for(const c of values)publicIdsRef.current.add(id(c));
@@ -132,9 +133,10 @@ export default function QueueArena(){
  async function discoverOnChain(){
   if(liveScan.current||activeNetwork==='regtest')return;
   liveScan.current=true;
+  const signal=lifetime.current.signal;
   try{
-   const result=await queueCall({operation:'discover',channel:'discovery',published:[...publicIdsRef.current]});
-   if(!lifetime.current.signal.aborted)retain(result.vaults.map(parseQueueConfig));
+   const result=await queueCall({operation:'discover',channel:'discovery',published:[...publicIdsRef.current]},[],signal);
+   if(!signal.aborted)retain(result.vaults.map(parseQueueConfig));
   }catch{/* The published and locally retained catalog stays available. */}
   finally{liveScan.current=false;}
  }
@@ -160,6 +162,7 @@ export default function QueueArena(){
    const label=/uniqueness|malformed|cyclic|orphan|stale link|ordering|collateral|unauthenticated|inconsistent|invalid root|incorrect reserve|duplicate queue/i.test(detail)?'Inconsistent queue data':'Queue data unavailable';
    setQueueCountError(activeNetwork,vaultId,label);
    if(showOffers)setReports(old=>({...old,[vaultId]:{...(old[vaultId]??snapshots.current.get(vaultId)??{at:0}),error:label}}));
+   return (e as {recoveryExhausted?:boolean})?.recoveryExhausted;
   }
  }
  useEffect(()=>{const change=()=>{setRoute(location.hash);setNow(Date.now());};window.addEventListener('hashchange',change);return()=>window.removeEventListener('hashchange',change);},[]);
@@ -172,8 +175,15 @@ export default function QueueArena(){
  useEffect(()=>{
   lifetime.current=new AbortController();
   void discover().then(discoverOnChain);
-  void operations().catch(e=>setMessage(String(e)));
-  const journalTimer=setInterval(()=>{void operations().catch(()=>{});},5000);
+  let readingJournal=false;
+  const readJournal=async()=>{
+   if(readingJournal)return;
+   readingJournal=true;
+   try{await operations(lifetime.current.signal);}catch{/* Transaction recovery retains its own durable journal. */}
+   finally{readingJournal=false;}
+  };
+  void readJournal();
+  const journalTimer=setInterval(()=>void readJournal(),5000);
   const catalogTimer=setInterval(()=>{void discover('index.json',true).then(discoverOnChain);},60000);
   return()=>{lifetime.current.abort();clearInterval(journalTimer);clearInterval(catalogTimer);};
  },[]);
@@ -181,6 +191,7 @@ export default function QueueArena(){
  const creationIds=creations.filter(o=>o.stage!=='conflict').map(o=>o.txid!).join(',');
  useEffect(()=>{
   if(!creationIds)return;
+  const controller=new AbortController();
   let active=true,running=false;
   const check=async()=>{
    if(running)return;
@@ -189,7 +200,7 @@ export default function QueueArena(){
     for(const txid of creationIds.split(',')){
      if(!active)break;
      try{
-      const status=await queueCall({operation:'creationStatus',channel:'creation',txid});
+      const status=await queueCall({operation:'creationStatus',channel:'creation',txid},[],controller.signal);
       if(active)setChainStatus(old=>({...old,[txid]:status}));
      }catch(e){
       if(active)setChainStatus(old=>({...old,[txid]:{...old[txid],error:errorMessage(e)}}));
@@ -199,7 +210,7 @@ export default function QueueArena(){
   };
   void check();
   const timer=setInterval(()=>void check(),30000);
-  return()=>{active=false;clearInterval(timer);};
+  return()=>{active=false;controller.abort();clearInterval(timer);};
  },[creationIds]);
  const awaitingPublication=creations.some(o=>!publicIds.has(o.txid!));
  useEffect(()=>{
@@ -224,13 +235,19 @@ export default function QueueArena(){
   if(!selectedConfig)return;
   const controller=new AbortController();
   let timer:ReturnType<typeof setTimeout>;
+  setRetrying(false);
   const run=async()=>{
-   if(!document.hidden)await readQueue(selectedConfig,'selected',controller.signal,true);
-   if(!controller.signal.aborted)timer=setTimeout(run,15000);
+   let exhausted=false;
+   if(!document.hidden){
+    setRetrying(true);
+    exhausted=!!await readQueue(selectedConfig,'selected',controller.signal,true);
+    if(!controller.signal.aborted)setRetrying(false);
+   }
+   if(!controller.signal.aborted&&!exhausted)timer=setTimeout(run,15000);
   };
   void run();
   return()=>{controller.abort();clearTimeout(timer);};
- },[selectedRevision,refreshVersion]);
+ },[selectedRevision,refreshVersion,verificationRetry]);
  useEffect(()=>{
   if(creating||selectedId||myOffers&&!owner)return;
   const controller=new AbortController(),values=myOffers?configs:configs.slice(page*20,(page+1)*20);
@@ -417,15 +434,18 @@ export default function QueueArena(){
   </article>;
  };
  return <div className="v3-arena">{confirmation&&<QueuePreparationDialog request={confirmation} rewardTicker={'rewardCategory' in confirmation.quote?tokenMetadata[confirmation.quote.rewardCategory]?.symbol:undefined}/>}<nav className="v3-tabs" aria-label="Vault actions"><a className="create-vault-tab" aria-current={creating?'page':undefined} href="#/v3">Create Vault</a><a aria-current={!creating&&!myOffers?'page':undefined} href="#/v3/offers">Browse All Vaults</a></nav>
- {!creating&&<>{(selectedId||myOffers)&&message&&messageRoute.current===route&&<p role="status">{message}</p>}{recoveryPanel}{!snapshot&&actionFeedback}</>}
+ {!creating&&<>{(selectedId||myOffers)&&message&&messageRoute.current===route&&<p role="status">{message}</p>}{recoveryPanel}{!selectedConfig&&actionFeedback}</>}
  {creating?<><form className="form-panel" noValidate onSubmit={e=>{e.preventDefault();create();}}><h1>Create Vault</h1><p>Create the vault, queue and complete reward reserve together. Wallet preparation runs automatically if needed.</p><fieldset disabled={busy}><div className="form-grid"><div className="queue-asset-fields"><label>Staking asset<select aria-label="Staking asset" value={stakeKind} onChange={e=>setStakeKind(e.target.value)}><option value="bch">BCH</option><option value="token">CashToken</option></select></label>{stakeKind==='token'&&<label>Staking token category<input aria-label="Staking token category" aria-describedby="queue-error-stakingCategory" aria-invalid={!!creation.errors.stakingCategory} value={stakeCategory} onChange={e=>setStakeCategory(e.target.value)} maxLength={64}/>{fieldError('stakingCategory',creation.errors.stakingCategory)}</label>}</div><div className="queue-asset-fields"><label>Reward asset<select aria-label="Reward asset" value={rewardKind} onChange={e=>setRewardKind(e.target.value)}><option value="bch">BCH</option><option value="token">CashToken</option></select></label>{rewardKind==='token'&&<label>Reward token category<input aria-label="Reward token category" aria-describedby="queue-error-rewardCategory" aria-invalid={!!creation.errors.rewardCategory} value={rewardCategory} onChange={e=>setRewardCategory(e.target.value)} maxLength={64}/>{fieldError('rewardCategory',creation.errors.rewardCategory)}</label>}</div><label>Reward per release (min. {rewardMinimumLabel})<input aria-label={'Reward per release (min. '+rewardMinimumLabel+')'} aria-describedby="queue-error-cap" aria-invalid={!!creation.errors.cap} value={cap} onChange={e=>setCap(e.target.value)} inputMode="decimal"/>{fieldError('cap',creation.errors.cap)}</label><label>Release interval (minutes)<input type="number" min={minimumMinutes(activeNetwork)} step={minimumMinutes(activeNetwork)} aria-label="Release interval (minutes)" aria-describedby="queue-error-interval" aria-invalid={!!creation.errors.interval} value={interval} onChange={e=>setReleaseInterval(e.target.value)}/>{fieldError('interval',creation.errors.interval)}</label><label>Number of releases<input type="number" min="1" max="1000" aria-label="Number of releases" aria-describedby="queue-error-releases" aria-invalid={!!creation.errors.releases} value={releases} onChange={e=>setReleases(e.target.value)}/>{fieldError('releases',creation.errors.releases)}</label><label>Schedule starts (local time)<input type="datetime-local" step="1" aria-label="Schedule starts (local time)" aria-describedby="queue-error-epoch" aria-invalid={!!creation.errors.epoch} value={epoch} onChange={e=>setEpoch(e.target.value)}/>{fieldError('epoch',creation.errors.epoch)}</label></div>{creationPreview&&<dl><dt>Total reward reserve</dt><dd>{displayAsset(creationPreview.rewardCategory,creationPreview.cap*BigInt(creationPreview.releases))}</dd><dt>Schedule duration</dt><dd>{formatDuration(creationPreview.interval*creationPreview.releases)}</dd><dt>Final scheduled release (local time)</dt><dd>{localTimestamp(creationPreview.epoch+creationPreview.interval*creationPreview.releases)}</dd></dl>}<p>Transactions: {review?.quote?.transactions??'calculated before approval'} · Wallet approvals: {review?.quote?.approvals??'calculated before approval'}</p><p>Estimated network fee: {review?.intent.kind==='create'?(review.quote?.totalFee??review.plan.fee)+' sats':'calculated from wallet inputs before approval'}</p>{review?.intent.kind==='create'&&<p>Total wallet BCH committed, including fee: {review.quote?.walletDebit??review.walletDebit} sats</p>}{actionFeedback}{!creationPreview&&<p>Correct the highlighted fields to create the vault.</p>}<button type="submit" disabled={!canRequest||busy||!creationPreview}>Create Vault</button></fieldset></form>
  {(busy||creations.length>0||messageRoute.current===route&&message)&&<section className="panel" aria-label="Vault creation status"><h2>Vault creation status</h2><div role="status">{messageRoute.current===route&&message&&<p>{message}</p>}</div>{creations.length>0&&<>{discoveryControls}{creations.map(creationStatus)}</>}</section>}
  {recoveryPanel}</>:myOffers?ownerSection:selectedId?<>
-  <a href="#/v3/offers">← All vaults</a><h1>Vault {selectedId.slice(0,12)}</h1>{creations.filter(o=>o.txid===selectedId).map(creationStatus)}{!selectedConfig?<p>Finding this vault in public discovery… {catalogError}</p>:!snapshot?<p>{selectedError||'Loading queue…'}</p>:<>
-   <div className="queue-vault-layout"><section className="panel queue-vault-details" aria-label="Vault details"><h2>Vault details</h2><div className="queue-vault-summary-grid"><div className="queue-vault-data"><dl className="terms"><div><dt>Staking asset</dt><dd>{displayAsset(selectedConfig.parameters.stakingCategory)}</dd></div><div><dt>Reward asset</dt><dd>{selectedConfig.parameters.rewardCategory===ZERO?'BCH':tokenIdentity(selectedConfig.parameters.rewardCategory,tokenMetadata[selectedConfig.parameters.rewardCategory])}</dd></div><div><dt>Total max reward</dt><dd>{displayAsset(selectedConfig.parameters.rewardCategory,selectedConfig.parameters.cap*BigInt(selectedConfig.parameters.releases))}</dd></div><div><dt>Remaining reserve</dt><dd>{displayAsset(selectedConfig.parameters.rewardCategory,snapshot.state.reserve)}</dd></div><div><dt>Reward per release</dt><dd>{displayAsset(selectedConfig.parameters.rewardCategory,selectedConfig.parameters.cap)}</dd></div><div><dt>Release interval</dt><dd>{formatDuration(selectedConfig.parameters.interval)}</dd></div><div><dt>Scheduled releases</dt><dd>{selectedConfig.parameters.releases}</dd></div><div><dt>Starts (local time)</dt><dd>{localTimestamp(selectedConfig.parameters.epoch)}</dd></div></dl><div className="queue-claim" role="group" aria-label="Claim reward"><p>Winning reward: {head?displayAsset(selectedConfig.parameters.rewardCategory,head.reward):'none'}</p><p>Caller pays the fee. The reward goes to the winning offer.</p>{review?.intent.kind==='claim'&&<p>Estimated network fee: {review.plan.fee} sats</p>}<button type="button" disabled={!head||!canRequest||busy||!!selectedError||headStatus===undefined||headStatus==='awaiting-release'} title={!head?'No offers waiting':headStatus==='awaiting-release'?'The highest-ranked offer is waiting for scheduled rewards.':headStatus==='never-funded'?'The head cannot be funded by the remaining reserve; this action returns its stake.':undefined} onClick={()=>{if(head)void prepare({kind:'claim',config:selectedConfig,expectedHead:head.id});}}>{head&&head.reward>snapshot.state.reserve?'Return unfundable head':'Claim reward'}</button></div>{selectedError&&<p role="status">{selectedError}. Showing the last reported queue.</p>}</div><QueueReleaseSchedule rewardAmount={amount=>displayAsset(selectedConfig.parameters.rewardCategory,amount)} parameters={selectedConfig.parameters} reserve={snapshot.state.reserve} mtp={snapshot.mtp} reportedAt={reportedAt} now={now} available={!selectedError}/></div></section>
-   <form className="form-panel queue-offer-panel" noValidate onSubmit={e=>{e.preventDefault();if(terms)void prepare({kind:'insert',config:selectedConfig,terms});}}><h2>Make an Offer</h2><div className="form-grid"><label>Stake amount<input inputMode="decimal" aria-label="Stake amount" aria-describedby="queue-error-stake" aria-invalid={!!offer.errors.stake} value={stake} onChange={e=>setStake(e.target.value)}/>{fieldError('stake',offer.errors.stake)}</label><label className="queue-lock-duration">Lock duration (time units)<input type="number" min="1" max="65535" aria-label="Lock duration (time units)" aria-describedby="queue-lock-conversion queue-error-duration" aria-invalid={!!offer.errors.duration} value={duration} onChange={e=>setDuration(e.target.value)}/>{fieldError('duration',offer.errors.duration)}<small id="queue-lock-conversion">1 time unit = {STAKING_UNIT_SECONDS} second</small>{offer.lockSeconds!==undefined&&<small aria-live="polite">{formatDuration(offer.lockSeconds)}</small>}</label><label>Requested reward<input inputMode="decimal" aria-label="Requested reward" aria-describedby="queue-error-reward" aria-invalid={!!offer.errors.reward} value={reward} onChange={e=>setReward(e.target.value)}/>{fieldError('reward',offer.errors.reward)}</label></div><p>Transactions: 1 · Wallet approvals: 1</p><p>Estimated network fee: {review?.intent.kind==='insert'?review.plan.fee+' sats':'calculated from wallet inputs before approval'}</p>{review?.intent.kind==='insert'&&<p>Total wallet BCH committed, including fee: {review.walletDebit} sats</p>}{termsError&&<p>Correct the highlighted fields to make an offer.</p>}{selectedError&&<p role="alert">Current vault verification failed: {errorMessage(selectedError)} Wait for provider connectivity and retry.</p>}{actionFeedback}<button disabled={!canRequest||busy||!terms||!!selectedError} type="submit">Make an Offer</button></form>
+  <a href="#/v3/offers">← All vaults</a><h1>Vault {selectedId.slice(0,12)}</h1>{creations.filter(o=>o.txid===selectedId).map(creationStatus)}{!selectedConfig?<p>Finding this vault in public discovery… {catalogError}</p>:<>
+   <div className="queue-vault-layout"><section className="panel queue-vault-details" aria-label="Vault details"><h2>Vault details</h2><div className="queue-vault-summary-grid"><div className="queue-vault-data"><p>{publicIds.has(selectedId)?'Published configuration':'Saved configuration'}</p><dl className="terms"><div><dt>Staking asset</dt><dd>{displayAsset(selectedConfig.parameters.stakingCategory)}</dd></div><div><dt>Reward asset</dt><dd>{selectedConfig.parameters.rewardCategory===ZERO?'BCH':tokenIdentity(selectedConfig.parameters.rewardCategory,tokenMetadata[selectedConfig.parameters.rewardCategory])}</dd></div><div><dt>Total max reward</dt><dd>{displayAsset(selectedConfig.parameters.rewardCategory,selectedConfig.parameters.cap*BigInt(selectedConfig.parameters.releases))}</dd></div><div><dt>Reward per release</dt><dd>{displayAsset(selectedConfig.parameters.rewardCategory,selectedConfig.parameters.cap)}</dd></div><div><dt>Release interval</dt><dd>{formatDuration(selectedConfig.parameters.interval)}</dd></div><div><dt>Scheduled releases</dt><dd>{selectedConfig.parameters.releases}</dd></div><div><dt>Starts (local time)</dt><dd>{localTimestamp(selectedConfig.parameters.epoch)}</dd></div></dl><p role="status">{selectedError?`${selectedError}. ${snapshot?'Showing the last reported queue and reserve.':'Live queue and reserve are unavailable.'}`:snapshot?'Provider-reported blockchain state · provisional':'Loading live queue and reserve…'}</p>
+   {selectedError&&<button type="button" disabled={retrying} onClick={()=>retryVerification(version=>version+1)}>Retry verification</button>}
+   {snapshot&&<dl className="terms"><div><dt>Remaining reserve</dt><dd>{displayAsset(selectedConfig.parameters.rewardCategory,snapshot.state.reserve)}</dd></div></dl>}
+   {snapshot&&<div className="queue-claim" role="group" aria-label="Claim reward"><p>Winning reward: {head?displayAsset(selectedConfig.parameters.rewardCategory,head.reward):'none'}</p><p>Caller pays the fee. The reward goes to the winning offer.</p>{review?.intent.kind==='claim'&&<p>Estimated network fee: {review.plan.fee} sats</p>}<button type="button" disabled={!head||!canRequest||busy||!!selectedError||headStatus===undefined||headStatus==='awaiting-release'} title={!head?'No offers waiting':headStatus==='awaiting-release'?'The highest-ranked offer is waiting for scheduled rewards.':headStatus==='never-funded'?'The head cannot be funded by the remaining reserve; this action returns its stake.':undefined} onClick={()=>{if(head)void prepare({kind:'claim',config:selectedConfig,expectedHead:head.id});}}>{head&&head.reward>snapshot.state.reserve?'Return unfundable head':'Claim reward'}</button></div>}</div>{snapshot&&<QueueReleaseSchedule rewardAmount={amount=>displayAsset(selectedConfig.parameters.rewardCategory,amount)} parameters={selectedConfig.parameters} reserve={snapshot.state.reserve} mtp={snapshot.mtp} reportedAt={reportedAt} now={now} available={!selectedError}/>}</div></section>
+   <form className="form-panel queue-offer-panel" noValidate onSubmit={e=>{e.preventDefault();if(snapshot&&!selectedError&&terms)void prepare({kind:'insert',config:selectedConfig,terms});}}><h2>Make an Offer</h2><div className="form-grid"><label>Stake amount<input inputMode="decimal" aria-label="Stake amount" aria-describedby="queue-error-stake" aria-invalid={!!offer.errors.stake} value={stake} onChange={e=>setStake(e.target.value)}/>{fieldError('stake',offer.errors.stake)}</label><label className="queue-lock-duration">Lock duration (time units)<input type="number" min="1" max="65535" aria-label="Lock duration (time units)" aria-describedby="queue-lock-conversion queue-error-duration" aria-invalid={!!offer.errors.duration} value={duration} onChange={e=>setDuration(e.target.value)}/>{fieldError('duration',offer.errors.duration)}<small id="queue-lock-conversion">1 time unit = {STAKING_UNIT_SECONDS} second</small>{offer.lockSeconds!==undefined&&<small aria-live="polite">{formatDuration(offer.lockSeconds)}</small>}</label><label>Requested reward<input inputMode="decimal" aria-label="Requested reward" aria-describedby="queue-error-reward" aria-invalid={!!offer.errors.reward} value={reward} onChange={e=>setReward(e.target.value)}/>{fieldError('reward',offer.errors.reward)}</label></div><p>Transactions: 1 · Wallet approvals: 1</p><p>Estimated network fee: {review?.intent.kind==='insert'?review.plan.fee+' sats':'calculated from wallet inputs before approval'}</p>{review?.intent.kind==='insert'&&<p>Total wallet BCH committed, including fee: {review.walletDebit} sats</p>}{termsError&&<p>Correct the highlighted fields to make an offer.</p>}{actionFeedback}<button disabled={!snapshot||!canRequest||busy||!terms||!!selectedError} type="submit">Make an Offer</button></form>
 
-   <section className="panel queue-queue-panel" aria-label="Queue"><h2>Queue</h2><p>Provider-reported state · provisional{now-reportedAt>60000||selectedError?` · Stale`:null}</p><div className="table-scroll"><table className="queue-ranking-table"><caption className="sr-only">Ranked queue</caption><thead><tr><th>Rank</th><th>Stake</th><th>Lock duration</th><th>Reward</th><th>Priority</th></tr></thead><tbody>{snapshot.ordered.map((o,n)=><tr key={o.id}><td>{n+1}</td><td>{displayAsset(selectedConfig.parameters.stakingCategory,o.stake)}</td><td>{o.duration/512} time {o.duration===512?'unit':'units'}<small>{formatDuration(o.duration)}</small></td><td>{displayAsset(selectedConfig.parameters.rewardCategory,o.reward)}</td><td>{String(o.stake*BigInt(o.duration/512))}/{String(o.reward)}</td></tr>)}</tbody></table></div>{!snapshot.ordered.length&&<p>No offers waiting.</p>}</section>{ownerSection}</div>
+   <section className="panel queue-queue-panel" aria-label="Queue"><h2>Queue</h2>{snapshot?<><p>Provider-reported state · provisional · {snapshot.ordered.length} waiting{now-reportedAt>60000||selectedError?` · Stale`:null}</p><div className="table-scroll"><table className="queue-ranking-table"><caption className="sr-only">Ranked queue</caption><thead><tr><th>Rank</th><th>Stake</th><th>Lock duration</th><th>Reward</th><th>Priority</th></tr></thead><tbody>{snapshot.ordered.map((o,n)=><tr key={o.id}><td>{n+1}</td><td>{displayAsset(selectedConfig.parameters.stakingCategory,o.stake)}</td><td>{o.duration/512} time {o.duration===512?'unit':'units'}<small>{formatDuration(o.duration)}</small></td><td>{displayAsset(selectedConfig.parameters.rewardCategory,o.reward)}</td><td>{String(o.stake*BigInt(o.duration/512))}/{String(o.reward)}</td></tr>)}</tbody></table></div>{!snapshot.ordered.length&&<p>No offers waiting.</p>}</>:<p>{selectedError?'Live queue unavailable.':'Loading queue…'}</p>}</section>{ownerSection}</div>
   </>}
  </>:<section className="v3-known"><h1>Known vaults</h1>{discoveryControls}<table className="marketplace-table"><thead><tr><th>Vault</th><th>Total max reward</th><th>Staking asset</th><th>Offers</th></tr></thead><tbody>{configs.slice(page*20,(page+1)*20).map((c,n)=><tr key={id(c)}><td><a className="marketplace-link" aria-label={'Vault '+(page*20+n+1)} href={'#/v3/vault/'+id(c)}>{page*20+n+1}</a></td><td>{displayAsset(c.parameters.rewardCategory,c.parameters.cap*BigInt(c.parameters.releases))}</td><td>{displayAsset(c.parameters.stakingCategory)}</td><QueueCountCell network={activeNetwork} vaultId={id(c)}/></tr>)}</tbody></table>{ready&&!configs.length&&<p>No linked-list vaults have been discovered yet.</p>}<div><button disabled={!page} onClick={()=>setPage(p=>p-1)}>Previous</button><button disabled={(page+1)*20>=configs.length&&!pages.length} onClick={()=>{if((page+1)*20>=configs.length&&pages[0])void discover(pages[0]).then(loaded=>{if(loaded)setPage(p=>p+1);});else setPage(p=>p+1);}}>Next</button></div></section>}
  {!creating&&!myOffers&&!selectedId&&message&&messageRoute.current===route&&<p role="status">{message}</p>}

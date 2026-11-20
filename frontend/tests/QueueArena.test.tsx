@@ -16,11 +16,11 @@ let live=true,rows:any[]=[],failure=false;
 const wallet:WalletTransactions={publicKey:()=>owner,pairing:()=>({paired:true,live,identity:owner,network:'chipnet'}),restore:vi.fn(),v3:vi.fn(),queue:vi.fn(async()=>({intent:{kind:'insert'},stage:'pending',step:'action',raw:'retained',txid:'ff'.repeat(32)})),execute:vi.fn()};
 beforeEach(()=>{vi.spyOn(document,'hidden','get').mockReturnValue(false);localStorage.clear();rows=[];live=true;failure=false;vi.clearAllMocks();window.location.hash='#/v3/vault/'+genesis;vi.mocked(loadQueuePage).mockResolvedValue({network:'chipnet',vaults:[config],pages:[]});vi.mocked(queueCall).mockImplementation(async i=>{if(i.operation==='list')return [];if(i.operation==='owned')return rows;if(failure)throw Error('Provider unavailable');return snapshot;});});
 afterEach(cleanup);
-async function open(){render(<WalletTransactionsContext.Provider value={wallet}><QueueArena/></WalletTransactionsContext.Provider>);await screen.findByRole('heading',{name:'Make an Offer'},{timeout:5000});}
+async function open(){render(<WalletTransactionsContext.Provider value={wallet}><QueueArena/></WalletTransactionsContext.Provider>);await screen.findByText('Remaining reserve',{}, {timeout:5000});}
 it('validates 512-second units and preserves exact terms in the approval request',async()=>{await open();fireEvent.change(screen.getByLabelText('Lock duration (time units)'),{target:{value:'12'}});expect(screen.getAllByText(/1 hour, 42 minutes, 24 seconds/).length).toBeGreaterThan(0);fireEvent.click(screen.getByRole('button',{name:'Make an Offer'}));await waitFor(()=>expect(wallet.queue).toHaveBeenCalledWith({operation:'prepare',intent:{kind:'insert',config,terms:{stake:3000n,duration:6144,reward:2000n}}},expect.any(Function)));fireEvent.change(screen.getByLabelText('Lock duration (time units)'),{target:{value:'0'}});expect(screen.getByRole('button',{name:'Make an Offer'})).toBeDisabled();});
 it('binds a claim to the reviewed head, and waits for an offline saved pairing',async()=>{live=false;await open();const details=screen.getByRole('region',{name:'Vault details'});const button=screen.getByRole('button',{name:'Claim reward'});expect(details).toContainElement(button);expect(screen.getByText('Winning reward: 0.00002000 BCH (2000 satoshis)')).toBeVisible();expect(screen.queryByRole('heading',{name:'Claim'})).toBeNull();expect(screen.getByRole('heading',{name:'Queue'})).toBeVisible();expect(button).toBeEnabled();fireEvent.click(button);expect(wallet.queue).not.toHaveBeenCalled();await waitFor(()=>expect(wallet.restore).toHaveBeenCalled());live=true;await waitFor(()=>expect(wallet.queue).toHaveBeenCalledWith({operation:'prepare',intent:{kind:'claim',config,expectedHead:offer.id}},expect.any(Function)));});
 it('cancels deferred approval when the terms or route change',async()=>{live=false;await open();fireEvent.click(screen.getByRole('button',{name:'Make an Offer'}));await waitFor(()=>expect(wallet.restore).toHaveBeenCalled());fireEvent.change(screen.getByLabelText('Stake amount'),{target:{value:'0.00004000'}});live=true;await waitFor(()=>expect(screen.getByRole('alert')).toHaveTextContent('request changed'));expect(wallet.queue).not.toHaveBeenCalled();});
-it('shows owner states and enables matured withdrawal on the My Offers route',async()=>{window.location.hash='#/v3/my-offers';rows=[{id:offer.id,offer,status:'Baked',maturesAt:1800001000,checkedMtp:1800001200,eligible:true}];render(<WalletTransactionsContext.Provider value={wallet}><QueueArena/></WalletTransactionsContext.Provider>);const button=await screen.findByRole('button',{name:'Get my stake back'});expect(screen.getByText('Matured',{selector:'strong'})).toBeVisible();expect(screen.getByRole('button',{name:'Matured'})).toBeVisible();expect(button).toBeEnabled();fireEvent.click(button);await waitFor(()=>expect(wallet.queue).toHaveBeenCalledWith({operation:'prepare',intent:{kind:'withdraw',config,offerId:offer.id}},expect.any(Function)));});
+it('shows owner states and enables matured withdrawal on the My Offers route',async()=>{window.location.hash='#/v3/my-offers';rows=[{id:offer.id,offer,status:'Baked',maturesAt:1800001000,checkedMtp:1800001200,eligible:true}];vi.mocked(queueCall).mockImplementation(async request=>request.operation==='list'?[]:request.operation==='owned'?rows:{...snapshot,ordered:[]});render(<WalletTransactionsContext.Provider value={wallet}><QueueArena/></WalletTransactionsContext.Provider>);const button=await screen.findByRole('button',{name:'Get my stake back'});expect(screen.getByText('Matured',{selector:'strong'})).toBeVisible();expect(screen.getByRole('button',{name:'Matured'})).toBeVisible();expect(button).toBeEnabled();fireEvent.click(button);await waitFor(()=>expect(wallet.queue).toHaveBeenCalledWith({operation:'prepare',intent:{kind:'withdraw',config,offerId:offer.id}},expect.any(Function)));});
 it('displays local/MTP release timing and the complete expandable schedule',async()=>{await open();expect(screen.getByText(/Reported blockchain time \(MTP\):/)).toBeInTheDocument();const summary=screen.getByText('Release schedule and history');await act(async()=>{fireEvent.click(summary);summary.closest('details')!.open=true;fireEvent(summary.closest('details')!,new Event('toggle'));});expect(screen.getByRole('columnheader',{name:'Scheduled local time'})).toBeInTheDocument();expect(screen.getAllByRole('row').length).toBeGreaterThan(10);});
 
 it('shows atomic counts, exact reviewed fee/debit, and clears stale estimates',async()=>{await open();expect(screen.getByText('Transactions: 1 · Wallet approvals: 1')).toBeVisible();expect(screen.queryByText(/Total stake committed:/)).toBeNull();expect(screen.getByText('1 time unit = 512 second')).toBeVisible();await act(async()=>{window.dispatchEvent(new CustomEvent('arena-queue-review',{detail:{intent:{kind:'insert'},plan:{fee:'3613'},walletDebit:'7813'}}));});expect(screen.getByText('Estimated network fee: 3613 sats')).toBeVisible();expect(screen.getByText(/Total wallet BCH committed, including fee: 7813 sats/)).toBeVisible();fireEvent.change(screen.getByLabelText('Stake amount'),{target:{value:'0.00004000'}});expect(screen.queryByText('Estimated network fee: 3613 sats')).not.toBeInTheDocument();});
@@ -275,4 +275,46 @@ it('merges a journaled pending offer into the queue row as soon as it is reporte
  expect(within(panel).queryByText('Pending',{selector:'strong'})).toBeNull();
  expect(within(panel).getAllByRole('article')).toHaveLength(1);
  view.unmount();
+});
+
+it('keeps published vault configuration visible through failed verification and retries in place',async()=>{
+ let finish!: (value:typeof snapshot)=>void;
+ failure=true;
+ vi.mocked(queueCall).mockImplementation(async request=>{
+  if(request.operation!=='reportedQueue')return [];
+  if(failure)throw Object.assign(Error('Worker crashed'),{recoveryExhausted:true});
+  return new Promise<typeof snapshot>(resolve=>{finish=resolve;});
+ });
+ render(<QueueArena/>);
+ const details=await screen.findByRole('region',{name:'Vault details'});
+ expect(within(details).getByText('Published configuration')).toBeVisible();
+ for(const label of ['Staking asset','Reward asset','Total max reward','Reward per release','Release interval','Scheduled releases','Starts (local time)']){
+  expect(within(details).getByText(label)).toBeVisible();
+ }
+ expect(await within(details).findByText(/Live queue and reserve are unavailable/)).toBeVisible();
+ expect(screen.getByRole('button',{name:'Make an Offer'})).toBeDisabled();
+ failure=false;
+ const retry=within(details).getByRole('button',{name:'Retry verification'});
+ fireEvent.click(retry);
+ expect(retry).toBeDisabled();
+ await act(async()=>finish(snapshot));
+ expect(within(details).getByText('Remaining reserve')).toBeVisible();
+ expect(screen.getByText(/provisional · 1 waiting/)).toBeVisible();
+ expect(within(details).queryByRole('button',{name:'Retry verification'})).toBeNull();
+});
+
+it('keeps the last reserve and ranking marked stale when a fresh read exhausts recovery',async()=>{
+ await open();
+ failure=true;
+ vi.mocked(queueCall).mockImplementation(async request=>{
+  if(request.operation==='reportedQueue')throw Object.assign(Error('Worker crashed'),{recoveryExhausted:true});
+  return [];
+ });
+ await act(async()=>{window.location.hash='#/v3/offers';window.dispatchEvent(new HashChangeEvent('hashchange'));});
+ await act(async()=>{window.location.hash='#/v3/vault/'+genesis;window.dispatchEvent(new HashChangeEvent('hashchange'));});
+ expect(await screen.findByText(/Showing the last reported queue and reserve/)).toBeVisible();
+ expect(screen.getByText('Remaining reserve')).toBeVisible();
+ expect(screen.getByText(/1 waiting · Stale/)).toBeVisible();
+ expect(screen.getByRole('button',{name:'Claim reward'})).toBeDisabled();
+ expect(screen.getByRole('button',{name:'Make an Offer'})).toBeDisabled();
 });
