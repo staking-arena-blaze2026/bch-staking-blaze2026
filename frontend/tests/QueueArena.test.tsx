@@ -14,7 +14,7 @@ const offer={id:'dd'.repeat(32),owner,stake:3000n,duration:512,reward:2000n,next
 const snapshot={config,tip:{height:200,hash:'ee'.repeat(32)},mtp:1800001200,state:{head:offer,reserve:20000n},ordered:[offer],nodes:new Map(),vault:{},root:{}};
 let live=true,rows:any[]=[],failure=false;
 const wallet:WalletTransactions={publicKey:()=>owner,pairing:()=>({paired:true,live,identity:owner,network:'chipnet'}),restore:vi.fn(),v3:vi.fn(),queue:vi.fn(async()=>({intent:{kind:'insert'},stage:'pending',step:'action',raw:'retained',txid:'ff'.repeat(32)})),execute:vi.fn()};
-beforeEach(()=>{vi.spyOn(document,'hidden','get').mockReturnValue(false);localStorage.clear();rows=[];live=true;failure=false;vi.clearAllMocks();window.location.hash='#/v3/vault/'+genesis;vi.mocked(loadQueuePage).mockResolvedValue({network:'chipnet',vaults:[config],pages:[]});vi.mocked(queueCall).mockImplementation(async i=>{if(i.operation==='list')return [];if(i.operation==='owned')return rows;if(failure)throw Error('Provider unavailable');return snapshot;});});
+beforeEach(()=>{vi.spyOn(document,'hidden','get').mockReturnValue(false);localStorage.clear();sessionStorage.clear();rows=[];live=true;failure=false;vi.clearAllMocks();window.location.hash='#/v3/vault/'+genesis;vi.mocked(loadQueuePage).mockResolvedValue({network:'chipnet',vaults:[config],pages:[]});vi.mocked(queueCall).mockImplementation(async i=>{if(i.operation==='list')return [];if(i.operation==='owned')return rows;if(failure)throw Error('Provider unavailable');return snapshot;});});
 afterEach(cleanup);
 async function open(){render(<WalletTransactionsContext.Provider value={wallet}><QueueArena/></WalletTransactionsContext.Provider>);await screen.findByText('Remaining reserve',{}, {timeout:5000});}
 it('validates 512-second units and preserves exact terms in the approval request',async()=>{await open();fireEvent.change(screen.getByLabelText('Lock duration (time units)'),{target:{value:'12'}});expect(screen.getAllByText(/1 hour, 42 minutes, 24 seconds/).length).toBeGreaterThan(0);fireEvent.click(screen.getByRole('button',{name:'Make an Offer'}));await waitFor(()=>expect(wallet.queue).toHaveBeenCalledWith({operation:'prepare',intent:{kind:'insert',config,terms:{stake:3000n,duration:6144,reward:2000n}}},expect.any(Function)));fireEvent.change(screen.getByLabelText('Lock duration (time units)'),{target:{value:'0'}});expect(screen.getByRole('button',{name:'Make an Offer'})).toBeDisabled();});
@@ -327,4 +327,68 @@ it('keeps the last reserve and ranking marked stale when a fresh read exhausts r
  expect(screen.getByText(/1 waiting · Stale/)).toBeVisible();
  expect(screen.getByRole('button',{name:'Claim reward'})).toBeDisabled();
  expect(screen.getByRole('button',{name:'Make an Offer'})).toBeDisabled();
+});
+
+
+it('waits for public publication then reveals the new vault on its catalog page',async()=>{
+ window.location.hash='#/v3';
+ const previous=Array.from({length:20},(_,index)=>({...config,anchor:{...config.anchor,genesis:(index+1).toString(16).padStart(64,'0')}}));
+ const publicationPage='pages/'+'bb'.repeat(32)+'.json';
+ let published=false;
+ vi.mocked(loadQueuePage).mockImplementation(async (_network,path)=>({
+  network:'chipnet',vaults:path===publicationPage?[config]:previous,pages:published?[publicationPage]:[],
+ }));
+ const submitted={id:'new-vault',intent:{kind:'create'},step:'action',stage:'pending',raw:'retained',txid:genesis,config};
+ let journal:typeof submitted[]=[];
+ vi.mocked(queueCall).mockImplementation(async request=>request.operation==='list'?journal:request.operation==='creationStatus'?{confirmed:true}:snapshot);
+ vi.mocked(wallet.queue!).mockImplementationOnce(async()=>{journal=[submitted];return submitted;});
+ render(<WalletTransactionsContext.Provider value={wallet}><QueueArena/></WalletTransactionsContext.Provider>);
+ fireEvent.click(screen.getByRole('button',{name:'Create Vault'}));
+ await screen.findByText(/Public listing pending/);
+ expect(screen.queryByRole('button',{name:'Your Vault has been created'})).toBeNull();
+ published=true;
+ fireEvent.click(await screen.findByRole('button',{name:'Refresh public discovery'}));
+ const notice=await screen.findByRole('button',{name:'Your Vault has been created'});
+ fireEvent.click(notice);
+ await screen.findByRole('heading',{name:'Known vaults'});
+ const row=screen.getByRole('link',{name:'Vault 21'}).closest('tr')!;
+ expect(row).toHaveClass('queue-row-highlight');
+ expect(row).toHaveFocus();
+ expect(screen.queryByRole('button',{name:'Your Vault has been created'})).toBeNull();
+ fireEvent.click(document.body);
+ expect(row).not.toHaveClass('queue-row-highlight');
+});
+
+it('shows the live score and highlights a submitted offer once it appears in the ordered queue',async()=>{
+ await open();
+ const form=screen.getByRole('heading',{name:'Make an Offer'}).closest('form')!;
+ expect(form.querySelector('h2')?.nextElementSibling).toHaveTextContent('Priority Score = (Stake Amount × Lock Duration) / Requested Reward');
+ const priority=form.querySelector('#queue-priority-preview');
+ expect(priority).toHaveTextContent('Priority Score: 1.5');
+ fireEvent.change(screen.getByLabelText('Lock duration (time units)'),{target:{value:'2'}});
+ expect(priority).toHaveTextContent('Priority Score: 3');
+ fireEvent.change(screen.getByLabelText('Requested reward'),{target:{value:'0.00001000'}});
+ expect(priority).toHaveTextContent('Priority Score: 6');
+ fireEvent.change(screen.getByLabelText('Requested reward'),{target:{value:'0'}});
+ expect(priority).toHaveTextContent('Priority Score: —');
+ fireEvent.change(screen.getByLabelText('Requested reward'),{target:{value:'0.00002000'}});
+
+ const next={...offer,id:'fe'.repeat(32),duration:1024};
+ const result={id:'new-offer',intent:{kind:'insert',config,terms:next},stage:'pending',step:'action',raw:'retained',offerId:next.id,txid:'ff'.repeat(32),owner:{publicKey:owner}};
+ let reportNext!:(value:typeof snapshot)=>void;
+ vi.mocked(queueCall).mockImplementation(async request=>request.operation==='reportedQueue'?new Promise(resolve=>{reportNext=resolve;}):[]);
+ vi.mocked(wallet.queue!).mockResolvedValueOnce(result);
+ fireEvent.click(screen.getByRole('button',{name:'Make an Offer'}));
+ await waitFor(()=>expect(reportNext).toBeDefined());
+ expect(screen.queryByRole('button',{name:'Your offer has been submitted'})).toBeNull();
+ await act(async()=>reportNext({...snapshot,ordered:[next,offer]}));
+ fireEvent.click(await screen.findByRole('button',{name:'Your offer has been submitted'}));
+ const table=screen.getByRole('table',{name:'Ranked queue'});
+ expect(within(table).getAllByRole('columnheader').map(cell=>cell.textContent)).toEqual(['Rank','Priority Score','Reward','Stake','Lock duration']);
+ const row=document.getElementById('offer-row-'+next.id)!;
+ expect(row).toHaveClass('queue-row-highlight');
+ expect(within(row).getAllByRole('cell')[1]).toHaveTextContent(/^3$/);
+ expect(screen.queryByRole('button',{name:'Your offer has been submitted'})).toBeNull();
+ fireEvent.click(document.body);
+ expect(row).not.toHaveClass('queue-row-highlight');
 });

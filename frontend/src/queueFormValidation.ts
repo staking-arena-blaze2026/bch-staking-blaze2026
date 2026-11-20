@@ -27,5 +27,5 @@ export function offerValidation(p:Parameters,f:{stake:string;reward:string;durat
  else if(errors.reward&&rewards.kind==='token')errors.reward=wholeTokenRange(rewards,minimumReward(p.rewardCategory),MAX_REQUEST,rewardMetadata);
  if(durationError)errors.duration=durationError;
  if(!errors.reward&&reward!==null&&reserve!==undefined&&reward>reserve)errors.reward=`Requested reward exceeds the remaining reserve of ${assetAmount(rewards,reserve,rewardMetadata)}.`;
- return {errors,terms:Object.keys(errors).length?undefined:terms,lockSeconds:durationError?undefined:duration};
+ return {errors,terms:Object.keys(errors).length?undefined:terms,priorityTerms:terms.stake>0n&&terms.reward>0n&&!durationError?terms:undefined,lockSeconds:durationError?undefined:duration};
 }

@@ -305,3 +305,9 @@ footer a{color:inherit}
  .queue-vault-layout{gap:18px}
  .queue-vault-data .terms{gap:16px}
 }
+
+.queue-notices{position:fixed;z-index:6;right:16px;bottom:calc(76px + env(safe-area-inset-bottom,0px));display:grid;gap:8px;max-width:calc(100% - 32px)}
+.queue-notices .button{min-height:44px;padding:10px 16px;border:1px solid #c79250;border-radius:12px;background:#532d16;color:#fff2db;box-shadow:0 4px 16px #27150b55}
+.queue-notices .button:hover:not(:disabled){background:#703e20}
+.v3-arena tr.queue-row-highlight>td{background:#ffdc87;color:#361b09}
+.v3-arena tr.queue-row-highlight{outline:2px solid #a85514;outline-offset:-2px}
