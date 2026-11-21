@@ -19,11 +19,12 @@ export async function discoverQueueInputs(
  const kind=(request.intent as Intent|undefined)?.kind;
  const limits=preparing&&kind!=='recover'?[2,8,16,24,32,40]:[40];
  const discoveryId=crypto.randomUUID();
- const saved=preparing&&kind==='create'?await queueCall({operation:'list'}):[];
- const journal:Operation[]=Array.isArray(saved)?saved:[];
+ const recovering=request.operation==='resume'&&request.recoverSubmission===true;
+ const saved=preparing&&kind==='create'||recovering?await queueCall({operation:'list'}):[];
+ const journal:Operation[]=Array.isArray(saved)?saved.filter((op:Operation)=>!recovering||op.id===request.id||op.id.startsWith(String(request.id)+':next')):[];
  for(const limit of limits){
   check();
-  window.dispatchEvent(new CustomEvent('arena-wallet-progress',{detail:'Finding available wallet funds — checking '+limit+' addresses per path…'}));
+  window.dispatchEvent(new CustomEvent('arena-wallet-progress',{detail:recovering?'Checking saved transaction steps…':'Finding available wallet funds — checking '+limit+' addresses per path…'}));
   const start=performance.now(),descriptors=keys(limit);
   window.dispatchEvent(new CustomEvent('arena-wallet-timing',{detail:{stage:'public-key-derivation',milliseconds:performance.now()-start}}));
   const owner=descriptors.find(k=>k.path==='receive'&&k.index===0);

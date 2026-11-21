@@ -62,7 +62,7 @@ it.each(['create','offer'])('retains %s preflight errors and values through fiel
  expect(screen.getByRole('alert')).not.toHaveTextContent('Error:');
  const field=screen.getByLabelText(kind==='create'?'Reward per release (min. 0.00001200 BCH)':'Requested reward');expect(field).toHaveValue('0.00002000');
  fireEvent.change(field,{target:{value:'0.00003000'}});await act(async()=>{window.dispatchEvent(new CustomEvent('arena-wallet-progress',{detail:'Background progress'}));});
- expect(screen.getByRole('alert')).toHaveTextContent('verified funding is reserved');fireEvent.click(screen.getByRole('button',{name:'Dismiss transaction error'}));expect(screen.queryByText('verified funding is reserved')).toBeNull();
+ expect(screen.getByRole('alert')).toHaveTextContent('verified funding is reserved');fireEvent.click(screen.getByRole('button',{name:'Dismiss Transaction Error'}));expect(screen.queryByText('verified funding is reserved')).toBeNull();
 });
 it('shows each offer validation failure beside its field',async()=>{
  await open();for(const name of ['Stake amount','Requested reward','Lock duration (time units)'])fireEvent.change(screen.getByLabelText(name),{target:{value:'0'}});
@@ -411,6 +411,133 @@ it('shows live vaults to a wallet-free visitor and updates or removes them on th
  expect(screen.queryByRole('link',{name:'Vault 1'})).toBeNull();
 });
 
+it('resumes a linked vault preparation and disables the recovery action during inspection',async()=>{
+ window.location.hash='#/v3';
+ const parent={id:'prep',intent:{kind:'create',parameters:config.parameters},step:'wallet-preparation',stage:'pending',
+  raw:'saved preparation',txid:'71'.repeat(32),signing:'signed',owner:{publicKey:owner}};
+ const child={...parent,id:'prep:next',parent:'prep',step:'action',stage:'review',raw:undefined,txid:undefined,signing:'unsigned'};
+ let journal:unknown[]=[];
+ let finish!:(value:typeof parent)=>void;
+ vi.mocked(queueCall).mockImplementation(async request=>{
+  if(request.operation==='list')return journal;
+  if(request.operation==='inspectSubmission')return request.id===parent.id?new Promise(resolve=>{finish=resolve;}):child;
+  return [];
+ });
+ vi.mocked(wallet.queue!).mockImplementationOnce(async ()=>{
+  journal=[parent,child];
+  throw Object.assign(Error('Electrum providers synchronizing'),{details:{operationId:child.id,verification:'synchronizing'}});
+ }).mockImplementationOnce(async()=>{
+  const completed={...child,stage:'pending',signing:'signed',raw:'final',config,txid:genesis};
+  journal=[parent,completed];return completed;
+ });
+ vi.mocked(loadQueuePage).mockResolvedValue({network:'chipnet',vaults:[],pages:[]});
+ render(<WalletTransactionsContext.Provider value={wallet}><QueueArena/></WalletTransactionsContext.Provider>);
+ fireEvent.click(screen.getByRole('button',{name:'Create Vault'}));
+ const resume=await screen.findByRole('button',{name:'Resume Vault Creation'});
+ expect(resume.nextElementSibling).toHaveTextContent('Dismiss Transaction Error');
+ await waitFor(()=>expect(resume).toBeEnabled());
+ fireEvent.click(resume);
+ expect(resume).toBeDisabled();
+ fireEvent.click(resume);
+ await waitFor(()=>expect(finish).toBeTypeOf('function'));
+ await act(async()=>finish(parent));
+ await waitFor(()=>expect(wallet.queue).toHaveBeenLastCalledWith({operation:'resume',id:'prep',retry:true,recoverSubmission:true},expect.any(Function)));
+ expect(wallet.queue).toHaveBeenCalledTimes(2);
+ expect(await screen.findByText('Waiting for public listing…')).toBeVisible();
+ expect(screen.queryByRole('dialog')).toBeNull();
+});
+
+it('recognizes a publicly observed 0-conf vault after a lost acknowledgement',async()=>{
+ window.location.hash='#/v3';
+ const final={id:'final',intent:{kind:'create'},step:'action',stage:'signed',signing:'signed',
+  raw:'retained',txid:genesis,config,owner:{publicKey:owner},error:'Broadcast acknowledgement unavailable'};
+ let journal:unknown[]=[];
+ let listed=false;
+ vi.mocked(loadQueuePage).mockResolvedValue({network:'chipnet',vaults:[],pages:[]});
+ vi.mocked(queueCall).mockImplementation(async request=>{
+  if(request.operation==='list')return journal;
+  if(request.operation==='discoverMempool')return listed?[{config,height:-1,status:'provisional'}]:[];
+  if(request.operation==='creationStatus')return {confirmed:false};
+  return [];
+ });
+ vi.mocked(wallet.queue!).mockImplementationOnce(async()=>{
+  journal=[final];
+  throw Object.assign(Error(final.error),{details:{operationId:final.id}});
+ });
+ render(<WalletTransactionsContext.Provider value={wallet}><QueueArena/></WalletTransactionsContext.Provider>);
+ fireEvent.click(screen.getByRole('button',{name:'Create Vault'}));
+ expect(await screen.findByRole('button',{name:'Resume Vault Creation'})).toBeVisible();
+ expect(screen.queryByRole('dialog')).toBeNull();
+ listed=true;
+ fireEvent.click(screen.getByRole('button',{name:'Refresh public discovery'}));
+ const dialog=await screen.findByRole('dialog',{name:'Your vault has been created.'});
+ fireEvent.click(dialog);
+ await screen.findByRole('heading',{name:'Known vaults'});
+ expect(screen.getByRole('link',{name:'Vault 1'}).closest('tr')).toHaveClass('queue-row-highlight');
+ expect(wallet.queue).toHaveBeenCalledTimes(1);
+ expect(vi.mocked(queueCall).mock.calls.some(([r])=>r.operation==='inspectSubmission')).toBe(false);
+});
+
+it('checks an interrupted offer without opening the wallet while verification is pending',async()=>{
+ await open();
+ const saved={id:'offer-signed',intent:{kind:'insert',config,terms:offer},step:'action',stage:'signed',raw:'retained',
+  txid:'73'.repeat(32),owner:{publicKey:owner},error:'Provider unavailable'};
+ let journal:unknown[]=[];
+ vi.mocked(queueCall).mockImplementation(async request=>{
+  if(request.operation==='list')return journal;
+  if(request.operation==='inspectSubmission'){
+   const waiting={...saved,error:'Waiting for network verification…',submissionRecovery:'waiting-verification'};
+   journal=[waiting];return waiting;
+  }
+  return request.operation==='reportedQueue'?snapshot:[];
+ });
+ vi.mocked(wallet.queue!).mockImplementationOnce(async()=>{
+  journal=[saved];throw Object.assign(Error(saved.error),{details:{operationId:saved.id,verification:'unavailable'}});
+ });
+ fireEvent.click(screen.getByRole('button',{name:'Make an Offer'}));
+ const resume=await screen.findByRole('button',{name:'Resume Offer Submission'});
+ expect(resume.nextElementSibling).toHaveTextContent('Dismiss Transaction Error');
+ live=false;
+ await waitFor(()=>expect(resume).toBeEnabled());
+ fireEvent.click(resume);
+ await waitFor(()=>expect(resume).toBeEnabled());
+ expect(screen.getAllByText('Waiting for network verification…').length).toBeGreaterThan(0);
+ expect(wallet.queue).toHaveBeenCalledTimes(1);
+ expect(wallet.restore).not.toHaveBeenCalled();
+ fireEvent.click(screen.getByRole('button',{name:'Dismiss Transaction Error'}));
+ expect(vi.mocked(queueCall).mock.calls.some(([r])=>['discard','submit'].includes(String(r.operation)))).toBe(false);
+ expect(screen.getByRole('button',{name:'Resume Offer Submission'})).toBeVisible();
+});
+
+it('opens transaction details for a conflict instead of offering a retry',async()=>{
+ window.location.hash='#/v3';
+ const conflict={id:'conflict',intent:{kind:'create'},step:'wallet-preparation',stage:'conflict',raw:'retained',
+  txid:'74'.repeat(32),owner:{publicKey:owner},error:'Confirmed competing spend'};
+ vi.mocked(queueCall).mockImplementation(async r=>r.operation==='list'?[conflict]:[]);
+ render(<WalletTransactionsContext.Provider value={wallet}><QueueArena/></WalletTransactionsContext.Provider>);
+ const inspect=await screen.findByRole('button',{name:'Inspect Transaction'});
+ expect(screen.queryByRole('button',{name:'Resume Vault Creation'})).toBeNull();
+ fireEvent.click(inspect);
+ expect(screen.getByText(/Transaction recovery/).parentElement).toHaveAttribute('open');
+ expect(screen.getByText('Inspection details').parentElement).toHaveAttribute('open');
+ expect(wallet.queue).not.toHaveBeenCalled();
+});
+
+it('retries a vault preflight after provider failure when there is no saved transaction',async()=>{
+ window.location.hash='#/v3';
+ vi.mocked(wallet.queue!).mockRejectedValueOnce(Object.assign(Error('Provider unavailable'),{details:{verification:'unavailable'}}))
+  .mockRejectedValueOnce(Error('No usable wallet funds'));
+ render(<WalletTransactionsContext.Provider value={wallet}><QueueArena/></WalletTransactionsContext.Provider>);
+ fireEvent.click(screen.getByRole('button',{name:'Create Vault'}));
+ const resume=await screen.findByRole('button',{name:'Resume Vault Creation'});
+ expect(resume.nextElementSibling).toHaveTextContent('Dismiss Transaction Error');
+ fireEvent.click(resume);
+ expect(await screen.findByText('No usable wallet funds')).toBeVisible();
+ expect(wallet.queue).toHaveBeenCalledTimes(2);
+ expect(vi.mocked(wallet.queue!).mock.calls[0]![0]).toEqual(vi.mocked(wallet.queue!).mock.calls[1]![0]);
+ expect(vi.mocked(queueCall).mock.calls.some(([r])=>r.operation==='inspectSubmission')).toBe(false);
+});
+
 it('shows the live score and highlights a locally submitted offer before the provider reports it',async()=>{
  await open();
  const form=screen.getByRole('heading',{name:'Make an Offer'}).closest('form')!;
@@ -481,7 +608,8 @@ it.each([
  const submit=screen.getByRole('button',{name:'Make an Offer'});
  fireEvent.click(submit);
  await waitFor(()=>expect(wallet.queue).toHaveBeenCalled());
- await waitFor(()=>expect(submit).toBeEnabled());
+ if(_label==='conflicted')await screen.findByRole('button',{name:'Inspect Transaction'});
+ else await waitFor(()=>expect(screen.getByRole('button',{name:'Resume Offer Submission'})).toBeEnabled());
  expect(screen.queryByRole('dialog')).toBeNull();
  expect(document.getElementById('offer-row-'+next.id)).toBeNull();
 });

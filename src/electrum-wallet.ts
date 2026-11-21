@@ -10,11 +10,19 @@ import {walletScript,type WalletKey,type WalletCoin} from './transactions-core.j
 export {ChainExtension,BLOCKCHAIN_REFRESH};
 export function walletPeers(p:ElectrumCore){if(p.network!==Network.MAINNET&&p.network!==Network.CHIPNET&&p.network!==Network.REGTEST)throw Error('Wallet transactions require mainnet, chipnet or local regtest');const peers=p.endpoints.filter((v,i,a)=>a.findIndex(x=>new URL(x).hostname===new URL(v).hostname)===i);if(peers.length<2)throw Error('Two different configured WSS hosts are required');return peers;}
 export const coinIdentity=(u:SpendableUtxo)=>json({txid:u.txid,vout:u.vout,satoshis:u.satoshis,script:u.lockingBytecode,token:u.token??null});
-export async function confirmedWalletTransaction(p:ElectrumCore,id:string){
+export async function confirmedWalletTransaction(p:ElectrumCore,id:string,retained?:{script:string;observed:()=>void}){
  return verifiedProviders(p,walletPeers(p),async(_peer,p)=>{
-  const tip=await p.tip(),value=await p.transactionStatus(id);
+  const tip=await p.tip();
+  let value;
+  if(retained){
+   const entry=(await p.history(retained.script)).find(row=>row.tx_hash===id);
+   if(entry){
+    retained.observed();
+    value=await p.transactionStatus(id,entry,tip);
+   }
+  }else value=await p.transactionStatus(id);
   if((await p.tip()).hash!==tip.hash)throw Error('Tip changed during transaction verification');
-  return {value,tip,identity:json({tip:tip.hash,height:value.height,blockhash:value.blockhash,hex:value.hex})};
+  return {value,tip,identity:json({tip:tip.hash,height:value?.height,blockhash:value?.blockhash,hex:value?.hex})};
  },{parallel:true});
 }
 class ChangedWalletInput extends Error {}

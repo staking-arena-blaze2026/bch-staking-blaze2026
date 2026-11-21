@@ -171,10 +171,11 @@ export function browserWalletClient(manager:DappConnectionManager|null,check:()=
     let previousCosts:ActionCosts|undefined;
     for(;;){
     guard();
+    if(result?.submissionRecovery==='inspect'||result?.submissionRecovery==='waiting-verification')return result;
     if(result?.raw&&result.step==='wallet-preparation'&&['pending','confirmed'].includes(result.stage)&&!result.error){
      approval=Math.max(approval,(result.completed??0)+1);
      window.dispatchEvent(new CustomEvent('arena-wallet-progress',{detail:'Verifying prepared output…'}));
-     result=await queueCall({operation:'advance',id:result.id},descriptors);signatureRequested=false;refreshed=false;guard();continue;
+     result=await queueCall({operation:'advance',id:result.id,...(intent.retry===true?{retry:true}:{})},descriptors);signatureRequested=false;refreshed=false;guard();continue;
     }
     if(result?.stage!=='review'||!result.plan)return result;
     const action=result.intent?.kind;
@@ -208,7 +209,9 @@ export function browserWalletClient(manager:DappConnectionManager|null,check:()=
     guard();
     progress('Checking wallet inputs and current fee policy before approval…');
     let authorized;try{authorized=await measure('signing-authorization',()=>queueCall({operation:'authorize',id:result.id}));}catch(error){
-     const changedInputs=(error as {details?:{code?:string}}).details?.code==='selected-inputs-changed';
+     const details=(error as {details?:{code?:string;verification?:string}}).details;
+     if(details?.verification==='conflict')throw error;
+     const changedInputs=details?.code==='selected-inputs-changed';
      if(refreshed||!changedInputs&&!/Fee policy changed|Blockchain reorganized|Tip changed/.test(String(error)))throw error;
      guard();refreshed=true;
      progress('Funding or fee information changed. Recalculating the plan for review…');
@@ -221,7 +224,10 @@ export function browserWalletClient(manager:DappConnectionManager|null,check:()=
     if(authorized.plan.request.broadcast!==false||Date.now()-authorized.verifiedAt>10000)throw Error('Queue approval requires fresh verified inputs');
     const review=describe(authorized.plan.request,`Cashonize · ${queueIntent?.kind??'transaction'} · miner fee ${authorized.plan.fee} sats`);
     window.dispatchEvent(new CustomEvent('arena-queue-review',{detail:{...result,...authorized}}));
-    window.dispatchEvent(new CustomEvent('arena-wallet-progress',{detail:'Requesting Cashonize approval '+(++approval)+' of '+total+' · '+ (review.label??authorized.plan.label)}));
+    const remaining=intent.recoverSubmission===true?(result.step==='wallet-preparation'?' · A wallet self-send is needed to prepare a funding output.':
+     action==='create'?' · The final transaction creates the vault and funds its reward reserve.':
+     action==='insert'?' · The transaction registers the offer and commits its stake.':''):'';
+    progress('Requesting Cashonize approval '+(++approval)+' of '+total+' · '+(review.label??authorized.plan.label)+remaining);
     try{await queueCall({operation:'beginSigning',id:result.id});guard();if(Date.now()-authorized.verifiedAt<0||Date.now()-authorized.verifiedAt>10000)throw Error('Queue approval requires fresh verified inputs');if(JSON.stringify(getManager().getSessionPaths())!==session)throw Error('Wallet changed before queue signing');}catch(error){await queueCall({operation:'signingFailed',id:result.id,rejected:true,notRequested:true}).catch(()=>{});throw error;}
     if(approval===1)window.dispatchEvent(new CustomEvent('arena-wallet-timing',{detail:{stage:'until-first-approval',milliseconds:performance.now()-started}}));
     const signingId=String(result.id);
@@ -241,7 +247,10 @@ export function browserWalletClient(manager:DappConnectionManager|null,check:()=
     // Cancellation before any prompt must not strand a purely unsigned funding
     // reservation. The worker independently refuses signed/uncertain discards.
     if(!signatureRequested&&result?.id&&result.stage==='review'&&!result.raw)await queueCall({operation:'discard',id:result.id}).catch(()=>{});
-    throw error;
+    if(!result?.id)throw error;
+    const failure=error instanceof Error?error:Error(String(error));
+    const details=(failure as {details?:Record<string,unknown>}).details;
+    throw Object.assign(failure,{details:{...details,operationId:result.id}});
    }finally{v3Approval=false;}
   },publicKey(){check();const key=getManager().getPubkey(0,0n);if(!key)throw Error('Wallet receive key unavailable');return binToHex(key);},async inventory(limit=40){if(![40,200].includes(limit))throw Error("Unsupported scan bound");scanLimit=limit;await startup;return rpc('scan',keys());},async operations(){await startup;const list=await rpc('list') as WalletOperation[];list.forEach(rememberGenesis);return list;},async inspect(id){await startup;const op=await rpc('get',id) as WalletOperation;if(op.step==='complete')await finish(op);return op;},async importVault(config){await startup;const result=await rpc('importVault',config,true);saveLocalVault(result.config,result.category);return result;},async execute(intent){
   const check=authorizationCheck();

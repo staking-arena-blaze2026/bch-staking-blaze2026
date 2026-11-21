@@ -6,7 +6,7 @@ import {binToHex,hexToBin,decodeTransaction,hashTransaction,type Transaction} fr
 import type {ElectrumCore} from '../electrum-core.js';
 import {verifyCoins,verifyCoinsAcrossPeers,confirmedWalletTransaction,walletPeers} from '../electrum-wallet.js';
 import {walletAddress,walletScript,validateWalletSigned,type WalletKey,type WalletCoin,type BrowserPlan} from '../transactions-core.js';
-import {verifiedProviders} from '../verified-providers.js';
+import {ProviderVerificationError,verifiedProviders} from '../verified-providers.js';
 import {ancestryVerifier} from '../zero-conf.js';
 import {tickContext} from '../consensus-clock.js';
 import {transactionFinal} from '../consensus-clock.js';
@@ -28,6 +28,7 @@ export interface Operation {
  network?:'mainnet'|'chipnet'|'regtest';reservationResolution?:'confirmed'|'conflict'|'unresolved';
  step:'action'|'wallet-preparation'|'wallet-recovery';quote?:CreationQuote;completed?:number;spentFees?:string;parent?:string;next?:string;approved?:boolean;reservations?:SpendableUtxo[];plan:BrowserPlan;sources:SpendableUtxo[];rate:bigint;signedEvidence?:string;raw?:string;txid?:string;verifiedAt?:number;error?:string;
  config?:Config;offerId?:string;walletDebit?:string;
+ submissionRecovery?:'waiting-verification'|'rebroadcast'|'inspect';submissionObserved?:boolean;
  signing:'unsigned'|'requested'|'rejected'|'uncertain'|'signed';
 }
 export interface Store {list():Promise<Operation[]>;save(op:Operation):Promise<void>}
@@ -206,7 +207,7 @@ export class QueueWallet {
  async prepare(intent:Intent,keys:WalletKey[],previous?:Operation,continuation?:{id:string;parent:string;completed:number;spentFees:string},discoveryId?:string,creationReview?:'preview'|Operation):Promise<Operation>{
   if(creationReview&&(intent.kind!=='create'||previous||continuation))throw Error('An offline quote can only prepare a new vault');
   if(previous?.network&&previous.network!==this.network())throw Error('Queue journal network mismatch');
-  if(previous&&(previous.raw||!['unsigned','rejected'].includes(previous.signing)))throw Error('Uncertain or signed operations cannot be rebuilt');
+  if(previous&&(previous.raw||previous.signedEvidence||!['unsigned','rejected'].includes(previous.signing)))throw Error('Uncertain or signed operations cannot be rebuilt');
   if(previous)this.reviewed.delete(previous.id);
   if(intent.kind==='recover')return this.prepareRecovery(intent.operationId,keys,previous);
   const owner=keys.find(k=>k.path==='receive'&&k.index===0);if(!owner||previous&&previous.owner.publicKey!==owner.publicKey)throw Error('Resume with the original wallet');
@@ -295,14 +296,17 @@ export class QueueWallet {
   await this.store.save(op);this.reviewed.set(id,{seal,tip:quotedTip?.hash,height:quotedTip?.height});return op;
  }
  async confirm(id:string){const op=await this.get(id);if(op.stage!=='review'||op.signing!=='unsigned'||!this.reviewed.has(id))throw Error('Fresh preparation review required');op.approved=true;await this.store.save(op);return op;}
- async advance(id:string,keys:WalletKey[]){
+ async advance(id:string,keys:WalletKey[],retry=false){
   let op=await this.get(id);if(op.owner.publicKey!==keys.find(k=>k.path==='receive'&&k.index===0)?.publicKey)throw Error('Resume with the original wallet');
   if(op.step!=='wallet-preparation'||!op.raw)throw Error('No signed preparation to continue');
-  op=await this.resume(id,keys);if(!['pending','confirmed'].includes(op.stage)||op.error)throw Error('Preparation status unresolved; inspect recovery before continuing');
+  op=await this.resume(id,keys);if(!['pending','confirmed'].includes(op.stage)||op.error)return op;
   const childId=id+':next';let child:Operation;
   // A crash between child and parent writes must recover the existing child.
   const existing=(await this.store.list()).find(o=>o.id===childId);
-  if(existing)child=await this.resume(childId,keys);
+  if(existing){
+   if(retry&&!existing.raw&&(existing.signedEvidence||!['unsigned','rejected'].includes(existing.signing)))return this.inspectSubmission(childId);
+   child=await this.resume(childId,keys,retry);
+  }
   else {
    // The accepted complete sequence already reserved its funding. Only its
    // signing keys and self-send destination can fund this continuation.
@@ -373,12 +377,15 @@ export class QueueWallet {
  async retain(id:string,raw:string){
   const op=await this.get(id);
   if((op.raw&&op.raw!==raw)||(op.signedEvidence&&op.signedEvidence!==raw))throw Error('Signed recovery requires identical bytes');
+  if(op.raw===raw&&op.signing==='signed')return op;
   // Preserve the wallet response even if it fails validation. A late response
   // after disconnect cannot be discarded or replaced with another signature.
   op.signedEvidence=raw;op.signing='uncertain';if(!op.raw)op.stage='review';await this.store.save(op);
   try{
    const result=validateWalletSigned(op.plan,raw,{height:0xffffffff,mtp:0xffffffff},(raw,_sources,_clock,fee)=>{const tx=q.verify({raw,sources:op.sources});if(BigInt(raw.length/2)*op.rate!==fee)throw Error('Signed fee differs from network policy');return {txid:hashTransaction(hexToBin(raw)),fee:fee!,transaction:tx};});
-   op.raw=raw;op.txid=result.txid;op.stage='signed';op.signing='signed';op.error=undefined;
+   const alreadySubmitted=op.raw===raw&&['pending','confirmed','conflict'].includes(op.stage);
+   op.raw=raw;op.txid=result.txid;op.signing='signed';
+   if(!alreadySubmitted){op.stage='signed';op.error=undefined;op.submissionRecovery=undefined;}
    if(op.intent.kind==='create'&&op.step==='action'&&op.config)op.config.anchor.genesis=result.txid;
    this.reservePreparationOutputs(op);await this.store.save(op);this.reviewed.delete(id);return op;
   }catch(e){op.error='Returned signed bytes retained; validation failed: '+String(e);await this.store.save(op);this.reviewed.delete(id);throw e;}
@@ -403,6 +410,8 @@ export class QueueWallet {
   },clock.peer);
  }
  async broadcast(id:string){const op=await this.get(id);if(!op.raw||!op.txid)throw Error('Sign the reviewed operation first');
+  if(['pending','confirmed'].includes(op.stage))return op;
+  if(op.stage!=='signed'||op.submissionObserved)throw Error('Inspect the saved transaction status before submitting');
   try{
    if(op.recovery)await this.checkRecoveryTarget(op);
    const clock=await verifyCoinsAcrossPeers(this.provider,op.sources,true,undefined,{readFeeRate}),tx=decodeTransaction(hexToBin(op.raw));if(typeof tx==='string')throw Error(tx);
@@ -410,7 +419,7 @@ export class QueueWallet {
    await this.finality(op,tx,clock,async()=>{
     const sent=await this.provider.sendRawTransaction(op.raw!);if(sent!==op.txid)throw Error('Broadcast identity mismatch');
    });
-   op.stage='pending';op.error=undefined;await this.store.save(op);return op;
+   op.stage='pending';op.error=undefined;op.submissionRecovery=undefined;await this.store.save(op);return op;
   }catch(e){op.error='Signed bytes retained: '+String(e);await this.store.save(op);throw e;}
  }
  /** Status reconciliation only: never signs, broadcasts or touches covenant funds. */
@@ -459,9 +468,78 @@ export class QueueWallet {
    const value=[...conflicts].sort()[0];return {value,tip,identity:json({tip:tip.hash,conflicts:[...conflicts].sort()})};
   },{parallel:true});
  }
- async resume(id:string,keys:WalletKey[],retry=false){const stored=(await this.store.list()).find(o=>o.id===id);if(stored?.step==='wallet-recovery'&&stored.raw){if(stored.owner.publicKey!==keys.find(k=>k.path==='receive'&&k.index===0)?.publicKey)throw Error('Resume with the original wallet');if(stored.network&&stored.network!==this.network())throw Error('Queue journal network mismatch');const checked=await this.reconcileRecovery(id);if(retry&&checked.stage==='signed')return this.broadcast(id);return checked;}
- if(stored&&!['action','wallet-preparation'].includes(stored.step)){if(stored.network&&stored.network!==this.network())throw Error('Queue journal network mismatch');if(stored.owner.publicKey!==keys.find(k=>k.path==='receive'&&k.index===0)?.publicKey)throw Error('Resume with the original wallet');return this.reconcileReservation(stored);}const op=await this.get(id);if(op.owner.publicKey!==keys.find(k=>k.path==='receive'&&k.index===0)?.publicKey)throw Error('Resume with the original wallet');if(!op.raw){if(!['unsigned','rejected'].includes(op.signing))throw Error('Signing status unknown; retain the journal and inspect the wallet before retrying');return this.prepare(op.intent,keys,op);}let tx:any;try{tx=await confirmedWalletTransaction(this.provider,op.txid!);}catch(e){const conflict=await this.knownConflict(op).catch(()=>undefined);if(conflict){op.stage='conflict';op.error='Confirmed competing spend '+conflict+'; signed bytes retained. Start a new request for the current queue position.';await this.store.save(op);return op;}if(retry)return this.broadcast(id);op.error='Signed transaction retained; independent status unavailable';await this.store.save(op);return op;}
-  op.stage=tx.confirmations>0?'confirmed':'pending';op.error=undefined;await this.store.save(op);return op;
+ /** Check a retained payment without opening a wallet or authorizing any spend. */
+ async inspectSubmission(id:string){
+  const op=await this.get(id);
+  if(op.intent.kind!=='create'&&op.intent.kind!=='insert')throw Error('Unsupported submission recovery');
+  if(op.raw)return this.reconcileSubmission(op);
+  if(op.signedEvidence||!['unsigned','rejected'].includes(op.signing)){
+   op.submissionRecovery='inspect';
+   op.error='Signing status is unresolved. Check Cashonize and the saved transaction before requesting another approval.';
+   await this.store.save(op);
+  }
+  return op;
+ }
+ private async reconcileSubmission(op:Operation){
+  const save=async(state:Operation['submissionRecovery'],error?:string)=>{
+   op.submissionRecovery=state;op.error=error;await this.store.save(op);return op;
+  };
+  if(op.stage==='conflict')return save('inspect',op.error??'The saved transaction conflicts with a competing spend.');
+  const raw=op.raw!,tx=decodeTransaction(hexToBin(raw));
+  if(typeof tx==='string'||!tx.outputs.length||hashTransaction(hexToBin(raw))!==op.txid)
+   return save('inspect','The signed transaction differs from its journal. Inspect the saved bytes before continuing.');
+  try{
+   const verified=await confirmedWalletTransaction(this.provider,op.txid!,{
+    script:binToHex(tx.outputs[0]!.lockingBytecode),
+    observed:()=>{op.submissionObserved=true;},
+   });
+   if(verified){
+    if(verified.hex.toLowerCase()!==raw.toLowerCase())return save('inspect','The verified transaction differs from the saved signed bytes.');
+    op.stage=verified.confirmations>0?'confirmed':'pending';
+    return save(undefined);
+   }
+   // Both peers checked the output history. Check whether another transaction
+   // spent these inputs before offering a retry of the original signed bytes.
+   const conflict=await this.knownConflict(op);
+   if(conflict){
+    op.stage='conflict';
+    return save('inspect','Confirmed competing spend '+conflict+'. The saved transaction and its inputs need inspection.');
+   }
+   if(op.stage==='signed'&&!op.submissionObserved)return save('rebroadcast','The signed transaction is ready to retry after verifying its inputs.');
+  }catch(error){
+   if(error instanceof ProviderVerificationError&&error.category==='conflict')return save('inspect',error.message);
+  }
+  return save('waiting-verification','Waiting for network verification…');
+ }
+ async resume(id:string,keys:WalletKey[],retry=false){
+  const stored=(await this.store.list()).find(o=>o.id===id);
+  if(!stored)throw Error('Unknown queue operation');
+  if(stored.owner.publicKey!==keys.find(k=>k.path==='receive'&&k.index===0)?.publicKey)throw Error('Resume with the original wallet');
+  if(stored.network&&stored.network!==this.network())throw Error('Queue journal network mismatch');
+  if(stored.step==='wallet-recovery'&&stored.raw){
+   const checked=await this.reconcileRecovery(id);
+   return retry&&checked.stage==='signed'?this.broadcast(id):checked;
+  }
+  if(!['action','wallet-preparation','wallet-recovery'].includes(stored.step))return this.reconcileReservation(stored);
+  if(!stored.raw){
+   if(stored.signedEvidence||!['unsigned','rejected'].includes(stored.signing))throw Error('Signing status unknown; retain the journal and inspect the wallet before retrying');
+   return this.prepare(stored.intent,keys,stored);
+  }
+  const op=await this.reconcileSubmission(stored);
+  if(!retry||op.submissionRecovery!=='rebroadcast')return op;
+  try{return await this.broadcast(id);}
+  catch(error){
+   if(!(error instanceof ProviderVerificationError))throw error;
+   // Propagation may have begun between the absence check and input
+   // verification. An observed copy of our own spend should settle or wait.
+   if(error.category==='conflict'){
+    const checked=await this.reconcileSubmission(op);
+    if(checked.submissionObserved||checked.submissionRecovery==='inspect')return checked;
+   }
+   op.submissionRecovery=error.category==='conflict'?'inspect':'waiting-verification';
+   op.error=op.submissionRecovery==='inspect'?error.message:'Waiting for network verification…';
+   await this.store.save(op);return op;
+  }
  }
  async discard(id:string){const op=await this.get(id);if(op.raw||op.signedEvidence||!['unsigned','rejected'].includes(op.signing))throw Error('Signed or uncertain operations remain recoverable');op.stage='discarded';await this.store.save(op);this.reviewed.delete(id);return op;}
 }

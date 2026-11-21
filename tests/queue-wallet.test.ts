@@ -15,8 +15,8 @@ import * as q from '../src/queue/protocol.js';
 import {ZERO} from '../src/queue/protocol.js';
 test('queue wallet: public-key plans, explicit signing, durable recovery and owner stake withdrawal',{timeout:600000},async()=>isolatedRegtest(async()=>{
  class Local extends RegtestElectrum {
-  lose=false;
-  override async sendRawTransaction(raw:string){const [valid]=await rpc('testmempoolaccept',[[raw]]);assert.equal(valid.allowed,true,JSON.stringify(valid));const id=await rpc<string>('sendrawtransaction',[raw]);await this.refresh();if(this.lose){this.lose=false;throw Error('Lost broadcast acknowledgement');}return id;}
+  lose=false;broadcasts=0;
+  override async sendRawTransaction(raw:string){const [valid]=await rpc('testmempoolaccept',[[raw]]);assert.equal(valid.allowed,true,JSON.stringify(valid));const id=await rpc<string>('sendrawtransaction',[raw]);this.broadcasts++;await this.refresh();if(this.lose){this.lose=false;throw Error('Lost broadcast acknowledgement');}return id;}
  }
  const p=new Local(await rpc('getblockcount')),request=p.request;
  let requests=0;
@@ -56,7 +56,7 @@ test('queue wallet: public-key plans, explicit signing, durable recovery and own
  const fundingRaw=await rpc('createrawtransaction',[[],{[address]:0.03}]),fundingTx=await rpc('fundrawtransaction',[fundingRaw,{changePosition:1}]),fundingSigned=await rpc('signrawtransactionwithwallet',[fundingTx.hex]),fundingId=await rpc<string>('sendrawtransaction',[fundingSigned.hex]);await p.refresh();
  const snap=await index.sync(),competitor=q.insert(index.context(),snap.vault,snap.root,{stake:6000n,duration:512,reward:2000n},key,[{input:(await import('../src/arena-core.js')).utxo(await p.transactionStatus(fundingId),0),unlocker:key.unlockP2PKH()}]);
  await rpc('sendrawtransaction',[competitor.raw]);await rpc('generatetoaddress',[1,miner]);await p.refresh();
- const conflicted=await wallet.resume(stale.id,keys);assert.equal(conflicted.stage,'conflict');assert.equal(conflicted.raw,staleRaw);
+ const conflicted=await wallet.inspectSubmission(stale.id);assert.equal(conflicted.stage,'conflict');assert.equal(conflicted.submissionRecovery,'inspect');assert.equal(conflicted.raw,staleRaw);
  // Remove the competing offer to restore the fixture's empty queue.
  await approve(await prepare({kind:'cancel',config,offerId:competitor.offer.id},keys));
  const first=await prepare({kind:'insert',config,terms:{stake:10000n,duration:512,reward:2000n}},keys),authorized=await wallet.authorize(first.id),before=approvals;
@@ -66,7 +66,22 @@ test('queue wallet: public-key plans, explicit signing, durable recovery and own
  await assert.rejects(()=>wallet.authorize(first.id),/Uncertain/);
  await assert.rejects(()=>wallet.discard(first.id),/uncertain/);
  await assert.rejects(()=>wallet.resume(first.id,keys),/Signing status unknown/);
- approvals++;const firstRaw=sign(authorized.plan);await wallet.retain(first.id,firstRaw);costs.push({kind:'insert',step:'action',bytes:firstRaw.length/2,fee:authorized.plan.fee!});p.lose=true;await assert.rejects(()=>wallet.broadcast(first.id),/Lost broadcast/);assert.equal((await wallet.get(first.id)).raw,firstRaw);assert.equal((await wallet.resume(first.id,keys)).stage,'pending');assert.equal(approvals-before,1);assert.equal((await index.sync()).ordered.length,1);
+ approvals++;const firstRaw=sign(authorized.plan);await wallet.retain(first.id,firstRaw);costs.push({kind:'insert',step:'action',bytes:firstRaw.length/2,fee:authorized.plan.fee!});
+ assert.equal((await wallet.inspectSubmission(first.id)).submissionRecovery,'rebroadcast');
+ p.lose=true;
+ await assert.rejects(()=>wallet.resume(first.id,keys,true),/Lost broadcast/);
+ const sent=p.broadcasts;
+ assert.equal((await wallet.get(first.id)).raw,firstRaw);
+ p.unavailable.add(p.endpoints[1]!);
+ const waiting=await wallet.resume(first.id,keys,true);
+ assert.equal(waiting.submissionRecovery,'waiting-verification');
+ assert.equal(waiting.submissionObserved,true);
+ assert.equal(p.broadcasts,sent);
+ p.unavailable.clear();
+ assert.equal((await wallet.resume(first.id,keys,true)).stage,'pending');
+ assert.equal((await wallet.retain(first.id,firstRaw)).stage,'pending');
+ assert.equal(p.broadcasts,sent);
+ assert.equal(approvals-before,1);assert.equal((await index.sync()).ordered.length,1);
  // A reported queue can quote even when an imported anchor is wrong. It
  // cannot turn that estimate into signing authority for another genesis.
  const wrongConfig={...config,anchor:{...config.anchor,creator:binToHex(changeKey.publicKey)}};

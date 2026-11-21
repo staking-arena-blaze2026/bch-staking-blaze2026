@@ -48,12 +48,17 @@ for(const selected of ['mainnet','chipnet'])for(const stop of [0,1,2])for(const 
  const decide=(e:Event)=>(e as CustomEvent).detail.respond(true);window.addEventListener('arena-preparation-confirm',decide);
  try{await expect(wallet.queue!({operation:'prepare',intent:{kind:'create'}})).rejects.toThrow(failure==='refusal'?'refused':'authorization changed');expect(manager.signTransaction).toHaveBeenCalledTimes(stop+1);expect(sent.filter(s=>s==='submit')).toHaveLength(stop);if(failure==='refusal')expect(queueCall).toHaveBeenCalledWith({operation:'signingFailed',id:'part'+stop,rejected:true});else expect(sent.filter(s=>s==='retain')).toHaveLength(stop+1);}finally{window.removeEventListener('arena-preparation-confirm',decide);wallet.close?.();}
 });
-it('resuming the first preparation reuses both completed steps and shows approval 3 of 3',async()=>{
+it('resuming the first preparation reuses both completed steps and describes approval 3 of 3',async()=>{
  const {wallet,manager,plan}=setup(),progress:string[]=[];
- const op=(part:number)=>({id:'part'+part,completed:part,stage:part<2?'confirmed':'review',raw:part<2?'retained':undefined,step:part<2?'wallet-preparation':'action',approved:true,quote:{transactions:3-part,approvals:3-part},plan,verifiedAt:Date.now(),owner:{publicKey:binToHex(manager.getPubkey(0,0n))}});
+ const op=(part:number)=>({id:'part'+part,intent:{kind:'create'},completed:part,stage:part<2?'confirmed':'review',raw:part<2?'retained':undefined,step:part<2?'wallet-preparation':'action',approved:true,quote:{transactions:3-part,approvals:3-part},plan,verifiedAt:Date.now(),owner:{publicKey:binToHex(manager.getPubkey(0,0n))}});
  vi.mocked(queueCall).mockImplementation(async i=>{if(i.operation==='resume')return op(0);if(i.operation==='advance')return op(i.id==='part0'?1:2);if(i.operation==='authorize')return op(2);if(i.operation==='submit')return {...op(2),stage:'pending',raw:'signed'};return {};});
  const observe=(e:Event)=>progress.push((e as CustomEvent).detail);window.addEventListener('arena-wallet-progress',observe);
- try{await wallet.queue!({operation:'resume',id:'part0'});expect(manager.signTransaction).toHaveBeenCalledOnce();expect(progress.some(s=>s.includes('approval 3 of 3'))).toBe(true);}finally{window.removeEventListener('arena-wallet-progress',observe);wallet.close?.();}
+ try{
+  await wallet.queue!({operation:'resume',id:'part0',retry:true,recoverSubmission:true});
+  expect(manager.signTransaction).toHaveBeenCalledOnce();
+  expect(progress.find(s=>s.includes('approval 3 of 3'))).toContain('The final transaction creates the vault and funds its reward reserve.');
+  expect(queueCall).toHaveBeenCalledWith({operation:'advance',id:'part1',retry:true},expect.any(Array));
+ }finally{window.removeEventListener('arena-wallet-progress',observe);wallet.close?.();}
 });
 it('searches more wallet addresses before offering preparation, preserving one approval when origins are found',async()=>{
  const {wallet,manager,plan}=setup(),original=vi.mocked(queueCall).getMockImplementation()!;let prepares=0;const popup=vi.fn();

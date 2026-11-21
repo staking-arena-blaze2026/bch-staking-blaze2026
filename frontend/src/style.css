@@ -272,6 +272,7 @@ body{
 .v3-arena .form-grid [aria-invalid="true"]{border:2px solid #85250c}
 .v3-arena .transaction-error{border:2px solid #85250c;border-radius:8px;background:#fff0df;padding:14px;margin:14px 0;color:#692008;overflow-wrap:anywhere}
 .v3-arena .transaction-error button{margin-top:10px}
+.transaction-error-actions{display:flex;flex-wrap:wrap;align-items:center;gap:8px}
 
 /* Persistent community link, with room for mobile safe areas and footer content. */
 body{padding-bottom:calc(80px + env(safe-area-inset-bottom,0px))}

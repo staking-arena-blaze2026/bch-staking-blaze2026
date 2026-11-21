@@ -5,6 +5,7 @@ import {ElectrumTransportError} from '../../src/electrum-core';
 import {BrowserElectrumProvider} from '../../src/electrum-wss';
 import {emptyQueueIndex,scanQueueIndex,scanQueueMempool,type QueueCandidate} from '../../src/queue/public-index';
 import {confirmedWalletTransaction} from '../../src/electrum-wallet';
+import {ProviderVerificationError} from '../../src/verified-providers';
 import {readQueueCatalog} from '../../src/queue/catalog';
 import {QueueIndexer} from '../../src/queue/chain';
 import {QueueWallet,BrowserQueueStore} from '../../src/queue/wallet';
@@ -79,7 +80,8 @@ scope.onmessage=event=>{pending=pending.catch(()=>{}).then(async()=>{const {id,i
   else if(operation==='previewCreate')result=await wallet.prepare(intent.intent,keys,undefined,undefined,intent.discoveryId,'preview');
   else if(operation==='acceptCreateReview')result=await wallet.prepare(intent.draft.intent,keys,undefined,undefined,undefined,intent.draft);
   else if(operation==='prepare')result=await wallet.prepare(intent.intent,keys,undefined,undefined,intent.discoveryId);
-  else if(operation==='advance')result=await wallet.advance(intent.id,keys);
+  else if(operation==='advance')result=await wallet.advance(intent.id,keys,intent.retry===true);
+  else if(operation==='inspectSubmission')result=await wallet.inspectSubmission(intent.id);
   else if(operation==='reconcileRecovery')result=await wallet.reconcileRecovery(intent.id);
   else if(operation==='confirm')result=await wallet.confirm(intent.id);
   else if(operation==='authorize')result=await wallet.authorize(intent.id);
@@ -95,6 +97,10 @@ scope.onmessage=event=>{pending=pending.catch(()=>{}).then(async()=>{const {id,i
  if(!reading&&!scope.navigator.locks)throw Error('Queue transactions require Web Locks');
  const result=reading?await run():await scope.navigator.locks.request('arena-'+options.network+'-queue',{ifAvailable:true},async lock=>{if(!lock)throw Error('Another tab is updating this queue wallet');return timed(provider,operation,run);});
  scope.postMessage({id,result});
- }catch(error){scope.postMessage({id,error:errorMessage(error),category:error instanceof ElectrumTransportError?'electrum-transport':undefined,transportReason:error instanceof ElectrumTransportError?`lost its Electrum connection (${error.reason})`:undefined,frames:frames(error),summary:(error as {summary?:string})?.summary,details:(error as {details?:unknown})?.details});}finally{clearInterval(heartbeat);}});};
+ }catch(error){
+  const data=error as {summary?:string;details?:Record<string,unknown>};
+  const details=error instanceof ProviderVerificationError?{...data.details,verification:error.category}:data?.details;
+  scope.postMessage({id,error:errorMessage(error),category:error instanceof ElectrumTransportError?'electrum-transport':undefined,transportReason:error instanceof ElectrumTransportError?`lost its Electrum connection (${error.reason})`:undefined,frames:frames(error),summary:data?.summary,details});
+ }finally{clearInterval(heartbeat);}});};
 
 scope.postMessage({type:'ready'});
