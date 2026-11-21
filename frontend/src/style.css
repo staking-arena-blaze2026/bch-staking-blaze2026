@@ -324,9 +324,11 @@ footer a{color:inherit}
  .queue-vault-data .terms{gap:16px}
 }
 
-.queue-notices{position:fixed;z-index:6;right:16px;bottom:calc(76px + env(safe-area-inset-bottom,0px));display:grid;gap:8px;max-width:calc(100% - 32px)}
-.queue-notices .button{min-height:44px;padding:10px 16px;border:1px solid #c79250;border-radius:12px;background:#532d16;color:#fff2db;box-shadow:0 4px 16px #27150b55}
-.queue-notices .button:hover:not(:disabled){background:#703e20}
+.queue-submission-dialog{margin:auto;padding:clamp(20px,6vw,32px);text-align:center;background:#fff2db;color:#532d16;border-color:#c79250;box-shadow:0 12px 40px #27150b55;cursor:pointer}
+.queue-submission-dialog h2{margin:0 0 16px}
+.queue-submission-dialog button{min-height:44px}
+.queue-submission-dialog::backdrop{cursor:pointer}
+.queue-publication-pending{display:block;color:var(--muted)}
 .v3-arena tr.queue-row-highlight>td{background:#ffdc87;color:#361b09}
 .v3-arena tr.queue-row-highlight{outline:2px solid #a85514;outline-offset:-2px}
 

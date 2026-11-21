@@ -16,7 +16,11 @@ const snapshot={config,tip:{height:200,hash:'ee'.repeat(32)},mtp:1800001200,stat
 let live=true,rows:any[]=[],failure=false;
 const wallet:WalletTransactions={publicKey:()=>owner,pairing:()=>({paired:true,live,identity:owner,network:'chipnet'}),restore:vi.fn(),v3:vi.fn(),queue:vi.fn(async()=>({intent:{kind:'insert'},stage:'pending',step:'action',raw:'retained',txid:'ff'.repeat(32)})),execute:vi.fn()};
 beforeEach(()=>{vi.spyOn(document,'hidden','get').mockReturnValue(false);localStorage.clear();sessionStorage.clear();rows=[];live=true;failure=false;vi.clearAllMocks();window.location.hash='#/v3/vault/'+genesis;vi.mocked(loadQueuePage).mockResolvedValue({network:'chipnet',vaults:[config],pages:[]});vi.mocked(queueCall).mockImplementation(async i=>{if(i.operation==='list')return [];if(i.operation==='owned')return rows;if(failure)throw Error('Provider unavailable');return snapshot;});});
-afterEach(cleanup);
+beforeEach(()=>{
+ HTMLDialogElement.prototype.showModal=function(){this.open=true;};
+ HTMLDialogElement.prototype.close=function(){this.open=false;};
+});
+afterEach(()=>{cleanup();vi.useRealTimers();vi.restoreAllMocks();});
 async function open(){render(<WalletTransactionsContext.Provider value={wallet}><QueueArena/></WalletTransactionsContext.Provider>);await screen.findByText('Remaining reserve',{}, {timeout:5000});}
 it('validates 512-second units and preserves exact terms in the approval request',async()=>{await open();fireEvent.change(screen.getByLabelText('Lock duration (time units)'),{target:{value:'12'}});expect(screen.getAllByText(/1 hour, 42 minutes, 24 seconds/).length).toBeGreaterThan(0);fireEvent.click(screen.getByRole('button',{name:'Make an Offer'}));await waitFor(()=>expect(wallet.queue).toHaveBeenCalledWith({operation:'prepare',intent:{kind:'insert',config,terms:{stake:3000n,duration:6144,reward:2000n}}},expect.any(Function)));fireEvent.change(screen.getByLabelText('Lock duration (time units)'),{target:{value:'0'}});expect(screen.getByRole('button',{name:'Make an Offer'})).toBeDisabled();});
 it('binds a claim to the reviewed head, and waits for an offline saved pairing',async()=>{live=false;await open();const details=screen.getByRole('region',{name:'Vault details'});const button=screen.getByRole('button',{name:'Claim reward'});expect(details).toContainElement(button);expect(screen.getByText('Winning reward: 0.00002000 BCH')).toBeVisible();expect(screen.queryByRole('heading',{name:'Claim'})).toBeNull();expect(screen.getByRole('heading',{name:'Queue'})).toBeVisible();expect(button).toBeEnabled();fireEvent.click(button);expect(wallet.queue).not.toHaveBeenCalled();await waitFor(()=>expect(wallet.restore).toHaveBeenCalled());live=true;await waitFor(()=>expect(wallet.queue).toHaveBeenCalledWith({operation:'prepare',intent:{kind:'claim',config,expectedHead:offer.id}},expect.any(Function)));});
@@ -200,7 +204,7 @@ it('keeps creation status below the form and removes the submission label after 
  await within(status).findByText(/Confirmed on-chain/);
  expect(within(status).queryByText(/Submitted/)).toBeNull();
  expect(within(status).getByRole('link',{name:/Vault/})).toHaveAttribute('href','#/v3/vault/'+genesis);
- fireEvent.click(screen.getByRole('link',{name:'Browse All Vaults'}));
+ fireEvent.click(await screen.findByRole('dialog',{name:'Your vault has been created.'}));
  await screen.findByRole('heading',{name:'Known vaults'});
  expect(screen.queryByText(/Submitted/)).toBeNull();
 });
@@ -341,36 +345,38 @@ it('keeps the last reserve and ranking marked stale when a fresh read exhausts r
 });
 
 
-it('waits for public publication then reveals the new vault on its catalog page',async()=>{
+it('reveals a locally saved vault on its catalog page before publication',async()=>{
  window.location.hash='#/v3';
  const previous=Array.from({length:20},(_,index)=>({...config,anchor:{...config.anchor,genesis:(index+1).toString(16).padStart(64,'0')}}));
- const publicationPage='pages/'+'bb'.repeat(32)+'.json';
- let published=false;
- vi.mocked(loadQueuePage).mockImplementation(async (_network,path)=>({
-  network:'chipnet',vaults:path===publicationPage?[config]:previous,pages:published?[publicationPage]:[],
- }));
+ vi.mocked(loadQueuePage).mockResolvedValue({network:'chipnet',vaults:previous,pages:[]});
  const submitted={id:'new-vault',intent:{kind:'create'},step:'action',stage:'pending',raw:'retained',txid:genesis,config};
  let journal:typeof submitted[]=[];
- vi.mocked(queueCall).mockImplementation(async request=>request.operation==='list'?journal:request.operation==='creationStatus'?{confirmed:true}:snapshot);
+ vi.mocked(queueCall).mockImplementation(async request=>request.operation==='list'?journal:request.operation==='creationStatus'?new Promise(()=>{}):snapshot);
  vi.mocked(wallet.queue!).mockImplementationOnce(async()=>{journal=[submitted];return submitted;});
  render(<WalletTransactionsContext.Provider value={wallet}><QueueArena/></WalletTransactionsContext.Provider>);
  fireEvent.click(screen.getByRole('button',{name:'Create Vault'}));
- await screen.findByText(/Public listing pending/);
- expect(screen.queryByRole('button',{name:'Your Vault has been created'})).toBeNull();
- published=true;
- fireEvent.click(await screen.findByRole('button',{name:'Refresh public discovery'}));
- const notice=await screen.findByRole('button',{name:'Your Vault has been created'});
- fireEvent.click(notice);
- await screen.findByRole('heading',{name:'Known vaults'});
+ const notice=await screen.findByRole('dialog',{name:'Your vault has been created.'});
+ expect(notice).toHaveAttribute('open');
+ expect(screen.getByRole('heading',{name:'Create Vault'})).toBeVisible();
+ vi.useFakeTimers();
+ fireEvent.click(within(notice).getByRole('heading'));
+ expect(location.hash).toBe('#/v3/offers');
+ expect(screen.queryByRole('dialog')).toBeNull();
+ act(()=>vi.advanceTimersByTime(6000));
+ fireEvent(window,new Event('hashchange'));
+ expect(screen.getByRole('heading',{name:'Known vaults'})).toBeVisible();
  const row=screen.getByRole('link',{name:'Vault 21'}).closest('tr')!;
+ expect(row).toHaveTextContent('Public listing pending');
  expect(row).toHaveClass('queue-row-highlight');
  expect(row).toHaveFocus();
- expect(screen.queryByRole('button',{name:'Your Vault has been created'})).toBeNull();
  fireEvent.click(document.body);
+ act(()=>vi.advanceTimersByTime(4999));
+ expect(row).toHaveClass('queue-row-highlight');
+ act(()=>vi.advanceTimersByTime(1));
  expect(row).not.toHaveClass('queue-row-highlight');
 });
 
-it('shows the live score and highlights a submitted offer once it appears in the ordered queue',async()=>{
+it('shows the live score and highlights a locally submitted offer before the provider reports it',async()=>{
  await open();
  const form=screen.getByRole('heading',{name:'Make an Offer'}).closest('form')!;
  expect(form.querySelector('h2')?.nextElementSibling).toHaveTextContent('Priority Score = (Stake Amount × Lock Duration) / Requested Reward');
@@ -387,21 +393,62 @@ it('shows the live score and highlights a submitted offer once it appears in the
  const next={...offer,id:'fe'.repeat(32),duration:1024};
  const result={id:'new-offer',intent:{kind:'insert',config,terms:next},stage:'pending',step:'action',raw:'retained',offerId:next.id,txid:'ff'.repeat(32),owner:{publicKey:owner}};
  let reportNext!:(value:typeof snapshot)=>void;
- vi.mocked(queueCall).mockImplementation(async request=>request.operation==='reportedQueue'?new Promise(resolve=>{reportNext=resolve;}):[]);
+ vi.mocked(queueCall).mockImplementation(async request=>request.operation==='reportedQueue'?new Promise(resolve=>{reportNext=resolve;}):request.operation==='list'?[result]:[]);
  vi.mocked(wallet.queue!).mockResolvedValueOnce(result);
  fireEvent.click(screen.getByRole('button',{name:'Make an Offer'}));
- await waitFor(()=>expect(reportNext).toBeDefined());
- expect(screen.queryByRole('button',{name:'Your offer has been submitted'})).toBeNull();
- await act(async()=>reportNext({...snapshot,ordered:[next,offer]}));
- fireEvent.click(await screen.findByRole('button',{name:'Your offer has been submitted'}));
+ const notice=await screen.findByRole('dialog',{name:'Your offer has been submitted.'});
+ const pending=document.getElementById('offer-row-'+next.id)!;
+ expect(pending).toHaveTextContent('PendingAwaiting provider update');
+ expect(screen.getByText(/1 waiting/)).toBeVisible();
+ fireEvent.click(notice); // The native dialog receives clicks on its backdrop.
  const table=screen.getByRole('table',{name:'Ranked queue'});
  expect(within(table).getAllByRole('columnheader').map(cell=>cell.textContent)).toEqual(['Rank','Priority Score','Reward','Stake','Lock duration']);
- const row=document.getElementById('offer-row-'+next.id)!;
- expect(row).toHaveClass('queue-row-highlight');
- expect(within(row).getAllByRole('cell')[1]).toHaveTextContent(/^3$/);
- expect(screen.queryByRole('button',{name:'Your offer has been submitted'})).toBeNull();
- fireEvent.click(document.body);
- expect(row).not.toHaveClass('queue-row-highlight');
+ expect(pending).toHaveClass('queue-row-highlight');
+ expect(pending).toHaveFocus();
+ expect(within(pending).getAllByRole('cell')[1]).toHaveTextContent(/^3$/);
+ expect(screen.queryByRole('dialog')).toBeNull();
+ await act(async()=>reportNext({...snapshot,ordered:[next,offer]}));
+ expect(document.getElementById('offer-row-'+next.id)).toBe(pending);
+ expect(within(pending).getAllByRole('cell')[0]).toHaveTextContent(/^1$/);
+ expect(pending).toHaveClass('queue-row-highlight');
+ expect(queueCall).not.toHaveBeenCalledWith(expect.objectContaining({channel:'notices'}),expect.anything(),expect.anything());
+});
+
+it.each(['Enter',' ','Escape'])('restores a pending offer and dismisses its confirmation with %j',async key=>{
+ const journal={id:'new-offer',intent:{kind:'insert',config,terms:offer},stage:'pending',step:'action',raw:'retained',offerId:offer.id,txid:'ff'.repeat(32),owner:{publicKey:owner}};
+ sessionStorage.setItem('stake-arena-notices-chipnet',JSON.stringify([{kind:'offer',vaultId:genesis,offerId:offer.id,txid:journal.txid}]));
+ const arena=<WalletTransactionsContext.Provider value={wallet}><QueueArena/></WalletTransactionsContext.Provider>;
+ window.location.hash='#/v3';
+ vi.mocked(queueCall).mockImplementation(async request=>request.operation==='list'?[journal]:request.operation==='reportedQueue'?new Promise(()=>{}):[]);
+ const view=render(arena);
+ const notice=await screen.findByRole('dialog',{name:'Your offer has been submitted.'});
+ fireEvent.keyDown(within(notice).getByRole('button'),{key});
+ expect(location.hash).toBe('#/v3/vault/'+genesis);
+ const row=await screen.findByText('Awaiting provider update');
+ expect(row.closest('tr')).toHaveClass('queue-row-highlight');
+ view.unmount();
+ render(arena);
+ await screen.findByText('Awaiting provider update');
+ expect(screen.queryByRole('dialog')).toBeNull();
+});
+
+it.each([
+ ['rejected',{stage:'review',signing:'rejected',raw:undefined}],
+ ['unsigned',{stage:'review',signing:'unsigned',raw:undefined}],
+ ['failed',{stage:'signed',error:'Broadcast failed'}],
+ ['conflicted',{stage:'conflict'}],
+])('omits success and the local queue row for %s transactions',async (_label,status)=>{
+ await open();
+ const next={...offer,id:'fe'.repeat(32)};
+ const result={id:'new-offer',intent:{kind:'insert',config,terms:next},step:'action',raw:'retained',offerId:next.id,txid:'ff'.repeat(32),owner:{publicKey:owner},...status};
+ vi.mocked(queueCall).mockImplementation(async request=>request.operation==='list'?[result]:request.operation==='reportedQueue'?snapshot:[]);
+ vi.mocked(wallet.queue!).mockResolvedValueOnce(result);
+ const submit=screen.getByRole('button',{name:'Make an Offer'});
+ fireEvent.click(submit);
+ await waitFor(()=>expect(wallet.queue).toHaveBeenCalled());
+ await waitFor(()=>expect(submit).toBeEnabled());
+ expect(screen.queryByRole('dialog')).toBeNull();
+ expect(document.getElementById('offer-row-'+next.id)).toBeNull();
 });
 
 

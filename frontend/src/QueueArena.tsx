@@ -42,9 +42,18 @@ const publishedStorage='staking-arena-queue-published-'+activeNetwork;
 function savedPublicIds():Set<string>{
  try{return new Set(JSON.parse(localStorage.getItem(publishedStorage)??'[]').filter((v:unknown)=>typeof v==='string'&&/^[a-f0-9]{64}$/.test(v)));}catch{return new Set();}
 }
-type Receipt={kind:'vault';vaultId:string}|{kind:'offer';vaultId:string;offerId:string};
+type Receipt=({kind:'vault';vaultId:string}|{kind:'offer';vaultId:string;offerId:string})&
+ {txid?:string;dismissed?:boolean;observed?:boolean};
 const receiptStorage='stake-arena-notices-'+activeNetwork;
 const receiptRow=(receipt:Receipt)=>receipt.kind==='vault'?'vault-row-'+receipt.vaultId:'offer-row-'+receipt.offerId;
+const sameReceipt=(a:Receipt,b:Receipt)=>a.vaultId===b.vaultId&&receiptRow(a)===receiptRow(b)&&(!a.txid||!b.txid||a.txid===b.txid);
+
+function submissionReceipt(op:Operation):Receipt|undefined{
+ if(op.step!=='action'||!op.raw||!op.txid||op.error||(op.signing&&op.signing!=='signed')||
+  (op.stage!=='pending'&&op.stage!=='confirmed'))return;
+ if(op.intent.kind==='create'&&op.config&&id(op.config)===op.txid)return {kind:'vault',vaultId:op.txid,txid:op.txid};
+ if(op.intent.kind==='insert'&&op.offerId)return {kind:'offer',vaultId:id(op.intent.config),offerId:op.offerId,txid:op.txid};
+}
 
 function savedReceipts():Receipt[]{
  try{
@@ -54,6 +63,26 @@ function savedReceipts():Receipt[]{
    (entry.kind==='vault'||entry.kind==='offer'&&hex(entry.offerId))):[];
  }catch{return [];}
 }
+
+function SubmissionDialog({receipt,dismiss}:{receipt:Receipt;dismiss:()=>void}){
+ const ref=useRef<HTMLDialogElement>(null);
+ useLayoutEffect(()=>{
+  const dialog=ref.current!;
+  dialog.showModal();
+  return()=>dialog.close();
+ },[]);
+ return <dialog ref={ref} className="wallet-dialog queue-submission-dialog" aria-labelledby="queue-submission-title"
+  onClick={dismiss} onCancel={event=>{event.preventDefault();dismiss();}}
+  onKeyDown={event=>{
+   if(!['Enter',' ','Escape'].includes(event.key))return;
+   event.preventDefault();
+   if(!event.repeat)dismiss();
+  }}>
+  <h2 id="queue-submission-title">{receipt.kind==='vault'?'Your vault has been created.':'Your offer has been submitted.'}</h2>
+  <button type="button">Continue</button>
+ </dialog>;
+}
+
 export default function QueueArena(){
  const [route,setRoute]=useState(location.hash),creating=route==='#/v3'||route==='#/create',myOffers=route==='#/v3/my-offers'||route==='#/my-offers',selectedId=route.match(/^#\/(?:v3\/)?vault\/([a-f0-9]{64})$/)?.[1];
  const [configs,setConfigs]=useState<Config[]>(saved),[pages,setPages]=useState<string[]>([]),[page,setPage]=useState(0),[ready,setReady]=useState(false),[catalogError,setCatalogError]=useState('');
@@ -65,9 +94,16 @@ export default function QueueArena(){
  const [archives,setArchives]=useState<Record<string,{rows:Owned;at?:number;error?:string;updating?:boolean}>>({});
  const observedOffers=useRef(new Map<string,Set<string>>());
  const [receipts,setReceipts]=useState<Receipt[]>(savedReceipts);
+ const retainedReceipts=useRef(receipts),journalRequest=useRef(0);
  const [highlight,setHighlight]=useState<Receipt>();
- const revealedRow=useRef<HTMLElement|null>(null);
- useEffect(()=>{try{sessionStorage.setItem(receiptStorage,JSON.stringify(receipts));}catch{}},[receipts]);
+ const highlightTimer=useRef<ReturnType<typeof setTimeout>|undefined>(undefined);
+ function updateReceipts(update:(entries:Receipt[])=>Receipt[]){
+  const entries=update(retainedReceipts.current);
+  if(entries===retainedReceipts.current)return;
+  retainedReceipts.current=entries;
+  try{sessionStorage.setItem(receiptStorage,JSON.stringify(entries));}catch{}
+  setReceipts(entries);
+ }
  const [ops,setOps]=useState<Operation[]>([]),[busy,setBusy]=useState(false),[message,setMessage]=useState(''),[review,setReview]=useState<Operation>(),[now,setNow]=useState(Date.now());
  const [refreshVersion,requestRefresh]=useState(0);
  const [verificationRetry,retryVerification]=useState(0),[retrying,setRetrying]=useState(false);
@@ -99,32 +135,50 @@ export default function QueueArena(){
  const snapshot=selected?.snapshot,reportedAt=selected?.at??0;
  const selectedError=selectedId?reports[selectedId]?.error:undefined;
  const browsing=!creating&&!myOffers&&!selectedId;
- const readyReceipts=receipts.filter(receipt=>receipt.kind==='vault'
-  ? publicIds.has(receipt.vaultId)&&configs.some(c=>id(c)===receipt.vaultId)
-  : !reports[receipt.vaultId]?.error&&reports[receipt.vaultId]?.snapshot?.ordered.some(offer=>offer.id===receipt.offerId));
+ const submitted=ops.flatMap(op=>{
+  const receipt=submissionReceipt(op);
+  return receipt?[{op,receipt}]:[];
+ });
+ const availableVaults=new Set(configs.map(id));
+ const pendingOffers=new Map<string,Map<string,Score>>();
+ for(const {op,receipt} of submitted){
+  if(receipt.kind!=='offer'||op.intent.kind!=='insert'||!op.intent.terms)continue;
+  const retained=receipts.find(other=>sameReceipt(receipt,other));
+  if(!retained||retained.observed||observedOffers.current.get(receipt.vaultId)?.has(receipt.offerId))continue;
+  const offers=pendingOffers.get(receipt.vaultId)??new Map<string,Score>();
+  offers.set(receipt.offerId,op.intent.terms);
+  pendingOffers.set(receipt.vaultId,offers);
+ }
+ const pendingQueue=selectedId?pendingOffers.get(selectedId):undefined;
+ const readyReceipt=!confirmation&&!highlight?receipts.find(receipt=>
+  !receipt.dismissed&&availableVaults.has(receipt.vaultId)&&submitted.some(other=>sameReceipt(receipt,other.receipt))&&
+  (receipt.kind==='vault'||pendingOffers.get(receipt.vaultId)?.has(receipt.offerId)||
+   (reports[receipt.vaultId]??snapshots.current.get(receipt.vaultId))?.snapshot?.ordered.some(offer=>offer.id===receipt.offerId))
+ ):undefined;
  function reveal(receipt:Receipt){
-  setReceipts(old=>old.filter(other=>receiptRow(other)!==receiptRow(receipt)));
-  revealedRow.current=null;
+  updateReceipts(old=>old.map(other=>sameReceipt(other,receipt)?{...other,dismissed:true}:other));
   setHighlight(receipt);
-  if(receipt.kind==='vault'){
-   setPage(Math.floor(configs.findIndex(c=>id(c)===receipt.vaultId)/20));
-   location.hash='#/v3/offers';
-  }else if(selectedId!==receipt.vaultId)location.hash='#/v3/vault/'+receipt.vaultId;
+  location.hash=receipt.kind==='vault'?'#/v3/offers':'#/v3/vault/'+receipt.vaultId;
  }
  useLayoutEffect(()=>{
-  if(!highlight||(highlight.kind==='vault'?!browsing:selectedId!==highlight.vaultId))return;
+  if(!highlight||highlightTimer.current!==undefined)return;
+  if(highlight.kind==='vault'){
+   if(!browsing)return;
+   const index=configs.findIndex(c=>id(c)===highlight.vaultId);
+   if(index<0)return;
+   const targetPage=Math.floor(index/20);
+   if(page!==targetPage){setPage(targetPage);return;}
+  }else if(selectedId!==highlight.vaultId)return;
   const row=document.getElementById(receiptRow(highlight));
-  if(!row||revealedRow.current===row)return;
-  revealedRow.current=row;
+  if(!row)return;
   row.focus({preventScroll:true});
   row.scrollIntoView?.({block:'center',behavior:'instant'});
+  highlightTimer.current=setTimeout(()=>{
+   highlightTimer.current=undefined;
+   setHighlight(undefined);
+  },5000);
  });
- useEffect(()=>{
-  if(!highlight)return;
-  const clear=()=>setHighlight(undefined);
-  document.addEventListener('click',clear,{capture:true,once:true});
-  return()=>document.removeEventListener('click',clear,true);
- },[highlight]);
+ useLayoutEffect(()=>()=>clearTimeout(highlightTimer.current),[]);
  const ownerConfigs=myOffers?configs:selectedConfig?[selectedConfig]:[];
  const ownerArchives=owner?ownerConfigs.map(c=>archives[owner+':'+id(c)]):[];
  const ownerOffers=owner?ownerConfigs.flatMap(c=>{
@@ -183,7 +237,16 @@ export default function QueueArena(){
    return merged;
   });
  }
- async function operations(signal?:AbortSignal){const list:Operation[]=signal?await queueCall({operation:'list'},[],signal):await queueCall({operation:'list'});if(signal?.aborted)return list;setOps(list);retain(list.filter(o=>o.raw&&(o.config?.anchor.genesis||'config'in o.intent)).flatMap(o=>{try{return [parseQueueConfig(o.config??('config'in o.intent?o.intent.config:undefined))];}catch{return [];}}),false);return list;}
+ async function operations(signal?:AbortSignal){
+  const request=++journalRequest.current;
+  const list:Operation[]=signal?await queueCall({operation:'list'},[],signal):await queueCall({operation:'list'});
+  if(signal?.aborted||request!==journalRequest.current)return list;
+  setOps(list);
+  retain(list.filter(o=>o.raw&&(o.config?.anchor.genesis||'config'in o.intent)).flatMap(o=>{
+   try{return [parseQueueConfig(o.config??('config'in o.intent?o.intent.config:undefined))];}catch{return [];}
+  }),false);
+  return list;
+ }
  function acceptPublished(data:{vaults:unknown[]}){
   const values=data.vaults.flatMap(v=>{
    try{
@@ -242,6 +305,8 @@ export default function QueueArena(){
    const observed=observedOffers.current.get(vaultId)??new Set<string>();
    for(const offer of value.ordered)observed.add(offer.id);
    observedOffers.current.set(vaultId,observed);
+   const newlyObserved=(receipt:Receipt)=>receipt.kind==='offer'&&receipt.vaultId===vaultId&&!receipt.observed&&observed.has(receipt.offerId);
+   updateReceipts(old=>old.some(newlyObserved)?old.map(receipt=>newlyObserved(receipt)?{...receipt,observed:true}:receipt):old);
    rememberQueueCount(activeNetwork,vaultId,{network:activeNetwork,vaultId,waiting:value.ordered.length,updatedAt:new Date(at).toISOString()});
    setQueueCountError(activeNetwork,vaultId);
    const previous=snapshots.current.get(vaultId);
@@ -323,23 +388,6 @@ export default function QueueArena(){
  },[awaitingPublication,creationIds,publication]);
  useLayoutEffect(()=>{if(ready||configs.length||creating||myOffers||selectedId)document.getElementById('arena-public-preview')?.remove();},[ready,configs.length,creating,myOffers,selectedId]);
  useEffect(()=>{if((myOffers||selectedId&&!selectedConfig)&&pages.length)void discover(pages[0]);},[myOffers,selectedId,!!selectedConfig,pages.join(',')]);
- const pendingQueues=[...new Set(receipts.flatMap(receipt=>receipt.kind==='offer'&&receipt.vaultId!==selectedId&&
-  !observedOffers.current.get(receipt.vaultId)?.has(receipt.offerId)?[receipt.vaultId]:[]))].sort().join(',');
- useEffect(()=>{
-  if(!pendingQueues)return;
-  const controller=new AbortController();
-  const pendingConfigs=configs.filter(c=>pendingQueues.split(',').includes(id(c)));
-  let timer:ReturnType<typeof setTimeout>;
-  const check=async()=>{
-   if(!document.hidden)for(const c of pendingConfigs){
-    if(controller.signal.aborted)break;
-    await readQueue(c,'notices',controller.signal,true);
-   }
-   if(!controller.signal.aborted)timer=setTimeout(check,15000);
-  };
-  void check();
-  return()=>{controller.abort();clearTimeout(timer);};
- },[pendingQueues,configs]);
  const configRevision=encode(configs),selectedRevision=selectedConfig?encode(selectedConfig):'';
  useEffect(()=>{
   if(!selectedConfig)return;
@@ -491,15 +539,15 @@ export default function QueueArena(){
   setMessage('Checking request and wallet inputs…');
   const result:Operation=await restored.wallet.queue(draft?{operation:'continueCreate',draft}:request,restored.check);
   if(result.config?.anchor.genesis&&result.raw)retain([result.config]);
-  if(result.raw&&result.step==='action'&&!['discarded','conflict'].includes(result.stage)){
-   const receipt:Receipt|undefined=result.intent.kind==='create'&&result.config&&result.txid===id(result.config)
-    ? {kind:'vault',vaultId:result.txid}
-    : result.intent.kind==='insert'&&result.intent.config&&result.offerId
-     ? {kind:'offer',vaultId:id(result.intent.config),offerId:result.offerId}
-     : undefined;
-   if(receipt&&!(request.operation==='resume'&&ops.some(op=>op.id===result.id&&op.raw)))setReceipts(old=>old.some(other=>receiptRow(other)===receiptRow(receipt))?old:[...old,receipt]);
+  const receipt=submissionReceipt(result);
+  if(receipt){
+   if(result.intent.kind==='insert')retain([result.intent.config],false);
+   updateReceipts(old=>old.some(other=>sameReceipt(other,receipt))?old:[...old,receipt]);
   }
-  if(result.raw&&result.id)setOps(old=>[result,...old.filter(op=>op.id!==result.id)]);
+  if(result.raw&&result.id){
+   journalRequest.current++;
+   setOps(old=>[result,...old.filter(op=>op.id!==result.id)]);
+  }
   if(result.error)showFailure(Error(result.error));else{setActionError('');setActionTechnical('');setActionDetails(undefined);}
   setMessage(result.intent.kind==='create'&&result.step==='action'&&result.raw?'':result.intent.kind==='recover'?(result.recoveryResolved?'Old request resolved. Continue creating your new vault.':result.raw?'Resolution submitted. Waiting for confirmation before releasing old reservations.':'Review the resolution before approving it.') :(!['action','wallet-preparation'].includes(result.step)?'Inspected · '+result.stage:result.raw?'Submitted':'Prepared')+' · '+(result.txid??result.plan.label));requestRefresh(version=>version+1);await operations();
  }catch(e){showFailure(e);setMessage('');void operations().catch(()=>{});}finally{working.current=false;setBusy(false);}}
@@ -577,9 +625,7 @@ export default function QueueArena(){
   </article>;
  };
  return <div className="v3-arena">
- <div className="queue-notices" aria-live="polite" aria-atomic="false">{readyReceipts.map(receipt=><button key={receiptRow(receipt)} className="button" type="button" onClick={()=>reveal(receipt)}>
-  {receipt.kind==='vault'?'Your Vault has been created':'Your offer has been submitted'}
- </button>)}</div>
+ {readyReceipt&&<SubmissionDialog key={readyReceipt.txid??receiptRow(readyReceipt)} receipt={readyReceipt} dismiss={()=>reveal(readyReceipt)}/>}
  {confirmation&&<QueuePreparationDialog request={confirmation}/>}<nav className="v3-tabs" aria-label="Vault actions"><a className="create-vault-tab" aria-current={creating?'page':undefined} href="#/v3">Create Vault</a><a aria-current={!creating&&!myOffers?'page':undefined} href="#/v3/offers">Browse All Vaults</a></nav>
  {!creating&&<>{(selectedId||myOffers)&&message&&messageRoute.current===route&&<p role="status">{message}</p>}{recoveryPanel}{!selectedConfig&&actionFeedback}</>}
  {creating?<><form className="form-panel" noValidate onSubmit={e=>{e.preventDefault();create();}}><h1>Create Vault</h1><p>Create the vault, queue and complete reward reserve together. Wallet preparation runs automatically if needed.</p><fieldset disabled={busy}><div className="form-grid"><div className="queue-asset-fields"><label>Staking asset<select aria-label="Staking asset" value={stakeKind} onChange={e=>setStakeKind(e.target.value)}><option value="bch">BCH</option><option value="token">CashToken</option></select></label>{stakeKind==='token'&&<label>Staking token category<input aria-label="Staking token category" aria-describedby="queue-error-stakingCategory" aria-invalid={!!creation.errors.stakingCategory} value={stakeCategory} onChange={e=>setStakeCategory(e.target.value)} maxLength={64}/>{fieldError('stakingCategory',creation.errors.stakingCategory)}</label>}</div><div className="queue-asset-fields"><label>Reward asset<select aria-label="Reward asset" value={rewardKind} onChange={e=>setRewardKind(e.target.value)}><option value="bch">BCH</option><option value="token">CashToken</option></select></label>{rewardKind==='token'&&<label>Reward token category<input aria-label="Reward token category" aria-describedby="queue-error-rewardCategory" aria-invalid={!!creation.errors.rewardCategory} value={rewardCategory} onChange={e=>setRewardCategory(e.target.value)} maxLength={64}/>{fieldError('rewardCategory',creation.errors.rewardCategory)}</label>}</div><label>{releaseLabel}<input aria-label={releaseLabel} aria-describedby="queue-error-cap" aria-invalid={!!creation.errors.cap} value={cap} onChange={e=>setCap(e.target.value)} inputMode={rewardKind==='bch'?'decimal':'numeric'}/>{fieldError('cap',creation.errors.cap)}{releaseRange&&releaseRange!==creation.errors.cap&&<small>{releaseRange}</small>}</label><label>Release interval (minutes)<input type="number" min={minimumMinutes(activeNetwork)} step={minimumMinutes(activeNetwork)} aria-label="Release interval (minutes)" aria-describedby="queue-error-interval" aria-invalid={!!creation.errors.interval} value={interval} onChange={e=>setReleaseInterval(e.target.value)}/>{fieldError('interval',creation.errors.interval)}</label><label>Number of releases<input type="number" min="1" max="1000" aria-label="Number of releases" aria-describedby="queue-error-releases" aria-invalid={!!creation.errors.releases} value={releases} onChange={e=>setReleases(e.target.value)}/>{fieldError('releases',creation.errors.releases)}</label><label>Schedule starts (local time)<input type="datetime-local" step="1" aria-label="Schedule starts (local time)" aria-describedby="queue-error-epoch" aria-invalid={!!creation.errors.epoch} value={epoch} onChange={e=>setEpoch(e.target.value)}/>{fieldError('epoch',creation.errors.epoch)}</label></div>{creationPreview&&<dl><dt>Total reward reserve</dt><dd>{displayAsset(creationPreview.rewardCategory,creationPreview.cap*BigInt(creationPreview.releases))}</dd><dt>Schedule duration</dt><dd>{formatDuration(creationPreview.interval*creationPreview.releases)}</dd><dt>Final scheduled release (local time)</dt><dd>{localTimestamp(creationPreview.epoch+creationPreview.interval*creationPreview.releases)}</dd></dl>}<p>Transactions: {review?.quote?.transactions??'calculated before approval'} · Wallet approvals: {review?.quote?.approvals??'calculated before approval'}</p><p>Estimated network fee: {review?.intent.kind==='create'?(review.quote?.totalFee??review.plan.fee)+' sats':'calculated from wallet inputs before approval'}</p>{review?.intent.kind==='create'&&<p>Total wallet BCH committed, including fee: {review.quote?.walletDebit??review.walletDebit} sats</p>}{actionFeedback}{!creationPreview&&<p>Correct the highlighted fields to create the vault.</p>}<button type="submit" disabled={!canRequest||busy||!creationPreview}>Create Vault</button></fieldset></form>
@@ -592,12 +638,18 @@ export default function QueueArena(){
    {snapshot&&<div className="queue-claim" role="group" aria-label="Claim reward"><p>Winning reward: {head?displayAsset(selectedConfig.parameters.rewardCategory,head.reward):'none'}</p><p>Caller pays the fee. The reward goes to the winning offer.</p>{review?.intent.kind==='claim'&&<p>Estimated network fee: {review.plan.fee} sats</p>}<button type="button" disabled={!head||!canRequest||busy||!!selectedError||headStatus===undefined||headStatus==='awaiting-release'} title={!head?'No offers waiting':headStatus==='awaiting-release'?'The highest-ranked offer is waiting for scheduled rewards.':headStatus==='never-funded'?'The head cannot be funded by the remaining reserve; this action returns its stake.':undefined} onClick={()=>{if(head)void prepare({kind:'claim',config:selectedConfig,expectedHead:head.id});}}>{head&&head.reward>snapshot.state.reserve?'Return unfundable head':'Claim reward'}</button></div>}</div>{snapshot&&<QueueReleaseSchedule rewardAmount={amount=>displayAsset(selectedConfig.parameters.rewardCategory,amount)} parameters={selectedConfig.parameters} reserve={snapshot.state.reserve} mtp={snapshot.mtp} reportedAt={reportedAt} now={now} available={!selectedError}/>}</div></section>
    <form className="form-panel queue-offer-panel" noValidate onSubmit={e=>{e.preventDefault();if(snapshot&&!selectedError&&terms)void prepare({kind:'insert',config:selectedConfig,terms});}}><h2>Make an Offer</h2><p>Priority Score = (Stake Amount × Lock Duration) / Requested Reward</p><div className="form-grid"><label>Stake amount ({displayAsset(selectedConfig.parameters.stakingCategory)})<input inputMode={selectedConfig.parameters.stakingCategory===ZERO?'decimal':'numeric'} aria-label="Stake amount" aria-describedby="queue-error-stake" aria-invalid={!!offer.errors.stake} value={stake} onChange={e=>setStake(e.target.value)}/>{fieldError('stake',offer.errors.stake)}</label><label className="queue-lock-duration">Lock duration (time units)<input type="number" min="1" max="65535" aria-label="Lock duration (time units)" aria-describedby="queue-lock-conversion queue-error-duration" aria-invalid={!!offer.errors.duration} value={duration} onChange={e=>setDuration(e.target.value)}/>{fieldError('duration',offer.errors.duration)}<small id="queue-lock-conversion">1 time unit = {STAKING_UNIT_SECONDS} second</small>{offer.lockSeconds!==undefined&&<small aria-live="polite">{formatDuration(offer.lockSeconds)}</small>}</label><label>Requested reward ({displayAsset(selectedConfig.parameters.rewardCategory)})<input inputMode={selectedConfig.parameters.rewardCategory===ZERO?'decimal':'numeric'} aria-label="Requested reward" aria-describedby="queue-error-reward queue-priority-preview" aria-invalid={!!offer.errors.reward} value={reward} onChange={e=>{const value=e.target.value;setRewardDrafts(old=>({...old,[id(selectedConfig)]:value}));}}/>{fieldError('reward',offer.errors.reward)}<small id="queue-priority-preview" aria-live="polite">Priority Score: {offer.priorityTerms?showPriority(offer.priorityTerms,selectedConfig):'—'}</small></label></div><p>Transactions: 1 · Wallet approvals: 1</p><p>Estimated network fee: {review?.intent.kind==='insert'?review.plan.fee+' sats':'calculated from wallet inputs before approval'}</p>{review?.intent.kind==='insert'&&<p>{review.intent.terms&&<>Stake: {displayAsset(review.intent.config.parameters.stakingCategory,review.intent.terms.stake)} · Requested reward: {displayAsset(review.intent.config.parameters.rewardCategory,review.intent.terms.reward)} · </>}Total wallet BCH committed, including fee: {review.walletDebit} sats</p>}{termsError&&<p>Correct the highlighted fields to make an offer.</p>}{actionFeedback}<button disabled={!snapshot||!canRequest||busy||!terms||!!selectedError} type="submit">Make an Offer</button></form>
 
-   <section className="panel queue-queue-panel" aria-label="Queue"><h2>Queue</h2>{snapshot?<><p>Provider-reported state · provisional · {snapshot.ordered.length} waiting{now-reportedAt>60000||selectedError?` · Stale`:null}</p><div className="table-scroll"><table className="queue-ranking-table"><caption className="sr-only">Ranked queue</caption><thead><tr><th>Rank</th><th>Priority Score</th><th>Reward</th><th>Stake</th><th>Lock duration</th></tr></thead><tbody>{snapshot.ordered.map((o,n)=>{
-    const highlighted=highlight?.kind==='offer'&&highlight.vaultId===selectedId&&highlight.offerId===o.id;
-    return <tr key={o.id} id={'offer-row-'+o.id} tabIndex={highlighted?-1:undefined} className={highlighted?'queue-row-highlight':undefined}>
-     <td>{n+1}</td><td>{showPriority(o,selectedConfig)}</td><td>{displayAsset(selectedConfig.parameters.rewardCategory,o.reward)}</td><td>{displayAsset(selectedConfig.parameters.stakingCategory,o.stake)}</td><td>{o.duration/STAKING_UNIT_SECONDS} time {o.duration===STAKING_UNIT_SECONDS?'unit':'units'}<small>{formatDuration(o.duration)}</small></td>
+   <section className="panel queue-queue-panel" aria-label="Queue"><h2>Queue</h2>
+   {snapshot?<p>Provider-reported state · provisional · {snapshot.ordered.length} waiting{now-reportedAt>60000||selectedError?' · Stale':null}</p>:<p>{selectedError?'Live queue unavailable.':'Loading queue…'}</p>}
+   {(snapshot||pendingQueue?.size)?<div className="table-scroll"><table className="queue-ranking-table"><caption className="sr-only">Ranked queue</caption><thead><tr><th>Rank</th><th>Priority Score</th><th>Reward</th><th>Stake</th><th>Lock duration</th></tr></thead><tbody>{[
+    ...(snapshot?.ordered??[]).map((terms,n)=>({offerId:terms.id,terms,rank:n+1})),
+    ...[...(pendingQueue??[])].map(([offerId,terms])=>({offerId,terms,rank:undefined})),
+   ].map(({offerId,terms,rank})=>{
+    const highlighted=highlight?.kind==='offer'&&highlight.vaultId===selectedId&&highlight.offerId===offerId;
+    return <tr key={offerId} id={'offer-row-'+offerId} tabIndex={highlighted?-1:undefined} className={highlighted?'queue-row-highlight':undefined}>
+     <td>{rank??<>Pending<small>Awaiting provider update</small></>}</td><td>{showPriority(terms,selectedConfig)}</td><td>{displayAsset(selectedConfig.parameters.rewardCategory,terms.reward)}</td><td>{displayAsset(selectedConfig.parameters.stakingCategory,terms.stake)}</td><td>{terms.duration/STAKING_UNIT_SECONDS} time {terms.duration===STAKING_UNIT_SECONDS?'unit':'units'}<small>{formatDuration(terms.duration)}</small></td>
     </tr>;
-   })}</tbody></table></div>{!snapshot.ordered.length&&<p>No offers waiting.</p>}</>:<p>{selectedError?'Live queue unavailable.':'Loading queue…'}</p>}</section>{ownerSection}</div>
+   })}</tbody></table></div>:null}
+   {snapshot&&!snapshot.ordered.length&&!pendingQueue?.size&&<p>No offers waiting.</p>}</section>{ownerSection}</div>
   </>}
  </>:<section className="v3-known"><h1>Known vaults</h1>{discoveryControls}
  <QueueCatalogUpdated network={activeNetwork} vaultIds={catalogIds} now={now}/>
@@ -607,7 +659,9 @@ export default function QueueArena(){
   return <tr key={id(c)} id={'vault-row-'+id(c)} tabIndex={highlighted?-1:undefined} className={highlighted?'queue-row-highlight':undefined}>
    <td><a className="marketplace-link" aria-label={'Vault '+(page*20+n+1)} href={'#/v3/vault/'+id(c)}>{page*20+n+1}</a></td>
    <QueueRewardCells network={activeNetwork} vaultId={id(c)} category={c.parameters.rewardCategory} metadata={tokenMetadata(c.parameters.rewardCategory)} now={now}/>
-   <td data-label={queueCatalogColumns[4]}>{displayAsset(c.parameters.stakingCategory)}</td>
+   <td data-label={queueCatalogColumns[4]}>{displayAsset(c.parameters.stakingCategory)}
+    {!publicIds.has(id(c))&&submitted.some(({receipt})=>receipt.kind==='vault'&&receipt.vaultId===id(c))&&<small className="queue-publication-pending">Public listing pending</small>}
+   </td>
    <QueueCountCell network={activeNetwork} vaultId={id(c)} now={now}/>
   </tr>;
  })}</tbody></table>{ready&&!configs.length&&<p>No linked-list vaults have been discovered yet.</p>}<div><button disabled={!page} onClick={()=>setPage(p=>p-1)}>Previous</button><button disabled={(page+1)*20>=configs.length&&!pages.length} onClick={()=>{if((page+1)*20>=configs.length&&pages[0])void discover(pages[0]).then(loaded=>{if(loaded)setPage(p=>p+1);});else setPage(p=>p+1);}}>Next</button></div></section>}
