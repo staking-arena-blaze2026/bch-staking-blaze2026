@@ -1,11 +1,13 @@
 import {utxo} from '../arena-core.js';
-import type {ElectrumCore,HistoryEntry} from '../electrum-core.js';
+import {boundedMap} from '../bounded-map.js';
+import type {decodeRawTransaction,ElectrumCore,HistoryEntry} from '../electrum-core.js';
 import {discoveryScript} from '../v3/discovery.js';
 import {v3Network,type V3Network} from '../v3/network.js';
 import type {Config} from './chain.js';
 import {readQueueCatalog,type CatalogReward,type OfferCount} from './catalog.js';
 import {announcementIn,type Announcement} from './discovery.js';
 import {authenticateGenesis} from './indexer.js';
+import {ZERO} from './model.js';
 
 export interface QueueIndexState {
  network:V3Network;
@@ -38,16 +40,89 @@ export async function refreshQueueCatalog(state:QueueIndexState,p:ElectrumCore,b
  return {countsUpdated,rewardsUpdated};
 }
 
-/** A confirmed child commits to its source txids. Read and hash-check those
- * immutable bytes to authenticate the covenant and its full initial reserve. */
+type Decoded=ReturnType<typeof decodeRawTransaction>;
+export interface QueueCandidate {
+ config:Config;
+ height:number;
+ status:'provisional'|'observed-confirmed';
+}
+
+async function authenticateAnnouncement(p:ElectrumCore,tx:Decoded,a:Announcement) {
+ const marker=a.parameters.rewardCategory===ZERO?2:3;
+ if(tx.vout[marker]?.scriptPubKey.hex!==discoveryScript(v3Network(p)))throw Error('Missing public discovery marker');
+ if(tx.vin.length<2||tx.vin.length>16)throw Error('Noncanonical genesis inputs');
+ const parents:Decoded[]=await Promise.all(tx.vin.map(input=>p.transaction(input.txid)));
+ const sources=tx.vin.map((input,i)=>utxo(parents[i],input.vout));
+ const config:Config={parameters:a.parameters,identity:{vault:tx.vin[0]!.txid,queue:a.queue},anchor:{genesis:tx.txid,creator:a.creator}};
+ authenticateGenesis({p:a.parameters,identity:config.identity,provider:p},config.anchor,tx.hex,sources);
+ return {config,parents};
+}
+
+function announcementSpends(transactions:Decoded[]) {
+ const spends=new Map<string,string>();
+ for(const child of transactions)for(const input of child.vin){
+  if(input.vout===0xffffffff&&input.txid===ZERO)continue;
+  const outpoint=input.txid+':'+input.vout,previous=spends.get(outpoint);
+  if(previous&&previous!==child.txid)throw Error('Conflicting genesis dependencies');
+  spends.set(outpoint,child.txid);
+ }
+ return spends;
+}
+
 export async function confirmedAnnouncement(p:ElectrumCore,row:HistoryEntry,a:Announcement):Promise<Config> {
  const tx=await p.transactionStatus(row.tx_hash,row);
  if(tx.confirmations<1)throw Error('Awaiting on-chain confirmation');
- if(!tx.vout.some((out:{scriptPubKey:{hex:string}})=>out.scriptPubKey.hex===discoveryScript(v3Network(p))))throw Error('Missing public discovery marker');
- const sources=await Promise.all(tx.vin.map(async(input:{txid:string;vout:number})=>utxo(await p.transaction(input.txid),input.vout)));
- const config:Config={parameters:a.parameters,identity:{vault:tx.vin[0]?.txid,queue:a.queue},anchor:{genesis:row.tx_hash,creator:a.creator}};
- authenticateGenesis({p:a.parameters,identity:config.identity,provider:p},config.anchor,tx.hex,sources);
- return config;
+ return (await authenticateAnnouncement(p,tx,a)).config;
+}
+
+/** Ephemeral public hints. The peer's live marker mempool attests
+ * acceptance of the genesis and its dependencies. Authenticate the genesis
+ * against its hash-checked inputs before displaying anything. Refresh presence
+ * even when the transaction bytes have already been authenticated. */
+export async function scanQueueMempool(provider:ElectrumCore,tracked:Map<string,QueueCandidate>,
+ known:ReadonlySet<string>=new Set(),priority:ReadonlySet<string>=new Set()):Promise<QueueCandidate[]> {
+ const script=discoveryScript(v3Network(provider));
+ const results=await Promise.all(provider.endpoints.map(async endpoint=>{
+  const peer=provider.independentReader(endpoint)??provider;
+  try{
+   return await peer.session(async()=>{
+    const rows=(await peer.mempool(script)).filter(row=>!known.has(row.tx_hash));
+    const present=new Set(rows.map(row=>row.tx_hash));
+    const missing=new Set([...tracked.keys(),...priority].filter(id=>!known.has(id)&&!present.has(id)));
+    if(missing.size){
+     const confirmed=await peer.history(script).catch(()=>[]);
+     rows.push(...confirmed.filter(row=>row.height>0&&missing.has(row.tx_hash)));
+    }
+    rows.sort((a,b)=>Number(priority.has(b.tx_hash))-Number(priority.has(a.tx_hash))||
+     Number(tracked.has(b.tx_hash))-Number(tracked.has(a.tx_hash)));
+    return await boundedMap(rows.slice(0,24),6,async row=>{
+     try{
+      const raw:Decoded=await peer.transaction(row.tx_hash);
+      const a=announcementIn(raw);
+      if(!a)return;
+      const {config,parents}=await authenticateAnnouncement(peer,raw,a);
+      if(row.height>0&&(await peer.transactionStatus(row.tx_hash,row)).confirmations<1)return;
+      const candidate:QueueCandidate={config,height:row.height,status:row.height>0?'observed-confirmed':'provisional'};
+      return {spends:announcementSpends([raw,...parents]),candidate};
+     }catch{/* Incomplete or invalid evidence cannot make a candidate public. */}
+    });
+   },endpoint);
+  }catch{return [];}
+ }));
+ const observed=results.flat().filter(row=>row!==undefined);
+ const spenders=new Map<string,Set<string>>();
+ for(const row of observed)for(const [point,txid] of row.spends){
+  const ids=spenders.get(point)??new Set<string>();
+  ids.add(txid);
+  spenders.set(point,ids);
+ }
+ tracked.clear();
+ for(const {candidate,spends} of observed){
+  if([...spends.keys()].some(point=>spenders.get(point)!.size>1))continue;
+  const id=candidate.config.anchor.genesis;
+  if(!tracked.has(id)||candidate.height>tracked.get(id)!.height)tracked.set(id,candidate);
+ }
+ return [...tracked.values()];
 }
 
 /** Read-only discovery. Check each peer even when another peer has usable

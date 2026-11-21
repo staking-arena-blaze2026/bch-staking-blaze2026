@@ -1,7 +1,7 @@
 import {assetAmount,assetLabel} from './assetAmounts';
 import {createBrandArtwork} from './brandArtwork';
 import {fetchTokenMetadata} from './tokenMetadata';
-import {catalogDate,catalogIsStale,queueCatalogColumns,queueConfigStorage,warmQueuePage} from './queueCatalog';
+import {catalogDate,catalogIsStale,queueCatalogColumns,queueConfigStorage,savedQueuePublicIds,warmQueuePage} from './queueCatalog';
 import {queueCount,rememberQueueCount,countDescription} from './queueCounts';
 import {queueReward,rememberQueueReward} from './queueRewards';
 import {localTimestamp} from './localTime';
@@ -92,7 +92,8 @@ export function startPublicPreview(){
  };
  try{
   const cached=JSON.parse(localStorage.getItem(queueConfigStorage(network))??'[]');
-  if(Array.isArray(cached))render({vaults:cached.slice(0,20)});
+  const published=savedQueuePublicIds(network);
+  if(Array.isArray(cached))render({vaults:cached.filter(v=>published.has(v?.anchor?.genesis)).slice(0,20)});
  }catch{/* The published index can still populate the startup view. */}
  void warmQueuePage(network as V3Network).then(render).catch(()=>{if(root.hidden)remove();});
 }

@@ -3,7 +3,7 @@ import {errorMessage} from '../../src/queue/funding';
 /// <reference lib="webworker" />
 import {ElectrumTransportError} from '../../src/electrum-core';
 import {BrowserElectrumProvider} from '../../src/electrum-wss';
-import {emptyQueueIndex,scanQueueIndex} from '../../src/queue/public-index';
+import {emptyQueueIndex,scanQueueIndex,scanQueueMempool,type QueueCandidate} from '../../src/queue/public-index';
 import {confirmedWalletTransaction} from '../../src/electrum-wallet';
 import {readQueueCatalog} from '../../src/queue/catalog';
 import {QueueIndexer} from '../../src/queue/chain';
@@ -16,6 +16,8 @@ const options=v3Config({...workerEnv,VITE_V3_NETWORK:self.name.split(':')[0]}),r
 if(readOnly)options.allowBroadcast=false;
 const provider=new BrowserElectrumProvider(options),store=new BrowserQueueStore(options.network),scope=self as unknown as DedicatedWorkerGlobalScope;
 const publicScan=emptyQueueIndex(options.network);
+const mempool=new Map<string,QueueCandidate>();
+const mempoolProvider=self.name.endsWith(':mempool:read')?new BrowserElectrumProvider({...options,timeoutMs:2500}):undefined;
 const displayIndexers=new Map<string,QueueIndexer>();
 let failure=false;
 const messages:Record<string,string>={'preparation-planning':'Calculating the fastest vault-creation path','wallet-input-verification':'Checking wallet inputs and ancestry','prepare':'Calculating the fastest vault-creation path','wallet-address-discovery':'Finding available wallet funds','independent-provider-verification':'Verifying blockchain information on independent providers','legacy-reservation-reconciliation':'Checking relevant old wallet requests','fee-policy':'Checking current verified fee policy','authorize':'Checking wallet inputs before signing','retain':'Verifying signed transaction','submit':'Broadcasting transaction','advance':'Verifying preparation and preparing the next transaction'};
@@ -34,9 +36,9 @@ scope.addEventListener('unhandledrejection', event=>{
 });
 let pending:Promise<void>=Promise.resolve();
 scope.onmessage=event=>{pending=pending.catch(()=>{}).then(async()=>{const {id,intent,keys=[]}=event.data;const heartbeat=readOnly?undefined:setInterval(()=>scope.postMessage({type:'heartbeat',id,message:'Still checking blockchain information: '+stage}),5000);try{
- const operation=String(intent.operation),reading=['list','reportedQueue','catalog','owned','discover','creationStatus'].includes(operation);
+ const operation=String(intent.operation),reading=['list','reportedQueue','catalog','owned','discover','discoverMempool','creationStatus'].includes(operation);
  if(readOnly&&!reading)throw Error('Read-only queue worker cannot sign, journal or broadcast');
- if(!['list','discover','reportedQueue','catalog'].includes(operation)){
+ if(!['list','discover','discoverMempool','reportedQueue','catalog'].includes(operation)){
   await loadConflicts();
   if(failure)throw Error('Provider conflict evidence is unavailable');
  }
@@ -45,6 +47,10 @@ scope.onmessage=event=>{pending=pending.catch(()=>{}).then(async()=>{const {id,i
  else if(operation==='discover'){
   const summary=await scanQueueIndex(publicScan,provider,12000,new Set<string>(intent.published));
   result={...summary,vaults:Object.values(publicScan.vaults)};
+ }
+ else if(operation==='discoverMempool'){
+  if(!mempoolProvider)throw Error('Mempool discovery requires its read-only worker');
+  result=await scanQueueMempool(mempoolProvider,mempool,new Set<string>(intent.published),new Set<string>(intent.priority));
  }
  else if(operation==='creationStatus'){
   const tx=await confirmedWalletTransaction(provider,intent.txid);

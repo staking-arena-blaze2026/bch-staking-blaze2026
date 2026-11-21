@@ -1,6 +1,10 @@
 /** Lightweight discovery transport; imported by the startup view before covenants. */
 export const queueCatalogColumns=['Vault','Reward remaining','Next reward release','Reward available for claiming','Staking asset','Offers'] as const;
 export const queueConfigStorage=(network:string)=>'staking-arena-queue-configs-'+network;
+export const queuePublishedStorage=(network:string)=>'staking-arena-queue-published-'+network;
+export function savedQueuePublicIds(network:string):Set<string>{
+ try{return new Set(JSON.parse(localStorage.getItem(queuePublishedStorage(network))??'[]').filter((v:unknown)=>typeof v==='string'&&/^[a-f0-9]{64}$/.test(v)));}catch{return new Set();}
+}
 
 async function fetchQueuePage(network:string,path='index.json',signal?:AbortSignal,fresh=false){
  if(!['mainnet','chipnet','regtest'].includes(network)||!/^(index\.json|pages\/[a-f0-9]{64}\.json)$/.test(path))throw Error('Invalid queue index request');

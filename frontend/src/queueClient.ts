@@ -168,9 +168,9 @@ export async function queueCall(intent:Record<string,unknown>,keys:WalletKey[]=[
  const operation=String(intent.operation);
  const retaining=operation==='retain'||operation==='signingFailed';
  if(networkLeaving&&!retaining)throw Error('Network changed; review again');
- const readOnly=['list','reportedQueue','catalog','owned','discover','creationStatus'].includes(operation);
+ const readOnly=['list','reportedQueue','catalog','owned','discover','discoverMempool','creationStatus'].includes(operation);
  if(readOnly){
-  const channel=operation==='list'?'journal':operation==='catalog'?'catalog':['market-0','market-1','owners','discovery','creation'].includes(String(intent.channel))?String(intent.channel):'selected';
+  const channel=operation==='list'?'journal':operation==='catalog'?'catalog':operation==='discoverMempool'?'mempool':['market-0','market-1','owners','discovery','creation'].includes(String(intent.channel))?String(intent.channel):'selected';
   // Browsing callers with a signal own their lane. Journal readers may share a
   // worker, and all readers are scoped to this page's network.
   signal?.throwIfAborted();

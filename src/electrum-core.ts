@@ -198,12 +198,18 @@ export class ElectrumCore implements NetworkProvider {
     if(context){if(this.mtpEvidence.size>=32)this.mtpEvidence.delete(this.mtpEvidence.keys().next().value!);this.mtpEvidence.set(context,mtp);}
     return mtp;
   }
-  async history(script: string): Promise<HistoryEntry[]> {
+  private async scriptHistory(script: string, mempool: boolean): Promise<HistoryEntry[]> {
     if (!/^(?:[a-f0-9]{2})*$/i.test(script)) throw Error('Invalid locking script');
-    const history = await this.request('blockchain.scripthash.get_history', scriptHash(script));
+    const history = await this.request(mempool ? 'blockchain.scripthash.get_mempool' : 'blockchain.scripthash.get_history', scriptHash(script));
     if (Array.isArray(history) && history.length > this.maxHistoryEntries) throw Error('Electrum history exceeds the configured limit; snapshot withheld');
-    if (!Array.isArray(history) || history.some(h => !isHash(h.tx_hash) || (!Number.isSafeInteger(h.height) || h.height < -1)) || new Set(history.map(h => h.tx_hash)).size !== history.length) throw Error('Malformed Electrum history');
+    if (!Array.isArray(history) || history.some(h => !isHash(h?.tx_hash) || !Number.isSafeInteger(h.height) || h.height < -1 || (mempool && h.height > 0)) || new Set(history.map(h => h.tx_hash)).size !== history.length) throw Error('Malformed Electrum history');
     return history;
+  }
+  history(script: string): Promise<HistoryEntry[]> {
+    return this.scriptHistory(script, false);
+  }
+  mempool(script: string): Promise<HistoryEntry[]> {
+    return this.scriptHistory(script, true);
   }
   async getRawTransaction(txid: string): Promise<string> {
     if (!isHash(txid)) throw Error('Invalid transaction ID');

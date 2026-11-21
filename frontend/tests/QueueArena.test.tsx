@@ -345,20 +345,31 @@ it('keeps the last reserve and ranking marked stale when a fresh read exhausts r
 });
 
 
-it('reveals a locally saved vault on its catalog page before publication',async()=>{
+it('opens the creation notice when the public mempool row appears and temporarily highlights that row',async()=>{
  window.location.hash='#/v3';
  const previous=Array.from({length:20},(_,index)=>({...config,anchor:{...config.anchor,genesis:(index+1).toString(16).padStart(64,'0')}}));
  vi.mocked(loadQueuePage).mockResolvedValue({network:'chipnet',vaults:previous,pages:[]});
  const submitted={id:'new-vault',intent:{kind:'create'},step:'action',stage:'pending',raw:'retained',txid:genesis,config};
  let journal:typeof submitted[]=[];
- vi.mocked(queueCall).mockImplementation(async request=>request.operation==='list'?journal:request.operation==='creationStatus'?new Promise(()=>{}):snapshot);
+ let candidates:unknown[]=[];
+ vi.mocked(queueCall).mockImplementation(async request=>{
+  if(request.operation==='list')return journal;
+  if(request.operation==='creationStatus')return new Promise(()=>{});
+  if(request.operation==='discoverMempool')return candidates;
+  return snapshot;
+ });
  vi.mocked(wallet.queue!).mockImplementationOnce(async()=>{journal=[submitted];return submitted;});
- render(<WalletTransactionsContext.Provider value={wallet}><QueueArena/></WalletTransactionsContext.Provider>);
- fireEvent.click(screen.getByRole('button',{name:'Create Vault'}));
- const notice=await screen.findByRole('dialog',{name:'Your vault has been created.'});
+ vi.useFakeTimers();
+ await act(async()=>{render(<WalletTransactionsContext.Provider value={wallet}><QueueArena/></WalletTransactionsContext.Provider>);});
+ await act(async()=>{fireEvent.click(screen.getByRole('button',{name:'Create Vault'}));});
+ expect(screen.getByText(/Public listing pending/)).toBeVisible();
+ expect(screen.queryByRole('dialog')).toBeNull();
+ candidates=[{config,height:-1,status:'provisional'}];
+ await act(async()=>vi.advanceTimersByTimeAsync(5000));
+ const notice=screen.getByRole('dialog',{name:'Your vault has been created.'});
+ expect(notice.textContent).toBe('Your vault has been created.');
  expect(notice).toHaveAttribute('open');
  expect(screen.getByRole('heading',{name:'Create Vault'})).toBeVisible();
- vi.useFakeTimers();
  fireEvent.click(within(notice).getByRole('heading'));
  expect(location.hash).toBe('#/v3/offers');
  expect(screen.queryByRole('dialog')).toBeNull();
@@ -366,7 +377,7 @@ it('reveals a locally saved vault on its catalog page before publication',async(
  fireEvent(window,new Event('hashchange'));
  expect(screen.getByRole('heading',{name:'Known vaults'})).toBeVisible();
  const row=screen.getByRole('link',{name:'Vault 21'}).closest('tr')!;
- expect(row).toHaveTextContent('Public listing pending');
+ expect(row).toHaveTextContent('Unconfirmed (0-conf) · Provisional');
  expect(row).toHaveClass('queue-row-highlight');
  expect(row).toHaveFocus();
  fireEvent.click(document.body);
@@ -374,6 +385,29 @@ it('reveals a locally saved vault on its catalog page before publication',async(
  expect(row).toHaveClass('queue-row-highlight');
  act(()=>vi.advanceTimersByTime(1));
  expect(row).not.toHaveClass('queue-row-highlight');
+});
+
+it('shows live vaults to a wallet-free visitor and updates or removes them on the next scan',async()=>{
+ window.location.hash='#/v3/offers';
+ vi.mocked(loadQueuePage).mockResolvedValue({network:'chipnet',vaults:[],pages:[]});
+ localStorage.setItem('staking-arena-queue-configs-chipnet',JSON.stringify([{...config,parameters:{...config.parameters,cap:'2000'}}]));
+ let candidates:unknown[]=[];
+ vi.mocked(queueCall).mockImplementation(async request=>request.operation==='discoverMempool'?candidates:[]);
+ vi.useFakeTimers();
+ await act(async()=>{render(<QueueArena/>);});
+ expect(screen.getByText('No linked-list vaults have been discovered yet.')).toBeVisible();
+ expect(screen.queryByRole('link',{name:'Vault 1'})).toBeNull();
+ candidates=[{config,height:0,status:'provisional'}];
+ await act(async()=>vi.advanceTimersByTimeAsync(5000));
+ const row=screen.getByRole('link',{name:'Vault 1'}).closest('tr')!;
+ expect(row).toHaveTextContent('Unconfirmed (0-conf) · Provisional');
+ expect(screen.queryByRole('dialog')).toBeNull();
+ candidates=[{config,height:42,status:'observed-confirmed'}];
+ await act(async()=>vi.advanceTimersByTimeAsync(5000));
+ expect(row).toHaveTextContent('Confirmed on-chain');
+ candidates=[];
+ await act(async()=>vi.advanceTimersByTimeAsync(5000));
+ expect(screen.queryByRole('link',{name:'Vault 1'})).toBeNull();
 });
 
 it('shows the live score and highlights a locally submitted offer before the provider reports it',async()=>{

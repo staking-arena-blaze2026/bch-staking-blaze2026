@@ -1,12 +1,12 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import {binToHex,encodeDataPush,hexToBin} from '@bitauth/libauth';
+import {binToHex,decodeTransaction,encodeDataPush,encodeTransaction,hexToBin} from '@bitauth/libauth';
 import {SignatureTemplate,type SpendableUtxo} from 'cashscript';
 import {decodeRawTransaction,type HistoryEntry} from '../src/electrum-core.js';
 import {BrowserElectrumProvider} from '../src/electrum-wss.js';
 import {readQueueCatalog} from '../src/queue/catalog.js';
 import {addAnnouncement,payload} from '../src/queue/discovery.js';
-import {emptyQueueIndex,refreshQueueCatalog,scanQueueIndex,type QueueIndexState} from '../src/queue/public-index.js';
+import {emptyQueueIndex,refreshQueueCatalog,scanQueueIndex,scanQueueMempool,type QueueCandidate,type QueueIndexState} from '../src/queue/public-index.js';
 import {create,insert,ownerScript,ZERO} from '../src/queue/protocol.js';
 import {utxo} from '../src/arena-core.js';
 import {DISCOVERY_CARRIER,discoveryScript} from '../src/v3/discovery.js';
@@ -21,39 +21,69 @@ for(const network of ['mainnet','chipnet'] as const)test(`${network} queue disco
  const parameters={stakingCategory:ZERO,rewardCategory:ZERO,cap:2000n,epoch:1795000000,interval:600,releases:6};
  const a={parameters,creator,queue:queue.txid};
  const fund=(input:SpendableUtxo)=>({input,unlocker:key.unlockP2PKH()});
- const build=(malformed=false)=>create(parameters,fund(vault),fund(queue),[],key,provider,1n,{
+ const build=(malformed=false,p=parameters)=>create(p,fund(vault),fund(queue),[],key,provider,1n,{
   cost:DISCOVERY_CARRIER,add:b=>{
-   if(!malformed)addAnnouncement(b,provider,a);
+   if(!malformed)addAnnouncement(b,provider,{...a,parameters:p});
    else b.addOutput({to:hexToBin(discoveryScript(network)),amount:DISCOVERY_CARRIER})
     .addOutput({to:Uint8Array.of(0x6a,...encodeDataPush(payload(a).subarray(0,-1))),amount:0n});
   },
  });
  const genesis=decodeRawTransaction(build().raw),malformed=decodeRawTransaction(build(true).raw);
+ const conflict=decodeRawTransaction(build(false,{...parameters,releases:7}).raw);
+ const invalidTx=decodeTransaction(hexToBin(genesis.hex));
+ assert.notEqual(typeof invalidTx,'string');
+ if(typeof invalidTx==='string')throw Error(invalidTx);
+ invalidTx.inputs[0]!.unlockingBytecode=new Uint8Array();
+ const invalid=decodeRawTransaction(binToHex(encodeTransaction(invalidTx)));
  const txid=genesis.txid;
- let height=0,visible=false,outage=false,failSources=false;
+ let height=0,visible=false,outage=false,failSources=false,competing=false,preparation=false;
  for(const endpoint of provider.endpoints){
   const peer=provider.independentReader(endpoint)!;
   peer.session=async work=>{if(outage)throw Error('Provider unavailable');return work();};
   peer.history=async script=>{
    assert.equal(script,discoveryScript(network));
-   return endpoint===second&&visible?[{tx_hash:txid,height},{tx_hash:malformed.txid,height:1}]:[];
+   if(endpoint!==second)return competing?[{tx_hash:conflict.txid,height:0}]:[];
+   if(preparation)return [{tx_hash:vault.txid,height:0}];
+   return visible?[{tx_hash:txid,height},{tx_hash:malformed.txid,height:1},{tx_hash:invalid.txid,height:0}]:[];
   };
+  peer.mempool=async script=>(await peer.history(script)).filter(row=>row.height<=0);
   peer.transaction=async id=>{
    if(id===txid)return genesis;
    if(id===malformed.txid)return malformed;
+   if(id===conflict.txid)return conflict;
+   if(id===invalid.txid)return invalid;
    if(failSources)throw Error('Source temporarily unavailable');
    assert.ok(id===vault.txid||id===queue.txid);
-   return {txid:id,vout:[{satoshis:'50000',scriptPubKey:{hex:lockingBytecode}}]};
+   return {txid:id,vin:[],vout:[{satoshis:'50000',scriptPubKey:{hex:lockingBytecode}}]};
   };
   peer.transactionStatus=async (id:string,row?:HistoryEntry)=>{
+   assert.ok(height>0);
    assert.deepEqual(row,{tx_hash:id,height});
    return {...genesis,confirmations:height>0?1:0};
   };
  }
  const checkpoint=(state:QueueIndexState)=>structuredClone(state);
+ const tracked=new Map<string,QueueCandidate>();
+ const live=()=>scanQueueMempool(provider,tracked,new Set(),new Set([txid]));
  let state=emptyQueueIndex(network);
  await scanQueueIndex(state,provider,5000);
  assert.deepEqual(state.vaults,{});
+ assert.deepEqual(await live(),[],'signed bytes without a public history entry');
+ preparation=true;
+ assert.deepEqual(await live(),[],'preparation alone');
+ preparation=false;
+ visible=true;
+ failSources=true;
+ assert.deepEqual(await live(),[],'missing parent');
+ failSources=false;
+ assert.deepEqual((await live()).map(c=>[c.config.anchor.genesis,c.height,c.status]),[[txid,0,'provisional']]);
+ height=-1;
+ assert.deepEqual((await live()).map(c=>[c.config.anchor.genesis,c.height,c.status]),[[txid,-1,'provisional']]);
+ competing=true;
+ assert.deepEqual(await live(),[],'different peers see competing spends');
+ competing=false;
+ visible=false;
+ assert.deepEqual(await live(),[],'dropped from all histories');
  visible=true;
  const unconfirmed=await scanQueueIndex(state,provider,5000);
  assert.equal(unconfirmed.pending[txid],'Awaiting on-chain confirmation');
@@ -67,6 +97,7 @@ for(const network of ['mainnet','chipnet'] as const)test(`${network} queue disco
  assert.ok(state.pending[txid]);
  const retained=checkpoint(state);
  failSources=false;
+ assert.deepEqual((await live()).map(c=>[c.config.anchor.genesis,c.height,c.status]),[[txid,42,'observed-confirmed']]);
  await scanQueueIndex(state,provider,5000);
  assert.ok(state.vaults[txid]);
  // An interrupted run can leave the previous durable checkpoint in place.
