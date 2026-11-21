@@ -243,3 +243,5 @@ Public queue vault discovery at zero confirmations: a wallet-free Electrum scan 
 Inline vault and offer submission recovery: the transaction error can resume the saved creation sequence or offer. Recovery checks the journal against independent providers before retrying identical signed bytes or opening the wallet for a remaining approval. Conflicts and unresolved signatures open transaction inspection. A recovered vault that appears in the public catalog can show the creation dialog at zero confirmations. This is post-baseline recovery and presentation work.
 
 Create Vault reward amounts: CashToken rewards default to one token per release. The form keeps separate CashToken and BCH amounts while switching reward asset types. This is post-baseline presentation work.
+
+What changed page: the banner links to a styled web transcription of the supplied [Stake Arena Development PDF](https://github.com/staking-arena-blaze2026/staking-arena-blaze-site/blob/main/Stake%20Arena%20Development.pdf). The article preserves the PDF's wording, order, emphasis and link destinations. This is post-baseline presentation work.

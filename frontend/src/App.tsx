@@ -94,6 +94,7 @@ export default function App() {
     return()=>window.removeEventListener('hashchange',change);
   },[]);
   const stablecoin=hash==='#/about/stablecoin';
+  if(hash==='#/what-changed')return <About development/>;
   return hash==='#/about'||stablecoin?<About stablecoin={stablecoin}/>:<ArenaApp/>;
 }
 

@@ -22,6 +22,7 @@
 .about-page main{max-width:780px;padding-block:30px 60px}
 .about-document{margin-top:36px;font-size:16px;line-height:1.8}
 .about-document h1{margin-bottom:12px}
+.development-document h2{margin-top:28px;font-size:clamp(20px,3vw,27px);line-height:1.35}
 .about-document h3{margin:32px 0 16px;font-size:22px;line-height:1.4}
 .about-document p{margin-block:16px}
 .about-document hr{border:0;border-top:1px solid var(--line);margin-block:28px}
@@ -173,6 +174,14 @@ img.brand-slogan{display:block;width:100%;height:auto;max-width:none;margin:52px
   text-align: center;
 }
 .blaze-banner a { font-weight: 650; }
+.blaze-report-link {
+  padding: 3px 10px;
+  border: 1px solid #9b7042;
+  border-radius: 999px;
+  text-decoration: none;
+  background: #fff4df;
+}
+.blaze-report-link:hover { background: #ffdfb1; }
 .blaze-address {
   position: relative;
   display: inline-flex;
