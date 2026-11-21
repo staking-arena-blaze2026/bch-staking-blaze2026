@@ -227,8 +227,13 @@ export function browserWalletClient(manager:DappConnectionManager|null,check:()=
     const remaining=intent.recoverSubmission===true?(result.step==='wallet-preparation'?' · A wallet self-send is needed to prepare a funding output.':
      action==='create'?' · The final transaction creates the vault and funds its reward reserve.':
      action==='insert'?' · The transaction registers the offer and commits its stake.':''):'';
-    progress('Requesting Cashonize approval '+(++approval)+' of '+total+' · '+(review.label??authorized.plan.label)+remaining);
-    try{await queueCall({operation:'beginSigning',id:result.id});guard();if(Date.now()-authorized.verifiedAt<0||Date.now()-authorized.verifiedAt>10000)throw Error('Queue approval requires fresh verified inputs');if(JSON.stringify(getManager().getSessionPaths())!==session)throw Error('Wallet changed before queue signing');}catch(error){await queueCall({operation:'signingFailed',id:result.id,rejected:true,notRequested:true}).catch(()=>{});throw error;}
+    try{
+     await queueCall({operation:'beginSigning',id:result.id});
+     progress('Requesting Cashonize approval '+(++approval)+' of '+total+' · '+(review.label??authorized.plan.label)+remaining);
+     guard();
+     if(Date.now()-authorized.verifiedAt<0||Date.now()-authorized.verifiedAt>10000)throw Error('Queue approval requires fresh verified inputs');
+     if(JSON.stringify(getManager().getSessionPaths())!==session)throw Error('Wallet changed before queue signing');
+    }catch(error){await queueCall({operation:'signingFailed',id:result.id,rejected:true,notRequested:true}).catch(()=>{});throw error;}
     if(approval===1)window.dispatchEvent(new CustomEvent('arena-wallet-timing',{detail:{stage:'until-first-approval',milliseconds:performance.now()-started}}));
     const signingId=String(result.id);
     let signed;signatureRequested=true;try{signed=await measure('wallet-signing',()=>signWithRefusalEvidence(getManager(),{transaction:wizardWireTransaction(review.request),inputPaths:authorized.plan.inputPaths},{signal:signing.signal},async raw=>{

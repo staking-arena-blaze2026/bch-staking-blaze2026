@@ -51,8 +51,12 @@ for(const selected of ['mainnet','chipnet'])for(const stop of [0,1,2])for(const 
 it('resuming the first preparation reuses both completed steps and describes approval 3 of 3',async()=>{
  const {wallet,manager,plan}=setup(),progress:string[]=[];
  const op=(part:number)=>({id:'part'+part,intent:{kind:'create'},completed:part,stage:part<2?'confirmed':'review',raw:part<2?'retained':undefined,step:part<2?'wallet-preparation':'action',approved:true,quote:{transactions:3-part,approvals:3-part},plan,verifiedAt:Date.now(),owner:{publicKey:binToHex(manager.getPubkey(0,0n))}});
- vi.mocked(queueCall).mockImplementation(async i=>{if(i.operation==='resume')return op(0);if(i.operation==='advance')return op(i.id==='part0'?1:2);if(i.operation==='authorize')return op(2);if(i.operation==='submit')return {...op(2),stage:'pending',raw:'signed'};return {};});
+ vi.mocked(queueCall).mockImplementation(async i=>{if(i.operation==='resume')return op(0);if(i.operation==='advance')return op(i.id==='part0'?1:2);if(i.operation==='authorize')return op(2);if(i.operation==='submit')return {...op(2),stage:'pending',raw:'signed'};if(i.operation==='beginSigning')window.dispatchEvent(new CustomEvent('arena-wallet-progress',{detail:'Saving signing request…'}));return {};});
  const observe=(e:Event)=>progress.push((e as CustomEvent).detail);window.addEventListener('arena-wallet-progress',observe);
+ manager.signTransaction.mockImplementationOnce(async()=>{
+  expect(progress.at(-1)).toContain('The final transaction creates the vault and funds its reward reserve.');
+  return {signedTransaction:'signed'};
+ });
  try{
   await wallet.queue!({operation:'resume',id:'part0',retry:true,recoverSubmission:true});
   expect(manager.signTransaction).toHaveBeenCalledOnce();
