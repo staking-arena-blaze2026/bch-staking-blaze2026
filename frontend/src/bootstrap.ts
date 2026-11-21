@@ -1,5 +1,43 @@
 import './style.css';
 import {startPublicPreview} from './publicIndexPreview';
+
+async function copyAddress(address: HTMLElement) {
+  if (navigator.clipboard) {
+    try {
+      await navigator.clipboard.writeText(address.textContent ?? '');
+      return true;
+    } catch { /* Try copying the visible text if the browser denies clipboard access. */ }
+  }
+  // The site's HTTP entry point cannot use the Clipboard API.
+  const selection = window.getSelection();
+  if (!selection) return false;
+  const range = document.createRange();
+  range.selectNodeContents(address);
+  selection.removeAllRanges();
+  selection.addRange(range);
+  try {
+    return document.execCommand('copy');
+  } catch {
+    return false;
+  } finally {
+    selection.removeAllRanges();
+  }
+}
+
+const blazeAddress = document.getElementById('blaze-address');
+const copyButton = document.querySelector<HTMLButtonElement>('#blaze-copy-address');
+const copyStatus = document.getElementById('blaze-copy-status');
+if (blazeAddress && copyButton && copyStatus) {
+  let clearStatus: number | undefined;
+  copyButton.addEventListener('click', async () => {
+    const copied = await copyAddress(blazeAddress);
+    window.clearTimeout(clearStatus);
+    copyStatus.textContent = copied ? 'Address copied' : 'Select the address to copy it';
+    clearStatus = window.setTimeout(() => { copyStatus.textContent = ''; }, 3000);
+  });
+  copyButton.hidden = false;
+}
+
 if(!location.hash || location.hash==='#/' || location.hash==='#')history.replaceState(null,'',location.pathname+location.search+'#/v3/offers');
 const welcome=document.querySelector<HTMLDialogElement>('#arena-welcome');
 if(welcome){

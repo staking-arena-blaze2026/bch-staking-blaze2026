@@ -173,7 +173,38 @@ img.brand-slogan{display:block;width:100%;height:auto;max-width:none;margin:52px
   text-align: center;
 }
 .blaze-banner a { font-weight: 650; }
-.blaze-banner code { min-width: 0; }
+.blaze-address {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  max-width: 100%;
+}
+.blaze-address code { min-width: 0; }
+#blaze-copy-address {
+  flex: none;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  color: inherit;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 5px;
+}
+#blaze-copy-address svg { vertical-align: middle; }
+#blaze-copy-address:hover { border-color: #9b7042; }
+#blaze-copy-status:not(:empty) {
+  position: absolute;
+  z-index: 4;
+  top: 100%;
+  right: 0;
+  padding: 3px 8px;
+  color: #ffedcf;
+  background: #42220e;
+  border-radius: 5px;
+  white-space: nowrap;
+}
 
 /* Soft arena landscape and a full-width brown navigation stripe. */
 body{
