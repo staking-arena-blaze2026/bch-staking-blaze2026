@@ -65,6 +65,7 @@ main{width:calc(100% - 104px);max-width:1544px;margin:0 auto;padding:0 0 38px;mi
 .v3-tabs a:hover{filter:brightness(1.05)}.v3-tabs a:focus-visible{outline:3px solid #552300;outline-offset:5px}
 .panel,.form-panel,.vault-row,.v3-known,.advanced,.empty{background:linear-gradient(115deg,#ffe0ac,#ffedda 52%,#ffe2b6);border:1px solid #a45a26;border-radius:22px;box-shadow:inset 0 2px #fff4db,0 10px 12px #172b1459}
 .v3-known{padding:22px 24px 18px;position:relative;margin-bottom:20px}
+#content:has(> .v3-arena > .v3-known):focus{outline:none}
 .v3-arena .v3-known>h2{font-size:clamp(27px,3vw,40px);margin:0 0 20px 10px;padding-right:240px}
 .v3-known>button{position:absolute;top:22px;right:24px}
 .marketplace-table{margin:12px 0 18px;background:#ffe8ca;border:1px solid #e9ba83;border-radius:20px;overflow:hidden;border-collapse:separate;border-spacing:0;table-layout:fixed;font-size:19px;white-space:normal}
