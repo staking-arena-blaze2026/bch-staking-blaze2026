@@ -404,7 +404,8 @@ it('shows live vaults to a wallet-free visitor and updates or removes them on th
  expect(screen.queryByRole('dialog')).toBeNull();
  candidates=[{config,height:42,status:'observed-confirmed'}];
  await act(async()=>vi.advanceTimersByTimeAsync(5000));
- expect(row).toHaveTextContent('Confirmed on-chain');
+ expect(row).toBeVisible();
+ expect(row).not.toHaveTextContent(/Unconfirmed|Confirmed on-chain/);
  candidates=[];
  await act(async()=>vi.advanceTimersByTimeAsync(5000));
  expect(screen.queryByRole('link',{name:'Vault 1'})).toBeNull();

@@ -39,7 +39,7 @@ export function parseQueueConfig(value:unknown):Config{
 }
 function saved(){try{return JSON.parse(localStorage.getItem(storage)??'[]').flatMap((v:unknown)=>{try{return [parseQueueConfig(v)];}catch{return [];}});}catch{return [];} }
 const id=(c:Config)=>c.anchor.genesis;
-const vaultConfirmation=(candidate?:QueueCandidate)=>candidate?.status==='provisional'?'Unconfirmed (0-conf) · Provisional':'Confirmed on-chain';
+const unconfirmedVaultLabel='Unconfirmed (0-conf) · Provisional';
 type Receipt=({kind:'vault';vaultId:string}|{kind:'offer';vaultId:string;offerId:string})&
  {txid?:string;dismissed?:boolean;observed?:boolean};
 const receiptStorage='stake-arena-notices-'+activeNetwork;
@@ -131,7 +131,8 @@ export default function QueueArena(){
  },[savedConfigs,liveCandidates,publicIds]);
  const catalogVaults=useMemo(()=>configs.filter(c=>publicIds.has(id(c))||liveCandidates.has(id(c))),[configs,publicIds,liveCandidates]);
  const isPublic=(vaultId:string)=>publicIds.has(vaultId)||liveCandidates.has(vaultId);
- const confirmationLabel=(vaultId:string)=>publicIds.has(vaultId)?vaultConfirmation():vaultConfirmation(liveCandidates.get(vaultId));
+ const isProvisional=(vaultId:string)=>!publicIds.has(vaultId)&&liveCandidates.get(vaultId)?.status==='provisional';
+ const confirmationLabel=(vaultId:string)=>isProvisional(vaultId)?unconfirmedVaultLabel:'Confirmed on-chain';
  const selectedConfig=configs.find(c=>id(c)===selectedId);
  const defaultReward=selectedConfig&&selectedConfig.parameters.rewardCategory!==ZERO?'1':'0.00002000';
  const reward=(selectedId?rewardDrafts[selectedId]:undefined)??defaultReward;
@@ -692,7 +693,7 @@ export default function QueueArena(){
    <td><a className="marketplace-link" aria-label={'Vault '+(page*20+n+1)} href={'#/v3/vault/'+id(c)}>{page*20+n+1}</a></td>
    <QueueRewardCells network={activeNetwork} vaultId={id(c)} category={c.parameters.rewardCategory} metadata={tokenMetadata(c.parameters.rewardCategory)} now={now}/>
    <td data-label={queueCatalogColumns[4]}>{displayAsset(c.parameters.stakingCategory)}
-    <small className="queue-vault-confirmation">{confirmationLabel(id(c))}</small>
+    {isProvisional(id(c))&&<small className="queue-vault-confirmation">{unconfirmedVaultLabel}</small>}
    </td>
    <QueueCountCell network={activeNetwork} vaultId={id(c)} now={now}/>
   </tr>;
