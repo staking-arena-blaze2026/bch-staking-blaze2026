@@ -151,7 +151,11 @@ export default function QueueArena(){
   },[pairing?.identity,savedPaths?.find(path=>path.name==='receive')?.xpub]);
  let liveOwner='';try{liveOwner=wallet?.publicKey()??'';}catch{}
  const owner=pairing?.paired&&pairing.network===activeNetwork?liveOwner||offlineOwner:'';
- const [stakeKind,setStakeKind]=useState('bch'),[rewardKind,setRewardKind]=useState('bch'),[stakeCategory,setStakeCategory]=useState(''),[rewardCategory,setRewardCategory]=useState(''),[cap,setCap]=useState('0.00002000'),[interval,setReleaseInterval]=useState(String(minimumMinutes(activeNetwork))),[releases,setReleases]=useState('10'),[epoch,setEpoch]=useState(()=>localDateTimeInput(Date.now()+3600000));
+ const [stakeKind,setStakeKind]=useState('bch'),[rewardKind,setRewardKind]=useState('bch'),[stakeCategory,setStakeCategory]=useState(''),[rewardCategory,setRewardCategory]=useState('');
+ const bchRewardPerRelease=useState('0.00002000');
+ const tokenRewardPerRelease=useState('1');
+ const [cap,setCap]=rewardKind==='bch'?bchRewardPerRelease:tokenRewardPerRelease;
+ const [interval,setReleaseInterval]=useState(String(minimumMinutes(activeNetwork))),[releases,setReleases]=useState('10'),[epoch,setEpoch]=useState(()=>localDateTimeInput(Date.now()+3600000));
  const [stake,setStake]=useState('0.00003000'),[duration,setDuration]=useState('1'),[offerFilter,setOfferFilter]=useState('All');
  const [rewardDrafts,setRewardDrafts]=useState<Record<string,string>>({});
  const configs=useMemo(()=>{

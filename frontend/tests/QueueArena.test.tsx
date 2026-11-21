@@ -53,6 +53,21 @@ it('blocks token entry when precision cannot be resolved',async()=>{
  expect(screen.getByRole('alert',{name:'cap error'})).toHaveTextContent('Token precision unavailable from BCMR');
  expect(screen.getByRole('button',{name:'Create Vault'})).toBeDisabled();
 });
+it('defaults CashToken rewards to one and keeps reward amounts per asset type',()=>{
+ window.location.hash='#/create';render(<WalletTransactionsContext.Provider value={wallet}><QueueArena/></WalletTransactionsContext.Provider>);
+ const asset=screen.getByLabelText('Reward asset');
+ const bchReward=()=>screen.getByLabelText('Reward per release (min. 0.00001200 BCH)');
+ const tokenReward=()=>screen.getByLabelText('Reward per release');
+ expect(bchReward()).toHaveValue('0.00002000');
+ fireEvent.change(bchReward(),{target:{value:'0.00003000'}});
+ fireEvent.change(asset,{target:{value:'token'}});
+ expect(tokenReward()).toHaveValue('1');
+ fireEvent.change(tokenReward(),{target:{value:'2'}});
+ fireEvent.change(asset,{target:{value:'bch'}});
+ expect(bchReward()).toHaveValue('0.00003000');
+ fireEvent.change(asset,{target:{value:'token'}});
+ expect(tokenReward()).toHaveValue('2');
+});
 it.each(['create','offer'])('retains %s preflight errors and values through field corrections and status updates',async(kind)=>{
  if(kind==='create')window.location.hash='#/create';
  render(<WalletTransactionsContext.Provider value={wallet}><QueueArena/></WalletTransactionsContext.Provider>);
